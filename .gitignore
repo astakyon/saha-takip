@@ -1,0 +1,6 @@
+# Müşteri verisi içeren dosyalar depoya girmez
+baslangic-verisi.json
+*yedek*.json
+*.xlsx
+*.xls
+.DS_Store

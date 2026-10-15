@@ -1,0 +1,109 @@
+import { S, makeAdapter, getConfig } from './db.js';
+import { app, loadFilters } from './state.js';
+import { esc, toast, closeDrawer } from './ui.js';
+import { mapView } from './views/map.js';
+import { projelerView, projeDetay } from './views/projeler.js';
+import { firmalarView, firmaDetay, kisilerView, kisiDetay } from './views/firmalar.js';
+import { ziyaretlerView, gorevlerView, ziyaretForm } from './views/ziyaret.js';
+import { urunlerView, rakipView } from './views/urunler.js';
+import { panelView, siparislerView } from './views/panel.js';
+import { ayarlarView, loginView } from './views/ayarlar.js';
+
+const ROUTES = {
+  harita:    { t: 'Harita', ico: 'map', v: mapView, main: true },
+  projeler:  { t: 'Projeler', ico: 'folder', v: projelerView, main: true },
+  firmalar:  { t: 'Firmalar', ico: 'building', v: firmalarView, main: true },
+  ziyaretler:{ t: 'Ziyaretler', ico: 'pin', v: ziyaretlerView, main: true },
+  kisiler:   { t: 'Kişiler', ico: 'user', v: kisilerView },
+  gorevler:  { t: 'Görevler', ico: 'check', v: gorevlerView },
+  panel:     { t: 'Panel', ico: 'chart', v: panelView },
+  siparisler:{ t: 'Siparişler', ico: 'receipt', v: siparislerView },
+  urunler:   { t: 'Stok ve fiyat', ico: 'box', v: urunlerView },
+  rakip:     { t: 'Rakip fiyatları', ico: 'tag', v: rakipView },
+  ayarlar:   { t: 'Ayarlar', ico: 'gear', v: ayarlarView },
+};
+const DETAIL = { proje: projeDetay, firma: firmaDetay, kisi: kisiDetay };
+
+const ICONS = {
+  map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Zm0 0v14m6-12v14"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/>',
+  building: '<path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3"/>',
+  pin: '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+  check: '<path d="M4 12.5 9 17.5 20 6.5"/>',
+  chart: '<path d="M4 20V10m6 10V4m6 16v-7m6 7H2"/>',
+  receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Zm3 5h6m-6 4h6m-6 4h4"/>',
+  box: '<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 0v18m8-13.5L12 12 4 7.5"/>',
+  tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/><circle cx="8" cy="8" r="1.5"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9 7 7m10 10 2.1 2.1M4.9 19.1 7 17m10-10 2.1-2.1"/>',
+  more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+};
+export const icon = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
+
+function renderNav(cur) {
+  const nav = document.getElementById('nav');
+  const item = (k, r) => `<a href="#/${k}" class="${k === cur ? 'on' : ''}" ${k === cur ? 'aria-current="page"' : ''}>${icon(r.ico)}<span>${r.t}</span></a>`;
+  const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : '';
+  nav.innerHTML = `
+    <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b>${mode}</div>
+    <div class="nav-main">${Object.entries(ROUTES).filter(([, r]) => r.main).map(([k, r]) => item(k, r)).join('')}
+      <button class="nav-more ${!ROUTES[cur]?.main ? 'on' : ''}" type="button" aria-haspopup="true">${icon('more')}<span>Diğer</span></button></div>
+    <div class="nav-rest">${Object.entries(ROUTES).filter(([, r]) => !r.main).map(([k, r]) => item(k, r)).join('')}</div>`;
+  nav.querySelector('.nav-more').onclick = () => nav.classList.toggle('more-open');
+  nav.querySelectorAll('.nav-rest a').forEach(a => a.addEventListener('click', () => nav.classList.remove('more-open')));
+}
+
+let lastView = null;
+async function route() {
+  const parts = (location.hash.replace(/^#\/?/, '') || 'harita').split('/');
+  const [k, id] = parts;
+  if (DETAIL[k]) {
+    if (!lastView) await show('harita');
+    DETAIL[k](id);
+    return;
+  }
+  closeDrawer();
+  await show(ROUTES[k] ? k : 'harita');
+}
+async function show(k) {
+  lastView = k;
+  renderNav(k);
+  const el = document.getElementById('view');
+  el.className = 'view-' + k;
+  document.title = ROUTES[k].t + ' · Saha Takip';
+  app.refresh = () => ROUTES[k].v(el);
+  await ROUTES[k].v(el);
+}
+// Detay paneli kapanınca adres çubuğunu listeye döndür (görünümü yeniden çizmeden)
+export function backToList(redraw = false) {
+  if (lastView && /^#\/(proje|firma|kisi)\//.test(location.hash)) history.replaceState(null, '', '#/' + lastView);
+  if (redraw) app.refresh();
+}
+export function go(hash) { if (location.hash === hash) route(); else location.hash = hash; }
+window.addEventListener('hashchange', route);
+
+async function boot() {
+  loadFilters();
+  app.db = makeAdapter();
+  const view = document.getElementById('view');
+  view.innerHTML = '<div class="boot"><span class="bulb big"></span><p>Veriler yükleniyor…</p></div>';
+  try {
+    const ok = await app.db.init();
+    if (app.db.mode === 'supabase' && !ok) { document.getElementById('nav').innerHTML = ''; return loginView(view, boot); }
+    await app.db.loadAll();
+    if (app.db.offline) toast('Çevrimdışısın: son kaydedilen veriler gösteriliyor.');
+  } catch (e) {
+    view.innerHTML = `<div class="empty"><h2>Veriler yüklenemedi</h2><p>${esc(e.message)}</p><p><a class="btn" href="#/ayarlar">Bağlantı ayarlarını aç</a></p></div>`;
+    renderNav('ayarlar'); app.refresh = () => ayarlarView(view);
+    window.addEventListener('hashchange', () => {}, { once: true });
+    return;
+  }
+  const empty = Object.values(S).every(a => !a.length);
+  if (empty && !location.hash) location.hash = '#/ayarlar';
+  route();
+}
+window.addEventListener('outbox', e => { if (e.detail) toast('Bağlantı yok: değişiklik kaydedildi, internet gelince gönderilecek.'); });
+window.__reboot = boot;
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+boot();
