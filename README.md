@@ -46,7 +46,7 @@ Bu sürüm veritabanına yeni alanlar ekliyor (belde, sanayi bölgeleri, ziyaret
 
 ## Bilmen gerekenler
 
-- **Yaklaşık konumlar:** Excel'den gelen projeler ilçe veya OSB merkezine yerleşti, haritada kesik kenarlı görünür. Projeyi açıp Konum bölümünde haritaya dokunarak gerçek yerine taşı.
+- **Yaklaşık konumlar:** Excel'den gelen projelerin konumu yaklaşık (ilçe veya OSB merkezi) olduğu için haritada varsayılan olarak gizli ve “Konum ata” listesinde bekliyor. Görmek istersen Katmanlar → “Yaklaşık konumlu projeler”.
 - **2026 / 2027 listeleri:** Her projede "Takip yılı" var; Projeler ekranında üstten seçilir.
 - **Stok:** Bayinin depo Excel'ini **Stok ve fiyat → Stok Excel'i yükle** ile ekle. Eski stok geçmişte saklanır.
 - **Siparişler:** SAP sipariş listesini **Siparişler → Sipariş Excel'i yükle** ile ekle; aynı sipariş iki kez eklenmez.
