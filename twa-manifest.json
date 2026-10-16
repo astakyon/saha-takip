@@ -1,0 +1,31 @@
+{
+  "packageId": "tr.ayyildiz.sahatakip",
+  "host": "astakyon.github.io",
+  "name": "Saha Takip — Proje ve ziyaret",
+  "launcherName": "Saha Takip",
+  "display": "standalone",
+  "orientation": "default",
+  "themeColor": "#1D2B36",
+  "navigationColor": "#1D2B36",
+  "backgroundColor": "#1D2B36",
+  "enableNotifications": false,
+  "startUrl": "/saha-takip/?src=app",
+  "iconUrl": "https://astakyon.github.io/saha-takip/icons/icon-512.png",
+  "maskableIconUrl": "https://astakyon.github.io/saha-takip/icons/icon-maskable-512.png",
+  "monochromeIconUrl": "https://astakyon.github.io/saha-takip/icons/icon-mono-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "shortcuts": [
+    { "name": "Ziyaret kaydet", "shortName": "Ziyaret", "url": "/saha-takip/?act=ziyaret", "chosenIconUrl": "https://astakyon.github.io/saha-takip/icons/kisayol-ziyaret.png" },
+    { "name": "Harita", "shortName": "Harita", "url": "/saha-takip/?act=harita", "chosenIconUrl": "https://astakyon.github.io/saha-takip/icons/kisayol-harita.png" },
+    { "name": "Ziyaret takvimi", "shortName": "Takvim", "url": "/saha-takip/?act=takvim", "chosenIconUrl": "https://astakyon.github.io/saha-takip/icons/kisayol-takvim.png" },
+    { "name": "Projeler", "shortName": "Projeler", "url": "/saha-takip/?act=projeler", "chosenIconUrl": "https://astakyon.github.io/saha-takip/icons/kisayol-projeler.png" }
+  ],
+  "appVersionName": "2.1",
+  "appVersionCode": 21,
+  "minSdkVersion": 21,
+  "fallbackType": "customtabs",
+  "features": { "locationDelegation": { "enabled": true } },
+  "isChromeOSOnly": false,
+  "signingKey": { "path": "./android.keystore", "alias": "sahatakip" },
+  "generatorApp": "bubblewrap-cli"
+}

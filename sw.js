@@ -1,6 +1,6 @@
 // Saha Takip service worker: uygulama dosyalarını ve harita karolarını önbelleğe alır
-const V = 'saha-v2';
-const SHELL = ['./', 'index.html', 'styles.css', 'manifest.json', 'icons/icon-192.png',
+const V = 'saha-v3';
+const SHELL = ['./', 'index.html', 'styles.css', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon-180.png', 'icons/icon.svg', 'js/kurulum.js',
   'js/main.js', 'js/db.js', 'js/ui.js', 'js/forms.js', 'js/state.js',
   'js/views/map.js', 'js/views/projeler.js', 'js/views/firmalar.js', 'js/views/ziyaret.js',
   'js/views/urunler.js', 'js/views/panel.js', 'js/views/ayarlar.js', 'js/views/bolgeler.js', 'js/geo.js', 'js/data/iller.js'];
@@ -21,5 +21,5 @@ self.addEventListener('fetch', e => {
   }
   // uygulama ve kütüphaneler: önce ağ, yoksa önbellek
   e.respondWith(fetch(e.request).then(r => { if (r.ok || r.type === 'opaque') { const cl = r.clone(); caches.open(V).then(c => c.put(e.request, cl)); } return r; })
-    .catch(() => caches.match(e.request).then(h => h || (e.request.mode === 'navigate' ? caches.match('index.html') : Response.error()))));
+    .catch(() => caches.match(e.request, { ignoreSearch: e.request.mode === 'navigate' }).then(h => h || (e.request.mode === 'navigate' ? caches.match('index.html') : Response.error()))));
 });

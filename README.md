@@ -27,9 +27,10 @@ Depoda **Settings → Pages → Build and deployment**:
 1. Uygulamayı aç; **Ayarlar** ekranına Project URL ve anon public anahtarı yapıştır → **Supabase'e bağlan**.
 2. E-posta ve şifreyle **Hesap oluştur**, sonra **Giriş yap**.
 3. **Başlangıç verisi dosyasını seç** → sana ayrıca verilen `baslangic-verisi.json` (233 proje, 191 firma, 166 sipariş, 252 ürün). Bu dosya müşteri bilgisi içerdiği için **depoya yüklenmez**; `.gitignore` bunu engeller.
-4. Telefonda aynı adresi açıp aynı hesapla giriş yap:
-   - Android/Chrome: menü → **Ana ekrana ekle**
+4. Telefonda aynı adresi açıp aynı hesapla giriş yap, sonra uygulamayı yükle:
+   - Android/Chrome: alttaki **“Saha Takip'i telefona yükle”** şeridinde **Yükle** (ya da **Diğer → Telefona yükle**, ya da Chrome menüsü → **Uygulamayı yükle**)
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
+   - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
 ## Güncelleme notu (sürüm 2)
 
@@ -62,7 +63,8 @@ Bu sürüm veritabanına yeni alanlar ekliyor (belde, sanayi bölgeleri, ziyaret
 | `js/db.js` | Veri katmanı (Supabase veya tarayıcıda deneme modu) |
 | `js/views/` | Harita, projeler, firmalar, ziyaretler, stok, panel, ayarlar ekranları |
 | `js/geo.js`, `js/data/iller.js` | Konum algılama ve il sınırları (Turkey-Maps-GeoJSON, Apache-2.0) |
-| `sw.js`, `manifest.json`, `icons/` | Telefona kurulum ve çevrimdışı çalışma |
+| `sw.js`, `manifest.json`, `icons/`, `js/kurulum.js` | Telefona kurulum, kısayollar ve çevrimdışı çalışma |
+| `twa-manifest.json`, `docs/ANDROID.md` | Android APK / Play Store paketi (Bubblewrap) |
 | `supabase/schema.sql` | Veritabanı tabloları, güvenlik kuralları, fotoğraf deposu |
 
 Kütüphaneler: Leaflet 1.9.4 ve MarkerCluster 1.5.3 (harita, OpenStreetMap), supabase-js 2.45.4, SheetJS 0.18.5 (Excel). Derleme adımı yoktur; dosyalar olduğu gibi yayınlanır.

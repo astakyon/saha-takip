@@ -2,6 +2,7 @@ import { S, TABLES, getConfig, setConfig, idbGet } from '../db.js';
 import { app } from '../state.js';
 import { esc, toast, download, exportXlsx, today, confirmBox, pickFiles, firmaAd } from '../ui.js';
 import { projeSatiri } from './projeler.js';
+import { INST, isIOS, install, onInstallChange } from '../kurulum.js';
 
 const ORDER = ['firmalar', 'kisiler', 'projeler', 'proje_gecmis', 'ziyaretler', 'gorevler', 'urunler', 'stok_gecmis', 'rakip_fiyatlar', 'siparisler', 'hedefler'];
 const ETIKET = { firmalar: 'firma', kisiler: 'kişi', projeler: 'proje', proje_gecmis: 'durum geçmişi', ziyaretler: 'ziyaret', gorevler: 'görev', urunler: 'ürün', stok_gecmis: 'stok geçmişi', rakip_fiyatlar: 'rakip fiyatı', siparisler: 'sipariş', hedefler: 'hedef' };
@@ -73,13 +74,15 @@ export async function ayarlarView(el) {
       <div class="btnrow"><button class="btn" data-xlsx>Tümünü Excel'e aktar</button><button class="btn ghost" data-json>Yedek indir (JSON)</button><button class="btn ghost" data-restore>Yedekten geri yükle</button></div>
       <details class="danger-zone"><summary>Tüm verileri sil</summary><p>Bu işlem ${sup ? 'buluttaki' : 'bu tarayıcıdaki'} tüm kayıtları siler ve geri alınamaz. Önce yedek indir.</p><button class="btn danger" data-wipe>Tüm verileri sil</button></details>
     </section>
-    <section class="card"><h2>Telefona uygulama olarak ekle</h2>
-      <p><b>Android (Chrome):</b> sağ üstteki menüden “Ana ekrana ekle” veya “Uygulamayı yükle”.</p>
-      <p><b>iPhone (Safari):</b> paylaş düğmesi → “Ana Ekrana Ekle”.</p>
-      <p class="hint">Eklendikten sonra tam ekran açılır; internet yokken son yüklenen verileri gösterir, yaptığın değişiklikleri bağlantı gelince gönderir.</p>
+    <section class="card"><h2>Telefona uygulama olarak yükle</h2>
+      ${INST.standalone ? '<p><b>Uygulama yüklü.</b> Ana ekrandaki “Saha Takip” simgesinden açıyorsun.</p>' : `<div class="btnrow"><button class="btn primary" data-install>Uygulamayı yükle</button></div>
+      <p class="hint">${INST.evt ? 'Düğmeye basınca telefon yükleme onayı ister.' : isIOS ? 'iPhone\'da Safari\'nin Paylaş düğmesi → “Ana Ekrana Ekle”.' : 'Düğme çalışmazsa Chrome menüsünden (⋮) “Uygulamayı yükle” veya “Ana ekrana ekle”yi seç.'}</p>`}
+      <p>Yüklenince uygulama listende ve ana ekranında <b>Saha Takip</b> simgesi olur; tam ekran açılır. Simgeye uzun basınca <b>Ziyaret kaydet</b>, <b>Harita</b>, <b>Takvim</b> ve <b>Projeler</b> kısayolları çıkar.</p>
+      <p class="hint">İnternet yokken son yüklenen veriler görünür; değişiklikler bağlantı gelince gönderilir. Uygulama ben yeni sürüm gönderdikçe kendiliğinden güncellenir.</p>
     </section>
   </div>`;
   bindConn(el);
+  el.querySelector('[data-install]')?.addEventListener('click', install);
   el.querySelector('[data-out]')?.addEventListener('click', async () => { await app.db.signOut(); location.reload(); });
   el.querySelector('[data-seed]').onclick = () => seedYukle(el);
   el.querySelector('[data-migrate]')?.addEventListener('click', () => migrate(el));

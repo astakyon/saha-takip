@@ -480,3 +480,14 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   .map-tools .tbtn { flex: none; }
   .ptable .c-sip { width: 84px; min-width: 84px; }
 }
+
+/* Telefona yükleme */
+#nav .nav-inst { display: flex; align-items: center; gap: 12px; color: var(--lumen); padding: 9px 12px; border-radius: 8px; font: 600 15px var(--f); background: none; border: 0; width: 100%; cursor: pointer; text-align: left; margin-top: 6px; }
+#nav .nav-inst:hover { background: rgba(245, 184, 0, .12); }
+#inst-banner { position: fixed; z-index: 1250; left: 12px; right: 12px; bottom: calc(var(--nav-h) + var(--safe-b) + 10px); display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 10px 10px 12px; box-shadow: 0 10px 30px rgba(29, 43, 54, .25); max-width: 520px; margin: 0 auto; }
+#inst-banner img { border-radius: 10px; flex: none; }
+#inst-banner span { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+#inst-banner small { color: var(--muted); }
+@media (min-width: 900px) { #inst-banner { left: auto; right: 24px; bottom: 24px; } }
+body:has(#inst-banner) #toast { bottom: calc(var(--nav-h) + var(--safe-b) + 96px); }
+@media (min-width: 900px) { body:has(#inst-banner) #toast { bottom: 110px; } }

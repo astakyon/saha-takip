@@ -1,14 +1,30 @@
 {
+  "id": "./",
   "name": "Saha Takip — Proje ve ziyaret",
   "short_name": "Saha Takip",
-  "start_url": "./index.html",
+  "description": "Aydınlatma saha satışı: harita üzerinde projeler, firmalar, ziyaret takvimi, siparişler ve bayi stoğu",
+  "lang": "tr",
+  "dir": "ltr",
+  "start_url": "./?src=app",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#1D2B36",
   "theme_color": "#1D2B36",
-  "lang": "tr",
+  "categories": ["business", "productivity"],
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-mono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "monochrome" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Ziyaret kaydet", "short_name": "Ziyaret", "description": "Bulunduğun yerde yeni ziyaret kaydı aç", "url": "./?act=ziyaret", "icons": [{ "src": "icons/kisayol-ziyaret.png", "sizes": "96x96" }] },
+    { "name": "Harita", "short_name": "Harita", "description": "Proje ve firma haritası", "url": "./?act=harita", "icons": [{ "src": "icons/kisayol-harita.png", "sizes": "96x96" }] },
+    { "name": "Ziyaret takvimi", "short_name": "Takvim", "description": "Bu haftanın ziyaretleri", "url": "./?act=takvim", "icons": [{ "src": "icons/kisayol-takvim.png", "sizes": "96x96" }] },
+    { "name": "Projeler", "short_name": "Projeler", "description": "Tüm proje listesi", "url": "./?act=projeler", "icons": [{ "src": "icons/kisayol-projeler.png", "sizes": "96x96" }] }
   ]
 }

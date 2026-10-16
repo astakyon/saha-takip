@@ -9,6 +9,7 @@ import { bolgelerView } from './views/bolgeler.js';
 import { urunlerView, rakipView } from './views/urunler.js';
 import { panelView, siparislerView } from './views/panel.js';
 import { ayarlarView, loginView } from './views/ayarlar.js';
+import { kisayolAl, canInstall, install, onInstallChange } from './kurulum.js';
 
 const ROUTES = {
   harita:    { t: 'Harita', ico: 'map', v: mapView, main: true },
@@ -41,6 +42,7 @@ const ICONS = {
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9 7 7m10 10 2.1 2.1M4.9 19.1 7 17m10-10 2.1-2.1"/>',
   cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4m8-4v4"/>',
   zone: '<path d="M4 7l6-3 6 3 4-2v13l-4 2-6-3-6 3V7Z" stroke-dasharray="3 2"/><circle cx="12" cy="11" r="2"/>',
+  down: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
   more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
 };
 export const icon = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
@@ -53,7 +55,9 @@ function renderNav(cur) {
     <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b>${mode}</div>
     <div class="nav-main">${Object.entries(ROUTES).filter(([, r]) => r.main).map(([k, r]) => item(k, r)).join('')}
       <button class="nav-more ${!ROUTES[cur]?.main ? 'on' : ''}" type="button" aria-haspopup="true">${icon('more')}<span>Diğer</span></button></div>
-    <div class="nav-rest">${Object.entries(ROUTES).filter(([, r]) => !r.main).map(([k, r]) => item(k, r)).join('')}</div>`;
+    <div class="nav-rest">${Object.entries(ROUTES).filter(([, r]) => !r.main).map(([k, r]) => item(k, r)).join('')}
+      <button type="button" class="nav-inst" data-inst ${canInstall() ? '' : 'hidden'}>${icon('down')}<span>Telefona yükle</span></button></div>`;
+  nav.querySelector('[data-inst]').onclick = () => { nav.classList.remove('more-open'); install(); };
   nav.querySelector('.nav-more').onclick = () => nav.classList.toggle('more-open');
   nav.querySelectorAll('.nav-rest a').forEach(a => a.addEventListener('click', () => nav.classList.remove('more-open')));
 }
@@ -103,12 +107,15 @@ async function boot() {
     window.addEventListener('hashchange', () => {}, { once: true });
     return;
   }
+  const act = kisayolAl();
   const empty = Object.values(S).every(a => !a.length);
   if (empty && !location.hash) location.hash = '#/ayarlar';
-  route();
+  await route();
+  if (act === 'ziyaret') ziyaretForm({});
 }
 window.addEventListener('outbox', e => { if (e.detail) toast('Bağlantı yok: değişiklik kaydedildi, internet gelince gönderilecek.'); });
 window.__reboot = boot;
+onInstallChange(() => { const b = document.querySelector('[data-inst]'); if (b) b.hidden = !canInstall(); });
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 boot();
