@@ -2,6 +2,7 @@
 import { S } from './db.js';
 import { esc, byId, fold, pickFiles, myLocation, toast, IL_MERKEZ } from './ui.js';
 import { app } from './state.js';
+import { konumAlgila, konumMetni } from './geo.js';
 
 let fseq = 0;
 function datalistFor(t) {
@@ -21,6 +22,7 @@ function control(f, v, obj) {
     case 'area': return [id, `<textarea ${name} rows="${f.rows || 3}" ${ph}>${esc(v)}</textarea>`];
     case 'num': return [id, `<input ${name} type="number" inputmode="decimal" step="any" value="${v ?? ''}" ${ph}>`];
     case 'date': return [id, `<input ${name} type="date" value="${v ? String(v).slice(0, 10) : ''}">`];
+    case 'time': return [id, `<input ${name} type="time" value="${esc(v || '')}">`];
     case 'chk': return [id, `<label class="chk"><input ${name} type="checkbox" ${v ? 'checked' : ''}> <span>${esc(f.cl || f.l)}</span></label>`];
     case 'sel': {
       const opts = typeof f.opts === 'function' ? f.opts(obj) : f.opts;
@@ -51,7 +53,7 @@ function control(f, v, obj) {
         <div class="loc-row"><span class="loc-txt"></span>
         <button type="button" class="btn sm" data-loc-me>Bulunduğum yer</button>
         <button type="button" class="btn sm ghost" data-loc-clear>Temizle</button></div>
-        <p class="hint">Haritaya dokunarak raptiyeyi yerleştir, sürükleyerek düzelt.</p></div>`];
+        <p class="hint loc-det" aria-live="polite">Haritaya dokunarak raptiyeyi yerleştir, sürükleyerek düzelt. İl, ilçe, belde ve sanayi bölgesi otomatik algılanır.</p></div>`];
     }
     default: return [id, `<input ${name} type="${f.t === 'tel' ? 'tel' : f.t === 'email' ? 'email' : 'text'}" value="${esc(v)}" ${ph} ${f.auto && obj._new ? 'autofocus' : ''}>`];
   }
@@ -114,9 +116,21 @@ export function bindForm(root, sections, obj, { onChange } = {}) {
     const lat = parseFloat(box.dataset.lat), lng = parseFloat(box.dataset.lng);
     const il = obj.il && IL_MERKEZ[obj.il];
     const m = L.map(el, { zoomControl: true, attributionControl: false }).setView(!isNaN(lat) ? [lat, lng] : il ? [il[0], il[1]] : [36.9, 35.3], !isNaN(lat) ? 14 : il ? 10 : 8);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
-    let mk = null;
-    const txt = box.querySelector('.loc-txt');
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
+    const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+    L.control.layers({ 'Harita': osm, 'Uydu': sat }, null, { position: 'topright' }).addTo(m);
+    let mk = null, seq = 0;
+    const txt = box.querySelector('.loc-txt'), det = box.querySelector('.loc-det');
+    const algila = async ll => {
+      const my = ++seq; det.textContent = 'Konum algılanıyor…';
+      const k = await konumAlgila(ll[0], ll[1]);
+      if (my !== seq) return;
+      box.dataset.bolge = k.bolge_id || '';
+      const put = (n, v) => { const el = root.querySelector(`[name="${n}"]`); if (el && v) { if (el.tagName === 'SELECT' && ![...el.options].some(o => o.value === v)) el.add(new Option(v, v)); el.value = v; } };
+      put('il', k.il); put('ilce', k.ilce); put('belde', k.belde); put('osb', k.osb);
+      det.innerHTML = `Algılanan: <b>${esc(konumMetni(k) || 'bölge dışı')}</b>${k.kaynak === 'cihaz' ? ' (çevrimdışı tahmin; ilçe en yakın merkeze göre)' : ''}`;
+      root.dispatchEvent(new Event('change'));
+    };
     const set = (ll, pan) => {
       box.dataset.lat = ll ? ll[0].toFixed(6) : ''; box.dataset.lng = ll ? ll[1].toFixed(6) : '';
       box.dataset.moved = '1';
@@ -125,8 +139,10 @@ export function bindForm(root, sections, obj, { onChange } = {}) {
       else mk.setLatLng(ll);
       txt.textContent = `${(+ll[0]).toFixed(5)}, ${(+ll[1]).toFixed(5)}`;
       if (pan) m.setView(ll, Math.max(m.getZoom(), 15));
+      if (!box.dataset.init) algila(ll);
     };
-    if (!isNaN(lat)) { set([lat, lng]); delete box.dataset.moved; } else txt.textContent = 'Konum yok';
+    if (!isNaN(lat)) { box.dataset.init = '1'; set([lat, lng]); delete box.dataset.moved; delete box.dataset.init; } else txt.textContent = 'Konum yok';
+    if (obj._algila && !isNaN(lat)) algila([lat, lng]);
     if (!isNaN(lat) && obj.konum_yaklasik) txt.textContent += ' · yaklaşık';
     m.on('click', e => set([e.latlng.lat, e.latlng.lng]));
     box.querySelector('[data-loc-me]').onclick = async () => { try { set(await myLocation(), true); } catch (e) { toast(e.message, 'err'); } };
@@ -192,6 +208,7 @@ export async function readForm(root, sections, obj) {
     const la = parseFloat(lb.dataset.lat), ln = parseFloat(lb.dataset.lng);
     out.lat = isNaN(la) ? null : la; out.lng = isNaN(ln) ? null : ln;
     if (lb.dataset.moved) out.konum_yaklasik = false;
+    if (lb.dataset.bolge !== undefined) out.bolge_id = lb.dataset.bolge || null;
   }
   return out;
 }

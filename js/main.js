@@ -4,7 +4,8 @@ import { esc, toast, closeDrawer } from './ui.js';
 import { mapView } from './views/map.js';
 import { projelerView, projeDetay } from './views/projeler.js';
 import { firmalarView, firmaDetay, kisilerView, kisiDetay } from './views/firmalar.js';
-import { ziyaretlerView, gorevlerView, ziyaretForm } from './views/ziyaret.js';
+import { ziyaretlerView, gorevlerView, ziyaretForm, takvimView } from './views/ziyaret.js';
+import { bolgelerView } from './views/bolgeler.js';
 import { urunlerView, rakipView } from './views/urunler.js';
 import { panelView, siparislerView } from './views/panel.js';
 import { ayarlarView, loginView } from './views/ayarlar.js';
@@ -12,8 +13,10 @@ import { ayarlarView, loginView } from './views/ayarlar.js';
 const ROUTES = {
   harita:    { t: 'Harita', ico: 'map', v: mapView, main: true },
   projeler:  { t: 'Projeler', ico: 'folder', v: projelerView, main: true },
+  takvim:    { t: 'Takvim', ico: 'cal', v: takvimView, main: true },
   firmalar:  { t: 'Firmalar', ico: 'building', v: firmalarView, main: true },
-  ziyaretler:{ t: 'Ziyaretler', ico: 'pin', v: ziyaretlerView, main: true },
+  ziyaretler:{ t: 'Ziyaretler', ico: 'pin', v: ziyaretlerView },
+  bolgeler:  { t: 'Sanayi bölgeleri', ico: 'zone', v: bolgelerView },
   kisiler:   { t: 'Kişiler', ico: 'user', v: kisilerView },
   gorevler:  { t: 'Görevler', ico: 'check', v: gorevlerView },
   panel:     { t: 'Panel', ico: 'chart', v: panelView },
@@ -36,6 +39,8 @@ const ICONS = {
   box: '<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 0v18m8-13.5L12 12 4 7.5"/>',
   tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/><circle cx="8" cy="8" r="1.5"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9 7 7m10 10 2.1 2.1M4.9 19.1 7 17m10-10 2.1-2.1"/>',
+  cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4m8-4v4"/>',
+  zone: '<path d="M4 7l6-3 6 3 4-2v13l-4 2-6-3-6 3V7Z" stroke-dasharray="3 2"/><circle cx="12" cy="11" r="2"/>',
   more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
 };
 export const icon = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;

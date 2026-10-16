@@ -1,6 +1,6 @@
 # Saha Takip
 
-Aydınlatma satışı için saha uygulaması: Adana, Mersin, Hatay ve Osmaniye haritasında proje ve firma raptiyeleri, proje takibi (Emüt, Gemüt, projeci, danışman, kayıp ve rakip fiyatı), firma ve kişi kartları (kartvizit fotoğrafıyla), ziyaret ve görev kaydı, bayi stok ve birim fiyat listesi, sipariş ve hedef paneli.
+Aydınlatma satışı için saha uygulaması: Adana, Mersin, Hatay ve Osmaniye haritasında proje ve firma raptiyeleri, il sınırları ve çizilebilen sanayi bölgeleri; tüm paydaşların (yatırımcı, projeci, danışman, Gemüt, Emüt, alıcı, bayi) tek tabloda göründüğü proje listesi; haftalık ziyaret takvimi ve ziyaret sonuçları; firma ve kişi kartları (kartvizit fotoğrafıyla); bayi stok tutarları ve birim fiyatlar; cari, proje ve SAS numarasına göre siparişler ve hedef paneli.
 
 Telefonda ve bilgisayarda çalışır, telefona uygulama olarak eklenebilir. Veriler Supabase'de tutulur; bu depoda yalnızca uygulamanın kodu var, müşteri verisi yok.
 
@@ -31,6 +31,19 @@ Depoda **Settings → Pages → Build and deployment**:
    - Android/Chrome: menü → **Ana ekrana ekle**
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
 
+## Güncelleme notu (sürüm 2)
+
+Bu sürüm veritabanına yeni alanlar ekliyor (belde, sanayi bölgeleri, ziyaret saati / durumu / sonucu). Bir kez **Supabase → SQL Editor**'de [`supabase/schema.sql`](supabase/schema.sql) dosyasının tamamını yeniden çalıştır. Mevcut verilerin silinmez. Çalıştırmazsan uygulama açılır ama bölge kaydı ve ziyaret sonucu kaydedilmez; uygulama seni uyarır.
+
+## Harita kullanımı
+
+- **Konum ata:** Sağ üstteki “Konum ata” listesinde yerini bekleyen projeler var. Birini seç, haritada gerçek yerine dokun. İl, ilçe, belde ve sanayi bölgesi otomatik yazılır; yanlışsa bildirimdeki “Geri al”a bas.
+- **Raptiye taşı:** Açınca raptiyeleri basılı tutup sürükleyerek yerini düzeltebilirsin. Bitince tekrar bas.
+- **Proje adları:** Yakınlaştırınca (sokak seviyesi) raptiyelerin üstünde proje adı görünür. Raptiyeye dokununca fotoğraf, durum ve paydaşlar açılır.
+- **İl sınırları:** Üstten il seçince o ilin sınırı kalın çizgiyle gösterilir ve harita o ile odaklanır.
+- **Bölge çiz:** OSB veya sanayi sitesinin köşelerine sırayla dokun, “Bitir”. Bölgeye ad ve grup ver (örn. “Tarsus hattı”). İçinde kalan projelere bölge otomatik yazılır. **Sanayi bölgeleri** ekranında gruplar, proje sayıları ve açık potansiyel listelenir.
+- Konum algılama: il sınırı ve en yakın ilçe cihazda hesaplanır; belde ve mahalle internet varken OpenStreetMap adres hizmetinden alınır.
+
 ## Bilmen gerekenler
 
 - **Yaklaşık konumlar:** Excel'den gelen projeler ilçe veya OSB merkezine yerleşti, haritada kesik kenarlı görünür. Projeyi açıp Konum bölümünde haritaya dokunarak gerçek yerine taşı.
@@ -48,6 +61,7 @@ Depoda **Settings → Pages → Build and deployment**:
 | `index.html`, `styles.css` | Sayfa ve görünüm |
 | `js/db.js` | Veri katmanı (Supabase veya tarayıcıda deneme modu) |
 | `js/views/` | Harita, projeler, firmalar, ziyaretler, stok, panel, ayarlar ekranları |
+| `js/geo.js`, `js/data/iller.js` | Konum algılama ve il sınırları (Turkey-Maps-GeoJSON, Apache-2.0) |
 | `sw.js`, `manifest.json`, `icons/` | Telefona kurulum ve çevrimdışı çalışma |
 | `supabase/schema.sql` | Veritabanı tabloları, güvenlik kuralları, fotoğraf deposu |
 

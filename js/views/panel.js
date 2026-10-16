@@ -2,6 +2,7 @@ import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, usd, num, tarih, today, DURUMLAR, ACIK, byId, firmaAd, match, toast, exportXlsx, pickFiles, fold, durumRenk, openDrawer, closeDrawer, pill } from '../ui.js';
 import { gorevForm } from './ziyaret.js';
+import { renderForm, bindForm, readForm } from '../forms.js';
 
 const q = d => Math.floor((new Date(d).getMonth()) / 3) + 1;
 const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0);
@@ -84,30 +85,71 @@ function sunum(kind, Y) {
 
 // ---------- Siparişler ----------
 export function siparislerView(el) {
-  const f = F('siparisler', { q: '', yil: 2026, ceyrek: 'Tümü', kanal: 'Tümü' });
+  const f = F('siparisler', { q: '', yil: 2026, ceyrek: 'Tümü', kanal: 'Tümü', cari: 'Tümü', gor: 'liste' });
+  const cariler = [...new Set(S.siparisler.map(s => s.musteri_adi).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
   el.innerHTML = `<header class="vh"><div><h1>Siparişler</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><button class="btn ghost" data-hedef>Hedefleri düzenle</button><button class="btn primary" data-up>Sipariş Excel'i yükle</button></div></header>
-    <div class="filters"><input type="search" data-q placeholder="Müşteri, proje, referans ara" value="${esc(f.q)}" aria-label="Siparişlerde ara">
+    <div class="vh-act"><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn ghost" data-hedef>Hedefleri düzenle</button><button class="btn primary" data-up>Sipariş Excel'i yükle</button></div></header>
+    <div class="filters"><input type="search" data-q placeholder="Cari, proje, SAS no, referans ara" value="${esc(f.q)}" aria-label="Siparişlerde ara">
+      <div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="liste" class="${f.gor === 'liste' ? 'on' : ''}">Sipariş listesi</button><button type="button" data-gor="cari" class="${f.gor === 'cari' ? 'on' : ''}">Cari bazında</button><button type="button" data-gor="proje" class="${f.gor === 'proje' ? 'on' : ''}">Proje bazında</button></div>
       <div class="frow"><label>Yıl <select data-k="yil">${[2025, 2026, 2027].map(y => `<option ${y == f.yil ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
       <label>Çeyrek <select data-k="ceyrek">${['Tümü', '1', '2', '3', '4'].map(c => `<option value="${c}" ${String(f.ceyrek) === c ? 'selected' : ''}>${c === 'Tümü' ? 'Tümü' : c + '. çeyrek'}</option>`).join('')}</select></label>
-      <label>Kanal <select data-k="kanal">${['Tümü', 'Drv', 'Drv harici'].map(c => `<option ${f.kanal === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label></div></div>
-    <div class="rows orders" data-rows></div>`;
-  const list = () => S.siparisler.filter(s => s.tarih && s.tarih.startsWith(String(f.yil)) && (f.ceyrek === 'Tümü' || q(s.tarih) == f.ceyrek) && (f.kanal === 'Tümü' || (f.kanal === 'Drv') === !!s.drv) && match(f.q, s.musteri_adi, s.proje_tanimi, s.referans, s.belge_no))
+      <label>Kanal <select data-k="kanal">${['Tümü', 'Drv', 'Drv harici'].map(c => `<option ${f.kanal === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+      <label>Cari <select data-k="cari"><option>Tümü</option>${cariler.map(c => `<option ${f.cari === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label></div></div>
+    <div class="ptable-wrap" data-rows></div>`;
+  const pAd = s => s.proje_id ? (byId('projeler', s.proje_id)?.ad || s.proje_tanimi) : s.proje_tanimi;
+  const list = () => S.siparisler.filter(s => s.tarih && s.tarih.startsWith(String(f.yil)) && (f.ceyrek === 'Tümü' || q(s.tarih) == f.ceyrek) && (f.kanal === 'Tümü' || (f.kanal === 'Drv') === !!s.drv)
+    && (f.cari === 'Tümü' || s.musteri_adi === f.cari) && match(f.q, s.musteri_adi, s.proje_tanimi, pAd(s), s.referans, s.belge_no, s.siparis_no))
     .sort((a, b) => b.tarih.localeCompare(a.tarih));
+  const tut = s => `${num(s.net_deger)} ${s.para_birimi === 'USD' ? '$' : esc(s.para_birimi)}`;
+  const grupla = (l, key) => { const g = new Map(); for (const s of l) { const k = key(s) || '—'; const r = g.get(k) || { k, n: 0, usd: 0, tl: 0, son: '', ids: new Set(), cari: new Set() }; r.n++; if (s.para_birimi === 'USD') r.usd += +s.net_deger || 0; else r.tl += +s.net_deger || 0; if (s.tarih > r.son) r.son = s.tarih; if (s.proje_id) r.ids.add(s.proje_id); if (s.musteri_adi) r.cari.add(s.musteri_adi); g.set(k, r); } return [...g.values()].sort((a, b) => b.usd - a.usd); };
   const draw = () => {
     const l = list();
     const u = sum(l.filter(s => s.para_birimi === 'USD'), s => s.net_deger), tl = sum(l.filter(s => s.para_birimi !== 'USD'), s => s.net_deger);
-    el.querySelector('[data-sum]').innerHTML = `${l.length} sipariş · <b>${usd(u)}</b>${tl ? ` + ${num(tl)} TL` : ''}`;
-    el.querySelector('[data-rows]').innerHTML = l.length ? `<div class="row head" aria-hidden="true"><span>Müşteri / referans</span><span>Proje</span><span>Tarih</span><span class="r">Net değer</span></div>` + l.map(s => `<div class="row">
-      <span class="nm"><b>${esc(s.musteri_adi || '')}</b><small>${esc(s.referans || '')} · ${esc(s.belge_no || '')}</small></span>
-      <span>${s.proje_id ? `<a href="#/proje/${s.proje_id}">${esc(byId('projeler', s.proje_id)?.ad || s.proje_tanimi)}</a>` : `<span class="muted">${esc(s.proje_tanimi || '—')}</span>`}</span>
-      <span class="muted">${tarih(s.tarih)}</span><span class="r num">${num(s.net_deger)} ${esc(s.para_birimi === 'USD' ? '$' : s.para_birimi)}</span></div>`).join('') : '<div class="empty"><p>Bu filtrelerde sipariş yok. SAP sipariş listesini “Sipariş Excel\'i yükle” ile ekleyebilirsin.</p></div>';
+    el.querySelector('[data-sum]').innerHTML = `${l.length} sipariş · ${new Set(l.map(s => s.musteri_adi)).size} cari · <b>${usd(u)}</b>${tl ? ` + ${num(tl)} TL` : ''}`;
+    const box = el.querySelector('[data-rows]');
+    if (!l.length) { box.innerHTML = '<div class="empty"><p>Bu filtrelerde sipariş yok. SAP sipariş listesini “Sipariş Excel\'i yükle” ile ekleyebilirsin.</p></div>'; return; }
+    if (f.gor === 'liste') {
+      box.innerHTML = `<table class="ptable otable"><thead><tr><th>Tarih</th><th>SAS no</th><th>Cari</th><th>Proje</th><th>Müşteri referansı</th><th class="r">Net değer</th></tr></thead><tbody>${l.map(s => `<tr data-sid="${s.id}" tabindex="0">
+        <td data-l="Tarih" class="nowrap">${tarih(s.tarih)}</td>
+        <td data-l="SAS no" class="num nowrap"><b>${esc(s.belge_no || '—')}</b>${s.siparis_no ? `<small>Sipariş ${esc(s.siparis_no)}</small>` : ''}</td>
+        <td data-l="Cari">${s.firma_id ? `<a href="#/firma/${s.firma_id}" class="flink">${esc(s.musteri_adi || '')}</a>` : esc(s.musteri_adi || '—')}${s.drv ? ' <em class="flag soft">Drv</em>' : ''}</td>
+        <td data-l="Proje">${s.proje_id ? `<a href="#/proje/${s.proje_id}" class="flink">${esc(pAd(s))}</a>` : `<span class="muted">${esc(s.proje_tanimi || '—')}</span> <small class="muted">projeye bağlı değil</small>`}</td>
+        <td data-l="Referans" class="muted">${esc(s.referans || '—')}</td>
+        <td data-l="Net değer" class="r num nowrap"><b>${tut(s)}</b></td></tr>`).join('')}</tbody></table>`;
+      box.querySelectorAll('tr[data-sid]').forEach(tr => { tr.onclick = e => { if (!e.target.closest('a')) siparisDetay(tr.dataset.sid); }; tr.onkeydown = e => { if (e.key === 'Enter') siparisDetay(tr.dataset.sid); }; });
+    } else if (f.gor === 'cari') {
+      const g = grupla(l, s => s.musteri_adi);
+      box.innerHTML = `<table class="ptable"><thead><tr><th>Cari</th><th class="r">Sipariş</th><th class="r">Proje</th><th class="r">Toplam (USD)</th><th class="r">TL</th><th class="r">Pay</th><th>Son sipariş</th></tr></thead><tbody>${g.map(r => `<tr data-cari="${esc(r.k)}" tabindex="0">
+        <td data-l="Cari"><b>${esc(r.k)}</b></td><td data-l="Sipariş" class="r">${r.n}</td><td data-l="Proje" class="r">${r.ids.size}</td><td data-l="Toplam" class="r num"><b>${usd(r.usd)}</b></td><td data-l="TL" class="r num">${r.tl ? num(r.tl) : '—'}</td>
+        <td data-l="Pay" class="r"><span class="share"><i style="width:${u ? r.usd / u * 100 : 0}%"></i></span> %${num(u ? r.usd / u * 100 : 0)}</td><td data-l="Son sipariş">${tarih(r.son)}</td></tr>`).join('')}</tbody></table>`;
+      box.querySelectorAll('tr[data-cari]').forEach(tr => tr.onclick = () => { f.cari = tr.dataset.cari; f.gor = 'liste'; saveFilters(); siparislerView(el); });
+    } else {
+      const g = grupla(l, pAd);
+      box.innerHTML = `<table class="ptable"><thead><tr><th>Proje</th><th>Cari</th><th class="r">Sipariş</th><th class="r">Toplam (USD)</th><th>Son sipariş</th></tr></thead><tbody>${g.map(r => `<tr data-pq="${esc(r.k)}" tabindex="0">
+        <td data-l="Proje"><b>${esc(r.k)}</b></td><td data-l="Cari">${esc([...r.cari].join(', '))}</td><td data-l="Sipariş" class="r">${r.n}</td><td data-l="Toplam" class="r num"><b>${usd(r.usd)}</b></td><td data-l="Son sipariş">${tarih(r.son)}</td></tr>`).join('')}</tbody></table>`;
+      box.querySelectorAll('tr[data-pq]').forEach(tr => tr.onclick = () => { f.q = tr.dataset.pq; f.gor = 'liste'; saveFilters(); siparislerView(el); });
+    }
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelectorAll('[data-k]').forEach(s => s.onchange = () => { f[s.dataset.k] = s.dataset.k === 'yil' ? +s.value : s.value; saveFilters(); draw(); });
+  el.querySelectorAll('[data-gor]').forEach(b => b.onclick = () => { f.gor = b.dataset.gor; saveFilters(); el.querySelectorAll('[data-gor]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
   el.querySelector('[data-up]').onclick = siparisYukle;
   el.querySelector('[data-hedef]').onclick = () => hedefForm(+f.yil);
+  el.querySelector('[data-exp]').onclick = () => exportXlsx(`siparisler-${today()}.xlsx`, { 'Siparişler': list().map(s => ({ 'Tarih': s.tarih, 'SAS no': s.belge_no, 'Müşteri sipariş no': s.siparis_no, 'Cari': s.musteri_adi, 'Cari no': s.musteri_no, 'Proje': pAd(s), 'Müşteri referansı': s.referans, 'Net değer': s.net_deger, 'Para birimi': s.para_birimi, 'Drv': s.drv ? 'Evet' : '' })) });
   draw();
+}
+
+// Siparişi bir projeye bağla
+function siparisDetay(id) {
+  const s = byId('siparisler', id); if (!s) return;
+  const FORM = [{ title: 'Sipariş', fields: [{ k: 'proje_id', l: 'Bağlı proje', t: 'ref', ref: 'projeler', full: true, help: 'Proje adını yaz ve listeden seç. Boş bırakırsan bağlantı kalkar.' }] }];
+  const panel = openDrawer(`<header class="dh"><div><p class="muted">SAS no ${esc(s.belge_no || '—')} · ${tarih(s.tarih)}</p><h2 id="drawer-title">${esc(s.musteri_adi || 'Sipariş')}</h2>
+      <div class="dh-meta"><span><b>${num(s.net_deger)} ${esc(s.para_birimi)}</b></span>${s.drv ? '<span>Drv</span>' : ''}</div></div><button class="x" data-close aria-label="Kapat">×</button></header>
+    <form class="dbody form" novalidate><dl class="kv-list"><dt>Müşteri sipariş no</dt><dd>${esc(s.siparis_no || '—')}</dd><dt>Cari no</dt><dd>${esc(s.musteri_no || '—')}</dd><dt>Belge türü</dt><dd>${esc(s.belge_turu || '—')}</dd>
+      <dt>Müşteri referansı</dt><dd>${esc(s.referans || '—')}</dd><dt>SAP proje tanımı</dt><dd>${esc(s.proje_tanimi || '—')}</dd><dt>Teslim tarihi</dt><dd>${tarih(s.teslim_tarihi)}</dd></dl>
+      ${renderForm(FORM, s)}<div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`);
+  const form = panel.querySelector('form'); bindForm(form, FORM, s);
+  form.onsubmit = async e => { e.preventDefault(); const o = await readForm(form, FORM, s); await app.db.save('siparisler', o); toast('Sipariş güncellendi.'); closeDrawer(); app.refresh(); };
 }
 
 function hedefForm(Y) {

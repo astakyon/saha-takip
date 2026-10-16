@@ -25,7 +25,8 @@ export const PROJE_FORM = [
   { title: 'Konum', fields: [
     { k: 'il', l: 'İl', t: 'sel', opts: [...ILLER, 'Diğer'] },
     { k: 'ilce', l: 'İlçe', t: 'combo', opts: o => ILCELER[o.il] || [] },
-    { k: 'osb', l: 'OSB / bölge', t: 'combo', opts: o => OSBLER[o.il] || Object.values(OSBLER).flat() },
+    { k: 'belde', l: 'Belde / mahalle' },
+    { k: 'osb', l: 'OSB / sanayi bölgesi', t: 'combo', opts: o => OSBLER[o.il] || Object.values(OSBLER).flat() },
     { k: 'lokasyon', l: 'Lokasyon notu' },
     { k: 'adres', l: 'Adres', full: true },
     { k: 'loc', l: 'Harita konumu', t: 'loc' },
@@ -84,25 +85,31 @@ function filtered(f) {
     (f.kanal === 'Tümü' || (f.kanal === 'Direkt' ? p.kanal === 'Direkt' : firmaAd(p.bayi_id) === f.kanal)) &&
     (!f.kritik || p.kritik) && (!f.hedef || p.hedef_listesi) && (!f.ziyaret || p.ziyaret_edilecek) &&
     (f.rakip === 'Tümü' || p.rakip_marka === f.rakip) &&
-    match(f.q, p.ad, p.lokasyon, p.osb, p.ilce, p.notlar, p.teklif_no, p.takipci, ...ROLLER.map(([k]) => firmaAd(p[k]))));
+    match(f.q, p.ad, p.lokasyon, p.osb, p.ilce, p.belde, p.notlar, p.teklif_no, p.takipci, ...ROLLER.map(([k]) => firmaAd(p[k]))));
 }
+const siparisToplam = p => { const ss = S.siparisler.filter(x => x.proje_id === p.id && x.para_birimi === 'USD'); return ss.length ? ss.reduce((a, x) => a + (+x.net_deger || 0), 0) : (p.siparis_tutari_usd || null); };
 const SORTS = {
+  'Duruma göre': (a, b) => DURUMLAR.findIndex(d => d.k === a.durum) - DURUMLAR.findIndex(d => d.k === b.durum) || a.ad.localeCompare(b.ad, 'tr'),
   'Son güncellenen': (a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''),
+  'Sipariş (büyükten)': (a, b) => (siparisToplam(b) || 0) - (siparisToplam(a) || 0),
   'Tutar (büyükten)': (a, b) => (b.tutar_usd || 0) - (a.tutar_usd || 0),
   'Ada göre': (a, b) => a.ad.localeCompare(b.ad, 'tr'),
   'Beklenen tarih': (a, b) => (a.beklenen_tarih || '9').localeCompare(b.beklenen_tarih || '9'),
 };
+const fa = id => id ? `<a href="#/firma/${id}" class="flink">${esc(firmaAd(id))}</a>` : '<span class="muted">—</span>';
 
 export function projelerView(el) {
-  const f = F('projeler', { q: '', yil: '2026', durumlar: [], il: 'Tümü', kanal: 'Tümü', kritik: false, hedef: false, ziyaret: false, rakip: 'Tümü', sort: 'Son güncellenen' });
+  const f = F('projeler', { q: '', yil: 'Tümü', durumlar: [], il: 'Tümü', kanal: 'Tümü', kritik: false, hedef: false, ziyaret: false, rakip: 'Tümü', sort: 'Duruma göre' });
+  if (f._v !== 2) { f.yil = 'Tümü'; f.sort = 'Duruma göre'; f._v = 2; saveFilters(); }
+  if (!SORTS[f.sort]) f.sort = 'Duruma göre';
   const bayiler = [...new Set(S.projeler.map(p => firmaAd(p.bayi_id)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
   const rakipler = [...new Set(S.projeler.map(p => p.rakip_marka).filter(Boolean))].sort();
   el.innerHTML = `
   <header class="vh"><div><h1>Projeler</h1><p class="sum" data-sum></p></div>
     <div class="vh-act"><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Yeni proje</button></div></header>
   <div class="filters">
-    <input type="search" data-q placeholder="Proje, firma, OSB, not ara" value="${esc(f.q)}" aria-label="Projelerde ara">
-    <div class="seg" role="group" aria-label="Takip yılı">${['2026', '2027', 'Tümü'].map(y => `<button type="button" data-yil="${y}" class="${String(f.yil) === y ? 'on' : ''}">${y === 'Tümü' ? 'Tüm yıllar' : y + ' listesi'}</button>`).join('')}</div>
+    <input type="search" data-q placeholder="Proje, firma (Emüt, Gemüt…), OSB, not ara" value="${esc(f.q)}" aria-label="Projelerde ara">
+    <div class="seg" role="group" aria-label="Takip yılı">${['Tümü', '2026', '2027'].map(y => `<button type="button" data-yil="${y}" class="${String(f.yil) === y ? 'on' : ''}">${y === 'Tümü' ? 'Tüm projeler' : y + ' listesi'}</button>`).join('')}</div>
     <div class="chips" role="group" aria-label="Durum">${DURUMLAR.map(d => `<button type="button" class="chip ${f.durumlar.includes(d.k) ? 'on' : ''}" style="--c:${d.c}" data-d="${d.k}">${d.k} <i data-cnt="${d.k}"></i></button>`).join('')}</div>
     <button type="button" class="btn sm ghost f-toggle" data-ft aria-expanded="false">Diğer filtreler</button>
     <div class="frow f-more">
@@ -116,24 +123,44 @@ export function projelerView(el) {
       <button type="button" class="linkbtn" data-reset>Filtreleri temizle</button>
     </div>
   </div>
-  <div class="rows" data-rows></div>`;
+  <div class="ptable-wrap" data-rows></div>`;
 
   const draw = () => {
     const base = S.projeler.filter(p => f.yil === 'Tümü' || String(p.takip_yili) === String(f.yil));
     DURUMLAR.forEach(d => { const c = el.querySelector(`[data-cnt="${d.k}"]`); if (c) c.textContent = base.filter(p => p.durum === d.k).length || ''; });
     const list = filtered(f).sort(SORTS[f.sort]);
     const acik = list.filter(p => ACIK.includes(p.durum));
-    el.querySelector('[data-sum]').innerHTML = `${list.length} proje · açık potansiyel <b>${usd(acik.reduce((s, p) => s + (+p.tutar_usd || 0), 0))}</b>`;
-    el.querySelector('[data-rows]').innerHTML = list.length ? `
-      <div class="row head" aria-hidden="true"><span>Proje</span><span>Durum</span><span>Yer</span><span>Emüt / alıcı</span><span class="r">Tutar</span></div>
-      ${list.map(p => `<a class="row" href="#/proje/${p.id}" style="--c:${durumRenk(p.durum)}">
-        <span class="nm"><b>${esc(p.ad)}</b>${p.kritik ? ' <em class="flag">Kritik</em>' : ''}${p.hedef_listesi ? ' <em class="flag soft">Hedef</em>' : ''}<small>${esc(p.notlar ? p.notlar.slice(0, 90) : '')}</small></span>
-        <span>${pill(p.durum)}</span>
-        <span class="muted">${esc([p.ilce, p.il].filter(Boolean).join(', ') || p.lokasyon || '—')}${p.osb ? `<small>${esc(p.osb)}</small>` : ''}</span>
-        <span class="muted">${esc(firmaAd(p.emut_id) || firmaAd(p.alici_id) || '—')}<small>${esc(p.kanal === 'Direkt' ? 'Direkt' : firmaAd(p.bayi_id))}</small></span>
-        <span class="r num">${usd(p.tutar_usd)}${p.durum === 'Kayıp' && p.rakip_marka ? `<small>${esc(p.rakip_marka)}</small>` : ''}</span></a>`).join('')}`
+    const sipT = list.reduce((s, p) => s + (siparisToplam(p) || 0), 0);
+    el.querySelector('[data-sum]').innerHTML = `${list.length} proje · açık potansiyel <b>${usd(acik.reduce((s, p) => s + (+p.tutar_usd || 0), 0))}</b> · sipariş <b>${usd(sipT)}</b>`;
+    el.querySelector('[data-rows]').innerHTML = list.length ? `<table class="ptable">
+      <thead><tr><th class="c-dur">Durum</th><th class="c-sip r">Sipariş</th><th class="c-ad">Proje</th><th>Yer</th><th>Bölge / OSB</th><th>Yatırımcı</th><th>Projeci</th><th>Danışman</th><th>Gemüt</th><th>Emüt</th><th>Malzeme alıcısı</th><th>Kanal</th><th class="r">Tutar</th><th>Yıl</th><th>Kayıp / rakip</th></tr></thead>
+      <tbody>${list.map(p => { const st = siparisToplam(p); return `<tr data-pid="${p.id}" style="--c:${durumRenk(p.durum)}" tabindex="0">
+        <td class="c-dur" data-l="Durum"><select class="dsel" data-dsel="${p.id}" aria-label="${esc(p.ad)} durumu" style="--c:${durumRenk(p.durum)}">${DURUMLAR.map(d => `<option ${d.k === p.durum ? 'selected' : ''}>${d.k}</option>`).join('')}</select></td>
+        <td class="c-sip r num" data-l="Sipariş">${st ? usd(st) : '<span class="muted">—</span>'}</td>
+        <td class="c-ad" data-l="Proje"><b>${esc(p.ad)}</b>${p.kritik ? ' <em class="flag">Kritik</em>' : ''}${p.hedef_listesi ? ' <em class="flag soft">Hedef</em>' : ''}${p.lat == null || p.konum_yaklasik ? ' <em class="flag gray">Konum bekliyor</em>' : ''}${p.notlar ? `<small>${esc(p.notlar.slice(0, 80))}</small>` : ''}</td>
+        <td data-l="Yer">${esc([p.belde, p.ilce, p.il].filter(Boolean).join(', ') || p.lokasyon || '—')}</td>
+        <td data-l="Bölge / OSB">${esc(p.osb || '—')}</td>
+        <td data-l="Yatırımcı">${fa(p.yatirimci_id)}</td><td data-l="Projeci">${fa(p.projeci_id)}</td><td data-l="Danışman">${fa(p.danisman_id)}</td>
+        <td data-l="Gemüt">${fa(p.gemut_id)}</td><td data-l="Emüt">${fa(p.emut_id)}</td><td data-l="Malzeme alıcısı">${fa(p.alici_id)}</td>
+        <td data-l="Kanal">${p.kanal === 'Direkt' ? 'Direkt' : fa(p.bayi_id)}</td>
+        <td class="r num" data-l="Tutar">${usd(p.tutar_usd)}</td><td data-l="Yıl">${p.takip_yili || '—'}</td>
+        <td data-l="Kayıp / rakip">${p.durum === 'Kayıp' ? esc([p.rakip_marka, p.kayip_nedeni].filter(Boolean).join(' · ') || '—') : '<span class="muted">—</span>'}</td></tr>`; }).join('')}</tbody></table>`
       : `<div class="empty"><p>Bu filtrelerle eşleşen proje yok.</p><button class="btn" data-reset2>Filtreleri temizle</button></div>`;
     const r2 = el.querySelector('[data-reset2]'); if (r2) r2.onclick = reset;
+    const open = id => { location.hash = '#/proje/' + id; };
+    el.querySelectorAll('tr[data-pid]').forEach(tr => {
+      tr.onclick = e => { if (e.target.closest('select, a')) return; open(tr.dataset.pid); };
+      tr.onkeydown = e => { if (e.key === 'Enter' && !e.target.closest('select, a')) open(tr.dataset.pid); };
+    });
+    el.querySelectorAll('[data-dsel]').forEach(sel => sel.onchange = async () => {
+      const p = byId('projeler', sel.dataset.dsel), eski = p.durum;
+      try {
+        await app.db.save('projeler', { ...p, durum: sel.value });
+        await app.db.save('proje_gecmis', { proje_id: p.id, tarih: new Date().toISOString(), eski_durum: eski, yeni_durum: sel.value });
+        toast(`${p.ad}: ${eski} → ${sel.value}${sel.value === 'Kayıp' ? '. Kayıp bilgisini girmek için projeyi aç.' : ''}`);
+        sel.style.setProperty('--c', durumRenk(sel.value)); sel.closest('tr').style.setProperty('--c', durumRenk(sel.value));
+      } catch (e) { toast(e.message, 'err'); sel.value = eski; }
+    });
   };
   const reset = () => { Object.assign(f, { q: '', durumlar: [], il: 'Tümü', kanal: 'Tümü', kritik: false, hedef: false, ziyaret: false, rakip: 'Tümü' }); saveFilters(); projelerView(el); };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };

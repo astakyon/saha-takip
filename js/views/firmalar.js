@@ -1,6 +1,6 @@
 import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, usd, num, pill, tarih, today, ILLER, ILCELER, FIRMA_TIPLERI, SEKTORLER, byId, firmaAd, match, toast, openDrawer, closeDrawer,
+import { esc, usd, num, pill, tarih, today, ILLER, ILCELER, OSBLER, FIRMA_TIPLERI, SEKTORLER, byId, firmaAd, match, toast, openDrawer, closeDrawer,
   exportXlsx, directionsUrl, confirmBox, download, ACIK } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { backToList } from '../main.js';
@@ -20,6 +20,8 @@ const FIRMA_FORM = [
   { title: 'Konum', fields: [
     { k: 'il', l: 'İl', t: 'sel', opts: [...ILLER, 'Diğer'] },
     { k: 'ilce', l: 'İlçe', t: 'combo', opts: o => ILCELER[o.il] || [] },
+    { k: 'belde', l: 'Belde / mahalle' },
+    { k: 'osb', l: 'OSB / sanayi bölgesi', t: 'combo', opts: o => OSBLER[o.il] || Object.values(OSBLER).flat() },
     { k: 'adres', l: 'Adres', full: true },
     { k: 'loc', l: 'Harita konumu', t: 'loc' },
   ]},

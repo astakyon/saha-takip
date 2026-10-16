@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması
+--  Saha Satış Takip — Supabase şeması (sürüm 2)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -148,12 +148,35 @@ create table if not exists public.hedefler (
   unique (owner, yil, ceyrek)
 );
 
+-- ---------- SANAYİ BÖLGELERİ (sürüm 2) ----------
+create table if not exists public.bolgeler (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  ad text not null,
+  tip text default 'OSB',                        -- OSB, Sanayi sitesi, Serbest bölge, Liman, Diğer
+  grup text, il text, ilce text, renk text,
+  geojson jsonb,                                 -- çizilen sınır (GeoJSON Polygon)
+  notlar text,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+
+-- ---------- Sürüm 2 sütunları (eski kurulumlara eklenir) ----------
+alter table public.projeler   add column if not exists belde text;
+alter table public.projeler   add column if not exists bolge_id uuid references public.bolgeler(id) on delete set null;
+alter table public.firmalar   add column if not exists belde text;
+alter table public.firmalar   add column if not exists osb text;
+alter table public.firmalar   add column if not exists bolge_id uuid references public.bolgeler(id) on delete set null;
+alter table public.ziyaretler add column if not exists saat text;
+alter table public.ziyaretler add column if not exists durum text default 'Yapıldı';
+alter table public.ziyaretler add column if not exists sonuc_tipi text;
+alter table public.ziyaretler add column if not exists sonuc text;
+
 -- ---------- RLS + tetikleyiciler ----------
 do $$
 declare t text;
 begin
   foreach t in array array['firmalar','kisiler','projeler','proje_gecmis','ziyaretler','gorevler',
-                           'urunler','stok_gecmis','rakip_fiyatlar','siparisler','hedefler'] loop
+                           'urunler','stok_gecmis','rakip_fiyatlar','siparisler','hedefler','bolgeler'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('drop policy if exists "sahibi" on public.%I', t);
     execute format('create policy "sahibi" on public.%I for all to authenticated using (owner = auth.uid()) with check (owner = auth.uid())', t);

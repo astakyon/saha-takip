@@ -3,6 +3,7 @@ import { app, F, saveFilters } from '../state.js';
 import { esc, num, usd, tarih, today, RAKIPLER, URUN_AILELERI, byId, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, pickFiles, fold } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 
+const num2 = n => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
 const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
 const aileKey = s => fold(s || '').replace(/[^a-z0-9]/g, '');
 
@@ -14,14 +15,23 @@ export function urunlerView(el) {
     <div class="vh-act"><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-up>Stok Excel'i yükle</button></div></header>
     <div class="filters"><input type="search" data-q placeholder="Ürün kodu veya açıklama ara (örn. HBL 150)" value="${esc(f.q)}" aria-label="Ürünlerde ara">
       <div class="frow"><label>Ürün ailesi <select data-aile>${['Tümü', ...aileler].map(a => `<option ${f.aile === a ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></label><label class="chk"><input type="checkbox" data-stokta ${f.stokta ? 'checked' : ''}> <span>Sadece stokta olanlar</span></label></div></div>
+    <section class="ledger stock-ledger" data-ledger></section>
     <details class="aile-ozet"><summary>Aile bazında ortalama fiyatlar</summary><div data-ozet></div></details>
     <div class="rows products" data-rows></div>`;
   const list = () => S.urunler.filter(u => (f.aile === 'Tümü' || u.aile === f.aile) && (!f.stokta || u.stok > 0) && match(f.q, u.kod, u.aciklama, u.aciklama2)).sort((a, b) => (a.aile || '').localeCompare(b.aile || '') || a.aciklama.localeCompare(b.aciklama));
   const draw = () => {
     const l = list();
-    el.querySelector('[data-rows]').innerHTML = l.length ? `<div class="row head" aria-hidden="true"><span>Ürün</span><span>Aile</span><span class="r">Stok</span><span class="r">Birim fiyat</span><span class="r">Stok değeri</span></div>` +
+    const deger = u => (+u.stok || 0) * (+u.birim_fiyat_usd || 0);
+    const topAdet = l.reduce((a, u) => a + (+u.stok || 0), 0), topTutar = l.reduce((a, u) => a + deger(u), 0);
+    const fiyatsiz = l.filter(u => u.stok > 0 && u.birim_fiyat_usd == null).length;
+    const filtreli = l.length !== S.urunler.length;
+    el.querySelector('[data-ledger]').innerHTML = `<div><span>Toplam stok tutarı${filtreli ? ' (filtrelenen)' : ''}</span><b>${num2(topTutar)} $</b><small>${fiyatsiz ? `${fiyatsiz} stoklu kalemin birim fiyatı yok, tutara katılmadı` : 'stok × birim fiyat'}</small></div>
+      <div><span>Toplam ürün adedi</span><b>${num(topAdet)}</b><small>${l.filter(u => u.stok > 0).length} kalem stokta</small></div>
+      <div><span>Kalem</span><b>${l.length}</b><small>${filtreli ? `tümü ${S.urunler.length} kalem` : 'listede'}</small></div>`;
+    el.querySelector('[data-rows]').innerHTML = l.length ? `<div class="row head" aria-hidden="true"><span>Ürün</span><span>Aile</span><span class="r">Stok adedi</span><span class="r">Birim fiyat</span><span class="r">Kalem tutarı</span></div>` +
       l.map(u => `<button type="button" class="row" data-id="${u.id}"><span class="nm"><b>${esc(u.aciklama)}</b><small>${esc(u.kod)}${u.aciklama2 ? ' · ' + esc(u.aciklama2) : ''}</small></span><span class="muted">${esc(u.aile || '')}</span>
-        <span class="r num ${u.stok > 0 ? '' : 'muted'}">${num(u.stok)} ${esc((u.birim || '').toLowerCase())}</span><span class="r num">${u.birim_fiyat_usd != null ? num(u.birim_fiyat_usd) + ' $' : '—'}</span><span class="r num muted">${u.birim_fiyat_usd && u.stok ? usd(u.birim_fiyat_usd * u.stok) : '—'}</span></button>`).join('')
+        <span class="r num ${u.stok > 0 ? '' : 'muted'}">${num(u.stok)} ${esc((u.birim || '').toLowerCase())}</span><span class="r num">${u.birim_fiyat_usd != null ? num(u.birim_fiyat_usd) + ' $' : '—'}</span><span class="r num ${deger(u) ? '' : 'muted'}">${deger(u) ? num2(deger(u)) + ' $' : '—'}</span></button>`).join('')
+      + `<div class="row foot"><span class="nm"><b>Toplam</b><small>${l.length} kalem</small></span><span></span><span class="r num"><b>${num(topAdet)}</b></span><span></span><span class="r num"><b>${num2(topTutar)} $</b></span></div>`
       : '<div class="empty"><p>Ürün yok. Bayinin stok Excel dosyasını “Stok Excel\'i yükle” ile ekle.</p></div>';
     el.querySelectorAll('[data-id]').forEach(b => b.onclick = () => urunDetay(b.dataset.id));
     const groups = {};
@@ -36,7 +46,7 @@ export function urunlerView(el) {
   el.querySelector('[data-aile]').onchange = e => { f.aile = e.target.value; saveFilters(); draw(); };
   el.querySelector('[data-stokta]').onchange = e => { f.stokta = e.target.checked; saveFilters(); draw(); };
   el.querySelector('[data-up]').onclick = stokYukle;
-  el.querySelector('[data-exp]').onclick = () => exportXlsx(`stok-fiyat-${today()}.xlsx`, { 'Stok': list().map(u => ({ 'Kod': u.kod, 'Açıklama': u.aciklama, 'Aile': u.aile, 'Birim': u.birim, 'Stok': u.stok, 'Birim fiyat (USD)': u.birim_fiyat_usd, 'Stok tarihi': u.stok_tarihi, 'Depo': u.depo })) });
+  el.querySelector('[data-exp]').onclick = () => exportXlsx(`stok-fiyat-${today()}.xlsx`, { 'Stok': list().map(u => ({ 'Kod': u.kod, 'Açıklama': u.aciklama, 'Aile': u.aile, 'Birim': u.birim, 'Stok': u.stok, 'Birim fiyat (USD)': u.birim_fiyat_usd, 'Kalem tutarı (USD)': Math.round((+u.stok || 0) * (+u.birim_fiyat_usd || 0) * 100) / 100, 'Stok tarihi': u.stok_tarihi, 'Depo': u.depo })) });
   draw();
 }
 
