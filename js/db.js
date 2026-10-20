@@ -1,8 +1,8 @@
 // Veri katmanı: Supabase (bulut) veya Deneme (bu cihazın tarayıcısı)
 export const TABLES = {
-  firmalar: ['id','ad','tipler','il','ilce','belde','osb','bolge_id','adres','lat','lng','konum_yaklasik','telefon','eposta','web','vergi_no','segment','sektor','key_account','notlar','fotolar'],
+  firmalar: ['id','ad','tipler','il','ilce','belde','osb','bolge_id','adres','lat','lng','konum_yaklasik','telefon','eposta','web','vergi_no','segment','sektor','key_account','notlar','fotolar','google_place_id','google_url'],
   kisiler: ['id','firma_id','ad_soyad','unvan','telefon','eposta','rol','kartvizit_on','kartvizit_arka','dogum_gunu','notlar'],
-  projeler: ['id','ad','durum','durum_alt','kritik','takip_yili','hedef_listesi','baska_bolge','il','ilce','belde','bolge_id','osb','lokasyon','adres','lat','lng','konum_yaklasik','icerik','kanal','bayi_id','takipci','takipci_tel','calisildi','tutar_usd','olasilik','beklenen_tarih','teklif_no','crm_kodu','urun_gruplari','sektor','alt_sektor','yeni_refit','yatirimci_id','projeci_id','danisman_id','gemut_id','emut_id','alici_id','ilgili_kisi_id','ziyaret_edilecek','sorulacak','notlar','fotolar','siparis_tutari_usd','siparis_tarihi','bizim_teklif_usd','bizim_urun','rakip_marka','rakip_urun','rakip_birim_fiyat','rakip_miktar','rakip_toplam_usd','kayip_nedeni','kayip_aciklama'],
+  projeler: ['id','ad','durum','durum_alt','kritik','takip_yili','hedef_listesi','baska_bolge','il','ilce','belde','bolge_id','osb','lokasyon','adres','lat','lng','konum_yaklasik','icerik','kanal','bayi_id','takipci','takipci_tel','calisildi','tutar_usd','olasilik','beklenen_tarih','teklif_no','crm_kodu','urun_gruplari','sektor','alt_sektor','yeni_refit','yatirimci_id','projeci_id','danisman_id','gemut_id','emut_id','alici_id','ilgili_kisi_id','ziyaret_edilecek','sorulacak','notlar','fotolar','siparis_tutari_usd','siparis_tarihi','bizim_teklif_usd','bizim_urun','rakip_marka','rakip_urun','rakip_birim_fiyat','rakip_miktar','rakip_toplam_usd','kayip_nedeni','kayip_aciklama','google_place_id','google_url'],
   proje_gecmis: ['id','proje_id','tarih','eski_durum','yeni_durum','notlar'],
   ziyaretler: ['id','tarih','saat','durum','firma_id','kisi_id','proje_id','amac','notlar','sonuc_tipi','sonuc','lat','lng','fotolar'],
   gorevler: ['id','baslik','son_tarih','oncelik','durum','firma_id','proje_id','kisi_id','notlar'],
@@ -102,13 +102,25 @@ class LocalAdapter {
 }
 
 // ---------- Supabase ----------
-// Sürüm 2 sütunları: veritabanı güncellenmediyse gönderilmez (uygulama çalışmaya devam eder)
-const V2 = { projeler: ['belde', 'bolge_id'], firmalar: ['belde', 'osb', 'bolge_id'], ziyaretler: ['saat', 'durum', 'sonuc_tipi', 'sonuc'] };
-function stripV2(t, row) { if (!V2[t]) return row; const r = { ...row }; for (const k of V2[t]) delete r[k]; return r; }
+// Veritabanında henüz olmayan (yeni sürüm) sütunlar: hata alınca o sütun çıkarılıp yeniden denenir, kullanıcı bir kez uyarılır.
+const MISSING = new Set();
+const strip = (t, row) => { if (!MISSING.size) return row; const r = { ...row }; for (const k of Object.keys(r)) if (MISSING.has(t + '.' + k)) delete r[k]; return r; };
+const missingCol = (e, t) => { const m = /Could not find the '(\w+)' column/i.exec(e?.message || ''); return m ? t + '.' + m[1] : null; };
+let warned = false;
+const warnOld = () => { if (warned) return; warned = true; window.dispatchEvent(new CustomEvent('schema-old')); };
 function schemaErr(e, t) {
   const m = e?.message || String(e);
   if (/column|schema cache|does not exist|Could not find/i.test(m)) return new Error('Veritabanı eski sürümde. Supabase SQL Editor\'de supabase/schema.sql dosyasını yeniden çalıştır. (' + m + ')');
   return new Error((t ? t + ': ' : '') + m);
+}
+async function upsertSafe(c, t, rows) {
+  for (let i = 0; i < 12; i++) {
+    const { error } = await c.from(t).upsert(Array.isArray(rows) ? rows.map(r => strip(t, r)) : strip(t, rows));
+    if (!error) return;
+    const col = missingCol(error, t);
+    if (!col || MISSING.has(col)) throw error;
+    MISSING.add(col); warnOld();
+  }
 }
 class SupaAdapter {
   mode = 'supabase';
@@ -152,8 +164,7 @@ class SupaAdapter {
     const rest = [];
     for (const op of q) {
       try {
-        const r = op.op === 'del' ? await this.c.from(op.t).delete().eq('id', op.id) : await this.c.from(op.t).upsert(op.row);
-        if (r.error) throw r.error;
+        if (op.op === 'del') { const r = await this.c.from(op.t).delete().eq('id', op.id); if (r.error) throw r.error; } else await upsertSafe(this.c, op.t, op.row);
       } catch (e) { rest.push(op); }
     }
     await idbSet('outbox', rest);
@@ -168,8 +179,7 @@ class SupaAdapter {
     this.cache();
     try {
       if (this.schemaOld && t === 'bolgeler') throw new Error('Bölgeleri kaydetmek için Supabase SQL Editor\'de supabase/schema.sql dosyasını yeniden çalıştır.');
-      const { error } = await this.c.from(t).upsert(this.schemaOld ? stripV2(t, row) : row);
-      if (error) throw error;
+      await upsertSafe(this.c, t, row);
     } catch (e) {
       if (e && e.message && /fetch|network|Failed/i.test(e.message)) { await this.queue({ op: 'up', t, row }); window.dispatchEvent(new CustomEvent('outbox', { detail: 1 })); }
       else throw schemaErr(e);
@@ -183,9 +193,8 @@ class SupaAdapter {
   }
   async bulk(t, rows, onProgress) {
     for (let i = 0; i < rows.length; i += 400) {
-      const chunk = rows.slice(i, i + 400).map(r => this.schemaOld ? stripV2(t, pick(t, r)) : pick(t, r));
-      const { error } = await this.c.from(t).upsert(chunk);
-      if (error) throw schemaErr(error, t);
+      const chunk = rows.slice(i, i + 400).map(r => pick(t, r));
+      try { await upsertSafe(this.c, t, chunk); } catch (error) { throw schemaErr(error, t); }
       onProgress && onProgress(Math.min(i + 400, rows.length));
     }
     const byId = new Map(S[t].map(x => [x.id, x]));

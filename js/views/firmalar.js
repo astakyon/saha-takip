@@ -3,6 +3,7 @@ import { app, F, saveFilters } from '../state.js';
 import { esc, usd, num, pill, tarih, today, ILLER, ILCELER, OSBLER, FIRMA_TIPLERI, SEKTORLER, byId, firmaAd, match, toast, openDrawer, closeDrawer,
   exportXlsx, directionsUrl, confirmBox, download, ACIK } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
+import { googleBul, aramaMetni } from '../google.js';
 import { backToList } from '../main.js';
 import { projeRolleri } from './projeler.js';
 import { ziyaretForm } from './ziyaret.js';
@@ -103,7 +104,7 @@ export function firmaDetay(id, init) {
     <header class="dh"><div><p class="muted">${x._new ? 'Yeni firma' : esc((x.tipler || []).join(', ') || 'Firma')}</p><h2 id="drawer-title">${esc(x.ad || 'Yeni firma')}</h2>
       ${x._new ? '' : `<div class="dh-meta"><span>${projeler.length} proje</span><span>${won} sipariş</span><span>${lost} kayıp</span>${sip.length ? `<span>${usd(sipT)} sipariş (2026)</span>` : ''}</div>`}</div>
       <button class="x" data-close aria-label="Kapat">×</button></header>
-    ${x._new ? '' : `<div class="dh-actions"><button class="btn sm" data-a="kisi">Kişi ekle</button><button class="btn sm" data-a="ziyaret">Ziyaret ekle</button>
+    ${x._new ? '' : `<div class="dh-actions"><button class="btn sm" data-a="kisi">Kişi ekle</button><button class="btn sm" data-a="ziyaret">Ziyaret ekle</button><button class="btn sm ghost" data-a="google">Google'dan bilgi al</button>${x.google_url ? `<a class="btn sm ghost" href="${esc(x.google_url)}" target="_blank" rel="noopener">Google Haritalar</a>` : ''}
       ${x.telefon ? `<a class="btn sm ghost" href="tel:${esc(x.telefon)}">Ara</a>` : ''}
       ${x.lat != null ? `<a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(x.lat, x.lng)}">Yol tarifi</a>` : ''}
       <button class="btn sm ghost danger" data-a="sil">Sil</button></div>`}
@@ -127,6 +128,7 @@ export function firmaDetay(id, init) {
     const a = b.dataset.a;
     if (a === 'kisi') kisiDetay(null, { firma_id: x.id });
     if (a === 'ziyaret') ziyaretForm({ firma_id: x.id }, () => firmaDetay(x.id));
+    if (a === 'google') googleBul({ q: aramaMetni(x), hedef: { table: 'firmalar', rec: x }, sonra: () => firmaDetay(x.id) });
     if (a === 'sil' && confirmBox(`“${x.ad}” silinsin mi? Projelerdeki bağlantıları boşaltılır.`)) {
       await app.db.del('firmalar', x.id);
       for (const p of S.projeler) { const ch = {}; for (const k of ['yatirimci_id', 'projeci_id', 'danisman_id', 'gemut_id', 'emut_id', 'alici_id', 'bayi_id']) if (p[k] === x.id) ch[k] = null; if (Object.keys(ch).length) await app.db.save('projeler', { ...p, ...ch }); }

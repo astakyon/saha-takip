@@ -116,8 +116,10 @@ export function bindForm(root, sections, obj, { onChange } = {}) {
     const lat = parseFloat(box.dataset.lat), lng = parseFloat(box.dataset.lng);
     const il = obj.il && IL_MERKEZ[obj.il];
     const m = L.map(el, { zoomControl: true, attributionControl: false }).setView(!isNaN(lat) ? [lat, lng] : il ? [il[0], il[1]] : [36.9, 35.3], !isNaN(lat) ? 14 : il ? 10 : 8);
-    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
-    const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+    const sat = L.layerGroup([L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 })]);
+    (app.filters.harita?.uydu === false ? osm : sat).addTo(m);
     L.control.layers({ 'Harita': osm, 'Uydu': sat }, null, { position: 'topright' }).addTo(m);
     let mk = null, seq = 0;
     const txt = box.querySelector('.loc-txt'), det = box.querySelector('.loc-det');
@@ -187,7 +189,10 @@ export async function readForm(root, sections, obj) {
       const key = { firmalar: 'ad', kisiler: 'ad_soyad', projeler: 'ad' }[f.ref];
       if (!v) v = null;
       else {
-        const hit = S[f.ref].find(x => fold(x[key]) === fold(v));
+        const same = S[f.ref].filter(x => fold(x[key]) === fold(v));
+        // Kişide önce seçili firmanın çalışanı, sonra firmasız kayıt; başka firmanın aynı adlı çalışanı seçilmez
+        const hit = f.ref !== 'kisiler' || !raw.firma_id_resolved ? same[0]
+          : same.find(x => x.firma_id === raw.firma_id_resolved) || same.find(x => !x.firma_id);
         if (hit) {
           v = hit.id;
           if (f.ref === 'firmalar' && f.tip && !(hit.tipler || []).includes(f.tip)) await app.db.save('firmalar', { ...hit, tipler: [...(hit.tipler || []), f.tip] });

@@ -2,10 +2,14 @@ import { S, TABLES, getConfig, setConfig, idbGet } from '../db.js';
 import { app } from '../state.js';
 import { esc, toast, download, exportXlsx, today, confirmBox, pickFiles, firmaAd } from '../ui.js';
 import { projeSatiri } from './projeler.js';
+import { birlestir, SIRA } from '../birlestir.js';
+import { googleKey, anahtarFormu, anahtarBagla } from '../google.js';
+import { iceAktarPaneli } from './ice-aktar.js';
+import { openDrawer, closeDrawer } from '../ui.js';
 import { INST, isIOS, install, onInstallChange } from '../kurulum.js';
 
-const ORDER = ['firmalar', 'kisiler', 'projeler', 'proje_gecmis', 'ziyaretler', 'gorevler', 'urunler', 'stok_gecmis', 'rakip_fiyatlar', 'siparisler', 'hedefler'];
-const ETIKET = { firmalar: 'firma', kisiler: 'kişi', projeler: 'proje', proje_gecmis: 'durum geçmişi', ziyaretler: 'ziyaret', gorevler: 'görev', urunler: 'ürün', stok_gecmis: 'stok geçmişi', rakip_fiyatlar: 'rakip fiyatı', siparisler: 'sipariş', hedefler: 'hedef' };
+const ORDER = SIRA;
+const ETIKET = { bolgeler: 'sanayi bölgesi', firmalar: 'firma', kisiler: 'kişi', projeler: 'proje', proje_gecmis: 'durum geçmişi', ziyaretler: 'ziyaret', gorevler: 'görev', urunler: 'ürün', stok_gecmis: 'stok geçmişi', rakip_fiyatlar: 'rakip fiyatı', siparisler: 'sipariş', hedefler: 'hedef' };
 
 function connForm(cfg) {
   return `<form class="form conn" data-conn>
@@ -63,11 +67,17 @@ export async function ayarlarView(el) {
       : `<p>Şu an deneme modundasın. Uygulamayı deneyebilirsin ama veriler sadece bu tarayıcıda durur. Telefon ve bilgisayarda ortak kullanım için Supabase bilgilerini gir.</p>${connForm(cfg)}`}
     </section>
     <section class="card"><h2>Başlangıç verisi</h2>
-      <p>Excel ve sunumlarından hazırlanan veri: 233 proje (2026 ve 2027 listeleri ayrı), 191 firma, 166 sipariş, 252 ürün (stok ve birim fiyat), rakip fiyatları ve 2026 hedefleri.</p>
-      <p class="hint">İkinci kez yüklemek kopya oluşturmaz, aynı kayıtları günceller. Yaklaşık konumlu projeler haritada kesik kenarlı raptiyeyle görünür.</p>
+      <p>Proje takip Excel'inden hazırlanan veri: projeler, firmalar ve yetkilileri, ziyaretler, sanayi bölgeleri, siparişler, bayi stoğu, rakip fiyatları ve hedefler.</p>
+      <p class="hint">Kayıtlar ada göre eşleştirilir: tekrar yüklemek kopya oluşturmaz, haritada yerleştirdiğin konumlar korunur.</p>
       <p class="hint">Müşteri bilgilerin internete açık olmasın diye bu veri uygulamanın içinde değil, sana ayrıca verilen <b>baslangic-verisi.json</b> dosyasında. Dosyayı seçince kayıtlar ${sup ? 'buluta' : 'bu tarayıcıya'} yüklenir.</p>
       <div class="btnrow"><button class="btn primary" data-seed>Başlangıç verisi dosyasını seç</button></div><div class="progress" data-prog hidden></div>
       ${sup && localCount ? `<hr><p>Bu tarayıcıda deneme modunda girilmiş <b>${localCount} kayıt</b> var.</p><div class="btnrow"><button class="btn" data-migrate>Deneme verisini buluta taşı</button></div>` : ''}
+    </section>
+    <section class="card"><h2>Google Haritalar</h2>
+      <p>${googleKey() ? '<b>Google API anahtarı kayıtlı.</b> Haritada “Google\'da ara” ile işletmeleri bulup adres, telefon, web ve konumlarını kayıtlarına aktarabilirsin.' : 'Google\'daki işletmeleri arayıp bilgilerini çekmek için bir API anahtarı gerekiyor.'}</p>
+      <details ${googleKey() ? '' : 'open'}><summary>${googleKey() ? 'Anahtarı değiştir' : 'Anahtar nasıl alınır?'}</summary>${anahtarFormu()}</details>
+      <hr><p><b>Google'dan konum aktar:</b> Google Benim Haritalarım (KML/KMZ), Google Takeout'taki kaydedilen yerler (JSON, CSV) veya Google Haritalar bağlantıları. Bunun için API anahtarı gerekmez.</p>
+      <div class="btnrow"><button class="btn" data-gimport>Google'dan konum aktar</button></div>
     </section>
     <section class="card"><h2>Kayıtlar</h2>
       ${counts.length ? `<ul class="counts">${counts.map(([t, n]) => `<li><b>${n}</b> ${ETIKET[t]}</li>`).join('')}</ul>` : '<p class="hint">Henüz kayıt yok.</p>'}
@@ -82,6 +92,8 @@ export async function ayarlarView(el) {
     </section>
   </div>`;
   bindConn(el);
+  anahtarBagla(el, () => ayarlarView(el));
+  el.querySelector('[data-gimport]').onclick = () => iceAktarPaneli(() => ayarlarView(el));
   el.querySelector('[data-install]')?.addEventListener('click', install);
   el.querySelector('[data-out]')?.addEventListener('click', async () => { await app.db.signOut(); location.reload(); });
   el.querySelector('[data-seed]').onclick = () => seedYukle(el);
@@ -100,7 +112,7 @@ export async function ayarlarView(el) {
   el.querySelector('[data-json]').onclick = () => download(`saha-takip-yedek-${today()}.json`, JSON.stringify({ version: 1, tarih: new Date().toISOString(), ...Object.fromEntries(ORDER.map(t => [t, S[t]])) }));
   el.querySelector('[data-restore]').onclick = async () => {
     const [f] = await pickFiles({ accept: '.json,application/json', multiple: false }); if (!f) return;
-    try { const d = JSON.parse(await f.text()); await importAll(d, el); } catch (e) { toast('Yedek okunamadı: ' + e.message, 'err'); }
+    try { const d = JSON.parse(await f.text()); await importAll(d, el, 'yedek'); } catch (e) { toast('Yedek okunamadı: ' + e.message, 'err'); }
   };
   el.querySelector('[data-wipe]').onclick = async () => {
     if (!confirmBox('Tüm veriler silinsin mi? Bu işlem geri alınamaz.')) return;
@@ -108,32 +120,36 @@ export async function ayarlarView(el) {
   };
 }
 
-async function importAll(d, el) {
+async function importAll(d, el, mod = 'guncelle') {
   const prog = el.querySelector('[data-prog]'); prog.hidden = false;
-  const total = ORDER.reduce((s, t) => s + (d[t] || []).length, 0); let done = 0;
   try {
+    const { plan, ozet } = birlestir(d, mod);
+    const total = Object.values(plan).reduce((a, r) => a + r.length, 0); let done = 0;
     for (const t of ORDER) {
-      let rows = (d[t] || []).filter(r => r && r.id); if (!rows.length) continue;
-      // Benzersiz alanı olan tablolarda mevcut kaydın kimliğini koru
-      if (t === 'urunler') { const m = new Map(S.urunler.map(u => [u.kod, u.id])); rows = rows.map(r => m.has(r.kod) ? { ...r, id: m.get(r.kod) } : r); }
-      if (t === 'hedefler') { const m = new Map(S.hedefler.map(h => [h.yil + '-' + h.ceyrek, h.id])); rows = rows.map(r => m.has(r.yil + '-' + r.ceyrek) ? { ...r, id: m.get(r.yil + '-' + r.ceyrek) } : r); }
-      let base = done;
-      await app.db.bulk(t, rows, n => { done = base + n; prog.innerHTML = `<span style="width:${done / total * 100}%"></span><b>${ETIKET[t]} yükleniyor · ${done}/${total}</b>`; });
+      const rows = plan[t]; if (!rows) continue;
+      const base = done;
+      await app.db.bulk(t, rows, n => { done = base + n; prog.innerHTML = `<span style="width:${done / Math.max(total, 1) * 100}%"></span><b>${ETIKET[t]} yükleniyor · ${done}/${total}</b>`; });
       done = base + rows.length;
     }
-    toast(`${total} kayıt yüklendi.`); prog.hidden = true; ayarlarView(el);
-  } catch (e) { console.error(e); prog.hidden = true; toast('Yükleme durdu: ' + e.message + (/relation|does not exist|schema cache/i.test(e.message) ? ' — schema.sql dosyasını Supabase SQL Editor\'de çalıştırdın mı?' : ''), 'err'); }
+    prog.hidden = true;
+    toast(`${ozet.yeni} yeni kayıt eklendi, ${ozet.guncel} kayıt güncellendi${ozet.ayni ? `, ${ozet.ayni} kayıt zaten günceldi` : ''}.`);
+    ayarlarView(el);
+  } catch (e) { console.error(e); prog.hidden = true; toast('Yükleme durdu: ' + e.message + (/relation|does not exist|schema cache|column/i.test(e.message) ? ' — supabase/schema.sql dosyasını Supabase SQL Editor\'de yeniden çalıştırdın mı?' : ''), 'err'); }
 }
 
 async function seedYukle(el) {
   const [f] = await pickFiles({ accept: '.json,application/json', multiple: false });
   if (!f) return;
-  try {
-    const d = JSON.parse(await f.text());
-    if (!d.projeler) return toast('Bu dosya başlangıç verisi değil. baslangic-verisi.json dosyasını seç.', 'err');
-    if (S.projeler.length && !confirmBox(`Zaten ${S.projeler.length} proje var. Başlangıç verisi eklensin mi? Aynı kayıtlar güncellenir, senin eklediklerin silinmez.`)) return;
-    await importAll(d, el);
-  } catch (e) { toast('Dosya okunamadı: ' + e.message, 'err'); }
+  let d;
+  try { d = JSON.parse(await f.text()); } catch (e) { return toast('Dosya okunamadı: ' + e.message, 'err'); }
+  if (!d.projeler) return toast('Bu dosya başlangıç verisi değil. baslangic-verisi.json dosyasını seç.', 'err');
+  if (!S.projeler.length && !S.firmalar.length) return importAll(d, el, 'guncelle');
+  const p = openDrawer(`<header class="dh"><div><p class="muted">${esc(d.kaynak || 'Başlangıç verisi')}</p><h2 id="drawer-title">Mevcut verilerle birleştir</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+    <div class="dbody"><p>Uygulamada zaten <b>${S.projeler.length} proje</b> ve <b>${S.firmalar.length} firma</b> var. Dosyadaki ${(d.projeler || []).length} proje ve ${(d.firmalar || []).length} firma adına göre eşleştirilecek; eşleşmeyenler yeni kayıt olarak eklenir, hiçbir kayıt silinmez.</p>
+    <p class="hint">Haritada yerleştirdiğin konumlar, fotoğraflar, kartvizitler ve çizdiğin bölge sınırları her iki seçenekte de korunur. Notlar birleştirilir.</p>
+    <div class="choice"><button type="button" class="btn primary" data-m="guncelle">Dosyadaki bilgilerle güncelle</button><small>Durum, tutar, firmalar gibi alanlar dosyadaki haliyle değişir. Excel listen daha güncelse bunu seç.</small></div>
+    <div class="choice"><button type="button" class="btn" data-m="ekle">Yalnızca eksikleri tamamla</button><small>Uygulamada değiştirdiğin alanlara dokunulmaz; sadece boş alanlar doldurulur ve yeni kayıtlar eklenir.</small></div></div>`);
+  p.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { closeDrawer(); importAll(d, el, b.dataset.m); });
 }
 
 // Deneme modunda (tarayıcıda) girilen veriyi ve fotoğrafları Supabase'e taşır
@@ -151,5 +167,5 @@ async function migrate(el) {
   toast('Fotoğraflar aktarılıyor…');
   for (const t of ['firmalar', 'projeler', 'ziyaretler']) for (const r of d[t]) r.fotolar = (await Promise.all((r.fotolar || []).map(conv))).filter(Boolean);
   for (const k of d.kisiler) { k.kartvizit_on = await conv(k.kartvizit_on); k.kartvizit_arka = await conv(k.kartvizit_arka); }
-  await importAll(d, el);
+  await importAll(d, el, 'yedek');
 }

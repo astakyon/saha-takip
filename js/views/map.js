@@ -6,6 +6,8 @@ import { yeniProje } from './projeler.js';
 import { yeniFirma } from './firmalar.js';
 import { ziyaretForm } from './ziyaret.js';
 import { bolgeForm, bolgeRenk, bolgeProjeleri, bolgeyeAta } from './bolgeler.js';
+import { googleBul, aramaMetni } from '../google.js';
+import { iceAktarPaneli } from './ice-aktar.js';
 
 let map, cluster, regionLayer, borderLayer, drawLayer, meMarker;
 let mode = null, moveOn = false;            // null | {t:'pin'} | {t:'assign', table, rec} | {t:'draw', pts:[], bolge}
@@ -19,7 +21,8 @@ function markerIcon(kind, color, approx) {
 const needsLoc = r => r.lat == null || r.konum_yaklasik;
 
 export async function mapView(el) {
-  const f = F('harita', { il: 'Tümü', proje: true, yaklasik: false, firma: true, ziyaret: false, bolge: true, yil: 'Tümü', durumlar: DURUMLAR.map(d => d.k), q: '' });
+  const f = F('harita', { il: 'Tümü', proje: true, yaklasik: false, firma: true, ziyaret: false, bolge: true, yil: 'Tümü', durumlar: DURUMLAR.map(d => d.k), q: '', uydu: true });
+  if (f.uydu === undefined) f.uydu = true;
   if (f.yaklasik === undefined) f.yaklasik = false;
   if (f.bolge === undefined) f.bolge = true;
   mode = null; moveOn = false;
@@ -30,9 +33,12 @@ export async function mapView(el) {
       <div class="seg" role="group" aria-label="İl seç">${['Tümü', ...ILLER].map(i => `<button type="button" data-il="${i}" class="${f.il === i ? 'on' : ''}">${i}</button>`).join('')}</div>
       <div class="map-search"><input type="search" placeholder="Raptiyelerde ara" value="${esc(f.q)}" aria-label="Haritada ara"></div>
       <div class="map-tools">
+        <button type="button" class="btn sm ghost tbtn ${f.uydu ? 'on' : ''}" data-tool="uydu" aria-pressed="${f.uydu}">Uydu</button>
+        <button type="button" class="btn sm ghost tbtn" data-tool="google">Google'da ara</button>
         <button type="button" class="btn sm ghost tbtn" data-tool="assign">Konum ata <b data-need></b></button>
         <button type="button" class="btn sm ghost tbtn" data-tool="move" aria-pressed="false">Raptiye taşı</button>
         <button type="button" class="btn sm ghost tbtn" data-tool="draw">Bölge çiz</button>
+        <button type="button" class="btn sm ghost tbtn" data-tool="import">İçe aktar</button>
         <button type="button" class="btn sm ghost tbtn" data-tool="layers" aria-expanded="false">Katmanlar</button>
       </div>
     </div>
@@ -65,9 +71,14 @@ export async function mapView(el) {
   map = L.map('map', { zoomControl: false, maxBounds: [[33, 29], [41, 40]], doubleClickZoom: true });
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
-  const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri, Maxar' });
-  osm.addTo(map);
-  L.control.layers({ 'Harita': osm, 'Uydu': sat }, null, { position: 'bottomright' }).addTo(map);
+  // Uydu: Esri uydu görüntüsü + yer adı ve yol etiketleri (hibrit)
+  const sat = L.layerGroup([
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 19, attribution: 'Uydu: Esri, Maxar, Earthstar Geographics' }),
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 0.85 }),
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
+  ]);
+  const altlik = () => { if (f.uydu) { map.removeLayer(osm); sat.addTo(map); } else { map.removeLayer(sat); osm.addTo(map); } map.getContainer().classList.toggle('sat', !!f.uydu); };
+  altlik();
   borderLayer = L.layerGroup().addTo(map);
   regionLayer = L.layerGroup().addTo(map);
   drawLayer = L.layerGroup().addTo(map);
@@ -91,6 +102,9 @@ export async function mapView(el) {
     if (t === 'layers') { lp.hidden = !lp.hidden; ap.hidden = true; b.setAttribute('aria-expanded', String(!lp.hidden)); }
     if (t === 'assign') { ap.hidden = !ap.hidden; lp.hidden = true; if (!ap.hidden) drawAssignList(); }
     if (t === 'draw') startDraw(null);
+    if (t === 'uydu') { f.uydu = !f.uydu; saveFilters(); b.classList.toggle('on', f.uydu); b.setAttribute('aria-pressed', String(f.uydu)); altlik(); }
+    if (t === 'google') { lp.hidden = true; ap.hidden = true; googleBul({ near: [map.getCenter().lat, map.getCenter().lng], zoom: Math.max(map.getZoom(), 12), sonra: () => { draw(); drawRegions(); } }); }
+    if (t === 'import') { lp.hidden = true; ap.hidden = true; iceAktarPaneli(() => { draw(); drawRegions(); }); }
     if (t === 'move') {
       moveOn = !moveOn; b.setAttribute('aria-pressed', String(moveOn)); b.classList.toggle('on', moveOn);
       cont.classList.toggle('moving', moveOn);
@@ -277,8 +291,9 @@ export async function mapView(el) {
       <div class="pp-meta"><div><span>Tutar</span> ${usd(p.tutar_usd)}</div>${roles}</div>
       ${p.notlar ? `<p class="pp-note">${esc(p.notlar.slice(0, 200))}${p.notlar.length > 200 ? '…' : ''}</p>` : ''}
       ${p.konum_yaklasik ? '<p class="hint">Yaklaşık konum. “Konumu taşı” ile gerçek yerine koy.</p>' : ''}
-      <div class="pp-act"><a class="btn sm" href="#/proje/${p.id}">Detay</a><a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}">Yol tarifi</a><button type="button" class="btn sm ghost" data-move>Konumu taşı</button></div>`;
+      <div class="pp-act"><a class="btn sm" href="#/proje/${p.id}">Detay</a><a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}">Yol tarifi</a><button type="button" class="btn sm ghost" data-move>Konumu taşı</button><button type="button" class="btn sm ghost" data-g>Google</button></div>`;
     div.querySelector('[data-move]').onclick = () => { map.closePopup(); setMode({ t: 'assign', table: 'projeler', rec: p }); };
+    div.querySelector('[data-g]').onclick = () => { map.closePopup(); googleBul({ q: aramaMetni(p), near: [p.lat, p.lng], hedef: { table: 'projeler', rec: p }, sonra: () => draw() }); };
     photoBlock(p.fotolar).then(h => { div.querySelector('.pp-ph').innerHTML = h; });
     return div;
   }
@@ -289,8 +304,9 @@ export async function mapView(el) {
       <h3>${esc(x.ad)}</h3><p class="muted">${esc(konumMetni(x))}</p>
       <div class="pp-meta"><div><span>Proje</span> ${pc}</div>${x.telefon ? `<div><span>Tel</span> <a href="tel:${esc(x.telefon)}">${esc(x.telefon)}</a></div>` : ''}</div>
       ${x.notlar ? `<p class="pp-note">${esc(x.notlar.slice(0, 200))}</p>` : ''}
-      <div class="pp-act"><a class="btn sm" href="#/firma/${x.id}">Detay</a><a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(x.lat, x.lng)}">Yol tarifi</a><button type="button" class="btn sm ghost" data-move>Konumu taşı</button></div>`;
+      <div class="pp-act"><a class="btn sm" href="#/firma/${x.id}">Detay</a><a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(x.lat, x.lng)}">Yol tarifi</a><button type="button" class="btn sm ghost" data-move>Konumu taşı</button><button type="button" class="btn sm ghost" data-g>Google</button></div>`;
     div.querySelector('[data-move]').onclick = () => { map.closePopup(); setMode({ t: 'assign', table: 'firmalar', rec: x }); };
+    div.querySelector('[data-g]').onclick = () => { map.closePopup(); googleBul({ q: aramaMetni(x), near: [x.lat, x.lng], hedef: { table: 'firmalar', rec: x }, sonra: () => draw() }); };
     photoBlock(x.fotolar).then(h => { div.querySelector('.pp-ph').innerHTML = h; });
     return div;
   }
@@ -322,7 +338,7 @@ export async function mapView(el) {
     const div = document.createElement('div'); div.className = 'pp pin-menu';
     div.innerHTML = `<h3>Bu konuma ne kaydedilsin?</h3><p class="muted" data-det>Konum algılanıyor…</p>
       <div class="pin-opts"><button type="button" class="btn" data-a="p">Yeni proje</button><button type="button" class="btn" data-a="f">Yeni firma</button>
-      <button type="button" class="btn" data-a="z">Ziyaret kaydet</button><button type="button" class="btn ghost" data-a="m">Var olan kaydı buraya taşı</button></div>`;
+      <button type="button" class="btn" data-a="z">Ziyaret kaydet</button><button type="button" class="btn ghost" data-a="m">Var olan kaydı buraya taşı</button><button type="button" class="btn ghost" data-a="g">Google'da buradaki işletmeyi seç</button></div>`;
     L.popup({ maxWidth: 280 }).setLatLng(latlng).setContent(div).openOn(map);
     const kp = konumAlgila(ll[0], ll[1]);
     kp.then(k => { const d = div.querySelector('[data-det]'); if (d) d.textContent = konumMetni(k) || `${ll[0]}, ${ll[1]}`; });
@@ -334,6 +350,7 @@ export async function mapView(el) {
       if (a === 'f') yeniFirma(loc);
       if (a === 'z') ziyaretForm({ lat: ll[0], lng: ll[1], durum: 'Yapıldı' });
       if (a === 'm') tasi(ll);
+      if (a === 'g') googleBul({ near: ll, zoom: 18, sonra: () => { draw(); drawRegions(); } });
     };
   }
   function tasi(ll) {

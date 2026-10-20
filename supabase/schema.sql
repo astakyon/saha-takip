@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 2)
+--  Saha Satış Takip — Supabase şeması (sürüm 3)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -170,6 +170,12 @@ alter table public.ziyaretler add column if not exists saat text;
 alter table public.ziyaretler add column if not exists durum text default 'Yapıldı';
 alter table public.ziyaretler add column if not exists sonuc_tipi text;
 alter table public.ziyaretler add column if not exists sonuc text;
+
+-- ---------- Sürüm 3 sütunları: Google Haritalar bağlantısı ----------
+alter table public.firmalar add column if not exists google_place_id text;
+alter table public.firmalar add column if not exists google_url text;
+alter table public.projeler add column if not exists google_place_id text;
+alter table public.projeler add column if not exists google_url text;
 
 -- ---------- RLS + tetikleyiciler ----------
 do $$

@@ -113,6 +113,7 @@ async function boot() {
   await route();
   if (act === 'ziyaret') ziyaretForm({});
 }
+window.addEventListener('schema-old', () => toast('Veritabanı güncel değil: Supabase SQL Editor\'de supabase/schema.sql dosyasını yeniden çalıştır. Yeni alanlar (Google bilgileri) o zamana kadar kaydedilmez.', 'err'));
 window.addEventListener('outbox', e => { if (e.detail) toast('Bağlantı yok: değişiklik kaydedildi, internet gelince gönderilecek.'); });
 window.__reboot = boot;
 onInstallChange(() => { const b = document.querySelector('[data-inst]'); if (b) b.hidden = !canInstall(); });

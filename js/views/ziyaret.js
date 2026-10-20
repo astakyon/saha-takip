@@ -1,6 +1,6 @@
 import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, tarih, today, ZIYARET_AMAC, ZIYARET_DURUM, SONUC_TIPLERI, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx } from '../ui.js';
+import { esc, fold, tarih, today, ZIYARET_AMAC, ZIYARET_DURUM, SONUC_TIPLERI, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 
 export const zDurum = z => z.durum || 'Yapıldı';
@@ -13,11 +13,11 @@ const weekNo = s => { const d = new Date(s + 'T00:00'); d.setDate(d.getDate() + 
 const ZIYARET_FORM = [
   { title: 'Ziyaret', fields: [
     { k: 'durum', l: 'Durum', t: 'sel', opts: ZIYARET_DURUM.map(d => d.k), ph: 'Seç' },
-    { k: 'amac', l: 'Amaç', t: 'combo', opts: ZIYARET_AMAC },
+    { k: 'amac', l: 'Amaç', t: 'sel', opts: ZIYARET_AMAC, ph: 'Seç' },
     { k: 'tarih', l: 'Tarih', t: 'date' },
     { k: 'saat', l: 'Saat', t: 'time' },
     { k: 'firma_id', l: 'Firma', t: 'ref', ref: 'firmalar', ph: 'Firma adı' },
-    { k: 'kisi_id', l: 'Görüşülen kişi', t: 'ref', ref: 'kisiler', ph: 'Kişi adı (yeni ise yazman yeterli)' },
+    { k: 'kisi_id', l: 'Görüşülen kişi (firma yetkilisi)', t: 'ref', ref: 'kisiler', ph: 'Firma seçince yetkilisi gelir; yeni ise adını yaz' },
     { k: 'proje_id', l: 'İlgili proje', t: 'ref', ref: 'projeler', full: true },
     { k: 'notlar', l: 'Ziyaret notu / gündem', t: 'area', rows: 4, full: true },
   ]},
@@ -34,6 +34,47 @@ const ZIYARET_FORM = [
   ]},
 ];
 
+// Firma seçilince yetkilisini getir; kişi listesini o firmanın çalışanlarıyla sınırla
+export function firmaYetkilileri(firmaId) {
+  if (!firmaId) return [];
+  const ks = S.kisiler.filter(k => k.firma_id === firmaId);
+  const son = new Map();
+  for (const z of S.ziyaretler) if (z.firma_id === firmaId && z.kisi_id && (!son.has(z.kisi_id) || z.tarih > son.get(z.kisi_id))) son.set(z.kisi_id, z.tarih);
+  const rolSira = r => ['Karar verici', 'Satınalma', 'Teknik', 'Etkileyici', 'Saha'].indexOf(r) + 1 || 9;
+  return ks.sort((a, b) => (son.get(b.id) || '').localeCompare(son.get(a.id) || '') || rolSira(a.rol) - rolSira(b.rol) || a.ad_soyad.localeCompare(b.ad_soyad, 'tr'));
+}
+function yetkiliBagla(form) {
+  const fi = form.querySelector('[name=firma_id]'), ki = form.querySelector('[name=kisi_id]');
+  if (!fi || !ki) return;
+  const dl = document.createElement('datalist'); dl.id = 'dl-yetkili-' + Math.random().toString(36).slice(2); form.appendChild(dl);
+  const box = document.createElement('div'); box.className = 'yetkili'; ki.closest('.fld').appendChild(box);
+  const firmaBul = () => { const v = fold(fi.value.trim()); return v ? S.firmalar.find(x => fold(x.ad) === v) : null; };
+  let oto = false, sonFirma;
+  const yenile = (doldur) => {
+    const f = firmaBul(), ks = f ? firmaYetkilileri(f.id) : [];
+    if (doldur && (f?.id || null) === sonFirma) return;   // aynı firma: seçimi bozma
+    sonFirma = f?.id || null;
+    dl.innerHTML = [...ks, ...S.kisiler.filter(k => !ks.includes(k))].map(k => `<option value="${esc(k.ad_soyad)}">${esc(firmaAd(k.firma_id) || '')}</option>`).join('');
+    ki.setAttribute('list', dl.id);
+    box.innerHTML = f ? (ks.length ? `<span class="muted">${esc(f.ad)} yetkilileri:</span> ${ks.slice(0, 6).map(k => `<button type="button" class="chip-s ${fold(ki.value) === fold(k.ad_soyad) ? 'on' : ''}" data-k="${esc(k.ad_soyad)}">${esc(k.ad_soyad)}${k.unvan ? ` <i>${esc(k.unvan)}</i>` : ''}</button>`).join('')}`
+      : `<span class="muted">${esc(f.ad)} için kayıtlı yetkili yok. Adını yazarsan bu firmaya eklenir.</span>`) : '';
+    box.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { ki.value = b.dataset.k; oto = false; yenile(false); });
+    if (!doldur || !f) return;
+    const cur = fold(ki.value.trim());
+    const curK = cur && S.kisiler.find(k => fold(k.ad_soyad) === cur);
+    if (ks.length && (!cur || oto || (curK && curK.firma_id && curK.firma_id !== f.id))) { ki.value = ks[0].ad_soyad; oto = true; yenile(false); }
+  };
+  fi.addEventListener('change', () => yenile(true));
+  fi.addEventListener('input', () => { if (firmaBul()) yenile(true); });
+  ki.addEventListener('input', () => { oto = false; });
+  ki.addEventListener('change', () => {
+    if (fi.value.trim()) return yenile(false);
+    const k = S.kisiler.find(x => fold(x.ad_soyad) === fold(ki.value.trim()));
+    if (k?.firma_id) { fi.value = firmaAd(k.firma_id); yenile(false); }
+  });
+  yenile(!ki.value);
+}
+
 export function ziyaretForm(init = {}, after) {
   const z0 = init.id ? byId('ziyaretler', init.id) || init : { id: uuid(), tarih: today(), durum: 'Yapıldı', fotolar: [], ...init, _new: true };
   const z = { ...z0, durum: zDurum(z0) };
@@ -43,6 +84,7 @@ export function ziyaretForm(init = {}, after) {
     <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`, { onClose: () => {} });
   const form = panel.querySelector('form');
   bindForm(form, ZIYARET_FORM, z);
+  yetkiliBagla(form);
   // Yapılan yeni ziyarette konumu otomatik al
   const autoLoc = () => { const b = form.querySelector('[data-loc]'); if (b && !b.dataset.lat) b.querySelector('[data-loc-me]').click(); };
   if (z._new && z.lat == null && z.durum === 'Yapıldı' && (!z.tarih || z.tarih === today())) setTimeout(autoLoc, 300);
@@ -168,22 +210,66 @@ export function gorevForm(init = {}, after) {
 }
 
 export function gorevlerView(el) {
-  const f = F('gorevler', { goster: 'Açık' });
+  const f = F('gorevler', { goster: 'Açık', gor: 'takvim', ay: today().slice(0, 7), gun: today(), ziyaret: true });
+  const t = today();
   el.innerHTML = `<header class="vh"><div><h1>Görevler</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn primary" data-new>Yeni görev</button></div></header>
-    <div class="filters"><div class="seg" role="group">${['Açık', 'Tamam', 'Tümü'].map(x => `<button type="button" data-g="${x}" class="${f.goster === x ? 'on' : ''}">${x === 'Tamam' ? 'Tamamlanan' : x}</button>`).join('')}</div></div>
-    <ul class="tasks" data-rows></ul>`;
-  const draw = () => {
-    const t = today();
-    const l = S.gorevler.filter(g => f.goster === 'Tümü' || g.durum === f.goster).sort((a, b) => (a.son_tarih || '9').localeCompare(b.son_tarih || '9'));
-    el.querySelector('[data-sum]').textContent = `${S.gorevler.filter(g => g.durum !== 'Tamam').length} açık · ${S.gorevler.filter(g => g.durum !== 'Tamam' && g.son_tarih && g.son_tarih < t).length} gecikmiş`;
-    el.querySelector('[data-rows]').innerHTML = l.length ? l.map(g => `<li class="${g.durum === 'Tamam' ? 'done' : ''} ${g.son_tarih && g.son_tarih < t && g.durum !== 'Tamam' ? 'late' : ''}">
+    <div class="filters">
+      <div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="takvim" class="${f.gor === 'takvim' ? 'on' : ''}">Takvim</button><button type="button" data-gor="liste" class="${f.gor === 'liste' ? 'on' : ''}">Liste</button></div>
+      <div class="frow"><div class="seg" role="group" aria-label="Durum">${['Açık', 'Tamam', 'Tümü'].map(x => `<button type="button" data-g="${x}" class="${f.goster === x ? 'on' : ''}">${x === 'Tamam' ? 'Tamamlanan' : x}</button>`).join('')}</div>
+      <label class="chk" data-zv ${f.gor === 'takvim' ? '' : 'hidden'}><input type="checkbox" data-z ${f.ziyaret ? 'checked' : ''}> <span>Planlı ziyaretleri de göster</span></label></div></div>
+    <div data-body></div>`;
+  const filt = g => f.goster === 'Tümü' || (f.goster === 'Tamam' ? g.durum === 'Tamam' : g.durum !== 'Tamam');
+  const geciken = g => g.son_tarih && g.son_tarih < t && g.durum !== 'Tamam';
+  const gorevSatir = g => `<li class="${g.durum === 'Tamam' ? 'done' : ''} ${geciken(g) ? 'late' : ''} pr-${g.oncelik === 'Yüksek' ? 'hi' : g.oncelik === 'Düşük' ? 'lo' : 'n'}">
       <label class="chk"><input type="checkbox" data-done="${g.id}" ${g.durum === 'Tamam' ? 'checked' : ''} aria-label="Tamamlandı"></label>
-      <button type="button" class="task-b" data-id="${g.id}"><b>${esc(g.baslik)}</b><small>${[tarih(g.son_tarih), firmaAd(g.firma_id), byId('projeler', g.proje_id)?.ad, g.oncelik !== 'Normal' ? g.oncelik : ''].filter(x => x && x !== '—').map(esc).join(' · ')}</small></button></li>`).join('')
-      : '<li class="empty"><p>Görev yok.</p></li>';
-    el.querySelectorAll('[data-id]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.id }));
-    el.querySelectorAll('[data-done]').forEach(c => c.onchange = async () => { const g = byId('gorevler', c.dataset.done); await app.db.save('gorevler', { ...g, durum: c.checked ? 'Tamam' : 'Açık' }); draw(); });
+      <button type="button" class="task-b" data-id="${g.id}"><b>${esc(g.baslik)}</b><small>${[g.son_tarih ? tarih(g.son_tarih) : 'Tarihsiz', firmaAd(g.firma_id), byId('projeler', g.proje_id)?.ad, g.oncelik !== 'Normal' ? g.oncelik + ' öncelik' : ''].filter(Boolean).map(esc).join(' · ')}</small></button></li>`;
+  const bagla = root => {
+    root.querySelectorAll('[data-id]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.id }));
+    root.querySelectorAll('[data-zid]').forEach(b => b.onclick = () => ziyaretForm({ id: b.dataset.zid }));
+    root.querySelectorAll('[data-done]').forEach(c => c.onchange = async () => { const g = byId('gorevler', c.dataset.done); await app.db.save('gorevler', { ...g, durum: c.checked ? 'Tamam' : 'Açık' }); draw(); });
+  };
+  const draw = () => {
+    const acik = S.gorevler.filter(g => g.durum !== 'Tamam');
+    el.querySelector('[data-sum]').textContent = `${acik.length} açık · ${acik.filter(geciken).length} gecikmiş · ${acik.filter(g => g.son_tarih === t).length} bugün`;
+    const body = el.querySelector('[data-body]');
+    if (f.gor === 'liste') {
+      const l = S.gorevler.filter(filt).sort((a, b) => (a.son_tarih || '9').localeCompare(b.son_tarih || '9'));
+      body.innerHTML = `<ul class="tasks">${l.length ? l.map(gorevSatir).join('') : '<li class="empty"><p>Görev yok.</p></li>'}</ul>`;
+      return bagla(body);
+    }
+    // Aylık takvim
+    const [Y, M] = f.ay.split('-').map(Number);
+    const first = new Date(Y, M - 1, 1), start = new Date(first); start.setDate(1 - (first.getDay() + 6) % 7);
+    const days = [...Array(42)].map((_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return iso(d); });
+    const son = days[41];
+    const gs = S.gorevler.filter(g => filt(g) && g.son_tarih && g.son_tarih >= days[0] && g.son_tarih <= son);
+    const zs = f.ziyaret ? S.ziyaretler.filter(z => zDurum(z) === 'Planlandı' && z.tarih >= days[0] && z.tarih <= son) : [];
+    const tarihsiz = S.gorevler.filter(g => filt(g) && !g.son_tarih);
+    const gunG = d => gs.filter(g => g.son_tarih === d), gunZ = d => zs.filter(z => z.tarih === d);
+    if (!days.includes(f.gun) || f.gun.slice(0, 7) !== f.ay) f.gun = f.ay === t.slice(0, 7) ? t : f.ay + '-01';
+    const ayAd = first.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+    const sec = f.gun, secG = S.gorevler.filter(g => filt(g) && g.son_tarih === sec), secZ = f.ziyaret ? S.ziyaretler.filter(z => zDurum(z) === 'Planlandı' && z.tarih === sec) : [];
+    body.innerHTML = `<div class="month-head"><button type="button" class="btn ghost" data-m="-1" aria-label="Önceki ay">‹</button><h2>${esc(ayAd)}</h2><button type="button" class="btn ghost" data-m="1" aria-label="Sonraki ay">›</button><button type="button" class="btn ghost sm" data-m="0">Bugün</button></div>
+      <div class="month" role="grid" aria-label="${esc(ayAd)} görev takvimi">
+        ${['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(x => `<div class="mh" role="columnheader">${x}</div>`).join('')}
+        ${days.map(d => { const g = gunG(d), z = gunZ(d), n = g.length + z.length;
+          return `<div class="mc ${d.slice(0, 7) !== f.ay ? 'out' : ''} ${d === t ? 'today' : ''} ${d === sec ? 'sel' : ''} ${g.some(geciken) ? 'has-late' : ''}" role="gridcell" data-d="${d}" tabindex="0" aria-label="${new Date(d + 'T00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}: ${g.length} görev${z.length ? `, ${z.length} ziyaret` : ''}">
+            <span class="dn">${+d.slice(8)}</span>
+            <div class="mc-items">${g.slice(0, 3).map(x => `<span class="mi ${x.durum === 'Tamam' ? 'done' : ''} ${geciken(x) ? 'late' : ''} ${x.oncelik === 'Yüksek' ? 'hi' : ''}">${esc(x.baslik)}</span>`).join('')}${z.slice(0, Math.max(0, 3 - g.length)).map(x => `<span class="mi zi">${esc(firmaAd(x.firma_id) || 'Ziyaret')}</span>`).join('')}${n > 3 ? `<span class="more">+${n - 3}</span>` : ''}</div>
+            ${n ? `<span class="dots">${g.length ? `<i class="dg">${g.length}</i>` : ''}${z.length ? `<i class="dz">${z.length}</i>` : ''}</span>` : ''}</div>`; }).join('')}
+      </div>
+      <section class="day-detail"><header><h3>${new Date(sec + 'T00:00').toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}</h3><button type="button" class="btn sm primary" data-add="${sec}">+ Görev ekle</button></header>
+        ${secG.length || secZ.length ? `<ul class="tasks">${secG.map(gorevSatir).join('')}${secZ.map(z => `<li class="zi-row"><span class="zi-dot" aria-hidden="true"></span><button type="button" class="task-b" data-zid="${z.id}"><b>${esc(firmaAd(z.firma_id) || 'Ziyaret')}</b><small>Planlı ziyaret${z.saat ? ' · ' + esc(z.saat) : ''}${z.amac ? ' · ' + esc(z.amac) : ''}</small></button></li>`).join('')}</ul>` : '<p class="hint">Bu gün için görev yok.</p>'}
+      </section>
+      ${tarihsiz.length ? `<section class="day-detail"><header><h3>Tarihsiz görevler <span class="muted">${tarihsiz.length}</span></h3></header><ul class="tasks">${tarihsiz.map(gorevSatir).join('')}</ul></section>` : ''}`;
+    body.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const n = +b.dataset.m; if (!n) { f.ay = t.slice(0, 7); f.gun = t; } else { const d = new Date(Y, M - 1 + n, 1); f.ay = iso(d).slice(0, 7); } saveFilters(); draw(); });
+    body.querySelectorAll('[data-d]').forEach(c => { const go = () => { f.gun = c.dataset.d; if (f.gun.slice(0, 7) !== f.ay) f.ay = f.gun.slice(0, 7); saveFilters(); draw(); }; c.onclick = go; c.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }; c.ondblclick = () => gorevForm({ son_tarih: c.dataset.d }); });
+    body.querySelector('[data-add]').onclick = () => gorevForm({ son_tarih: sec });
+    bagla(body);
   };
   el.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { f.goster = b.dataset.g; saveFilters(); el.querySelectorAll('[data-g]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
-  el.querySelector('[data-new]').onclick = () => gorevForm({});
+  el.querySelectorAll('[data-gor]').forEach(b => b.onclick = () => { f.gor = b.dataset.gor; saveFilters(); el.querySelectorAll('[data-gor]').forEach(x => x.classList.toggle('on', x === b)); el.querySelector('[data-zv]').hidden = f.gor !== 'takvim'; draw(); });
+  el.querySelector('[data-z]').onchange = e => { f.ziyaret = e.target.checked; saveFilters(); draw(); };
+  el.querySelector('[data-new]').onclick = () => gorevForm({ son_tarih: f.gor === 'takvim' ? f.gun : today() });
   draw();
 }

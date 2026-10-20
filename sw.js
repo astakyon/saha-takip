@@ -1,6 +1,6 @@
 // Saha Takip service worker: uygulama dosyalarını ve harita karolarını önbelleğe alır
-const V = 'saha-v3';
-const SHELL = ['./', 'index.html', 'styles.css', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon-180.png', 'icons/icon.svg', 'js/kurulum.js',
+const V = 'saha-v4';
+const SHELL = ['./', 'index.html', 'styles.css', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon-180.png', 'icons/icon.svg', 'js/kurulum.js', 'js/birlestir.js', 'js/google.js', 'js/views/ice-aktar.js',
   'js/main.js', 'js/db.js', 'js/ui.js', 'js/forms.js', 'js/state.js',
   'js/views/map.js', 'js/views/projeler.js', 'js/views/firmalar.js', 'js/views/ziyaret.js',
   'js/views/urunler.js', 'js/views/panel.js', 'js/views/ayarlar.js', 'js/views/bolgeler.js', 'js/geo.js', 'js/data/iller.js'];
@@ -10,6 +10,7 @@ self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
   if (u.hostname.endsWith('supabase.co') || u.hostname.endsWith('supabase.in')) return;   // veri her zaman canlı
+  if (/googleapis\.com$|gstatic\.com$|google\.com$|nominatim\./.test(u.hostname)) return;   // Google ve adres servisleri önbelleğe alınmaz
   const tile = /tile\.openstreetmap\.org|arcgisonline\.com/.test(u.hostname);
   if (tile) {
     e.respondWith(caches.open('tiles').then(async c => {

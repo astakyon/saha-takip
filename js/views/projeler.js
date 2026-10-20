@@ -3,6 +3,7 @@ import { app, F, saveFilters } from '../state.js';
 import { esc, usd, num, pill, tarih, today, DURUMLAR, ACIK, ILLER, ILCELER, OSBLER, RAKIPLER, KAYIP_NEDENLERI, URUN_AILELERI, SEKTORLER,
   byId, firmaAd, match, toast, openDrawer, closeDrawer, exportXlsx, directionsUrl, confirmBox, durumRenk } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
+import { googleBul, aramaMetni } from '../google.js';
 import { backToList } from '../main.js';
 import { ziyaretForm, gorevForm } from './ziyaret.js';
 
@@ -210,7 +211,7 @@ export function projeDetay(id, init) {
       ${p._new ? '' : `<div class="dh-meta">${pill(p.durum)}<span>${usd(p.tutar_usd)}</span><span>${esc([p.ilce, p.il].filter(Boolean).join(', '))}</span></div>`}</div>
       <button class="x" data-close aria-label="Kapat">×</button></header>
     ${p._new ? '' : `<div class="dh-actions">
-      <button class="btn sm" data-a="ziyaret">Ziyaret ekle</button><button class="btn sm" data-a="gorev">Görev ekle</button>
+      <button class="btn sm" data-a="ziyaret">Ziyaret ekle</button><button class="btn sm" data-a="gorev">Görev ekle</button><button class="btn sm ghost" data-a="google">Google'dan konum al</button>${p.google_url ? `<a class="btn sm ghost" href="${esc(p.google_url)}" target="_blank" rel="noopener">Google Haritalar</a>` : ''}
       ${p.lat != null ? `<a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}">Yol tarifi</a>` : ''}
       <button class="btn sm ghost danger" data-a="sil">Sil</button></div>
       <div class="quick-durum" role="group" aria-label="Durumu hızlı değiştir">${DURUMLAR.map(d => `<button type="button" data-qd="${d.k}" class="${p.durum === d.k ? 'on' : ''}" style="--c:${d.c}">${d.k}</button>`).join('')}</div>`}
@@ -241,6 +242,7 @@ export function projeDetay(id, init) {
     const a = b.dataset.a;
     if (a === 'ziyaret') ziyaretForm({ proje_id: p.id, firma_id: p.emut_id || p.alici_id || p.bayi_id }, () => projeDetay(p.id));
     if (a === 'gorev') gorevForm({ proje_id: p.id, baslik: '' }, () => projeDetay(p.id));
+    if (a === 'google') googleBul({ q: aramaMetni(p), hedef: { table: 'projeler', rec: p }, sonra: () => projeDetay(p.id) });
     if (a === 'sil' && confirmBox(`“${p.ad}” silinsin mi? Bu işlem geri alınamaz.`)) { await app.db.del('projeler', p.id); toast('Proje silindi.'); closeDrawer(); app.refresh(); }
   });
   form.onsubmit = async e => {
