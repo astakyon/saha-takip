@@ -1,7 +1,9 @@
 import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, usd, num, pill, tarih, today, DURUMLAR, ACIK, ILLER, ILCELER, OSBLER, RAKIPLER, KAYIP_NEDENLERI, URUN_AILELERI, SEKTORLER,
-  byId, firmaAd, match, toast, openDrawer, closeDrawer, exportXlsx, directionsUrl, confirmBox, durumRenk } from '../ui.js';
+  byId, firmaAd, match, toast, openDrawer, closeDrawer, exportXlsx, directionsUrl, confirmBox, durumRenk, SANTIYE, olasilik, gunEkle } from '../ui.js';
+import { teklifForm } from './teklif.js';
+import { numuneForm } from './kayitlar.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { googleBul, aramaMetni } from '../google.js';
 import { backToList } from '../main.js';
@@ -50,6 +52,8 @@ export const PROJE_FORM = [
     { k: 'tutar_usd', l: 'Tahmini tutar (USD)', t: 'num' },
     { k: 'olasilik', l: 'Kazanma olasılığı (%)', t: 'num' },
     { k: 'beklenen_tarih', l: 'Beklenen sipariş tarihi', t: 'date' },
+    { k: 'santiye_asamasi', l: 'Şantiye aşaması', t: 'sel', opts: SANTIYE, help: 'İnce işler ve elektrik tesisatı aşamasında Bugün ekranı ziyaret hatırlatır' },
+    { k: 'alim_tarihi', l: 'Tahmini aydınlatma alımı', t: 'date', help: '30 gün kala Bugün ekranında uyarı çıkar' },
     { k: 'urun_gruplari', l: 'Ürün grupları', t: 'tags', opts: URUN_AILELERI, free: true },
     { k: 'ziyaret_edilecek', l: 'Ziyaret', t: 'chk', cl: 'Ziyaret edilecek' },
     { k: 'sorulacak', l: 'Sorulacak / yapılacak' },
@@ -71,6 +75,7 @@ export const PROJE_FORM = [
   ]},
   { title: 'Notlar ve fotoğraflar', fields: [
     { k: 'notlar', l: 'Notlar', t: 'area', rows: 4 },
+    { k: 'referans', l: 'Referans', t: 'chk', cl: 'Referans proje (galeride ve sunumda göster)' },
     { k: 'fotolar', l: 'Proje fotoğrafları', t: 'photos' },
   ]},
 ];
@@ -100,14 +105,14 @@ const SORTS = {
 const fa = id => id ? `<a href="#/firma/${id}" class="flink">${esc(firmaAd(id))}</a>` : '<span class="muted">—</span>';
 
 export function projelerView(el) {
-  const f = F('projeler', { q: '', yil: 'Tümü', durumlar: [], il: 'Tümü', kanal: 'Tümü', kritik: false, hedef: false, ziyaret: false, rakip: 'Tümü', sort: 'Duruma göre' });
+  const f = F('projeler', { q: '', yil: 'Tümü', durumlar: [], il: 'Tümü', kanal: 'Tümü', kritik: false, hedef: false, ziyaret: false, rakip: 'Tümü', sort: 'Duruma göre', gor: 'liste' });
   if (f._v !== 2) { f.yil = 'Tümü'; f.sort = 'Duruma göre'; f._v = 2; saveFilters(); }
   if (!SORTS[f.sort]) f.sort = 'Duruma göre';
   const bayiler = [...new Set(S.projeler.map(p => firmaAd(p.bayi_id)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
   const rakipler = [...new Set(S.projeler.map(p => p.rakip_marka).filter(Boolean))].sort();
   el.innerHTML = `
   <header class="vh"><div><h1>Projeler</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Yeni proje</button></div></header>
+    <div class="vh-act"><div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="liste" class="${f.gor !== 'huni' ? 'on' : ''}">Liste</button><button type="button" data-gor="huni" class="${f.gor === 'huni' ? 'on' : ''}">Satış hunisi</button></div><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Yeni proje</button></div></header>
   <div class="filters">
     <input type="search" data-q placeholder="Proje, firma (Emüt, Gemüt…), OSB, not ara" value="${esc(f.q)}" aria-label="Projelerde ara">
     <div class="seg" role="group" aria-label="Takip yılı">${['Tümü', '2026', '2027'].map(y => `<button type="button" data-yil="${y}" class="${String(f.yil) === y ? 'on' : ''}">${y === 'Tümü' ? 'Tüm projeler' : y + ' listesi'}</button>`).join('')}</div>
@@ -132,7 +137,8 @@ export function projelerView(el) {
     const list = filtered(f).sort(SORTS[f.sort]);
     const acik = list.filter(p => ACIK.includes(p.durum));
     const sipT = list.reduce((s, p) => s + (siparisToplam(p) || 0), 0);
-    el.querySelector('[data-sum]').innerHTML = `${list.length} proje · açık potansiyel <b>${usd(acik.reduce((s, p) => s + (+p.tutar_usd || 0), 0))}</b> · sipariş <b>${usd(sipT)}</b>`;
+    el.querySelector('[data-sum]').innerHTML = `${list.length} proje · açık potansiyel <b>${usd(acik.reduce((s, p) => s + (+p.tutar_usd || 0), 0))}</b> · ağırlıklı <b>${usd(acik.reduce((s, p) => s + (+p.tutar_usd || 0) * olasilik(p) / 100, 0))}</b> · sipariş <b>${usd(sipT)}</b>`;
+    if (f.gor === 'huni') return huni(el.querySelector('[data-rows]'), list, draw);
     el.querySelector('[data-rows]').innerHTML = list.length ? `<table class="ptable">
       <thead><tr><th class="c-dur">Durum</th><th class="c-sip r">Sipariş</th><th class="c-ad">Proje</th><th>Yer</th><th>Bölge / OSB</th><th>Yatırımcı</th><th>Projeci</th><th>Danışman</th><th>Gemüt</th><th>Emüt</th><th>Malzeme alıcısı</th><th>Kanal</th><th class="r">Tutar</th><th>Yıl</th><th>Kayıp / rakip</th></tr></thead>
       <tbody>${list.map(p => { const st = siparisToplam(p); return `<tr data-pid="${p.id}" style="--c:${durumRenk(p.durum)}" tabindex="0">
@@ -155,12 +161,8 @@ export function projelerView(el) {
     });
     el.querySelectorAll('[data-dsel]').forEach(sel => sel.onchange = async () => {
       const p = byId('projeler', sel.dataset.dsel), eski = p.durum;
-      try {
-        await app.db.save('projeler', { ...p, durum: sel.value });
-        await app.db.save('proje_gecmis', { proje_id: p.id, tarih: new Date().toISOString(), eski_durum: eski, yeni_durum: sel.value });
-        toast(`${p.ad}: ${eski} → ${sel.value}${sel.value === 'Kayıp' ? '. Kayıp bilgisini girmek için projeyi aç.' : ''}`);
-        sel.style.setProperty('--c', durumRenk(sel.value)); sel.closest('tr').style.setProperty('--c', durumRenk(sel.value));
-      } catch (e) { toast(e.message, 'err'); sel.value = eski; }
+      if (await durumDegistir(p, sel.value)) { sel.style.setProperty('--c', durumRenk(sel.value)); sel.closest('tr').style.setProperty('--c', durumRenk(sel.value)); }
+      else sel.value = eski;
     });
   };
   const reset = () => { Object.assign(f, { q: '', durumlar: [], il: 'Tümü', kanal: 'Tümü', kritik: false, hedef: false, ziyaret: false, rakip: 'Tümü' }); saveFilters(); projelerView(el); };
@@ -170,10 +172,51 @@ export function projelerView(el) {
   el.querySelectorAll('[data-k]').forEach(s => s.onchange = () => { f[s.dataset.k] = s.value; saveFilters(); draw(); });
   el.querySelectorAll('[data-b]').forEach(s => s.onchange = () => { f[s.dataset.b] = s.checked; saveFilters(); draw(); });
   el.querySelector('[data-reset]').onclick = reset;
+  el.querySelectorAll('[data-gor]').forEach(b => b.onclick = () => { f.gor = b.dataset.gor; saveFilters(); el.querySelectorAll('[data-gor]').forEach(x => x.classList.toggle('on', x === b)); el.classList.toggle('is-huni', f.gor === 'huni'); draw(); });
+  el.classList.toggle('is-huni', f.gor === 'huni');
   el.querySelector('[data-ft]').onclick = e => { const o = el.querySelector('.filters').classList.toggle('open'); e.target.setAttribute('aria-expanded', String(o)); };
   el.querySelector('[data-new]').onclick = () => yeniProje({});
   el.querySelector('[data-exp]').onclick = () => exportProjeler(filtered(f).sort(SORTS[f.sort]));
   draw();
+}
+
+export async function durumDegistir(p, yeni) {
+  const eski = p.durum; if (eski === yeni) return true;
+  try {
+    const o = { ...p, durum: yeni };
+    if (yeni === 'Sipariş' && !p.siparis_tarihi) o.siparis_tarihi = today();
+    await app.db.save('projeler', o);
+    await app.db.save('proje_gecmis', { proje_id: p.id, tarih: new Date().toISOString(), eski_durum: eski, yeni_durum: yeni });
+    toast(`${p.ad}: ${eski} → ${yeni}${yeni === 'Kayıp' ? '. Kayıp bilgisini girmek için projeyi aç.' : ''}`);
+    return true;
+  } catch (e) { toast(e.message, 'err'); return false; }
+}
+
+// Satış hunisi: aşama sütunları, sürükle-bırak (dokunmatikte kart üzerindeki seçimle)
+const HUNI = ['Proje', 'İhale', 'Teklif Verildi', 'Sıcak', 'Beklemede', 'Sipariş', 'Kayıp'];
+function huni(box, list, yenile) {
+  const t = today();
+  box.innerHTML = `<div class="huni">${HUNI.map(d => { const ps = list.filter(p => p.durum === d).sort((a, b) => (b.tutar_usd || 0) - (a.tutar_usd || 0));
+    const top = ps.reduce((s, p) => s + (+p.tutar_usd || 0), 0), ag = ps.reduce((s, p) => s + (+p.tutar_usd || 0) * olasilik(p) / 100, 0);
+    return `<section class="hcol" data-col="${d}" style="--c:${durumRenk(d)}" aria-label="${d}"><header><b>${d}</b><span>${ps.length}</span><small>${usd(top)}${ACIK.includes(d) && top ? ` · ağırlıklı ${usd(ag)}` : ''}</small></header>
+      <div class="hcards">${ps.slice(0, 80).map(p => `<article class="hcard" draggable="true" data-id="${p.id}" tabindex="0">
+        <b>${esc(p.ad)}</b><small>${esc([firmaAd(p.emut_id) || firmaAd(p.alici_id), p.ilce || p.il].filter(Boolean).join(' · '))}</small>
+        <span class="hc-bot"><span class="num">${usd(p.tutar_usd)}</span>${ACIK.includes(p.durum) ? `<small>%${olasilik(p)}</small>` : ''}${p.beklenen_tarih ? `<small class="${p.beklenen_tarih < t && ACIK.includes(p.durum) ? 'neg' : ''}">${tarih(p.beklenen_tarih)}</small>` : ''}</span>
+        <select data-tasi aria-label="${esc(p.ad)} aşamasını değiştir">${HUNI.concat('İptal').map(x => `<option ${x === p.durum ? 'selected' : ''}>${x}</option>`).join('')}</select></article>`).join('')}
+        ${ps.length > 80 ? `<p class="hint">+${ps.length - 80} proje daha; filtreyle daralt.</p>` : ''}</div></section>`; }).join('')}</div>`;
+  const tasi = async (id, d) => { const p = byId('projeler', id); if (p && p.durum !== d && await durumDegistir(p, d)) yenile(); };
+  box.querySelectorAll('.hcard').forEach(c => {
+    c.ondragstart = e => { e.dataTransfer.setData('text/plain', c.dataset.id); c.classList.add('drag'); };
+    c.ondragend = () => c.classList.remove('drag');
+    c.onclick = e => { if (!e.target.closest('select')) location.hash = '#/proje/' + c.dataset.id; };
+    c.onkeydown = e => { if (e.key === 'Enter' && !e.target.closest('select')) location.hash = '#/proje/' + c.dataset.id; };
+    c.querySelector('[data-tasi]').onchange = e => tasi(c.dataset.id, e.target.value);
+  });
+  box.querySelectorAll('.hcol').forEach(col => {
+    col.ondragover = e => { e.preventDefault(); col.classList.add('over'); };
+    col.ondragleave = () => col.classList.remove('over');
+    col.ondrop = e => { e.preventDefault(); col.classList.remove('over'); tasi(e.dataTransfer.getData('text/plain'), col.dataset.col); };
+  });
 }
 
 export function projeSatiri(p) {
@@ -182,7 +225,7 @@ export function projeSatiri(p) {
     'İl': p.il, 'İlçe': p.ilce, 'OSB': p.osb, 'Lokasyon': p.lokasyon, 'Sektör': p.sektor, 'Yeni/Refit': p.yeni_refit,
     'Yatırımcı': firmaAd(p.yatirimci_id), 'Projeci': firmaAd(p.projeci_id), 'Danışman': firmaAd(p.danisman_id), 'Gemüt': firmaAd(p.gemut_id), 'Emüt': firmaAd(p.emut_id), 'Alıcı': firmaAd(p.alici_id),
     'Kanal': p.kanal === 'Direkt' ? 'Direkt' : firmaAd(p.bayi_id), 'Takip eden': p.takipci, 'Çalışıldı': p.calisildi,
-    'Tutar (USD)': p.tutar_usd, 'Olasılık %': p.olasilik, 'Beklenen tarih': p.beklenen_tarih, 'Teklif no': p.teklif_no, 'Ürün grupları': (p.urun_gruplari || []).join(', '),
+    'Tutar (USD)': p.tutar_usd, 'Olasılık %': p.olasilik, 'Beklenen tarih': p.beklenen_tarih, 'Şantiye aşaması': p.santiye_asamasi, 'Aydınlatma alımı': p.alim_tarihi, 'Referans': p.referans ? 'Evet' : '', 'Teklif no': p.teklif_no, 'Ürün grupları': (p.urun_gruplari || []).join(', '),
     'Sipariş tutarı (USD)': p.siparis_tutari_usd, 'Kayıp nedeni': p.kayip_nedeni, 'İşi alan marka': p.rakip_marka, 'Rakip ürün': p.rakip_urun,
     'Rakip birim fiyat': p.rakip_birim_fiyat, 'Rakip miktar': p.rakip_miktar, 'Rakip toplam (USD)': p.rakip_toplam_usd, 'Bizim teklif (USD)': p.bizim_teklif_usd, 'Kayıp detayı': p.kayip_aciklama,
     'Notlar': p.notlar, 'Enlem': p.lat, 'Boylam': p.lng,
@@ -206,19 +249,20 @@ export function projeDetay(id, init) {
   const sip = S.siparisler.filter(s => s.proje_id === p.id).sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
   const gec = S.proje_gecmis.filter(g => g.proje_id === p.id).sort((a, b) => b.tarih.localeCompare(a.tarih));
   const gor = S.gorevler.filter(g => g.proje_id === p.id);
+  const tek = S.teklifler.filter(x => x.proje_id === p.id).sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
   const panel = openDrawer(`
     <header class="dh" style="--c:${durumRenk(p.durum)}"><div><p class="muted">${p._new ? 'Yeni proje' : 'Proje'}</p><h2 id="drawer-title">${esc(p.ad || 'Yeni proje')}</h2>
       ${p._new ? '' : `<div class="dh-meta">${pill(p.durum)}<span>${usd(p.tutar_usd)}</span><span>${esc([p.ilce, p.il].filter(Boolean).join(', '))}</span></div>`}</div>
       <button class="x" data-close aria-label="Kapat">×</button></header>
     ${p._new ? '' : `<div class="dh-actions">
-      <button class="btn sm" data-a="ziyaret">Ziyaret ekle</button><button class="btn sm" data-a="gorev">Görev ekle</button><button class="btn sm ghost" data-a="google">Google'dan konum al</button>${p.google_url ? `<a class="btn sm ghost" href="${esc(p.google_url)}" target="_blank" rel="noopener">Google Haritalar</a>` : ''}
+      <button class="btn sm" data-a="ziyaret">Ziyaret ekle</button><button class="btn sm" data-a="gorev">Görev ekle</button><button class="btn sm" data-a="teklif">Teklif hazırla</button><button class="btn sm ghost" data-a="numune">Numune ver</button><button class="btn sm ghost" data-a="google">Google'dan konum al</button>${p.google_url ? `<a class="btn sm ghost" href="${esc(p.google_url)}" target="_blank" rel="noopener">Google Haritalar</a>` : ''}
       ${p.lat != null ? `<a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}">Yol tarifi</a>` : ''}
       <button class="btn sm ghost danger" data-a="sil">Sil</button></div>
       <div class="quick-durum" role="group" aria-label="Durumu hızlı değiştir">${DURUMLAR.map(d => `<button type="button" data-qd="${d.k}" class="${p.durum === d.k ? 'on' : ''}" style="--c:${d.c}">${d.k}</button>`).join('')}</div>`}
     <form class="dbody form" novalidate>
       ${renderForm(PROJE_FORM, p)}
       <div class="calc" data-calc hidden></div>
-      ${p._new ? '' : related(ziy, sip, gec, gor)}
+      ${p._new ? '' : related(ziy, sip, gec, gor, tek)}
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div>
     </form>`, { wide: true, onClose: () => backToList() });
   const form = panel.querySelector('form');
@@ -238,9 +282,12 @@ export function projeDetay(id, init) {
     panel.querySelectorAll('[data-qd]').forEach(x => x.classList.toggle('on', x === b));
     if (d === 'Kayıp') form.querySelector('[data-show="kayip"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
+  panel.querySelectorAll('[data-tk]').forEach(b => b.onclick = () => teklifForm({ id: b.dataset.tk }, () => projeDetay(p.id)));
   panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     const a = b.dataset.a;
     if (a === 'ziyaret') ziyaretForm({ proje_id: p.id, firma_id: p.emut_id || p.alici_id || p.bayi_id }, () => projeDetay(p.id));
+    if (a === 'teklif') teklifForm({ proje_id: p.id }, () => projeDetay(p.id));
+    if (a === 'numune') numuneForm({ proje_id: p.id, firma_id: p.emut_id || p.alici_id || null });
     if (a === 'gorev') gorevForm({ proje_id: p.id, baslik: '' }, () => projeDetay(p.id));
     if (a === 'google') googleBul({ q: aramaMetni(p), hedef: { table: 'projeler', rec: p }, sonra: () => projeDetay(p.id) });
     if (a === 'sil' && confirmBox(`“${p.ad}” silinsin mi? Bu işlem geri alınamaz.`)) { await app.db.del('projeler', p.id); toast('Proje silindi.'); closeDrawer(); app.refresh(); }
@@ -268,8 +315,9 @@ export function projeDetay(id, init) {
   };
 }
 
-function related(ziy, sip, gec, gor) {
+function related(ziy, sip, gec, gor, tek) {
   return `<section class="rel">
+    ${tek.length ? `<h3>Teklifler <span class="muted">${tek.length}</span></h3><ul class="list">${tek.map(x => `<li><button type="button" class="linkbtn" data-tk="${x.id}">${esc(x.teklif_no || 'Teklif')}</button><span class="muted">${tarih(x.tarih)} · ${esc(x.durum)}</span><b class="num">${num(x.toplam)} ${esc(x.para_birimi || '')}</b></li>`).join('')}</ul>` : ''}
     <h3>Ziyaretler <span class="muted">${ziy.length}</span></h3>
     ${ziy.length ? `<ul class="list">${ziy.map(z => `<li><span class="muted">${tarih(z.tarih)}</span><span>${esc(firmaAd(z.firma_id))} — ${esc((z.notlar || '').slice(0, 120))}</span></li>`).join('')}</ul>` : '<p class="hint">Bu projeye bağlı ziyaret yok.</p>'}
     ${gor.length ? `<h3>Görevler <span class="muted">${gor.length}</span></h3><ul class="list">${gor.map(g => `<li><span>${g.durum === 'Tamam' ? '✓' : '○'} ${esc(g.baslik)}</span><span class="muted">${tarih(g.son_tarih)}</span></li>`).join('')}</ul>` : ''}

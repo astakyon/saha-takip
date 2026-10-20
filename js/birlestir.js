@@ -4,12 +4,13 @@
 import { S, TABLES, pick } from './db.js';
 import { fold } from './ui.js';
 
-export const SIRA = ['bolgeler', 'firmalar', 'kisiler', 'projeler', 'proje_gecmis', 'ziyaretler', 'gorevler', 'urunler', 'stok_gecmis', 'rakip_fiyatlar', 'siparisler', 'hedefler'];
+export const SIRA = ['ayarlar', 'bolgeler', 'firmalar', 'kisiler', 'projeler', 'proje_gecmis', 'ziyaretler', 'gorevler', 'urunler', 'urun_aileleri', 'stok_gecmis', 'rakip_fiyatlar', 'siparisler', 'hedefler', 'teklifler', 'numuneler', 'servis_kayitlari', 'masraflar'];
 const FK = {
   firmalar: ['bolge_id'], kisiler: ['firma_id'],
   projeler: ['bayi_id', 'yatirimci_id', 'projeci_id', 'danisman_id', 'gemut_id', 'emut_id', 'alici_id', 'ilgili_kisi_id', 'bolge_id'],
   proje_gecmis: ['proje_id'], ziyaretler: ['firma_id', 'kisi_id', 'proje_id'], gorevler: ['firma_id', 'proje_id', 'kisi_id'],
   rakip_fiyatlar: ['proje_id'], siparisler: ['firma_id', 'proje_id'],
+  teklifler: ['proje_id', 'firma_id', 'kisi_id'], numuneler: ['firma_id', 'kisi_id', 'proje_id'], servis_kayitlari: ['firma_id', 'kisi_id', 'proje_id'],
 };
 const nk = s => fold(s || '').replace(/[^a-z0-9]+/g, '');
 const KEY = {
@@ -21,9 +22,11 @@ const KEY = {
   rakip_fiyatlar: r => [r.marka, r.aile, r.lumen_aralik, r.fiyat_metin, r.proje_id].map(nk).join(':'),
   siparisler: r => (r.belge_no || '') + ':' + (r.siparis_no || ''),
   hedefler: r => r.yil + ':' + r.ceyrek, proje_gecmis: r => r.id,
+  teklifler: r => r.id, numuneler: r => r.id, servis_kayitlari: r => r.id, masraflar: r => r.id,
+  urun_aileleri: r => nk(r.aile), ayarlar: r => String(r.anahtar || ''),
 };
 const KONUM = ['lat', 'lng', 'konum_yaklasik', 'il', 'ilce', 'belde', 'osb', 'bolge_id', 'adres'];
-const KORU = ['fotolar', 'kartvizit_on', 'kartvizit_arka', 'geojson', 'renk', 'google_place_id', 'google_url'];
+const KORU = ['fotolar', 'kartvizit_on', 'kartvizit_arka', 'geojson', 'renk', 'google_place_id', 'google_url', 'fis'];
 const bos = v => v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length);
 const ayni = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 

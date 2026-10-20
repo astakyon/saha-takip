@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 3)
+--  Saha Satış Takip — Supabase şeması (sürüm 4)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -177,12 +177,71 @@ alter table public.firmalar add column if not exists google_url text;
 alter table public.projeler add column if not exists google_place_id text;
 alter table public.projeler add column if not exists google_url text;
 
+-- ---------- Sürüm 4: şantiye takibi, referans, teklif, numune, servis, masraf, katalog, ayarlar ----------
+alter table public.projeler add column if not exists santiye_asamasi text;
+alter table public.projeler add column if not exists alim_tarihi date;
+alter table public.projeler add column if not exists referans boolean default false;
+
+create table if not exists public.teklifler (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  proje_id uuid references public.projeler(id) on delete set null,
+  firma_id uuid references public.firmalar(id) on delete set null,
+  kisi_id uuid references public.kisiler(id) on delete set null,
+  teklif_no text, tarih date default current_date, gecerlilik date,
+  para_birimi text default 'USD', iskonto numeric default 0, kdv numeric default 20,
+  kalemler jsonb not null default '[]',          -- [{kod, aciklama, adet, birim, birim_fiyat}]
+  toplam numeric, durum text default 'Taslak', notlar text,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create table if not exists public.numuneler (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  urun_kod text, urun_ad text, adet numeric default 1,
+  firma_id uuid references public.firmalar(id) on delete set null,
+  kisi_id uuid references public.kisiler(id) on delete set null,
+  proje_id uuid references public.projeler(id) on delete set null,
+  verilis date default current_date, iade_tarihi date, durum text default 'Müşteride', notlar text,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create table if not exists public.servis_kayitlari (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  tarih date default current_date, tip text default 'Arıza',
+  firma_id uuid references public.firmalar(id) on delete set null,
+  kisi_id uuid references public.kisiler(id) on delete set null,
+  proje_id uuid references public.projeler(id) on delete set null,
+  urun text, adet numeric, aciklama text, durum text default 'Açık', cozum text, cozum_tarihi date,
+  fotolar text[] not null default '{}',
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create table if not exists public.masraflar (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  tarih date not null default current_date, tip text default 'Yakıt', tutar numeric, km numeric, aciklama text, fis text,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create table if not exists public.urun_aileleri (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  aile text not null, ad text, aciklama text, ozellikler text, datasheet_url text,
+  fotolar text[] not null default '{}',
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create table if not exists public.ayarlar (               -- cihazlar arasında eşitlenen ayarlar (Google anahtarı, mesaj şablonları…)
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  anahtar text not null, deger jsonb,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+
 -- ---------- RLS + tetikleyiciler ----------
 do $$
 declare t text;
 begin
   foreach t in array array['firmalar','kisiler','projeler','proje_gecmis','ziyaretler','gorevler',
-                           'urunler','stok_gecmis','rakip_fiyatlar','siparisler','hedefler','bolgeler'] loop
+                           'urunler','stok_gecmis','rakip_fiyatlar','siparisler','hedefler','bolgeler',
+                           'teklifler','numuneler','servis_kayitlari','masraflar','urun_aileleri','ayarlar'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('drop policy if exists "sahibi" on public.%I', t);
     execute format('create policy "sahibi" on public.%I for all to authenticated using (owner = auth.uid()) with check (owner = auth.uid())', t);

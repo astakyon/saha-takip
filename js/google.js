@@ -1,12 +1,14 @@
 // Google Haritalar: işletme arama (Places), Google haritasında seçme ve bilgileri kayda aktarma.
 // Google'ın kullanım koşulları gereği Google verisi Google haritası üzerinde gösterilir; kayda yer kimliği (place_id) yazılır.
 import { S, getConfig, setConfig } from './db.js';
+import { ayar, ayarYaz } from './ayar.js';
 import { app } from './state.js';
 import { esc, fold, toast, openDrawer, closeDrawer, IL_MERKEZ } from './ui.js';
 import { konumAlgila, konumMetni } from './geo.js';
 
-export const googleKey = () => getConfig()?.googleKey || '';
-export function setGoogleKey(k) { setConfig({ ...(getConfig() || {}), googleKey: (k || '').trim() || undefined }); gmLoad = null; }
+// Anahtar hesabına kaydedilir: telefonda ve bilgisayarda bir kez girmek yeter (eski sürümde cihazda tutulan anahtar da okunur)
+export const googleKey = () => ayar('google_key') || getConfig()?.googleKey || '';
+export async function setGoogleKey(k) { const c = { ...(getConfig() || {}) }; delete c.googleKey; setConfig(c); await ayarYaz('google_key', (k || '').trim() || null); gmLoad = null; }
 
 let gmLoad = null;
 export function loadGoogle() {
@@ -66,12 +68,12 @@ export function anahtarFormu() {
     </ol>
     <form class="form" data-gkey><div class="fld"><label for="gkey">Google API anahtarı</label><input id="gkey" autocomplete="off" spellcheck="false" placeholder="AIza…" value="${esc(googleKey())}"></div>
     <div class="btnrow"><button class="btn primary" type="submit">Kaydet</button>${googleKey() ? '<button class="btn ghost" type="button" data-gdel>Anahtarı kaldır</button>' : ''}</div></form>
-    <p class="hint">Anahtar bu cihazda saklanır; telefonda ve bilgisayarda ayrı ayrı girilir. Anahtarı kısıtladığın için başka bir sitede kullanılamaz.</p>`;
+    <p class="hint">Anahtar hesabına kaydedilir; telefonda ve bilgisayarda bir kez girmen yeter. Anahtarı kısıtladığın için başka bir sitede kullanılamaz.</p>`;
 }
 export function anahtarBagla(root, sonra) {
   const f = root.querySelector('[data-gkey]');
-  f.onsubmit = e => { e.preventDefault(); const k = f.querySelector('#gkey').value.trim(); if (!/^AIza[\w-]{30,}$/.test(k)) return toast('Anahtar “AIza” ile başlamalı ve tam kopyalanmalı.', 'err'); setGoogleKey(k); toast('Google API anahtarı kaydedildi.'); closeDrawer(); sonra && sonra(); };
-  root.querySelector('[data-gdel]')?.addEventListener('click', () => { setGoogleKey(''); toast('Anahtar kaldırıldı.'); closeDrawer(); });
+  f.onsubmit = async e => { e.preventDefault(); const k = f.querySelector('#gkey').value.trim(); if (!/^AIza[\w-]{30,}$/.test(k)) return toast('Anahtar “AIza” ile başlamalı ve tam kopyalanmalı.', 'err'); await setGoogleKey(k); toast('Google API anahtarı kaydedildi.'); closeDrawer(); sonra && sonra(); };
+  root.querySelector('[data-gdel]')?.addEventListener('click', async () => { await setGoogleKey(''); toast('Anahtar kaldırıldı.'); closeDrawer(); });
 }
 
 // ---------- Google'da ara ve seç ----------

@@ -8,23 +8,124 @@
   "start_url": "./?src=app",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "any",
   "background_color": "#1D2B36",
   "theme_color": "#1D2B36",
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/icon-mono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "monochrome" },
-    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-mono-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "monochrome"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
   ],
   "shortcuts": [
-    { "name": "Ziyaret kaydet", "short_name": "Ziyaret", "description": "Bulunduğun yerde yeni ziyaret kaydı aç", "url": "./?act=ziyaret", "icons": [{ "src": "icons/kisayol-ziyaret.png", "sizes": "96x96" }] },
-    { "name": "Harita", "short_name": "Harita", "description": "Proje ve firma haritası", "url": "./?act=harita", "icons": [{ "src": "icons/kisayol-harita.png", "sizes": "96x96" }] },
-    { "name": "Ziyaret takvimi", "short_name": "Takvim", "description": "Bu haftanın ziyaretleri", "url": "./?act=takvim", "icons": [{ "src": "icons/kisayol-takvim.png", "sizes": "96x96" }] },
-    { "name": "Projeler", "short_name": "Projeler", "description": "Tüm proje listesi", "url": "./?act=projeler", "icons": [{ "src": "icons/kisayol-projeler.png", "sizes": "96x96" }] }
-  ]
+    {
+      "name": "Bugün",
+      "short_name": "Bugün",
+      "description": "Günün planı, rota ve hatırlatmalar",
+      "url": "./?act=bugun",
+      "icons": [
+        {
+          "src": "icons/kisayol-takvim.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Ziyaret kaydet",
+      "short_name": "Ziyaret",
+      "description": "Bulunduğun yerde yeni ziyaret kaydı aç",
+      "url": "./?act=ziyaret",
+      "icons": [
+        {
+          "src": "icons/kisayol-ziyaret.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Harita",
+      "short_name": "Harita",
+      "description": "Proje ve firma haritası",
+      "url": "./?act=harita",
+      "icons": [
+        {
+          "src": "icons/kisayol-harita.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Ziyaret takvimi",
+      "short_name": "Takvim",
+      "description": "Bu haftanın ziyaretleri",
+      "url": "./?act=takvim",
+      "icons": [
+        {
+          "src": "icons/kisayol-takvim.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Projeler",
+      "short_name": "Projeler",
+      "description": "Tüm proje listesi",
+      "url": "./?act=projeler",
+      "icons": [
+        {
+          "src": "icons/kisayol-projeler.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "./",
+    "method": "GET",
+    "params": {
+      "title": "paylas_baslik",
+      "text": "paylas_metin",
+      "url": "paylas_url"
+    }
+  }
 }

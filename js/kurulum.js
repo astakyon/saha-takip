@@ -48,7 +48,7 @@ setTimeout(banner, 1500);
 // Ana ekran simgesine uzun basınca çıkan kısayollar: ?act=ziyaret | harita | takvim | projeler
 export function kisayolAl() {
   let act = null; try { act = new URLSearchParams(location.search).get('act'); } catch {}
-  if (!act || !/^(ziyaret|harita|takvim|projeler)$/.test(act)) return null;
+  if (!act || !/^(ziyaret|harita|takvim|projeler|bugun)$/.test(act)) return null;
   try { history.replaceState(null, '', location.pathname + (act === 'ziyaret' ? '#/ziyaretler' : '#/' + act)); } catch {}
   return act;
 }

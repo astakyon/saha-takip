@@ -2,7 +2,7 @@
 export const TABLES = {
   firmalar: ['id','ad','tipler','il','ilce','belde','osb','bolge_id','adres','lat','lng','konum_yaklasik','telefon','eposta','web','vergi_no','segment','sektor','key_account','notlar','fotolar','google_place_id','google_url'],
   kisiler: ['id','firma_id','ad_soyad','unvan','telefon','eposta','rol','kartvizit_on','kartvizit_arka','dogum_gunu','notlar'],
-  projeler: ['id','ad','durum','durum_alt','kritik','takip_yili','hedef_listesi','baska_bolge','il','ilce','belde','bolge_id','osb','lokasyon','adres','lat','lng','konum_yaklasik','icerik','kanal','bayi_id','takipci','takipci_tel','calisildi','tutar_usd','olasilik','beklenen_tarih','teklif_no','crm_kodu','urun_gruplari','sektor','alt_sektor','yeni_refit','yatirimci_id','projeci_id','danisman_id','gemut_id','emut_id','alici_id','ilgili_kisi_id','ziyaret_edilecek','sorulacak','notlar','fotolar','siparis_tutari_usd','siparis_tarihi','bizim_teklif_usd','bizim_urun','rakip_marka','rakip_urun','rakip_birim_fiyat','rakip_miktar','rakip_toplam_usd','kayip_nedeni','kayip_aciklama','google_place_id','google_url'],
+  projeler: ['id','ad','durum','durum_alt','kritik','takip_yili','hedef_listesi','baska_bolge','il','ilce','belde','bolge_id','osb','lokasyon','adres','lat','lng','konum_yaklasik','icerik','kanal','bayi_id','takipci','takipci_tel','calisildi','tutar_usd','olasilik','beklenen_tarih','teklif_no','crm_kodu','urun_gruplari','sektor','alt_sektor','yeni_refit','yatirimci_id','projeci_id','danisman_id','gemut_id','emut_id','alici_id','ilgili_kisi_id','ziyaret_edilecek','sorulacak','notlar','fotolar','siparis_tutari_usd','siparis_tarihi','bizim_teklif_usd','bizim_urun','rakip_marka','rakip_urun','rakip_birim_fiyat','rakip_miktar','rakip_toplam_usd','kayip_nedeni','kayip_aciklama','google_place_id','google_url','santiye_asamasi','alim_tarihi','referans'],
   proje_gecmis: ['id','proje_id','tarih','eski_durum','yeni_durum','notlar'],
   ziyaretler: ['id','tarih','saat','durum','firma_id','kisi_id','proje_id','amac','notlar','sonuc_tipi','sonuc','lat','lng','fotolar'],
   gorevler: ['id','baslik','son_tarih','oncelik','durum','firma_id','proje_id','kisi_id','notlar'],
@@ -12,6 +12,12 @@ export const TABLES = {
   siparisler: ['id','siparis_no','belge_no','belge_turu','musteri_no','musteri_adi','firma_id','tarih','teslim_tarihi','referans','net_deger','para_birimi','proje_tanimi','proje_id','drv'],
   hedefler: ['id','yil','ceyrek','tutar_usd'],
   bolgeler: ['id','ad','tip','grup','il','ilce','renk','geojson','notlar'],
+  teklifler: ['id','proje_id','firma_id','kisi_id','teklif_no','tarih','gecerlilik','para_birimi','iskonto','kdv','kalemler','toplam','durum','notlar'],
+  numuneler: ['id','urun_kod','urun_ad','adet','firma_id','kisi_id','proje_id','verilis','iade_tarihi','durum','notlar'],
+  servis_kayitlari: ['id','tarih','tip','firma_id','kisi_id','proje_id','urun','adet','aciklama','durum','cozum','cozum_tarihi','fotolar'],
+  masraflar: ['id','tarih','tip','tutar','km','aciklama','fis'],
+  urun_aileleri: ['id','aile','ad','aciklama','ozellikler','datasheet_url','fotolar'],
+  ayarlar: ['id','anahtar','deger'],
 };
 const ARRAYS = new Set(['tipler','fotolar','urun_gruplari']);
 

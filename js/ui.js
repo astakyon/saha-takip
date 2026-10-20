@@ -27,6 +27,26 @@ export const RAKIPLER = ['Ledvance', 'Philips', 'Pelsan', 'İkizler', 'Proton', 
 export const KAYIP_NEDENLERI = ['Fiyat', 'Şartname dışı kaldık', 'Müşteri ilişkisi', 'Teslim süresi', 'Ödeme koşulu', 'Teknik yetersizlik', 'Proje iptal', 'Bayi tercihi', 'Diğer'];
 export const URUN_AILELERI = ['HBL', 'RVX', 'REVOLED X', 'TRD', 'BLM', 'DWL', 'STL', 'EXT', 'YPL', 'PRK', 'VLR', 'ALB', 'REV', 'SROUND', 'ETANJ', 'INFINOO', '60x60', 'DOWNLED', 'PROLIT', 'RA-HORUS-OSIRIS', 'FLP', 'BB'];
 export const SEKTORLER = ['Endüstriyel', 'Gıda', 'Metal / Demir Çelik', 'Kimya', 'Enerji', 'Lojistik / Depo', 'Konut', 'Ofis', 'AVM / Ticari', 'Hastane', 'Okul', 'Kamu', 'Otopark / Çevre', 'Tekstil', 'Kağıt / Ambalaj', 'Havalimanı / Altyapı', 'Diğer'];
+// Kazanma olasılığı girilmemiş projelerde aşamaya göre varsayılan (%)
+export const OLASILIK = { 'Proje': 10, 'İhale': 25, 'Teklif Verildi': 40, 'Sıcak': 70, 'Beklemede': 15, 'Sipariş': 100, 'Kayıp': 0, 'İptal': 0 };
+export const olasilik = p => p.olasilik !== null && p.olasilik !== undefined && p.olasilik !== '' ? +p.olasilik : (OLASILIK[p.durum] ?? 10);
+export const SANTIYE = ['Proje aşamasında', 'Temel / kaba inşaat', 'İnce işler', 'Elektrik tesisatı', 'Tamamlanmak üzere', 'Tamamlandı'];
+export const SERVIS_TIP = ['Arıza', 'Garanti', 'İade', 'Şikayet', 'Montaj desteği', 'Diğer'];
+export const MASRAF_TIP = ['Yakıt', 'Yemek', 'Otopark', 'Konaklama', 'Köprü / otoyol', 'Ulaşım', 'Diğer'];
+// WhatsApp bağlantısı (Türkiye numarası 0 ile başlıyorsa 90 eklenir)
+export function waLink(tel, metin) {
+  let n = String(tel || '').replace(/\D/g, '');
+  if (n.startsWith('0')) n = '90' + n.slice(1); else if (n.length === 10) n = '90' + n;
+  return `https://wa.me/${n}?text=${encodeURIComponent(metin || '')}`;
+}
+// Ürün açıklamasından güç (W), ışık akısı (lm) ve renk sıcaklığı (K): "HBL 152U 65OA00 90 23K9 IP65" → 152 W, 23 900 lm, 6500 K
+export function urunBilgi(ac) {
+  const t = String(ac || '').trim().split(/\s+/);
+  const w = /^(\d{2,4})[A-Z]$/.exec(t[1] || ''); const k = /^(\d{2})[A-Z]{2}/.exec(t[2] || '');
+  const lmTok = t.slice(2).find(x => /^\d{1,3}K\d{1,2}$/.test(x)); const lm = lmTok && /^(\d+)K(\d{1,2})$/.exec(lmTok);
+  const W = w ? +w[1] : null, LM = lm ? Math.round(parseFloat(lm[1] + '.' + lm[2]) * 1000) : null;
+  return { w: W, lm: LM, k: k ? +k[1] * 100 : null, verim: W && LM ? Math.round(LM / W) : null };
+}
 export const ZIYARET_DURUM = [{ k: 'Planlandı', c: '#7C3AED' }, { k: 'Yapıldı', c: '#0E7490' }, { k: 'İptal', c: '#A1A1AA' }];
 export const SONUC_TIPLERI = ['Sipariş alındı', 'Pazarlık sürüyor', 'Olumlu', 'Teklif istendi', 'Takip edilecek', 'Bilgi alındı', 'Olumsuz', 'Görüşülemedi'];
 export const BOLGE_TIPLERI = ['OSB', 'Sanayi sitesi', 'Serbest bölge', 'Liman', 'Küçük sanayi', 'Diğer'];
@@ -38,7 +58,9 @@ export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;'
 export const usd = n => n == null || n === '' || isNaN(n) ? '—' : new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(n) + ' $';
 export const num = n => n == null || n === '' ? '—' : new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(n);
 export const tarih = d => d ? new Date(d.length === 10 ? d + 'T00:00' : d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-export const today = () => new Date().toISOString().slice(0, 10);
+export const isoLocal = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
+export const today = () => isoLocal(new Date());
+export const gunEkle = (s, n) => { const d = new Date(s + 'T00:00'); d.setDate(d.getDate() + n); return isoLocal(d); };
 export const trLower = s => String(s ?? '').replace(/I/g, 'ı').replace(/İ/g, 'i').toLocaleLowerCase('tr');
 export const fold = s => trLower(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ı/g, 'i');
 export const match = (q, ...fields) => { const f = fold(q).trim(); if (!f) return true; const hay = fold(fields.filter(Boolean).join(' ')); return f.split(/\s+/).every(w => hay.includes(w)); };

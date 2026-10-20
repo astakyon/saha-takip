@@ -7,6 +7,9 @@ import { googleBul, aramaMetni } from '../google.js';
 import { backToList } from '../main.js';
 import { projeRolleri } from './projeler.js';
 import { ziyaretForm } from './ziyaret.js';
+import { waGonder } from '../sablon.js';
+import { teklifForm } from './teklif.js';
+import { numuneForm, servisForm } from './kayitlar.js';
 
 const FIRMA_FORM = [
   { title: 'Firma', fields: [
@@ -105,6 +108,7 @@ export function firmaDetay(id, init) {
       ${x._new ? '' : `<div class="dh-meta"><span>${projeler.length} proje</span><span>${won} sipariş</span><span>${lost} kayıp</span>${sip.length ? `<span>${usd(sipT)} sipariş (2026)</span>` : ''}</div>`}</div>
       <button class="x" data-close aria-label="Kapat">×</button></header>
     ${x._new ? '' : `<div class="dh-actions"><button class="btn sm" data-a="kisi">Kişi ekle</button><button class="btn sm" data-a="ziyaret">Ziyaret ekle</button><button class="btn sm ghost" data-a="google">Google'dan bilgi al</button>${x.google_url ? `<a class="btn sm ghost" href="${esc(x.google_url)}" target="_blank" rel="noopener">Google Haritalar</a>` : ''}
+      <button class="btn sm ghost" data-a="wa">WhatsApp</button><button class="btn sm ghost" data-a="teklif">Teklif</button><button class="btn sm ghost" data-a="numune">Numune</button><button class="btn sm ghost" data-a="servis">Servis kaydı</button>
       ${x.telefon ? `<a class="btn sm ghost" href="tel:${esc(x.telefon)}">Ara</a>` : ''}
       ${x.lat != null ? `<a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(x.lat, x.lng)}">Yol tarifi</a>` : ''}
       <button class="btn sm ghost danger" data-a="sil">Sil</button></div>`}
@@ -127,6 +131,10 @@ export function firmaDetay(id, init) {
   panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     const a = b.dataset.a;
     if (a === 'kisi') kisiDetay(null, { firma_id: x.id });
+    if (a === 'wa') waGonder({ firma: x, kisi: kisiler.find(k => k.telefon) || null });
+    if (a === 'teklif') teklifForm({ firma_id: x.id, kisi_id: kisiler[0]?.id || null });
+    if (a === 'numune') numuneForm({ firma_id: x.id, kisi_id: kisiler[0]?.id || null });
+    if (a === 'servis') servisForm({ firma_id: x.id });
     if (a === 'ziyaret') ziyaretForm({ firma_id: x.id }, () => firmaDetay(x.id));
     if (a === 'google') googleBul({ q: aramaMetni(x), hedef: { table: 'firmalar', rec: x }, sonra: () => firmaDetay(x.id) });
     if (a === 'sil' && confirmBox(`“${x.ad}” silinsin mi? Projelerdeki bağlantıları boşaltılır.`)) {
@@ -176,7 +184,7 @@ export function kisiDetay(id, init) {
   const panel = openDrawer(`
     <header class="dh"><div><p class="muted">${k._new ? 'Yeni kişi' : esc(firmaAd(k.firma_id) || 'Kişi')}</p><h2 id="drawer-title">${esc(k.ad_soyad || 'Yeni kişi')}</h2></div>
       <button class="x" data-close aria-label="Kapat">×</button></header>
-    ${k._new ? '' : `<div class="dh-actions">${k.telefon ? `<a class="btn sm" href="tel:${esc(k.telefon)}">Ara</a><a class="btn sm ghost" href="https://wa.me/${esc(k.telefon.replace(/\D/g, '').replace(/^0/, '90'))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+    ${k._new ? '' : `<div class="dh-actions">${k.telefon ? `<a class="btn sm" href="tel:${esc(k.telefon)}">Ara</a><button type="button" class="btn sm ghost" data-a="wa">WhatsApp</button>` : ''}
       ${k.eposta ? `<a class="btn sm ghost" href="mailto:${esc(k.eposta)}">E-posta</a>` : ''}<button class="btn sm ghost" data-a="vcf">Rehbere kaydet</button>
       <button class="btn sm ghost danger" data-a="sil">Sil</button></div>`}
     <form class="dbody form" novalidate>
@@ -205,6 +213,7 @@ export function kisiDetay(id, init) {
     show();
   });
   panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
+    if (b.dataset.a === 'wa') waGonder({ kisi: k });
     if (b.dataset.a === 'vcf') {
       const fa = firmaAd(k.firma_id);
       const v = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${k.ad_soyad}`, `N:${k.ad_soyad.split(' ').slice(-1)};${k.ad_soyad.split(' ').slice(0, -1).join(' ')};;;`, fa && `ORG:${fa}`, k.unvan && `TITLE:${k.unvan}`, k.telefon && `TEL;TYPE=CELL:${k.telefon}`, k.eposta && `EMAIL:${k.eposta}`, 'END:VCARD'].filter(Boolean).join('\r\n');

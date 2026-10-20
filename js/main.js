@@ -10,21 +10,35 @@ import { urunlerView, rakipView } from './views/urunler.js';
 import { panelView, siparislerView } from './views/panel.js';
 import { ayarlarView, loginView } from './views/ayarlar.js';
 import { kisayolAl, canInstall, install, onInstallChange } from './kurulum.js';
+import { bugunView } from './views/bugun.js';
+import { araclarView } from './views/araclar.js';
+import { tekliflerView } from './views/teklif.js';
+import { katalogView, referanslarView } from './views/katalog.js';
+import { numunelerView, servisView, masraflarView } from './views/kayitlar.js';
+import { paylasimAl, paylasimPaneli } from './paylas.js';
 
 const ROUTES = {
+  bugun:     { t: 'Bugün', ico: 'sun', v: bugunView, main: true },
   harita:    { t: 'Harita', ico: 'map', v: mapView, main: true },
   projeler:  { t: 'Projeler', ico: 'folder', v: projelerView, main: true },
   takvim:    { t: 'Takvim', ico: 'cal', v: takvimView, main: true },
   firmalar:  { t: 'Firmalar', ico: 'building', v: firmalarView, main: true },
-  ziyaretler:{ t: 'Ziyaretler', ico: 'pin', v: ziyaretlerView },
-  bolgeler:  { t: 'Sanayi bölgeleri', ico: 'zone', v: bolgelerView },
-  kisiler:   { t: 'Kişiler', ico: 'user', v: kisilerView },
-  gorevler:  { t: 'Görevler', ico: 'check', v: gorevlerView },
-  panel:     { t: 'Panel', ico: 'chart', v: panelView },
-  siparisler:{ t: 'Siparişler', ico: 'receipt', v: siparislerView },
-  urunler:   { t: 'Stok ve fiyat', ico: 'box', v: urunlerView },
-  rakip:     { t: 'Rakip fiyatları', ico: 'tag', v: rakipView },
-  ayarlar:   { t: 'Ayarlar', ico: 'gear', v: ayarlarView },
+  ziyaretler:{ t: 'Ziyaretler', ico: 'pin', v: ziyaretlerView, g: 'Saha' },
+  gorevler:  { t: 'Görevler', ico: 'check', v: gorevlerView, g: 'Saha' },
+  kisiler:   { t: 'Kişiler', ico: 'user', v: kisilerView, g: 'Saha' },
+  bolgeler:  { t: 'Sanayi bölgeleri', ico: 'zone', v: bolgelerView, g: 'Saha' },
+  masraflar: { t: 'Masraf ve km', ico: 'wallet', v: masraflarView, g: 'Saha' },
+  teklifler: { t: 'Teklifler', ico: 'doc', v: tekliflerView, g: 'Satış' },
+  araclar:   { t: 'Aydınlatma araçları', ico: 'calc', v: araclarView, g: 'Satış' },
+  katalog:   { t: 'Ürün kataloğu', ico: 'book', v: katalogView, g: 'Satış' },
+  referanslar:{ t: 'Referanslar', ico: 'star', v: referanslarView, g: 'Satış' },
+  numuneler: { t: 'Numuneler', ico: 'gift', v: numunelerView, g: 'Satış' },
+  servis:    { t: 'Servis ve şikayet', ico: 'wrench', v: servisView, g: 'Satış' },
+  panel:     { t: 'Panel', ico: 'chart', v: panelView, g: 'Rapor' },
+  siparisler:{ t: 'Siparişler', ico: 'receipt', v: siparislerView, g: 'Rapor' },
+  urunler:   { t: 'Stok ve fiyat', ico: 'box', v: urunlerView, g: 'Rapor' },
+  rakip:     { t: 'Rakip fiyatları', ico: 'tag', v: rakipView, g: 'Rapor' },
+  ayarlar:   { t: 'Ayarlar', ico: 'gear', v: ayarlarView, g: 'Rapor' },
 };
 const DETAIL = { proje: projeDetay, firma: firmaDetay, kisi: kisiDetay };
 
@@ -44,6 +58,14 @@ const ICONS = {
   zone: '<path d="M4 7l6-3 6 3 4-2v13l-4 2-6-3-6 3V7Z" stroke-dasharray="3 2"/><circle cx="12" cy="11" r="2"/>',
   down: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
   more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  doc: '<path d="M7 3h7l5 5v13H7V3Z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>',
+  calc: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h2m3 0h3M8 16h2m3 0h3"/>',
+  book: '<path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2V5Z"/><path d="M4 20a2 2 0 0 0 2 1h13v-3"/>',
+  star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z"/>',
+  gift: '<rect x="4" y="9" width="16" height="12" rx="1"/><path d="M3 9h18M12 9v12M12 9c-1.5-4-6-4-5-1.5S12 9 12 9Zm0 0c1.5-4 6-4 5-1.5S12 9 12 9Z"/>',
+  wrench: '<path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.3-1.3a4 4 0 0 0-5-5l2.6 2.6-2.1 2.1L9.6 5.8a4 4 0 0 0 5.1.5Z"/><path d="M3 21l6-6"/>',
+  wallet: '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2M6 6l9-3 2 3"/>',
 };
 export const icon = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
 
@@ -55,24 +77,24 @@ function renderNav(cur) {
     <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b>${mode}</div>
     <div class="nav-main">${Object.entries(ROUTES).filter(([, r]) => r.main).map(([k, r]) => item(k, r)).join('')}
       <button class="nav-more ${!ROUTES[cur]?.main ? 'on' : ''}" type="button" aria-haspopup="true">${icon('more')}<span>Diğer</span></button></div>
-    <div class="nav-rest">${Object.entries(ROUTES).filter(([, r]) => !r.main).map(([k, r]) => item(k, r)).join('')}
+    <div class="nav-rest">${['Saha', 'Satış', 'Rapor'].map(g => `<p class="nav-g">${g}</p>` + Object.entries(ROUTES).filter(([, r]) => r.g === g).map(([k, r]) => item(k, r)).join('')).join('')}
       <button type="button" class="nav-inst" data-inst ${canInstall() ? '' : 'hidden'}>${icon('down')}<span>Telefona yükle</span></button></div>`;
   nav.querySelector('[data-inst]').onclick = () => { nav.classList.remove('more-open'); install(); };
   nav.querySelector('.nav-more').onclick = () => nav.classList.toggle('more-open');
   nav.querySelectorAll('.nav-rest a').forEach(a => a.addEventListener('click', () => nav.classList.remove('more-open')));
 }
 
-let lastView = null;
+let lastView = null, lastShown = null;
 async function route() {
-  const parts = (location.hash.replace(/^#\/?/, '') || 'harita').split('/');
+  const parts = (location.hash.replace(/^#\/?/, '') || 'bugun').split('/');
   const [k, id] = parts;
   if (DETAIL[k]) {
-    if (!lastView) await show('harita');
+    if (!lastView) await show('bugun');
     DETAIL[k](id);
     return;
   }
   closeDrawer();
-  await show(ROUTES[k] ? k : 'harita');
+  await show(ROUTES[k] ? k : 'bugun');
 }
 async function show(k) {
   lastView = k;
@@ -81,6 +103,7 @@ async function show(k) {
   el.className = 'view-' + k;
   document.title = ROUTES[k].t + ' · Saha Takip';
   app.refresh = () => ROUTES[k].v(el);
+  if (lastShown !== k) { window.scrollTo(0, 0); el.scrollTop = 0; } lastShown = k;
   await ROUTES[k].v(el);
 }
 // Detay paneli kapanınca adres çubuğunu listeye döndür (görünümü yeniden çizmeden)
@@ -108,10 +131,12 @@ async function boot() {
     return;
   }
   const act = kisayolAl();
+  const pay = paylasimAl();
   const empty = Object.values(S).every(a => !a.length);
   if (empty && !location.hash) location.hash = '#/ayarlar';
   await route();
   if (act === 'ziyaret') ziyaretForm({});
+  if (pay) paylasimPaneli(pay);
 }
 window.addEventListener('schema-old', () => toast('Veritabanı güncel değil: Supabase SQL Editor\'de supabase/schema.sql dosyasını yeniden çalıştır. Yeni alanlar (Google bilgileri) o zamana kadar kaydedilmez.', 'err'));
 window.addEventListener('outbox', e => { if (e.detail) toast('Bağlantı yok: değişiklik kaydedildi, internet gelince gönderilecek.'); });

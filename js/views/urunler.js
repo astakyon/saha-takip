@@ -1,11 +1,32 @@
 import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, num, usd, tarih, today, RAKIPLER, URUN_AILELERI, byId, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, pickFiles, fold } from '../ui.js';
+import { esc, num, usd, tarih, today, gunEkle, RAKIPLER, URUN_AILELERI, byId, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, pickFiles, fold } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 
 const num2 = n => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
 const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
 const aileKey = s => fold(s || '').replace(/[^a-z0-9]/g, '');
+
+// Stok uyarıları: açık tekliflerin ihtiyacı stoktan fazla olan ürünler ve 60 günü aşkın süredir stoğu hiç değişmeyen ürünler
+export function stokUyarilari(gun = 60) {
+  const ihtiyac = new Map();
+  for (const t of S.teklifler) if (['Taslak', 'Gönderildi'].includes(t.durum)) for (const k of t.kalemler || []) if (k.kod) ihtiyac.set(k.kod, (ihtiyac.get(k.kod) || 0) + (+k.adet || 0));
+  const yetersiz = [];
+  for (const [kod, adet] of ihtiyac) { const u = S.urunler.find(x => x.kod === kod); if (u && adet > (+u.stok || 0)) yetersiz.push({ u, ihtiyac: adet, eksik: adet - (+u.stok || 0) }); }
+  const sinir = gunEkle(today(), -gun), hist = new Map();
+  for (const h of S.stok_gecmis) (hist.get(h.kod) || hist.set(h.kod, []).get(h.kod)).push(h);
+  const hareketsiz = [];
+  for (const u of S.urunler) {
+    if (!(u.stok > 0)) continue;
+    const hs = (hist.get(u.kod) || []).sort((a, b) => b.tarih.localeCompare(a.tarih));
+    if (!hs.length) continue;
+    let ilk = hs[0].tarih; // stoğun bugünkü değere ulaştığı en eski tarih
+    for (const h of hs) { if (+h.stok !== +u.stok) break; ilk = h.tarih; }
+    if (ilk <= sinir) hareketsiz.push({ u, gun: Math.round((new Date(today()) - new Date(ilk)) / 864e5), deger: (+u.stok || 0) * (+u.birim_fiyat_usd || 0) });
+  }
+  hareketsiz.sort((a, b) => b.deger - a.deger);
+  return { yetersiz, hareketsiz };
+}
 
 export function urunlerView(el) {
   const f = F('urunler', { q: '', aile: 'Tümü', stokta: false });
@@ -16,9 +37,15 @@ export function urunlerView(el) {
     <div class="filters"><input type="search" data-q placeholder="Ürün kodu veya açıklama ara (örn. HBL 150)" value="${esc(f.q)}" aria-label="Ürünlerde ara">
       <div class="frow"><label>Ürün ailesi <select data-aile>${['Tümü', ...aileler].map(a => `<option ${f.aile === a ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></label><label class="chk"><input type="checkbox" data-stokta ${f.stokta ? 'checked' : ''}> <span>Sadece stokta olanlar</span></label></div></div>
     <section class="ledger stock-ledger" data-ledger></section>
+    <div data-uyari></div>
     <details class="aile-ozet"><summary>Aile bazında ortalama fiyatlar</summary><div data-ozet></div></details>
     <div class="rows products" data-rows></div>`;
   const list = () => S.urunler.filter(u => (f.aile === 'Tümü' || u.aile === f.aile) && (!f.stokta || u.stok > 0) && match(f.q, u.kod, u.aciklama, u.aciklama2)).sort((a, b) => (a.aile || '').localeCompare(b.aile || '') || a.aciklama.localeCompare(b.aciklama));
+  const su = stokUyarilari();
+  if (su.yetersiz.length || su.hareketsiz.length) el.querySelector('[data-uyari]').innerHTML = `<details class="card warnbox" ${su.yetersiz.length ? 'open' : ''}><summary><b>Stok uyarıları</b> <span class="muted">${su.yetersiz.length} yetersiz · ${su.hareketsiz.length} hareketsiz</span></summary>
+    ${su.yetersiz.length ? `<h3>Açık tekliflere yetmeyen stok</h3><ul class="list">${su.yetersiz.map(x => `<li><span><b>${esc(x.u.aciklama)}</b><span class="muted"> · tekliflerde ${num(x.ihtiyac)}, stokta ${num(x.u.stok)}</span></span><b class="neg">${num(x.eksik)} eksik</b></li>`).join('')}</ul>` : ''}
+    ${su.hareketsiz.length ? `<h3>${num(su.hareketsiz.length)} ürün 60 günü aşkın süredir hareketsiz</h3><p class="hint">Stok adedi hiç değişmemiş; kampanyaya ya da projeye yönlendirilebilir. Toplam ${num(Math.round(su.hareketsiz.reduce((a, x) => a + x.deger, 0)))} $.</p><ul class="list">${su.hareketsiz.slice(0, 15).map(x => `<li><span><b>${esc(x.u.aciklama)}</b><span class="muted"> · ${num(x.u.stok)} adet · ${x.gun} gün</span></span><span class="num">${x.deger ? num(Math.round(x.deger)) + ' $' : ''}</span></li>`).join('')}</ul>` : ''}
+  </details>`;
   const draw = () => {
     const l = list();
     const deger = u => (+u.stok || 0) * (+u.birim_fiyat_usd || 0);

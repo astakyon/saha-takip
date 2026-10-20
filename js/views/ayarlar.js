@@ -7,9 +7,12 @@ import { googleKey, anahtarFormu, anahtarBagla } from '../google.js';
 import { iceAktarPaneli } from './ice-aktar.js';
 import { openDrawer, closeDrawer } from '../ui.js';
 import { INST, isIOS, install, onInstallChange } from '../kurulum.js';
+import { sablonDuzenleyici } from '../sablon.js';
+import { teklifAyarlari } from './teklif.js';
+import { kmlIndir } from '../paylas.js';
 
 const ORDER = SIRA;
-const ETIKET = { bolgeler: 'sanayi bölgesi', firmalar: 'firma', kisiler: 'kişi', projeler: 'proje', proje_gecmis: 'durum geçmişi', ziyaretler: 'ziyaret', gorevler: 'görev', urunler: 'ürün', stok_gecmis: 'stok geçmişi', rakip_fiyatlar: 'rakip fiyatı', siparisler: 'sipariş', hedefler: 'hedef' };
+const ETIKET = { bolgeler: 'sanayi bölgesi', firmalar: 'firma', kisiler: 'kişi', projeler: 'proje', proje_gecmis: 'durum geçmişi', ziyaretler: 'ziyaret', gorevler: 'görev', urunler: 'ürün', stok_gecmis: 'stok geçmişi', rakip_fiyatlar: 'rakip fiyatı', siparisler: 'sipariş', hedefler: 'hedef', teklifler: 'teklif', numuneler: 'numune', servis_kayitlari: 'servis kaydı', masraflar: 'masraf', urun_aileleri: 'ürün ailesi', ayarlar: 'ayar' };
 
 function connForm(cfg) {
   return `<form class="form conn" data-conn>
@@ -77,8 +80,16 @@ export async function ayarlarView(el) {
       <p>${googleKey() ? '<b>Google API anahtarı kayıtlı.</b> Haritada “Google\'da ara” ile işletmeleri bulup adres, telefon, web ve konumlarını kayıtlarına aktarabilirsin.' : 'Google\'daki işletmeleri arayıp bilgilerini çekmek için bir API anahtarı gerekiyor.'}</p>
       <details ${googleKey() ? '' : 'open'}><summary>${googleKey() ? 'Anahtarı değiştir' : 'Anahtar nasıl alınır?'}</summary>${anahtarFormu()}</details>
       <hr><p><b>Google'dan konum aktar:</b> Google Benim Haritalarım (KML/KMZ), Google Takeout'taki kaydedilen yerler (JSON, CSV) veya Google Haritalar bağlantıları. Bunun için API anahtarı gerekmez.</p>
-      <div class="btnrow"><button class="btn" data-gimport>Google'dan konum aktar</button></div>
+      <div class="btnrow"><button class="btn" data-gimport>Google'dan konum aktar</button><button class="btn ghost" data-kml>Haritayı KML olarak indir</button></div>
+      <p class="hint">KML dosyasını Google Benim Haritalarım'a (mymaps.google.com → Yeni harita → İçe aktar) yükleyince projelerin ve firmaların Google Haritalar uygulamasında da görünür.</p>
+      <hr><p><b>Google Haritalar'dan paylaş:</b> Uygulama telefona yüklüyse Google Haritalar'da bir yere dokun → <b>Paylaş</b> → <b>Saha Takip</b>. Yer yeni firma ya da proje olarak kaydedilir veya mevcut kayda konum atanır.</p>
+      <details><summary>Kısa bağlantılardan konum alma (maps.app.goo.gl)</summary>
+        <p class="hint">Google Haritalar paylaşımda çoğu zaman kısa bağlantı gönderir. Konumu bu bağlantıdan okumak için Supabase'e küçük bir fonksiyon eklenmeli (bir kez):</p>
+        <ol class="hint"><li>Supabase paneli → <b>Edge Functions</b> → <b>Deploy a new function</b> → <b>Via Editor</b>.</li><li>Fonksiyon adı: <code>kisa-link</code></li><li>Depodaki <code>supabase/functions/kisa-link/index.ts</code> dosyasının içeriğini yapıştır → <b>Deploy</b>.</li></ol>
+        <p class="hint">Fonksiyon kurulmadıysa Google API anahtarıyla ad ve adresten, o da yoksa adresten yaklaşık konum bulunur.</p></details>
     </section>
+    <section class="card"><h2>Mesaj şablonları</h2><p class="hint">Kişi ve firma kartındaki WhatsApp düğmesi bu şablonları kullanır.</p><div data-sablon></div></section>
+    <section class="card"><h2>Teklif bilgileri</h2><p class="hint">PDF teklifin üst bilgisi ve alt koşulları.</p><div data-teklifb></div></section>
     <section class="card"><h2>Kayıtlar</h2>
       ${counts.length ? `<ul class="counts">${counts.map(([t, n]) => `<li><b>${n}</b> ${ETIKET[t]}</li>`).join('')}</ul>` : '<p class="hint">Henüz kayıt yok.</p>'}
       <div class="btnrow"><button class="btn" data-xlsx>Tümünü Excel'e aktar</button><button class="btn ghost" data-json>Yedek indir (JSON)</button><button class="btn ghost" data-restore>Yedekten geri yükle</button></div>
@@ -93,6 +104,9 @@ export async function ayarlarView(el) {
   </div>`;
   bindConn(el);
   anahtarBagla(el, () => ayarlarView(el));
+  sablonDuzenleyici(el.querySelector('[data-sablon]'));
+  teklifAyarlari(el.querySelector('[data-teklifb]'));
+  el.querySelector('[data-kml]').onclick = () => kmlIndir();
   el.querySelector('[data-gimport]').onclick = () => iceAktarPaneli(() => ayarlarView(el));
   el.querySelector('[data-install]')?.addEventListener('click', install);
   el.querySelector('[data-out]')?.addEventListener('click', async () => { await app.db.signOut(); location.reload(); });
@@ -107,6 +121,10 @@ export async function ayarlarView(el) {
       'Siparişler': S.siparisler.map(s => ({ Tarih: s.tarih, Müşteri: s.musteri_adi, Referans: s.referans, Proje: s.proje_tanimi, 'Net değer': s.net_deger, 'Para birimi': s.para_birimi })),
       'Stok': S.urunler.map(u => ({ Kod: u.kod, Açıklama: u.aciklama, Aile: u.aile, Stok: u.stok, 'Birim fiyat': u.birim_fiyat_usd })),
       'Rakip fiyatları': S.rakip_fiyatlar.map(r => ({ Aile: r.aile, Marka: r.marka, Ürün: r.urun_adi, Fiyat: r.birim_fiyat, Not: r.fiyat_metin })),
+      'Teklifler': S.teklifler.map(t => ({ 'Teklif no': t.teklif_no, Tarih: t.tarih, Durum: t.durum, Firma: firmaAd(t.firma_id), Proje: S.projeler.find(p => p.id === t.proje_id)?.ad, Kalem: (t.kalemler || []).length, 'Toplam (KDV hariç)': t.toplam, 'Para birimi': t.para_birimi })),
+      'Numuneler': S.numuneler.map(n => ({ Ürün: n.urun_ad, Adet: n.adet, Firma: firmaAd(n.firma_id), Veriliş: n.verilis, İade: n.iade_tarihi, Durum: n.durum })),
+      'Servis': S.servis_kayitlari.map(x => ({ Tarih: x.tarih, Tür: x.tip, Durum: x.durum, Firma: firmaAd(x.firma_id), Ürün: x.urun, Sorun: x.aciklama, Çözüm: x.cozum })),
+      'Masraflar': S.masraflar.map(m => ({ Tarih: m.tarih, Tür: m.tip, Tutar: m.tutar, Km: m.km, Açıklama: m.aciklama })),
     });
   };
   el.querySelector('[data-json]').onclick = () => download(`saha-takip-yedek-${today()}.json`, JSON.stringify({ version: 1, tarih: new Date().toISOString(), ...Object.fromEntries(ORDER.map(t => [t, S[t]])) }));
@@ -165,7 +183,8 @@ async function migrate(el) {
     const np = await app.db.upload(new File([b], 'foto.jpg', { type: 'image/jpeg' })); map.set(p, np); return np;
   };
   toast('Fotoğraflar aktarılıyor…');
-  for (const t of ['firmalar', 'projeler', 'ziyaretler']) for (const r of d[t]) r.fotolar = (await Promise.all((r.fotolar || []).map(conv))).filter(Boolean);
+  for (const t of ['firmalar', 'projeler', 'ziyaretler', 'servis_kayitlari', 'urun_aileleri']) for (const r of d[t]) r.fotolar = (await Promise.all((r.fotolar || []).map(conv))).filter(Boolean);
+  for (const m of d.masraflar) m.fis = await conv(m.fis);
   for (const k of d.kisiler) { k.kartvizit_on = await conv(k.kartvizit_on); k.kartvizit_arka = await conv(k.kartvizit_arka); }
   await importAll(d, el, 'yedek');
 }

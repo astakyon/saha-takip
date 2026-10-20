@@ -1,9 +1,11 @@
 // Saha Takip service worker: uygulama dosyalarını ve harita karolarını önbelleğe alır
-const V = 'saha-v4';
+const V = 'saha-v5';
 const SHELL = ['./', 'index.html', 'styles.css', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon-180.png', 'icons/icon.svg', 'js/kurulum.js', 'js/birlestir.js', 'js/google.js', 'js/views/ice-aktar.js',
   'js/main.js', 'js/db.js', 'js/ui.js', 'js/forms.js', 'js/state.js',
   'js/views/map.js', 'js/views/projeler.js', 'js/views/firmalar.js', 'js/views/ziyaret.js',
-  'js/views/urunler.js', 'js/views/panel.js', 'js/views/ayarlar.js', 'js/views/bolgeler.js', 'js/geo.js', 'js/data/iller.js'];
+  'js/views/urunler.js', 'js/views/panel.js', 'js/views/ayarlar.js', 'js/views/bolgeler.js', 'js/geo.js', 'js/data/iller.js',
+  'js/ayar.js', 'js/sablon.js', 'js/sunum.js', 'js/zip.js', 'js/pptx.js', 'js/pptx-tema.js', 'js/paylas.js',
+  'js/views/bugun.js', 'js/views/araclar.js', 'js/views/teklif.js', 'js/views/katalog.js', 'js/views/kayitlar.js'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V && k !== 'tiles').map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {

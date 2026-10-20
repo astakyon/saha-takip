@@ -1,6 +1,6 @@
 import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, usd, num, tarih, today, DURUMLAR, ACIK, byId, firmaAd, match, toast, exportXlsx, pickFiles, fold, durumRenk, openDrawer, closeDrawer, pill } from '../ui.js';
+import { esc, usd, num, tarih, today, DURUMLAR, ACIK, byId, firmaAd, match, toast, exportXlsx, pickFiles, fold, durumRenk, openDrawer, closeDrawer, pill, olasilik } from '../ui.js';
 import { gorevForm } from './ziyaret.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 
@@ -32,6 +32,8 @@ export function panelView(el) {
   }
   const topFirma = Object.entries(firmaPerf).sort((a, b) => b[1].n - a[1].n).slice(0, 8);
   const durumMax = Math.max(...DURUMLAR.map(d => yP.filter(p => p.durum === d.k).length), 1);
+  const tah = tahmin(Y, gercek, hed);
+  const karne = bayiKarnesi(Y);
 
   el.innerHTML = `<header class="vh"><div><h1>Panel</h1><p class="sum">${Y} yılı, bugün ${tarih(t)}</p></div>
     <div class="vh-act"><label>Yıl <select data-yil>${[2025, 2026, 2027].map(y => `<option ${y === Y ? 'selected' : ''}>${y}</option>`).join('')}</select></label></div></header>
@@ -46,6 +48,21 @@ export function panelView(el) {
       <div class="qbars">${[0, 1, 2, 3].map(i => `<div class="qb"><div class="qb-cols"><span class="bar target" style="height:${hed[i] / maxQ * 100}%" title="Hedef ${usd(hed[i])}"></span><span class="bar real ${gercek[i] >= hed[i] && hed[i] ? 'ok' : ''}" style="height:${gercek[i] / maxQ * 100}%" title="Gerçekleşen ${usd(gercek[i])}"></span></div>
         <b>${i + 1}. çeyrek</b><small>${usd(gercek[i])}${hed[i] ? ` · %${num(gercek[i] / hed[i] * 100)}` : ''}</small></div>`).join('')}</div>
       <p class="legend-line"><span class="sw target"></span>Hedef <span class="sw real"></span>Gerçekleşen (USD siparişler) · <a href="#/siparisler">Siparişler ve hedefler</a></p></section>
+    <section class="card wide"><h2>Olasılıklı tahmin (${Y})</h2>
+      <p class="hint">Açık projelerin tutarı kazanma olasılığıyla çarpılır (olasılık girilmemişse aşamaya göre: Proje %10, İhale %25, Teklif %40, Sıcak %70, Beklemede %15). Çeyrek, beklenen sipariş ya da aydınlatma alım tarihinden; tarihsiz projeler “Tarihsiz” sütununda.</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th></th>${[1, 2, 3, 4].map(c => `<th class="r">${c}. çeyrek</th>`).join('')}<th class="r">Tarihsiz</th><th class="r">Yıl</th></tr></thead><tbody>
+        <tr><td>Gerçekleşen sipariş</td>${gercek.map(v => `<td class="r num">${usd(v)}</td>`).join('')}<td></td><td class="r num"><b>${usd(toplamG)}</b></td></tr>
+        <tr><td>Ağırlıklı açık potansiyel</td>${tah.ag.map(v => `<td class="r num">${v ? usd(v) : '—'}</td>`).join('')}<td class="r num">${usd(tah.tarihsiz)}</td><td class="r num"><b>${usd(tah.agTop)}</b></td></tr>
+        <tr class="em"><td>Tahmini toplam</td>${[0, 1, 2, 3].map(i => `<td class="r num">${usd(gercek[i] + tah.ag[i])}</td>`).join('')}<td></td><td class="r num"><b>${usd(toplamG + tah.agTop)}</b></td></tr>
+        <tr><td>Hedef</td>${hed.map(v => `<td class="r num">${v ? usd(v) : '—'}</td>`).join('')}<td></td><td class="r num">${toplamHedef ? usd(toplamHedef) : '—'}</td></tr>
+        ${toplamHedef ? `<tr><td>Tahmin / hedef</td>${[0, 1, 2, 3].map(i => `<td class="r ${hed[i] && gercek[i] + tah.ag[i] < hed[i] ? 'neg' : 'pos'}">${hed[i] ? '%' + num(Math.round((gercek[i] + tah.ag[i]) / hed[i] * 100)) : ''}</td>`).join('')}<td></td><td class="r ${toplamG + tah.agTop < toplamHedef ? 'neg' : 'pos'}"><b>%${num(Math.round((toplamG + tah.agTop) / toplamHedef * 100))}</b></td></tr>` : ''}
+      </tbody></table></div>
+      ${tah.buyuk.length ? `<p class="hint">Tahmini en çok etkileyen projeler: ${tah.buyuk.map(p => `<a href="#/proje/${p.id}">${esc(p.ad)}</a> (${usd(p.tutar_usd)} × %${olasilik(p)})`).join(', ')}</p>` : ''}</section>
+    <section class="card wide"><h2>Bayi karnesi (${Y})</h2>
+      ${karne.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Bayi</th><th class="r">Proje</th><th class="r">Açık potansiyel</th><th class="r">Kazanılan</th><th class="r">Kaybedilen</th><th class="r">Kazanma oranı</th><th class="r">Sipariş (${Y})</th><th class="r">Stok değeri</th><th>Son ziyaret</th></tr></thead><tbody>
+        ${karne.map(k => `<tr><td><a href="#/firma/${k.f.id}"><b>${esc(k.f.ad)}</b></a></td><td class="r">${k.n}</td><td class="r num">${usd(k.acik)}</td><td class="r">${k.w}${k.wT ? `<small>${usd(k.wT)}</small>` : ''}</td><td class="r">${k.l}${k.lT ? `<small>${usd(k.lT)}</small>` : ''}</td>
+          <td class="r ${k.oran != null && k.oran < 40 ? 'neg' : ''}">${k.oran != null ? '%' + k.oran : '—'}</td><td class="r num"><b>${usd(k.sip)}</b>${k.sipN ? `<small>${k.sipN} sipariş</small>` : ''}</td><td class="r num">${k.stok ? usd(k.stok) : '—'}</td><td class="${k.gun != null && k.gun > 30 ? 'neg' : ''}">${k.son ? tarih(k.son) : '—'}</td></tr>`).join('')}</tbody></table></div>
+        <p class="hint">Kazanma oranı = kazanılan / (kazanılan + kaybedilen). Stok değeri, depo adı bayiyle eşleşen ürünlerden hesaplanır.</p>` : '<p class="hint">Projelerde bayi seçilmemiş.</p>'}</section>
     <section class="card"><h2>Durumlara göre projeler (${Y})</h2>
       <ul class="hbars">${DURUMLAR.map(d => { const ps = yP.filter(p => p.durum === d.k); return ps.length ? `<li><span>${d.k}</span><span class="hb"><i style="width:${ps.length / durumMax * 100}%;--c:${d.c}"></i></span><b>${ps.length}</b><small>${usd(sum(ps, p => p.tutar_usd))}</small></li>` : ''; }).join('')}</ul></section>
     <section class="card"><h2>Kayıplar: hangi markaya?</h2>
@@ -60,11 +77,40 @@ export function panelView(el) {
       ${topFirma.length ? `<table class="tbl"><thead><tr><th>Firma</th><th>Rol</th><th class="r">Proje</th><th class="r">Sipariş</th><th class="r">Kayıp</th></tr></thead><tbody>${topFirma.map(([id, v]) => `<tr><td><a href="#/firma/${id}">${esc(firmaAd(id))}</a></td><td>${v.rol}</td><td class="r">${v.n}</td><td class="r">${v.w}</td><td class="r">${v.l}</td></tr>`).join('')}</tbody></table>` : '<p class="hint">Veri yok.</p>'}</section>
     <section class="card wide"><h2>Toplantı sunumu tabloları</h2>
       <p class="hint">Çeyrek ve yarı dönem sunumlarındaki tablo düzeninde Excel dosyası indirir; satırları sunuma kopyalayabilirsin.</p>
-      <div class="btnrow"><button class="btn" data-s="kayip">Kayıp projeler</button><button class="btn" data-s="pot">Potansiyel projeler (${Y})</button><button class="btn" data-s="str">${Y + 1} potansiyel ve stratejik projeler</button><button class="btn ghost" data-s="hedef">Hedef proje listesi</button></div></section>
+      <div class="btnrow"><button class="btn primary" data-pptx>Çeyrek sunumu (PowerPoint)</button><button class="btn" data-s="kayip">Kayıp projeler</button><button class="btn" data-s="pot">Potansiyel projeler (${Y})</button><button class="btn" data-s="str">${Y + 1} potansiyel ve stratejik projeler</button><button class="btn ghost" data-s="hedef">Hedef proje listesi</button></div></section>
   </div>`;
   el.querySelector('[data-yil]').onchange = e => { f.yil = +e.target.value; saveFilters(); panelView(el); };
   el.querySelectorAll('[data-g]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.g }));
   el.querySelectorAll('[data-s]').forEach(b => b.onclick = () => sunum(b.dataset.s, Y));
+  el.querySelector('[data-pptx]').onclick = async () => { const { ceyrekSunumu } = await import('../pptx.js'); ceyrekSunumu(Y); };
+}
+
+// Olasılıklı tahmin: açık projeler × olasılık, beklenen tarihin çeyreğine
+export function tahmin(Y, gercek, hed) {
+  const ag = [0, 0, 0, 0]; let tarihsiz = 0; const katki = [];
+  for (const p of S.projeler) {
+    if (!ACIK.includes(p.durum) || !p.tutar_usd) continue;
+    const d = p.beklenen_tarih || p.alim_tarihi;
+    const v = +p.tutar_usd * olasilik(p) / 100;
+    if (d && d.startsWith(String(Y))) { ag[q(d) - 1] += v; katki.push([p, v]); }
+    else if (!d && +p.takip_yili === Y) { tarihsiz += v; katki.push([p, v]); }
+  }
+  return { ag, tarihsiz, agTop: ag.reduce((a, b) => a + b, 0) + tarihsiz, buyuk: katki.sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]) };
+}
+export function bayiKarnesi(Y) {
+  const ids = new Set(S.projeler.map(p => p.bayi_id).filter(Boolean));
+  for (const f of S.firmalar) if ((f.tipler || []).includes('Bayi')) ids.add(f.id);
+  const t = today();
+  return [...ids].map(id => byId('firmalar', id)).filter(Boolean).map(f => {
+    const ps = S.projeler.filter(p => p.bayi_id === f.id && (!p.takip_yili || +p.takip_yili === Y || ACIK.includes(p.durum)));
+    const won = ps.filter(p => p.durum === 'Sipariş'), lost = ps.filter(p => p.durum === 'Kayıp');
+    const ilk = fold(f.ad).split(/\s+/)[0];
+    const sp = S.siparisler.filter(s => s.tarih?.startsWith(String(Y)) && s.para_birimi === 'USD' && (s.firma_id === f.id || (ilk.length > 2 && fold(s.musteri_adi || '').startsWith(ilk))));
+    const stok = S.urunler.filter(u => u.depo && fold(u.depo).startsWith(ilk)).reduce((a, u) => a + (+u.stok || 0) * (+u.birim_fiyat_usd || 0), 0);
+    const son = S.ziyaretler.filter(z => z.firma_id === f.id && (z.durum || 'Yapıldı') === 'Yapıldı').map(z => z.tarih).sort().pop() || null;
+    return { f, n: ps.length, acik: sum(ps.filter(p => ACIK.includes(p.durum)), p => p.tutar_usd), w: won.length, wT: sum(won, p => p.siparis_tutari_usd || p.tutar_usd), l: lost.length, lT: sum(lost, p => p.bizim_teklif_usd || p.tutar_usd),
+      oran: won.length + lost.length ? Math.round(won.length / (won.length + lost.length) * 100) : null, sip: sum(sp, s => s.net_deger), sipN: sp.length, stok, son, gun: son ? Math.round((new Date(t) - new Date(son)) / 864e5) : null };
+  }).filter(k => k.n || k.sip).sort((a, b) => b.sip - a.sip || b.n - a.n);
 }
 
 function sunum(kind, Y) {
