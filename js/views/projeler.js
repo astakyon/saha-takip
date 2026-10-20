@@ -4,6 +4,7 @@ import { esc, usd, num, pill, tarih, today, DURUMLAR, ACIK, ILLER, ILCELER, OSBL
   byId, firmaAd, match, toast, openDrawer, closeDrawer, exportXlsx, directionsUrl, confirmBox, durumRenk, SANTIYE, olasilik, gunEkle } from '../ui.js';
 import { teklifForm } from './teklif.js';
 import { numuneForm } from './kayitlar.js';
+import { belgeBolumu } from '../belgeler.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { googleBul, aramaMetni } from '../google.js';
 import { backToList } from '../main.js';
@@ -262,10 +263,11 @@ export function projeDetay(id, init) {
     <form class="dbody form" novalidate>
       ${renderForm(PROJE_FORM, p)}
       <div class="calc" data-calc hidden></div>
-      ${p._new ? '' : related(ziy, sip, gec, gor, tek)}
+      ${p._new ? '' : '<section class="rel" data-belgeler></section>' + related(ziy, sip, gec, gor, tek)}
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div>
     </form>`, { wide: true, onClose: () => backToList() });
   const form = panel.querySelector('form');
+  if (!p._new) belgeBolumu(panel.querySelector('[data-belgeler]'), { proje_id: p.id });
   const calc = (o, root) => {
     const box = root.querySelector('[data-calc]');
     if (o.durum !== 'Kayıp') { box.hidden = true; return; }

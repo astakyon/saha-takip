@@ -18,6 +18,8 @@ export const TABLES = {
   masraflar: ['id','tarih','tip','tutar','km','aciklama','fis'],
   urun_aileleri: ['id','aile','ad','aciklama','ozellikler','datasheet_url','fotolar'],
   ayarlar: ['id','anahtar','deger'],
+  tahsilatlar: ['id','firma_id','cari','belge_no','tarih','vade','tutar','para_birimi','odenen','durum','odeme_tarihi','notlar'],
+  belgeler: ['id','proje_id','firma_id','ad','yol','tur','boyut','notlar'],
 };
 const ARRAYS = new Set(['tipler','fotolar','urun_gruplari']);
 
@@ -58,6 +60,9 @@ export const idbGet = (k, store = 'kv') => kv(store, 'readonly', s => s.get(k));
 export const idbSet = (k, v, store = 'kv') => kv(store, 'readwrite', s => s.put(v, k));
 export const idbDel = (k, store = 'kv') => kv(store, 'readwrite', s => s.delete(k));
 
+// Depo yolu için dosya adı (Türkçe karakter ve boşluk temizlenir)
+export const guvenliAd = n => String(n || 'dosya').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').replace(/İ/g, 'I').replace(/[^A-Za-z0-9._-]+/g, '_').slice(-80);
+
 // ---------- Görsel küçültme ----------
 export async function shrink(file, max = 1600, q = 0.82) {
   if (!file.type.startsWith('image/')) return file;
@@ -96,6 +101,10 @@ class LocalAdapter {
   async upload(file) {
     const blob = await shrink(file); const path = 'local/' + uuid() + '.jpg';
     await idbSet(path, blob, 'photos'); return path;
+  }
+  async uploadFile(file) {
+    const path = 'local/belge/' + uuid() + '-' + guvenliAd(file.name);
+    await idbSet(path, file, 'photos'); return path;
   }
   async url(path) {
     if (!path) return null;
@@ -212,6 +221,13 @@ class SupaAdapter {
     const blob = await shrink(file);
     const path = `${this.user().id}/${uuid()}.jpg`;
     const { error } = await this.c.storage.from('fotograflar').upload(path, blob, { contentType: 'image/jpeg' });
+    if (error) throw error; return path;
+  }
+  async uploadFile(file) {
+    if (!navigator.onLine) throw new Error('Belge yüklemek için internet bağlantısı gerekiyor.');
+    if (file.size > 45 * 1024 * 1024) throw new Error('Dosya 45 MB\'tan büyük.');
+    const path = `${this.user().id}/belge/${uuid()}-${guvenliAd(file.name)}`;
+    const { error } = await this.c.storage.from('fotograflar').upload(path, file, { contentType: file.type || 'application/octet-stream' });
     if (error) throw error; return path;
   }
   async url(path) {

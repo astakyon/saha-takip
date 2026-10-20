@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 4)
+--  Saha Satış Takip — Supabase şeması (sürüm 5)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -221,6 +221,22 @@ create table if not exists public.masraflar (
   tarih date not null default current_date, tip text default 'Yakıt', tutar numeric, km numeric, aciklama text, fis text,
   created_at timestamptz default now(), updated_at timestamptz default now()
 );
+-- Sürüm 5: tahsilat takibi ve belgeler
+create table if not exists public.tahsilatlar (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  firma_id uuid references public.firmalar(id) on delete set null, cari text, belge_no text,
+  tarih date, vade date, tutar numeric, para_birimi text default 'USD', odenen numeric default 0,
+  durum text default 'Açık', odeme_tarihi date, notlar text,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create table if not exists public.belgeler (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  proje_id uuid references public.projeler(id) on delete cascade, firma_id uuid references public.firmalar(id) on delete cascade,
+  ad text not null, yol text not null, tur text, boyut bigint, notlar text,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
 create table if not exists public.urun_aileleri (
   id uuid primary key default gen_random_uuid(),
   owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
@@ -241,7 +257,8 @@ declare t text;
 begin
   foreach t in array array['firmalar','kisiler','projeler','proje_gecmis','ziyaretler','gorevler',
                            'urunler','stok_gecmis','rakip_fiyatlar','siparisler','hedefler','bolgeler',
-                           'teklifler','numuneler','servis_kayitlari','masraflar','urun_aileleri','ayarlar'] loop
+                           'teklifler','numuneler','servis_kayitlari','masraflar','urun_aileleri','ayarlar',
+                           'tahsilatlar','belgeler'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('drop policy if exists "sahibi" on public.%I', t);
     execute format('create policy "sahibi" on public.%I for all to authenticated using (owner = auth.uid()) with check (owner = auth.uid())', t);

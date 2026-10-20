@@ -10,6 +10,8 @@ import { ziyaretForm } from './ziyaret.js';
 import { waGonder } from '../sablon.js';
 import { teklifForm } from './teklif.js';
 import { numuneForm, servisForm } from './kayitlar.js';
+import { belgeBolumu } from '../belgeler.js';
+import { tahsilatOzeti } from './tahsilat.js';
 
 const FIRMA_FORM = [
   { title: 'Firma', fields: [
@@ -119,6 +121,7 @@ export function firmaDetay(id, init) {
         <h3>Projeler <span class="muted">${projeler.length}</span></h3>
         ${projeler.length ? `<ul class="list">${projeler.map(p => `<li><a href="#/proje/${p.id}"><b>${esc(p.ad)}</b><span class="muted">${projeRolleri(p, x.id).join(', ')} · ${usd(p.tutar_usd)}</span></a>${pill(p.durum)}</li>`).join('')}</ul>` : '<p class="hint">Bu firmanın yer aldığı proje yok.</p>'}
         ${stok.length ? `<h3>Depo stoğu</h3><p class="hint">${stok.filter(u => u.stok > 0).length} kalem stokta. <a href="#/urunler">Stok ve fiyat ekranında aç</a></p>` : ''}
+        <div data-tahsilat></div><div data-belgeler></div>
         <h3>Ziyaretler <span class="muted">${ziy.length}</span></h3>
         ${ziy.length ? `<ul class="list">${ziy.slice(0, 12).map(z => `<li><span class="muted">${tarih(z.tarih)}</span><span>${esc(byId('kisiler', z.kisi_id)?.ad_soyad || '')} ${esc((z.notlar || '').slice(0, 140))}</span></li>`).join('')}</ul>` : '<p class="hint">Ziyaret kaydı yok.</p>'}
       </section>`}
@@ -127,6 +130,7 @@ export function firmaDetay(id, init) {
     </form>`, { wide: true, onClose: () => backToList() });
   const form = panel.querySelector('form');
   bindForm(form, FIRMA_FORM, x);
+  if (!x._new) { belgeBolumu(panel.querySelector('[data-belgeler]'), { firma_id: x.id }); tahsilatOzeti(panel.querySelector('[data-tahsilat]'), x); }
   panel.querySelectorAll('.avatar[data-kv]').forEach(async a => { if (a.dataset.kv) { const u = await app.db.url(a.dataset.kv); if (u) { a.style.backgroundImage = `url("${u}")`; a.textContent = ''; } } });
   panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     const a = b.dataset.a;
@@ -155,11 +159,51 @@ export function firmaDetay(id, init) {
   };
 }
 
+// ---------- Kartvizit okuma ----------
+async function kartvizitPaneli(panel, form, yol, hazir) {
+  const kutu = panel.querySelector('[data-ocr]');
+  kutu.innerHTML = '<div class="ocr-box"><p class="hint" aria-live="polite" data-oc-d>Okuma motoru hazırlanıyor… (ilk seferde ~15 MB indirilir)</p><div class="progress"><span style="width:5%"></span></div></div>';
+  const d = kutu.querySelector('[data-oc-d]'), bar = kutu.querySelector('.progress span');
+  let r = hazir;
+  try {
+    if (!r) {
+      const { kartvizitOku } = await import('../ocr.js');
+      const u = await app.db.url(yol); const blob = await (await fetch(u)).blob();
+      const AD = { 'loading tesseract core': 'Okuma motoru indiriliyor', 'initializing tesseract': 'Hazırlanıyor', 'loading language traineddata': 'Türkçe dil verisi indiriliyor', 'initializing api': 'Hazırlanıyor', 'recognizing text': 'Kartvizit okunuyor' };
+      r = await kartvizitOku(blob, (st, pr) => { d.textContent = (AD[st] || st) + '…'; bar.style.width = Math.round((pr || 0) * 100) + '%'; });
+    }
+  } catch (e) { console.error(e); kutu.innerHTML = `<p class="warn">Kartvizit okunamadı: ${esc(e.message)}</p>`; return; }
+  const alan = [['ad_soyad', 'Ad soyad', r.ad_soyad], ['unvan', 'Unvan', r.unvan], ['telefon', 'Telefon', r.telefon], ['eposta', 'E-posta', r.eposta], ['firma_id', 'Firma', r.firma],
+    ['_ek', 'Notlara ekle', [r.sabit && r.sabit !== r.telefon ? 'Sabit tel: ' + r.sabit : '', r.web ? 'Web: ' + r.web : '', r.adres ? 'Adres: ' + r.adres : ''].filter(Boolean).join(' · ')]].filter(x => x[2]);
+  kutu.innerHTML = `<div class="ocr-box"><h3>Kartvizitten okunanlar</h3>${alan.length ? `<p class="hint">Kontrol et, gerekirse düzelt; işaretli olanlar forma yazılır.</p>
+    ${alan.map(([k, l, v]) => `<label class="ocr-row"><input type="checkbox" data-ok="${k}" checked><span>${l}</span><input data-ov="${k}" value="${esc(v)}" aria-label="${l}"></label>`).join('')}
+    <div class="btnrow"><button type="button" class="btn sm primary" data-oc-yaz>Forma yaz</button></div>` : '<p class="hint">Metin çıkarılamadı. Kartviziti düz bir zeminde, gölgesiz ve yakından tekrar çek.</p>'}
+    <details><summary>Okunan metnin tamamı</summary><pre class="ocr-raw">${esc(r.metin || '')}</pre></details></div>`;
+  kutu.querySelector('[data-oc-yaz]')?.addEventListener('click', () => {
+    kutu.querySelectorAll('[data-ok]:checked').forEach(c => {
+      const k = c.dataset.ok, v = kutu.querySelector(`[data-ov="${k}"]`).value.trim(); if (!v) return;
+      if (k === '_ek') { const n = form.querySelector('[name=notlar]'); n.value = [n.value, v].filter(Boolean).join('\n'); return; }
+      const inp = form.querySelector(`[name=${k}]`); if (inp) inp.value = v;
+    });
+    form.dispatchEvent(new Event('change')); toast('Bilgiler forma yazıldı. Kontrol edip kaydet.'); kutu.innerHTML = '';
+  });
+}
+// Kişiler ekranından: kartvizit fotoğrafı çek → oku → yeni kişi formu
+async function kartvizittenKisi() {
+  const { pickFiles } = await import('../ui.js');
+  const [file] = await pickFiles({ capture: true, multiple: false }); if (!file) return;
+  try {
+    toast('Kartvizit yükleniyor…');
+    const yol = await app.db.upload(file);
+    kisiDetay(null, { kartvizit_on: yol });
+  } catch (e) { toast(e.message, 'err'); }
+}
+
 // ---------- Kişiler ----------
 export function kisilerView(el) {
   const f = F('kisiler', { q: '' });
   el.innerHTML = `<header class="vh"><div><h1>Kişiler</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><button class="btn primary" data-new>Yeni kişi</button></div></header>
+    <div class="vh-act"><button class="btn" data-kv>Kartvizitten ekle</button><button class="btn primary" data-new>Yeni kişi</button></div></header>
     <div class="filters"><input type="search" data-q placeholder="Ad, firma, telefon ara" value="${esc(f.q)}" aria-label="Kişilerde ara"></div>
     <ul class="cards grid-cards" data-rows></ul>`;
   const draw = () => {
@@ -172,6 +216,7 @@ export function kisilerView(el) {
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelector('[data-new]').onclick = () => kisiDetay(null, {});
+  el.querySelector('[data-kv]').onclick = kartvizittenKisi;
   draw();
 }
 
@@ -191,6 +236,7 @@ export function kisiDetay(id, init) {
       <fieldset class="fs"><legend>Kartvizit</legend>
         <div class="kv-pair">${['kartvizit_on', 'kartvizit_arka'].map(s => `<div class="kv" data-kvs="${s}" data-val="${esc(k[s] || '')}"><div class="kv-img" role="img" aria-label="${s === 'kartvizit_on' ? 'Ön yüz' : 'Arka yüz'}"><span>${s === 'kartvizit_on' ? 'Ön yüz' : 'Arka yüz'}</span></div>
           <div class="ph-btns"><button type="button" class="btn sm" data-kv-cam>Çek</button><button type="button" class="btn sm ghost" data-kv-gal>Galeri</button><button type="button" class="btn sm ghost" data-kv-del hidden>Kaldır</button></div></div>`).join('')}</div>
+        <div class="btnrow"><button type="button" class="btn sm" data-ocr-btn ${k.kartvizit_on ? '' : 'hidden'}>Kartviziti oku ve formu doldur</button></div><div data-ocr></div>
       </fieldset>
       ${renderForm(KISI_FORM, k)}
       ${projeler.length || ziy.length ? `<section class="rel"><h3>Projeler</h3><ul class="list">${projeler.map(p => `<li><a href="#/proje/${p.id}">${esc(p.ad)}</a>${pill(p.durum)}</li>`).join('') || '<li class="muted">—</li>'}</ul>
@@ -201,17 +247,21 @@ export function kisiDetay(id, init) {
   bindForm(form, KISI_FORM, k);
   panel.querySelectorAll('[data-kvs]').forEach(box => {
     const img = box.querySelector('.kv-img'), del = box.querySelector('[data-kv-del]');
-    const show = async () => { const p = box.dataset.val; del.hidden = !p; if (!p) { img.style.backgroundImage = ''; img.classList.remove('has'); return; } const u = await app.db.url(p); if (u) { img.style.backgroundImage = `url("${u}")`; img.classList.add('has'); img.onclick = () => window.open(u, '_blank'); } };
+    let show = async () => { const p = box.dataset.val; del.hidden = !p; if (!p) { img.style.backgroundImage = ''; img.classList.remove('has'); return; } const u = await app.db.url(p); if (u) { img.style.backgroundImage = `url("${u}")`; img.classList.add('has'); img.onclick = () => window.open(u, '_blank'); } };
     const add = async cap => {
       const { pickFiles } = await import('../ui.js');
       const [file] = await pickFiles({ capture: cap, multiple: false }); if (!file) return;
-      try { toast('Kartvizit yükleniyor…'); box.dataset.val = await app.db.upload(file); show(); toast('Kartvizit eklendi. Kaydetmeyi unutma.'); } catch (e) { toast(e.message, 'err'); }
+      try { toast('Kartvizit yükleniyor…'); box.dataset.val = await app.db.upload(file); await show(); toast('Kartvizit eklendi. Kaydetmeyi unutma.');
+        if (box.dataset.kvs === 'kartvizit_on') kartvizitPaneli(panel, form, box.dataset.val); } catch (e) { toast(e.message, 'err'); }
     };
     box.querySelector('[data-kv-cam]').onclick = () => add(true);
     box.querySelector('[data-kv-gal]').onclick = () => add(false);
     del.onclick = () => { box.dataset.val = ''; show(); };
+    const eskiShow = show; show = async () => { await eskiShow(); if (box.dataset.kvs === 'kartvizit_on') panel.querySelector('[data-ocr-btn]').hidden = !box.dataset.val; };
     show();
   });
+  panel.querySelector('[data-ocr-btn]').onclick = () => kartvizitPaneli(panel, form, panel.querySelector('[data-kvs="kartvizit_on"]').dataset.val, k._ocr);
+  if (k._new && k.kartvizit_on) kartvizitPaneli(panel, form, k.kartvizit_on);
   panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     if (b.dataset.a === 'wa') waGonder({ kisi: k });
     if (b.dataset.a === 'vcf') {

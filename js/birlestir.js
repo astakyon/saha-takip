@@ -4,13 +4,14 @@
 import { S, TABLES, pick } from './db.js';
 import { fold } from './ui.js';
 
-export const SIRA = ['ayarlar', 'bolgeler', 'firmalar', 'kisiler', 'projeler', 'proje_gecmis', 'ziyaretler', 'gorevler', 'urunler', 'urun_aileleri', 'stok_gecmis', 'rakip_fiyatlar', 'siparisler', 'hedefler', 'teklifler', 'numuneler', 'servis_kayitlari', 'masraflar'];
+export const SIRA = ['ayarlar', 'bolgeler', 'firmalar', 'kisiler', 'projeler', 'proje_gecmis', 'ziyaretler', 'gorevler', 'urunler', 'urun_aileleri', 'stok_gecmis', 'rakip_fiyatlar', 'siparisler', 'hedefler', 'teklifler', 'numuneler', 'servis_kayitlari', 'masraflar', 'tahsilatlar', 'belgeler'];
 const FK = {
   firmalar: ['bolge_id'], kisiler: ['firma_id'],
   projeler: ['bayi_id', 'yatirimci_id', 'projeci_id', 'danisman_id', 'gemut_id', 'emut_id', 'alici_id', 'ilgili_kisi_id', 'bolge_id'],
   proje_gecmis: ['proje_id'], ziyaretler: ['firma_id', 'kisi_id', 'proje_id'], gorevler: ['firma_id', 'proje_id', 'kisi_id'],
   rakip_fiyatlar: ['proje_id'], siparisler: ['firma_id', 'proje_id'],
   teklifler: ['proje_id', 'firma_id', 'kisi_id'], numuneler: ['firma_id', 'kisi_id', 'proje_id'], servis_kayitlari: ['firma_id', 'kisi_id', 'proje_id'],
+  tahsilatlar: ['firma_id'], belgeler: ['proje_id', 'firma_id'],
 };
 const nk = s => fold(s || '').replace(/[^a-z0-9]+/g, '');
 const KEY = {
@@ -23,6 +24,7 @@ const KEY = {
   siparisler: r => (r.belge_no || '') + ':' + (r.siparis_no || ''),
   hedefler: r => r.yil + ':' + r.ceyrek, proje_gecmis: r => r.id,
   teklifler: r => r.id, numuneler: r => r.id, servis_kayitlari: r => r.id, masraflar: r => r.id,
+  tahsilatlar: r => r.belge_no ? nk(r.cari || r.firma_id) + ':' + nk(r.belge_no) : r.id, belgeler: r => r.id,
   urun_aileleri: r => nk(r.aile), ayarlar: r => String(r.anahtar || ''),
 };
 const KONUM = ['lat', 'lng', 'konum_yaklasik', 'il', 'ilce', 'belde', 'osb', 'bolge_id', 'adres'];

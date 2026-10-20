@@ -2,6 +2,7 @@ import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, num, usd, tarih, today, gunEkle, RAKIPLER, URUN_AILELERI, byId, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, pickFiles, fold } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
+import { cubuklar, ikili } from '../grafik.js';
 
 const num2 = n => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
 const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
@@ -153,10 +154,11 @@ export function rakipForm(init = {}) {
 }
 
 export function rakipView(el) {
-  const f = F('rakip', { q: '', marka: 'Tümü' });
+  const f = F('rakip', { q: '', marka: 'Tümü', gor: 'fiyat', yil: 'Tümü' });
+  if (f.gor === 'analiz') return rakipAnaliz(el, f);
   const markalar = [...new Set(S.rakip_fiyatlar.map(r => r.marka))].sort();
   el.innerHTML = `<header class="vh"><div><h1>Rakip fiyatları</h1><p class="sum">${S.rakip_fiyatlar.length} fiyat kaydı · ${markalar.length} marka</p></div>
-    <div class="vh-act"><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Fiyat ekle</button></div></header>
+    <div class="vh-act">${gorSeg(f)}<button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Fiyat ekle</button></div></header>
     <div class="filters"><input type="search" data-q placeholder="Marka, ürün, aile ara" value="${esc(f.q)}" aria-label="Rakip fiyatlarında ara">
       <div class="chips">${['Tümü', ...markalar].map(m => `<button type="button" class="chip ${f.marka === m ? 'on' : ''}" data-m="${esc(m)}" style="--c:#B91C1C">${esc(m)}</button>`).join('')}</div></div>
     <div data-rows></div>`;
@@ -173,7 +175,51 @@ export function rakipView(el) {
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { f.marka = b.dataset.m; el.querySelectorAll('[data-m]').forEach(x => x.classList.toggle('on', x === b)); saveFilters(); draw(); });
+  gorBagla(el, f);
   el.querySelector('[data-new]').onclick = () => rakipForm({});
   el.querySelector('[data-exp]').onclick = () => exportXlsx(`rakip-fiyatlari-${today()}.xlsx`, { 'Rakip fiyatları': S.rakip_fiyatlar.map(r => ({ 'Aile': r.aile, 'Marka': r.marka, 'Ürün': r.urun_adi, 'Lümen': r.lumen_aralik, 'Birim fiyat': r.birim_fiyat, 'Para birimi': r.para_birimi, 'Fiyat notu': r.fiyat_metin, 'Kaynak': r.kaynak, 'Proje': byId('projeler', r.proje_id)?.ad, 'Tarih': r.tarih, 'Not': r.notlar })) });
   draw();
+}
+
+const gorSeg = f => `<div class="seg" role="group" aria-label="Görünüm"><button type="button" data-rg="fiyat" class="${f.gor !== 'analiz' ? 'on' : ''}">Fiyatlar</button><button type="button" data-rg="analiz" class="${f.gor === 'analiz' ? 'on' : ''}">Analiz</button></div>`;
+const gorBagla = (el, f) => el.querySelectorAll('[data-rg]').forEach(b => b.onclick = () => { f.gor = b.dataset.rg; saveFilters(); rakipView(el); });
+const usdK = v => v ? new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(v) + ' $' : '0 $';
+
+// Rakip analizi: kayıplar markaya ve nedene göre, aile bazında fiyat karşılaştırması, çeyreklere göre kazanılan / kaybedilen
+function rakipAnaliz(el, f) {
+  const yillar = [...new Set(S.projeler.map(p => p.takip_yili).filter(Boolean))].sort();
+  const yP = S.projeler.filter(p => f.yil === 'Tümü' || String(p.takip_yili) === String(f.yil));
+  const kayip = yP.filter(p => p.durum === 'Kayıp'), kazanc = yP.filter(p => p.durum === 'Sipariş');
+  const tutar = p => +p.bizim_teklif_usd || +p.tutar_usd || 0;
+  const marka = {}; for (const p of kayip) { const m = p.rakip_marka || 'Belirtilmemiş'; (marka[m] ||= { n: 0, t: 0 }); marka[m].n++; marka[m].t += tutar(p); }
+  const neden = {}; for (const p of kayip) { const k = p.kayip_nedeni || 'Belirtilmemiş'; neden[k] = (neden[k] || 0) + 1; }
+  const oran = kazanc.length + kayip.length ? Math.round(kazanc.length / (kazanc.length + kayip.length) * 100) : null;
+  // Fiyat farkı: kayıp projelerde bizim teklif / rakip toplam
+  const fark = kayip.filter(p => p.bizim_teklif_usd && p.rakip_toplam_usd).map(p => (p.bizim_teklif_usd - p.rakip_toplam_usd) / p.rakip_toplam_usd * 100);
+  // Aile bazında birim fiyat: bizim ortalama ve markaların ortalaması
+  const aileler = {};
+  for (const r of S.rakip_fiyatlar) if (r.birim_fiyat && (r.para_birimi || 'USD') === 'USD' && r.aile) ((aileler[r.aile] ||= {})[r.marka] ||= []).push(+r.birim_fiyat);
+  // Çeyreklere göre kazanılan / kaybedilen (durum geçmişinden)
+  const Y = f.yil === 'Tümü' ? new Date().getFullYear() : +f.yil;
+  const ceyrek = [1, 2, 3, 4].map(c => ({ etiket: c + '. çeyrek', a: 0, b: 0 }));
+  for (const g of S.proje_gecmis) { if (!g.tarih?.startsWith(String(Y))) continue; const c = Math.floor(new Date(g.tarih).getMonth() / 3); if (g.yeni_durum === 'Sipariş') ceyrek[c].a++; if (g.yeni_durum === 'Kayıp') ceyrek[c].b++; }
+  el.innerHTML = `<header class="vh"><div><h1>Rakip analizi</h1><p class="sum">${kayip.length} kayıp · ${kazanc.length} kazanılan${oran != null ? ` · kazanma oranı %${oran}` : ''}</p></div><div class="vh-act">${gorSeg(f)}</div></header>
+    <div class="filters"><div class="frow"><label>Takip yılı <select data-yil>${['Tümü', ...yillar].map(y => `<option ${String(f.yil) === String(y) ? 'selected' : ''}>${y}</option>`).join('')}</select></label></div></div>
+    <section class="ledger"><div><span>Kaybedilen tutar</span><b>${usdK(kayip.reduce((s, p) => s + tutar(p), 0))}</b><small>${kayip.length} proje</small></div>
+      <div><span>Kazanma oranı</span><b>${oran != null ? '%' + oran : '—'}</b><small>sipariş / (sipariş + kayıp)</small></div>
+      <div><span>En çok kaybedilen marka</span><b>${esc(Object.entries(marka).filter(([m]) => m !== 'Belirtilmemiş').sort((a, b) => b[1].t - a[1].t)[0]?.[0] || '—')}</b><small>tutara göre</small></div>
+      <div><span>Kayıplarda fiyat farkımız</span><b>${fark.length ? (fark.reduce((a, b) => a + b, 0) / fark.length >= 0 ? '+' : '') + '%' + num(Math.round(fark.reduce((a, b) => a + b, 0) / fark.length)) : '—'}</b><small>${fark.length ? fark.length + ' projede bizim teklif rakipten ortalama bu kadar ' + (fark.reduce((a, b) => a + b, 0) >= 0 ? 'pahalı' : 'ucuz') : 'bizim ve rakip tutarı girilen kayıp yok'}</small></div></section>
+    <div class="dash">
+      <section class="card"><h2>Kayıplar: hangi markaya?</h2>${cubuklar(Object.entries(marka).sort((a, b) => b[1].t - a[1].t).map(([m, v]) => ({ etiket: m, deger: v.t, yazi: usdK(v.t), alt: v.n + ' proje', seri: 1 })), { bos: 'Kayıp proje yok.', baslik: 'Markaya göre kaybedilen tutar' })}</section>
+      <section class="card"><h2>Kayıp nedenleri</h2>${cubuklar(Object.entries(neden).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ etiket: k, deger: v, yazi: v + ' proje', seri: 1 })), { bos: 'Kayıp proje yok.', baslik: 'Kayıp nedenleri' })}</section>
+      <section class="card wide"><h2>Kazanılan ve kaybedilen projeler (${Y})</h2>${ikili(ceyrek, ['Kazanılan', 'Kaybedilen'], { yazi: v => v + ' proje', bos: 'Bu yıl durum geçmişinde sipariş ya da kayıp yok.' })}</section>
+      <section class="card wide"><h2>Aile bazında birim fiyat (USD)</h2>
+        ${Object.keys(aileler).length ? Object.entries(aileler).map(([a, ms]) => {
+          const biz = avg(S.urunler.filter(u => aileKey(u.aile) === aileKey(a) && u.birim_fiyat_usd).map(u => +u.birim_fiyat_usd));
+          const rows = [...(biz ? [{ etiket: 'Bizim ortalama', deger: biz, yazi: num(Math.round(biz)) + ' $', seri: 0 }] : []), ...Object.entries(ms).map(([m, v]) => { const o = avg(v); return { etiket: m, deger: o, yazi: num(Math.round(o)) + ' $', alt: biz ? (o < biz ? 'bizden %' + num(Math.round((biz - o) / biz * 100)) + ' ucuz' : 'bizden %' + num(Math.round((o - biz) / biz * 100)) + ' pahalı') : v.length + ' fiyat', seri: 1 }; }).sort((x, y) => x.deger - y.deger)];
+          return `<h3 class="cg-h">${esc(a)}</h3>${cubuklar(rows, { tablo: false, baslik: a + ' birim fiyatları' })}`;
+        }).join('') + '<p class="hint">Mavi: bizim stok listesindeki ortalama birim fiyat. Turuncu: rakip markaların girilen fiyatlarının ortalaması. Lümen aralıkları farklı olabilir; kesin karşılaştırma için Fiyatlar sekmesine bak.</p>' : '<p class="hint">Aile ve USD birim fiyatı girilmiş rakip fiyatı yok.</p>'}</section>
+    </div>`;
+  gorBagla(el, f);
+  el.querySelector('[data-yil]').onchange = e => { f.yil = e.target.value; saveFilters(); rakipAnaliz(el, f); };
 }

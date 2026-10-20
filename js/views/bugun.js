@@ -6,6 +6,8 @@ import { km } from '../geo.js';
 import { ziyaretForm, gorevForm, zDurum } from './ziyaret.js';
 import { waGonder } from '../sablon.js';
 import { stokUyarilari } from './urunler.js';
+import { kurYazi } from '../kur.js';
+import { gecikenler, kalan as tKalan, para as tPara } from './tahsilat.js';
 
 // Ziyaretin konumu: kendi konumu, yoksa firmanın ya da projenin kesin konumu
 export function ziyaretYeri(z) {
@@ -82,13 +84,14 @@ export function bugunView(el) {
   const numune = S.numuneler.filter(n => n.durum === 'Müşteride' && n.iade_tarihi && n.iade_tarihi <= t);
   const servis = S.servis_kayitlari.filter(s => s.durum !== 'Çözüldü');
   const teklif = S.teklifler.filter(x => x.durum === 'Gönderildi' && x.gecerlilik && x.gecerlilik <= gunEkle(t, 7));
+  const gecT = gecikenler();
   const kmBugun = gunKm(t);
   const sirali = rotaSirala(planli);
   const rota = rotaUrl(sirali.map(x => x.p));
   const z1 = z => `<li><button type="button" class="linkbtn" data-zid="${z.id}"><b>${z.saat ? esc(z.saat) + ' · ' : ''}${esc(firmaAd(z.firma_id) || 'Ziyaret')}</b></button><span class="muted">${esc([byId('kisiler', z.kisi_id)?.ad_soyad, z.amac, byId('projeler', z.proje_id)?.ad].filter(Boolean).join(' · '))}</span>${z.sonuc_tipi ? `<span class="tag-s res">${esc(z.sonuc_tipi)}</span>` : ''}</li>`;
   const g1 = g => `<li class="${g.son_tarih < t ? 'late' : ''}"><label class="chk"><input type="checkbox" data-done="${g.id}" aria-label="Tamamlandı"></label><button type="button" class="linkbtn" data-gid="${g.id}">${esc(g.baslik)}</button><span class="muted">${g.son_tarih < t ? tarih(g.son_tarih) : 'bugün'}</span></li>`;
   const gun = new Date(t + 'T00:00').toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
-  el.innerHTML = `<header class="vh"><div><h1>Bugün</h1><p class="sum">${esc(gun)} · ${planli.length} planlı ziyaret · ${gorev.length} görev${kmBugun ? ` · yaklaşık ${kmBugun} km yol` : ''}</p></div>
+  el.innerHTML = `<header class="vh"><div><h1>Bugün</h1><p class="sum">${esc(gun)} · ${planli.length} planlı ziyaret · ${gorev.length} görev${kmBugun ? ` · yaklaşık ${kmBugun} km yol` : ''}${kurYazi() ? `<br><span class="kur">${kurYazi()}</span>` : ''}</p></div>
     <div class="vh-act"><button class="btn ghost" data-yakin>Yakınımdakiler</button><button class="btn primary" data-yeni>Ziyaret kaydet</button></div></header>
     <div class="dash today-grid">
       <section class="card wide"><h2>Bugünün planı</h2>
@@ -108,7 +111,8 @@ export function bugunView(el) {
         ${gid.length ? `<ul class="list">${gid.slice(0, 8).map(x => `<li><a href="#/firma/${x.f.id}"><b>${esc(x.f.ad)}</b><span class="muted">${x.son ? `${x.gun} gündür gidilmedi` : 'hiç ziyaret kaydı yok'}${x.proje ? ` · ${x.proje} açık proje` : ''}</span></a><button type="button" class="btn sm ghost" data-planla="${x.f.id}">Planla</button></li>`).join('')}</ul>` : '<p class="hint">30 günden uzun süredir gidilmeyen aktif firma yok.</p>'}</section>
       <section class="card"><h2>Yarın</h2>${yarinZ.length || yarinG.length ? `<ul class="list">${yarinZ.map(z1).join('')}${yarinG.map(g => `<li><button type="button" class="linkbtn" data-gid="${g.id}">○ ${esc(g.baslik)}</button></li>`).join('')}</ul>` : '<p class="hint">Yarın için plan yok.</p>'}</section>
       ${dg.length ? `<section class="card"><h2>Doğum günleri</h2><ul class="list">${dg.map(x => `<li><span><b>${esc(x.k.ad_soyad)}</b><span class="muted"> · ${firmaAd(x.k.firma_id) ? esc(firmaAd(x.k.firma_id)) + ' · ' : ''}${x.kalan === 0 ? 'bugün' : x.kalan === 1 ? 'yarın' : x.gun.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}</span></span><button type="button" class="btn sm ghost" data-dg="${x.k.id}">Tebrik et</button></li>`).join('')}</ul></section>` : ''}
-      ${stok.yetersiz.length || stok.hareketsiz.length || numune.length || servis.length || teklif.length ? `<section class="card"><h2>Uyarılar</h2><ul class="list">
+      ${stok.yetersiz.length || stok.hareketsiz.length || numune.length || servis.length || teklif.length || gecT.length ? `<section class="card"><h2>Uyarılar</h2><ul class="list">
+        ${gecT.length ? `<li><a href="#/tahsilat"><b class="neg">${gecT.length} faturanın vadesi geçti</b><span class="muted">${esc(gecT.slice(0, 3).map(x => (firmaAd(x.firma_id) || x.cari) + ' ' + tPara(tKalan(x), x.para_birimi)).join(', '))}</span></a></li>` : ''}
         ${stok.yetersiz.length ? `<li><a href="#/urunler"><b>${stok.yetersiz.length} üründe stok yetersiz</b><span class="muted">yaklaşan tekliflerin ihtiyacı depodaki stoktan fazla</span></a></li>` : ''}
         ${stok.hareketsiz.length ? `<li><a href="#/urunler"><b>${stok.hareketsiz.length} ürün 60 günü aşkın süredir hareketsiz</b><span class="muted">kampanyaya uygun stok</span></a></li>` : ''}
         ${numune.length ? `<li><a href="#/numuneler"><b>${numune.length} numunenin iade tarihi geldi</b><span class="muted">${esc(numune.slice(0, 3).map(n => firmaAd(n.firma_id) || n.urun_ad).join(', '))}</span></a></li>` : ''}

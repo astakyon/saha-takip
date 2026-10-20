@@ -33,7 +33,8 @@ export function panelView(el) {
   const topFirma = Object.entries(firmaPerf).sort((a, b) => b[1].n - a[1].n).slice(0, 8);
   const durumMax = Math.max(...DURUMLAR.map(d => yP.filter(p => p.durum === d.k).length), 1);
   const tah = tahmin(Y, gercek, hed);
-  const karne = bayiKarnesi(Y);
+  const ROL = KARNE_ROL[f.karne] ? f.karne : 'bayi_id';
+  const karne = bayiKarnesi(Y, ROL);
 
   el.innerHTML = `<header class="vh"><div><h1>Panel</h1><p class="sum">${Y} yılı, bugün ${tarih(t)}</p></div>
     <div class="vh-act"><label>Yıl <select data-yil>${[2025, 2026, 2027].map(y => `<option ${y === Y ? 'selected' : ''}>${y}</option>`).join('')}</select></label></div></header>
@@ -58,11 +59,11 @@ export function panelView(el) {
         ${toplamHedef ? `<tr><td>Tahmin / hedef</td>${[0, 1, 2, 3].map(i => `<td class="r ${hed[i] && gercek[i] + tah.ag[i] < hed[i] ? 'neg' : 'pos'}">${hed[i] ? '%' + num(Math.round((gercek[i] + tah.ag[i]) / hed[i] * 100)) : ''}</td>`).join('')}<td></td><td class="r ${toplamG + tah.agTop < toplamHedef ? 'neg' : 'pos'}"><b>%${num(Math.round((toplamG + tah.agTop) / toplamHedef * 100))}</b></td></tr>` : ''}
       </tbody></table></div>
       ${tah.buyuk.length ? `<p class="hint">Tahmini en çok etkileyen projeler: ${tah.buyuk.map(p => `<a href="#/proje/${p.id}">${esc(p.ad)}</a> (${usd(p.tutar_usd)} × %${olasilik(p)})`).join(', ')}</p>` : ''}</section>
-    <section class="card wide"><h2>Bayi karnesi (${Y})</h2>
-      ${karne.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Bayi</th><th class="r">Proje</th><th class="r">Açık potansiyel</th><th class="r">Kazanılan</th><th class="r">Kaybedilen</th><th class="r">Kazanma oranı</th><th class="r">Sipariş (${Y})</th><th class="r">Stok değeri</th><th>Son ziyaret</th></tr></thead><tbody>
+    <section class="card wide"><div class="card-h"><h2>Firma karnesi (${Y})</h2><div class="seg sm" role="group" aria-label="Rol">${Object.entries(KARNE_ROL).map(([k, v]) => `<button type="button" data-karne="${k}" class="${k === ROL ? 'on' : ''}">${v}</button>`).join('')}</div></div>
+      ${karne.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>${KARNE_ROL[ROL]}</th><th class="r">Proje</th><th class="r">Açık potansiyel</th><th class="r">Kazanılan</th><th class="r">Kaybedilen</th><th class="r">Kazanma oranı</th><th>Kaybettiğimiz marka</th><th class="r">Sipariş (${Y})</th>${ROL === 'bayi_id' ? '<th class="r">Stok değeri</th>' : ''}<th>Son ziyaret</th></tr></thead><tbody>
         ${karne.map(k => `<tr><td><a href="#/firma/${k.f.id}"><b>${esc(k.f.ad)}</b></a></td><td class="r">${k.n}</td><td class="r num">${usd(k.acik)}</td><td class="r">${k.w}${k.wT ? `<small>${usd(k.wT)}</small>` : ''}</td><td class="r">${k.l}${k.lT ? `<small>${usd(k.lT)}</small>` : ''}</td>
-          <td class="r ${k.oran != null && k.oran < 40 ? 'neg' : ''}">${k.oran != null ? '%' + k.oran : '—'}</td><td class="r num"><b>${usd(k.sip)}</b>${k.sipN ? `<small>${k.sipN} sipariş</small>` : ''}</td><td class="r num">${k.stok ? usd(k.stok) : '—'}</td><td class="${k.gun != null && k.gun > 30 ? 'neg' : ''}">${k.son ? tarih(k.son) : '—'}</td></tr>`).join('')}</tbody></table></div>
-        <p class="hint">Kazanma oranı = kazanılan / (kazanılan + kaybedilen). Stok değeri, depo adı bayiyle eşleşen ürünlerden hesaplanır.</p>` : '<p class="hint">Projelerde bayi seçilmemiş.</p>'}</section>
+          <td class="r ${k.oran != null && k.oran < 40 ? 'neg' : ''}">${k.oran != null ? '%' + k.oran : '—'}</td><td>${esc(k.rakip || '—')}</td><td class="r num"><b>${k.sip ? usd(k.sip) : '—'}</b>${k.sipN ? `<small>${k.sipN} sipariş</small>` : ''}</td>${ROL === 'bayi_id' ? `<td class="r num">${k.stok ? usd(k.stok) : '—'}</td>` : ''}<td class="${k.gun != null && k.gun > 30 ? 'neg' : ''}">${k.son ? tarih(k.son) : '—'}</td></tr>`).join('')}</tbody></table></div>
+        <p class="hint">Kazanma oranı = kazanılan / (kazanılan + kaybedilen). Sipariş, cari adı firmayla eşleşen SAP siparişlerinden${ROL === 'bayi_id' ? '; stok değeri, depo adı bayiyle eşleşen ürünlerden' : ''} hesaplanır.</p>` : `<p class="hint">Projelerde ${KARNE_ROL[ROL].toLowerCase()} seçilmemiş.</p>`}</section>
     <section class="card"><h2>Durumlara göre projeler (${Y})</h2>
       <ul class="hbars">${DURUMLAR.map(d => { const ps = yP.filter(p => p.durum === d.k); return ps.length ? `<li><span>${d.k}</span><span class="hb"><i style="width:${ps.length / durumMax * 100}%;--c:${d.c}"></i></span><b>${ps.length}</b><small>${usd(sum(ps, p => p.tutar_usd))}</small></li>` : ''; }).join('')}</ul></section>
     <section class="card"><h2>Kayıplar: hangi markaya?</h2>
@@ -80,6 +81,7 @@ export function panelView(el) {
       <div class="btnrow"><button class="btn primary" data-pptx>Çeyrek sunumu (PowerPoint)</button><button class="btn" data-s="kayip">Kayıp projeler</button><button class="btn" data-s="pot">Potansiyel projeler (${Y})</button><button class="btn" data-s="str">${Y + 1} potansiyel ve stratejik projeler</button><button class="btn ghost" data-s="hedef">Hedef proje listesi</button></div></section>
   </div>`;
   el.querySelector('[data-yil]').onchange = e => { f.yil = +e.target.value; saveFilters(); panelView(el); };
+  el.querySelectorAll('[data-karne]').forEach(b => b.onclick = () => { f.karne = b.dataset.karne; saveFilters(); const y = window.scrollY; panelView(el); window.scrollTo(0, y); });
   el.querySelectorAll('[data-g]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.g }));
   el.querySelectorAll('[data-s]').forEach(b => b.onclick = () => sunum(b.dataset.s, Y));
   el.querySelector('[data-pptx]').onclick = async () => { const { ceyrekSunumu } = await import('../pptx.js'); ceyrekSunumu(Y); };
@@ -97,20 +99,22 @@ export function tahmin(Y, gercek, hed) {
   }
   return { ag, tarihsiz, agTop: ag.reduce((a, b) => a + b, 0) + tarihsiz, buyuk: katki.sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]) };
 }
-export function bayiKarnesi(Y) {
-  const ids = new Set(S.projeler.map(p => p.bayi_id).filter(Boolean));
-  for (const f of S.firmalar) if ((f.tipler || []).includes('Bayi')) ids.add(f.id);
+export const KARNE_ROL = { bayi_id: 'Bayi', emut_id: 'Emüt', gemut_id: 'Gemüt', alici_id: 'Malzeme alıcısı', projeci_id: 'Projeci', danisman_id: 'Danışman', yatirimci_id: 'Yatırımcı' };
+export function bayiKarnesi(Y, rol = 'bayi_id') {
+  const ids = new Set(S.projeler.map(p => p[rol]).filter(Boolean));
+  if (rol === 'bayi_id') for (const f of S.firmalar) if ((f.tipler || []).includes('Bayi')) ids.add(f.id);
   const t = today();
   return [...ids].map(id => byId('firmalar', id)).filter(Boolean).map(f => {
-    const ps = S.projeler.filter(p => p.bayi_id === f.id && (!p.takip_yili || +p.takip_yili === Y || ACIK.includes(p.durum)));
+    const ps = S.projeler.filter(p => p[rol] === f.id && (!p.takip_yili || +p.takip_yili === Y || ACIK.includes(p.durum)));
+    const rk = {}; for (const p of ps) if (p.durum === 'Kayıp' && p.rakip_marka) rk[p.rakip_marka] = (rk[p.rakip_marka] || 0) + 1;
     const won = ps.filter(p => p.durum === 'Sipariş'), lost = ps.filter(p => p.durum === 'Kayıp');
     const ilk = fold(f.ad).split(/\s+/)[0];
     const sp = S.siparisler.filter(s => s.tarih?.startsWith(String(Y)) && s.para_birimi === 'USD' && (s.firma_id === f.id || (ilk.length > 2 && fold(s.musteri_adi || '').startsWith(ilk))));
-    const stok = S.urunler.filter(u => u.depo && fold(u.depo).startsWith(ilk)).reduce((a, u) => a + (+u.stok || 0) * (+u.birim_fiyat_usd || 0), 0);
+    const stok = rol !== 'bayi_id' ? 0 : S.urunler.filter(u => u.depo && fold(u.depo).startsWith(ilk)).reduce((a, u) => a + (+u.stok || 0) * (+u.birim_fiyat_usd || 0), 0);
     const son = S.ziyaretler.filter(z => z.firma_id === f.id && (z.durum || 'Yapıldı') === 'Yapıldı').map(z => z.tarih).sort().pop() || null;
     return { f, n: ps.length, acik: sum(ps.filter(p => ACIK.includes(p.durum)), p => p.tutar_usd), w: won.length, wT: sum(won, p => p.siparis_tutari_usd || p.tutar_usd), l: lost.length, lT: sum(lost, p => p.bizim_teklif_usd || p.tutar_usd),
-      oran: won.length + lost.length ? Math.round(won.length / (won.length + lost.length) * 100) : null, sip: sum(sp, s => s.net_deger), sipN: sp.length, stok, son, gun: son ? Math.round((new Date(t) - new Date(son)) / 864e5) : null };
-  }).filter(k => k.n || k.sip).sort((a, b) => b.sip - a.sip || b.n - a.n);
+      oran: won.length + lost.length ? Math.round(won.length / (won.length + lost.length) * 100) : null, sip: sum(sp, s => s.net_deger), sipN: sp.length, stok, rakip: Object.entries(rk).sort((a, b) => b[1] - a[1]).map(([m, n]) => `${m} (${n})`).slice(0, 2).join(', '), son, gun: son ? Math.round((new Date(t) - new Date(son)) / 864e5) : null };
+  }).filter(k => k.n || k.sip).sort((a, b) => b.sip - a.sip || b.acik - a.acik || b.n - a.n).slice(0, 40);
 }
 
 function sunum(kind, Y) {

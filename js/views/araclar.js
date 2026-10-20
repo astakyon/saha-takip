@@ -4,6 +4,7 @@ import { F, saveFilters } from '../state.js';
 import { esc, num, usd, urunBilgi, fold, toast, RAKIPLER, waLink } from '../ui.js';
 import { ayar, ayarYaz } from '../ayar.js';
 import { teklifForm } from './teklif.js';
+import { kur } from '../kur.js';
 
 const n = v => { const x = parseFloat(String(v ?? '').replace(',', '.')); return isNaN(x) ? 0 : x; };
 // Armatür sayılabilecek ürünler (açıklamada güç ve ışık akısı olanlar)
@@ -45,7 +46,7 @@ export function araclarView(el) {
 
 // ---------- Enerji tasarrufu ----------
 function tasarruf(box) {
-  const v = { adet: 50, eskiW: 400, yeniKod: '', yeniW: 150, saat: 16, gun: 300, kwh: ayar('elektrik_tl_kwh', ''), kur: ayar('usd_kur', ''), fiyat: '', montaj: 0, ...(ayar('tasarruf_son') || {}) };
+  const v = { adet: 50, eskiW: 400, yeniKod: '', yeniW: 150, saat: 16, gun: 300, kwh: ayar('elektrik_tl_kwh', ''), kur: kur()?.USD ? Math.round(kur().USD * 100) / 100 : ayar('usd_kur', ''), fiyat: '', montaj: 0, ...(ayar('tasarruf_son') || {}) };
   box.innerHTML = `<div class="tool-grid"><form class="card form" data-f>
       <h2>Mevcut sistem</h2>
       <div class="grid"><div class="fld"><label for="t-adet">Armatür adedi</label><input id="t-adet" name="adet" type="number" inputmode="numeric" value="${v.adet}"></div>

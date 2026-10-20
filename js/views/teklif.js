@@ -5,6 +5,7 @@ import { esc, num, tarih, today, gunEkle, byId, firmaAd, match, toast, openDrawe
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { ayar, ayarYaz } from '../ayar.js';
 import { benimAdim } from '../sablon.js';
+import { tl, kur } from '../kur.js';
 
 export const TEKLIF_DURUM = [{ k: 'Taslak', c: '#64748B' }, { k: 'Gönderildi', c: '#7C3AED' }, { k: 'Kabul', c: '#15803D' }, { k: 'Red', c: '#B91C1C' }];
 const tpill = d => `<span class="pill" style="--c:${(TEKLIF_DURUM.find(x => x.k === d) || TEKLIF_DURUM[0]).c}">${esc(d)}</span>`;
@@ -59,7 +60,7 @@ export function teklifForm(init = {}, after) {
   const kbox = form.querySelector('[data-kalemler]');
   const toplam = () => {
     const h = hesapla(t), pb = t.para_birimi || 'USD';
-    form.querySelector('[data-top]').innerHTML = t.kalemler.length ? `<dl><dt>Ara toplam</dt><dd>${para(h.ara, pb)}</dd>${h.isk ? `<dt>İskonto (%${num(t.iskonto)})</dt><dd>−${para(h.isk, pb)}</dd>` : ''}<dt>KDV hariç toplam</dt><dd><b>${para(h.net, pb)}</b></dd><dt>KDV (%${num(t.kdv)})</dt><dd>${para(h.kdv, pb)}</dd><dt>Genel toplam</dt><dd><b>${para(h.genel, pb)}</b></dd></dl>` : '<p class="hint">Yukarıdan ürün ekle.</p>';
+    form.querySelector('[data-top]').innerHTML = t.kalemler.length ? `<dl><dt>Ara toplam</dt><dd>${para(h.ara, pb)}</dd>${h.isk ? `<dt>İskonto (%${num(t.iskonto)})</dt><dd>−${para(h.isk, pb)}</dd>` : ''}<dt>KDV hariç toplam</dt><dd><b>${para(h.net, pb)}</b></dd><dt>KDV (%${num(t.kdv)})</dt><dd>${para(h.kdv, pb)}</dd><dt>Genel toplam</dt><dd><b>${para(h.genel, pb)}</b></dd>${pb !== 'TRY' && tl(h.genel, pb) ? `<dt class="muted">TL karşılığı</dt><dd class="muted">≈ ${para(tl(h.genel, pb), 'TRY')}</dd>` : ''}</dl>${pb !== 'TRY' && kur() ? `<p class="hint r">Kur: ${kur()[pb]?.toLocaleString('tr-TR')} ₺ · ${esc(kur().kaynak || '')}</p>` : ''}` : '<p class="hint">Yukarıdan ürün ekle.</p>';
   };
   const ciz = () => {
     kbox.innerHTML = t.kalemler.length ? `<table class="tk-tbl"><thead><tr><th>Ürün</th><th class="r">Adet</th><th class="r">Birim fiyat</th><th class="r">İsk. %</th><th class="r">Tutar</th><th></th></tr></thead><tbody>${t.kalemler.map((k, i) => {

@@ -10,9 +10,11 @@ import { INST, isIOS, install, onInstallChange } from '../kurulum.js';
 import { sablonDuzenleyici } from '../sablon.js';
 import { teklifAyarlari } from './teklif.js';
 import { kmlIndir } from '../paylas.js';
+import { kurAyarlari } from '../kur.js';
+import { bildirimAyarlari } from '../bildirim.js';
 
 const ORDER = SIRA;
-const ETIKET = { bolgeler: 'sanayi bölgesi', firmalar: 'firma', kisiler: 'kişi', projeler: 'proje', proje_gecmis: 'durum geçmişi', ziyaretler: 'ziyaret', gorevler: 'görev', urunler: 'ürün', stok_gecmis: 'stok geçmişi', rakip_fiyatlar: 'rakip fiyatı', siparisler: 'sipariş', hedefler: 'hedef', teklifler: 'teklif', numuneler: 'numune', servis_kayitlari: 'servis kaydı', masraflar: 'masraf', urun_aileleri: 'ürün ailesi', ayarlar: 'ayar' };
+const ETIKET = { bolgeler: 'sanayi bölgesi', firmalar: 'firma', kisiler: 'kişi', projeler: 'proje', proje_gecmis: 'durum geçmişi', ziyaretler: 'ziyaret', gorevler: 'görev', urunler: 'ürün', stok_gecmis: 'stok geçmişi', rakip_fiyatlar: 'rakip fiyatı', siparisler: 'sipariş', hedefler: 'hedef', teklifler: 'teklif', numuneler: 'numune', servis_kayitlari: 'servis kaydı', masraflar: 'masraf', urun_aileleri: 'ürün ailesi', ayarlar: 'ayar', tahsilatlar: 'tahsilat kaydı', belgeler: 'belge' };
 
 function connForm(cfg) {
   return `<form class="form conn" data-conn>
@@ -88,6 +90,8 @@ export async function ayarlarView(el) {
         <ol class="hint"><li>Supabase paneli → <b>Edge Functions</b> → <b>Deploy a new function</b> → <b>Via Editor</b>.</li><li>Fonksiyon adı: <code>kisa-link</code></li><li>Depodaki <code>supabase/functions/kisa-link/index.ts</code> dosyasının içeriğini yapıştır → <b>Deploy</b>.</li></ol>
         <p class="hint">Fonksiyon kurulmadıysa Google API anahtarıyla ad ve adresten, o da yoksa adresten yaklaşık konum bulunur.</p></details>
     </section>
+    <section class="card"><h2>Döviz kuru</h2><div data-kur></div></section>
+    <section class="card"><h2>Bildirimler</h2><div data-bildirim></div></section>
     <section class="card"><h2>Mesaj şablonları</h2><p class="hint">Kişi ve firma kartındaki WhatsApp düğmesi bu şablonları kullanır.</p><div data-sablon></div></section>
     <section class="card"><h2>Teklif bilgileri</h2><p class="hint">PDF teklifin üst bilgisi ve alt koşulları.</p><div data-teklifb></div></section>
     <section class="card"><h2>Kayıtlar</h2>
@@ -105,6 +109,8 @@ export async function ayarlarView(el) {
   bindConn(el);
   anahtarBagla(el, () => ayarlarView(el));
   sablonDuzenleyici(el.querySelector('[data-sablon]'));
+  kurAyarlari(el.querySelector('[data-kur]'));
+  bildirimAyarlari(el.querySelector('[data-bildirim]'));
   teklifAyarlari(el.querySelector('[data-teklifb]'));
   el.querySelector('[data-kml]').onclick = () => kmlIndir();
   el.querySelector('[data-gimport]').onclick = () => iceAktarPaneli(() => ayarlarView(el));
@@ -124,6 +130,7 @@ export async function ayarlarView(el) {
       'Teklifler': S.teklifler.map(t => ({ 'Teklif no': t.teklif_no, Tarih: t.tarih, Durum: t.durum, Firma: firmaAd(t.firma_id), Proje: S.projeler.find(p => p.id === t.proje_id)?.ad, Kalem: (t.kalemler || []).length, 'Toplam (KDV hariç)': t.toplam, 'Para birimi': t.para_birimi })),
       'Numuneler': S.numuneler.map(n => ({ Ürün: n.urun_ad, Adet: n.adet, Firma: firmaAd(n.firma_id), Veriliş: n.verilis, İade: n.iade_tarihi, Durum: n.durum })),
       'Servis': S.servis_kayitlari.map(x => ({ Tarih: x.tarih, Tür: x.tip, Durum: x.durum, Firma: firmaAd(x.firma_id), Ürün: x.urun, Sorun: x.aciklama, Çözüm: x.cozum })),
+      'Tahsilat': S.tahsilatlar.map(t => ({ Cari: firmaAd(t.firma_id) || t.cari, 'Fatura no': t.belge_no, Tarih: t.tarih, Vade: t.vade, Tutar: t.tutar, Ödenen: t.odenen, 'Para birimi': t.para_birimi })),
       'Masraflar': S.masraflar.map(m => ({ Tarih: m.tarih, Tür: m.tip, Tutar: m.tutar, Km: m.km, Açıklama: m.aciklama })),
     });
   };
@@ -185,6 +192,8 @@ async function migrate(el) {
   toast('Fotoğraflar aktarılıyor…');
   for (const t of ['firmalar', 'projeler', 'ziyaretler', 'servis_kayitlari', 'urun_aileleri']) for (const r of d[t]) r.fotolar = (await Promise.all((r.fotolar || []).map(conv))).filter(Boolean);
   for (const m of d.masraflar) m.fis = await conv(m.fis);
+  for (const b of d.belgeler) if (String(b.yol).startsWith('local/')) { const blob = await idbGet(b.yol, 'photos'); b.yol = blob ? await app.db.uploadFile(new File([blob], b.ad, { type: b.tur || blob.type })) : null; }
+  d.belgeler = d.belgeler.filter(b => b.yol);
   for (const k of d.kisiler) { k.kartvizit_on = await conv(k.kartvizit_on); k.kartvizit_arka = await conv(k.kartvizit_arka); }
   await importAll(d, el, 'yedek');
 }

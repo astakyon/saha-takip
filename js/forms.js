@@ -3,6 +3,7 @@ import { S } from './db.js';
 import { esc, byId, fold, pickFiles, myLocation, toast, IL_MERKEZ } from './ui.js';
 import { app } from './state.js';
 import { konumAlgila, konumMetni } from './geo.js';
+import { mikDugme, mikBagla } from './ses.js';
 
 let fseq = 0;
 function datalistFor(t) {
@@ -19,7 +20,7 @@ function control(f, v, obj) {
   const name = `name="${f.k}" id="${id}"`;
   const ph = f.ph ? `placeholder="${esc(f.ph)}"` : '';
   switch (f.t) {
-    case 'area': return [id, `<textarea ${name} rows="${f.rows || 3}" ${ph}>${esc(v)}</textarea>`];
+    case 'area': return [id, `<div class="area-wrap"><textarea ${name} rows="${f.rows || 3}" ${ph}>${esc(v)}</textarea>${mikDugme()}</div>`];
     case 'num': return [id, `<input ${name} type="number" inputmode="decimal" step="any" value="${v ?? ''}" ${ph}>`];
     case 'date': return [id, `<input ${name} type="date" value="${v ? String(v).slice(0, 10) : ''}">`];
     case 'time': return [id, `<input ${name} type="time" value="${esc(v || '')}">`];
@@ -76,6 +77,7 @@ export function renderForm(sections, obj) {
 
 // Form alanlarını bağlar (fotoğraf, konum, koşullu gösterim, hesaplama)
 export function bindForm(root, sections, obj, { onChange } = {}) {
+  mikBagla(root);
   // fotoğraflar
   root.querySelectorAll('[data-photos]').forEach(box => {
     const list = () => JSON.parse(box.dataset.val || '[]');

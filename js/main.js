@@ -16,6 +16,10 @@ import { tekliflerView } from './views/teklif.js';
 import { katalogView, referanslarView } from './views/katalog.js';
 import { numunelerView, servisView, masraflarView } from './views/kayitlar.js';
 import { paylasimAl, paylasimPaneli } from './paylas.js';
+import { tahsilatView } from './views/tahsilat.js';
+import { raporView } from './views/rapor.js';
+import { kurGuncelle } from './kur.js';
+import { bildirimHazirla } from './bildirim.js';
 
 const ROUTES = {
   bugun:     { t: 'Bugün', ico: 'sun', v: bugunView, main: true },
@@ -28,6 +32,7 @@ const ROUTES = {
   kisiler:   { t: 'Kişiler', ico: 'user', v: kisilerView, g: 'Saha' },
   bolgeler:  { t: 'Sanayi bölgeleri', ico: 'zone', v: bolgelerView, g: 'Saha' },
   masraflar: { t: 'Masraf ve km', ico: 'wallet', v: masraflarView, g: 'Saha' },
+  tahsilat:  { t: 'Tahsilat', ico: 'coins', v: tahsilatView, g: 'Satış' },
   teklifler: { t: 'Teklifler', ico: 'doc', v: tekliflerView, g: 'Satış' },
   araclar:   { t: 'Aydınlatma araçları', ico: 'calc', v: araclarView, g: 'Satış' },
   katalog:   { t: 'Ürün kataloğu', ico: 'book', v: katalogView, g: 'Satış' },
@@ -35,6 +40,7 @@ const ROUTES = {
   numuneler: { t: 'Numuneler', ico: 'gift', v: numunelerView, g: 'Satış' },
   servis:    { t: 'Servis ve şikayet', ico: 'wrench', v: servisView, g: 'Satış' },
   panel:     { t: 'Panel', ico: 'chart', v: panelView, g: 'Rapor' },
+  rapor:     { t: 'Haftalık rapor', ico: 'report', v: raporView, g: 'Rapor' },
   siparisler:{ t: 'Siparişler', ico: 'receipt', v: siparislerView, g: 'Rapor' },
   urunler:   { t: 'Stok ve fiyat', ico: 'box', v: urunlerView, g: 'Rapor' },
   rakip:     { t: 'Rakip fiyatları', ico: 'tag', v: rakipView, g: 'Rapor' },
@@ -65,6 +71,8 @@ const ICONS = {
   star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z"/>',
   gift: '<rect x="4" y="9" width="16" height="12" rx="1"/><path d="M3 9h18M12 9v12M12 9c-1.5-4-6-4-5-1.5S12 9 12 9Zm0 0c1.5-4 6-4 5-1.5S12 9 12 9Z"/>',
   wrench: '<path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.3-1.3a4 4 0 0 0-5-5l2.6 2.6-2.1 2.1L9.6 5.8a4 4 0 0 0 5.1.5Z"/><path d="M3 21l6-6"/>',
+  coins: '<ellipse cx="9" cy="7" rx="6" ry="3"/><path d="M3 7v5c0 1.7 2.7 3 6 3s6-1.3 6-3V7M3 12v5c0 1.7 2.7 3 6 3 1.2 0 2.3-.2 3.2-.5"/><circle cx="17" cy="16" r="4"/>',
+  report: '<path d="M6 3h12v18H6z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
   wallet: '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2M6 6l9-3 2 3"/>',
 };
 export const icon = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
@@ -137,6 +145,8 @@ async function boot() {
   await route();
   if (act === 'ziyaret') ziyaretForm({});
   if (pay) paylasimPaneli(pay);
+  kurGuncelle().then(k => { if (k && lastView === 'bugun' && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});
+  bildirimHazirla().catch(() => {});
 }
 window.addEventListener('schema-old', () => toast('Veritabanı güncel değil: Supabase SQL Editor\'de supabase/schema.sql dosyasını yeniden çalıştır. Yeni alanlar (Google bilgileri) o zamana kadar kaydedilmez.', 'err'));
 window.addEventListener('outbox', e => { if (e.detail) toast('Bağlantı yok: değişiklik kaydedildi, internet gelince gönderilecek.'); });
