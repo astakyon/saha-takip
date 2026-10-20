@@ -1,8 +1,10 @@
 import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, usd, num, tarih, today, DURUMLAR, ACIK, byId, firmaAd, match, toast, exportXlsx, pickFiles, fold, durumRenk, openDrawer, closeDrawer, pill, olasilik } from '../ui.js';
+import { esc, usd, num, tarih, today, DURUMLAR, ACIK, byId, firmaAd, match, toast, exportXlsx, pickFiles, fold, durumRenk, openDrawer, closeDrawer, pill, olasilik, confirmBox } from '../ui.js';
 import { gorevForm } from './ziyaret.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
+import { yilGercek, ceyrekGercek, hedefKaydi, siparisUsd, donemKuru, ceyrekOf } from '../ceyrek.js';
+import { kur } from '../kur.js';
 
 const q = d => Math.floor((new Date(d).getMonth()) / 3) + 1;
 const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0);
@@ -10,9 +12,9 @@ const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0);
 export function panelView(el) {
   const f = F('panel', { yil: 2026 });
   const Y = +f.yil;
-  const sip = S.siparisler.filter(s => s.tarih && s.tarih.startsWith(String(Y)) && s.para_birimi === 'USD');
-  const hed = [1, 2, 3, 4].map(c => +(S.hedefler.find(h => h.yil === Y && h.ceyrek === c)?.tutar_usd || 0));
-  const gercek = [1, 2, 3, 4].map(c => sum(sip.filter(s => q(s.tarih) === c), s => s.net_deger));
+  const G = yilGercek(Y);
+  const hed = G.map(g => g.hedef);
+  const gercek = G.map(g => g.gercek);
   const toplamHedef = hed.reduce((a, b) => a + b, 0), toplamG = gercek.reduce((a, b) => a + b, 0);
   const yP = S.projeler.filter(p => p.takip_yili === Y);
   const acik = yP.filter(p => ACIK.includes(p.durum));
@@ -48,11 +50,11 @@ export function panelView(el) {
     <section class="card wide"><h2>Çeyrek bazında sipariş ve hedef</h2>
       <div class="qbars">${[0, 1, 2, 3].map(i => `<div class="qb"><div class="qb-cols"><span class="bar target" style="height:${hed[i] / maxQ * 100}%" title="Hedef ${usd(hed[i])}"></span><span class="bar real ${gercek[i] >= hed[i] && hed[i] ? 'ok' : ''}" style="height:${gercek[i] / maxQ * 100}%" title="Gerçekleşen ${usd(gercek[i])}"></span></div>
         <b>${i + 1}. çeyrek</b><small>${usd(gercek[i])}${hed[i] ? ` · %${num(gercek[i] / hed[i] * 100)}` : ''}</small></div>`).join('')}</div>
-      <p class="legend-line"><span class="sw target"></span>Hedef <span class="sw real"></span>Gerçekleşen (USD siparişler) · <a href="#/siparisler">Siparişler ve hedefler</a></p></section>
+      <p class="legend-line"><span class="sw target"></span>Hedef <span class="sw real"></span>Gerçekleşen${G.some(g => g.kaynak === 'resmi') ? ` (${G.map((g, i) => g.kaynak === 'resmi' ? i + 1 + '. çeyrek resmi rakam' : null).filter(Boolean).join(', ')}; diğerleri siparişlerden)` : ' (siparişlerden)'} · <a href="#/siparisler" data-ozet>Çeyrek rakamlarını düzenle</a></p></section>
     <section class="card wide"><h2>Olasılıklı tahmin (${Y})</h2>
       <p class="hint">Açık projelerin tutarı kazanma olasılığıyla çarpılır (olasılık girilmemişse aşamaya göre: Proje %10, İhale %25, Teklif %40, Sıcak %70, Beklemede %15). Çeyrek, beklenen sipariş ya da aydınlatma alım tarihinden; tarihsiz projeler “Tarihsiz” sütununda.</p>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th></th>${[1, 2, 3, 4].map(c => `<th class="r">${c}. çeyrek</th>`).join('')}<th class="r">Tarihsiz</th><th class="r">Yıl</th></tr></thead><tbody>
-        <tr><td>Gerçekleşen sipariş</td>${gercek.map(v => `<td class="r num">${usd(v)}</td>`).join('')}<td></td><td class="r num"><b>${usd(toplamG)}</b></td></tr>
+        <tr><td>Gerçekleşen${G.some(g => g.kaynak === 'resmi') ? ' (resmi / sipariş)' : ' sipariş'}</td>${gercek.map(v => `<td class="r num">${usd(v)}</td>`).join('')}<td></td><td class="r num"><b>${usd(toplamG)}</b></td></tr>
         <tr><td>Ağırlıklı açık potansiyel</td>${tah.ag.map(v => `<td class="r num">${v ? usd(v) : '—'}</td>`).join('')}<td class="r num">${usd(tah.tarihsiz)}</td><td class="r num"><b>${usd(tah.agTop)}</b></td></tr>
         <tr class="em"><td>Tahmini toplam</td>${[0, 1, 2, 3].map(i => `<td class="r num">${usd(gercek[i] + tah.ag[i])}</td>`).join('')}<td></td><td class="r num"><b>${usd(toplamG + tah.agTop)}</b></td></tr>
         <tr><td>Hedef</td>${hed.map(v => `<td class="r num">${v ? usd(v) : '—'}</td>`).join('')}<td></td><td class="r num">${toplamHedef ? usd(toplamHedef) : '—'}</td></tr>
@@ -81,6 +83,7 @@ export function panelView(el) {
       <div class="btnrow"><button class="btn primary" data-pptx>Çeyrek sunumu (PowerPoint)</button><button class="btn" data-s="kayip">Kayıp projeler</button><button class="btn" data-s="pot">Potansiyel projeler (${Y})</button><button class="btn" data-s="str">${Y + 1} potansiyel ve stratejik projeler</button><button class="btn ghost" data-s="hedef">Hedef proje listesi</button></div></section>
   </div>`;
   el.querySelector('[data-yil]').onchange = e => { f.yil = +e.target.value; saveFilters(); panelView(el); };
+  el.querySelector('[data-ozet]').onclick = () => { const fs = F('siparisler', {}); fs.gor = 'ceyrek'; fs.yil = Y; saveFilters(); };
   el.querySelectorAll('[data-karne]').forEach(b => b.onclick = () => { f.karne = b.dataset.karne; saveFilters(); const y = window.scrollY; panelView(el); window.scrollTo(0, y); });
   el.querySelectorAll('[data-g]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.g }));
   el.querySelectorAll('[data-s]').forEach(b => b.onclick = () => sunum(b.dataset.s, Y));
@@ -109,7 +112,7 @@ export function bayiKarnesi(Y, rol = 'bayi_id') {
     const rk = {}; for (const p of ps) if (p.durum === 'Kayıp' && p.rakip_marka) rk[p.rakip_marka] = (rk[p.rakip_marka] || 0) + 1;
     const won = ps.filter(p => p.durum === 'Sipariş'), lost = ps.filter(p => p.durum === 'Kayıp');
     const ilk = fold(f.ad).split(/\s+/)[0];
-    const sp = S.siparisler.filter(s => s.tarih?.startsWith(String(Y)) && s.para_birimi === 'USD' && (s.firma_id === f.id || (ilk.length > 2 && fold(s.musteri_adi || '').startsWith(ilk))));
+    const sp = S.siparisler.filter(s => s.tarih?.startsWith(String(Y)) && s.para_birimi === 'USD' && !s.rapor_disi && (s.firma_id === f.id || (ilk.length > 2 && fold(s.musteri_adi || '').startsWith(ilk))));
     const stok = rol !== 'bayi_id' ? 0 : S.urunler.filter(u => u.depo && fold(u.depo).startsWith(ilk)).reduce((a, u) => a + (+u.stok || 0) * (+u.birim_fiyat_usd || 0), 0);
     const son = S.ziyaretler.filter(z => z.firma_id === f.id && (z.durum || 'Yapıldı') === 'Yapıldı').map(z => z.tarih).sort().pop() || null;
     return { f, n: ps.length, acik: sum(ps.filter(p => ACIK.includes(p.durum)), p => p.tutar_usd), w: won.length, wT: sum(won, p => p.siparis_tutari_usd || p.tutar_usd), l: lost.length, lT: sum(lost, p => p.bizim_teklif_usd || p.tutar_usd),
@@ -134,13 +137,15 @@ function sunum(kind, Y) {
 }
 
 // ---------- Siparişler ----------
+// Alanlar: Sipariş no = SAP sipariş numarası (2000…), SAS no = sipariş açıklamasına yazılan not (cari ve proje),
+// Satış belgesi = SAP belge numarası, Sipariş notu = siparişin içeriğine dair özel / ekstra bilgiler.
 export function siparislerView(el) {
   const f = F('siparisler', { q: '', yil: 2026, ceyrek: 'Tümü', kanal: 'Tümü', cari: 'Tümü', gor: 'liste' });
   const cariler = [...new Set(S.siparisler.map(s => s.musteri_adi).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
   el.innerHTML = `<header class="vh"><div><h1>Siparişler</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn ghost" data-hedef>Hedefleri düzenle</button><button class="btn primary" data-up>Sipariş Excel'i yükle</button></div></header>
-    <div class="filters"><input type="search" data-q placeholder="Cari, proje, SAS no, referans ara" value="${esc(f.q)}" aria-label="Siparişlerde ara">
-      <div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="liste" class="${f.gor === 'liste' ? 'on' : ''}">Sipariş listesi</button><button type="button" data-gor="cari" class="${f.gor === 'cari' ? 'on' : ''}">Cari bazında</button><button type="button" data-gor="proje" class="${f.gor === 'proje' ? 'on' : ''}">Proje bazında</button></div>
+    <div class="vh-act"><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn ghost" data-up>Sipariş Excel'i yükle</button><button class="btn primary" data-yeni>Sipariş ekle</button></div></header>
+    <div class="filters"><input type="search" data-q placeholder="Sipariş no, SAS no, cari, proje, not ara" value="${esc(f.q)}" aria-label="Siparişlerde ara">
+      <div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="liste" class="${f.gor === 'liste' ? 'on' : ''}">Sipariş listesi</button><button type="button" data-gor="ceyrek" class="${f.gor === 'ceyrek' ? 'on' : ''}">Çeyrek özeti</button><button type="button" data-gor="cari" class="${f.gor === 'cari' ? 'on' : ''}">Cari bazında</button><button type="button" data-gor="proje" class="${f.gor === 'proje' ? 'on' : ''}">Proje bazında</button></div>
       <div class="frow"><label>Yıl <select data-k="yil">${[2025, 2026, 2027].map(y => `<option ${y == f.yil ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
       <label>Çeyrek <select data-k="ceyrek">${['Tümü', '1', '2', '3', '4'].map(c => `<option value="${c}" ${String(f.ceyrek) === c ? 'selected' : ''}>${c === 'Tümü' ? 'Tümü' : c + '. çeyrek'}</option>`).join('')}</select></label>
       <label>Kanal <select data-k="kanal">${['Tümü', 'Drv', 'Drv harici'].map(c => `<option ${f.kanal === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
@@ -148,25 +153,26 @@ export function siparislerView(el) {
     <div class="ptable-wrap" data-rows></div>`;
   const pAd = s => s.proje_id ? (byId('projeler', s.proje_id)?.ad || s.proje_tanimi) : s.proje_tanimi;
   const list = () => S.siparisler.filter(s => s.tarih && s.tarih.startsWith(String(f.yil)) && (f.ceyrek === 'Tümü' || q(s.tarih) == f.ceyrek) && (f.kanal === 'Tümü' || (f.kanal === 'Drv') === !!s.drv)
-    && (f.cari === 'Tümü' || s.musteri_adi === f.cari) && match(f.q, s.musteri_adi, s.proje_tanimi, pAd(s), s.referans, s.belge_no, s.siparis_no))
-    .sort((a, b) => b.tarih.localeCompare(a.tarih));
+    && (f.cari === 'Tümü' || s.musteri_adi === f.cari) && match(f.q, s.musteri_adi, s.proje_tanimi, pAd(s), s.referans, s.belge_no, s.siparis_no, s.siparis_notu))
+    .sort((a, b) => b.tarih.localeCompare(a.tarih) || (b.siparis_no || '').localeCompare(a.siparis_no || ''));
   const tut = s => `${num(s.net_deger)} ${s.para_birimi === 'USD' ? '$' : esc(s.para_birimi)}`;
-  const grupla = (l, key) => { const g = new Map(); for (const s of l) { const k = key(s) || '—'; const r = g.get(k) || { k, n: 0, usd: 0, tl: 0, son: '', ids: new Set(), cari: new Set() }; r.n++; if (s.para_birimi === 'USD') r.usd += +s.net_deger || 0; else r.tl += +s.net_deger || 0; if (s.tarih > r.son) r.son = s.tarih; if (s.proje_id) r.ids.add(s.proje_id); if (s.musteri_adi) r.cari.add(s.musteri_adi); g.set(k, r); } return [...g.values()].sort((a, b) => b.usd - a.usd); };
+  const grupla = (l, key) => { const g = new Map(); for (const s of l.filter(x => !x.rapor_disi)) { const k = key(s) || '—'; const r = g.get(k) || { k, n: 0, usd: 0, tl: 0, son: '', ids: new Set(), cari: new Set() }; r.n++; if (s.para_birimi === 'USD') r.usd += +s.net_deger || 0; else r.tl += +s.net_deger || 0; if (s.tarih > r.son) r.son = s.tarih; if (s.proje_id) r.ids.add(s.proje_id); if (s.musteri_adi) r.cari.add(s.musteri_adi); g.set(k, r); } return [...g.values()].sort((a, b) => b.usd - a.usd); };
   const draw = () => {
-    const l = list();
-    const u = sum(l.filter(s => s.para_birimi === 'USD'), s => s.net_deger), tl = sum(l.filter(s => s.para_birimi !== 'USD'), s => s.net_deger);
-    el.querySelector('[data-sum]').innerHTML = `${l.length} sipariş · ${new Set(l.map(s => s.musteri_adi)).size} cari · <b>${usd(u)}</b>${tl ? ` + ${num(tl)} TL` : ''}`;
+    const l = list(), dahil = l.filter(s => !s.rapor_disi);
+    const u = sum(dahil.filter(s => s.para_birimi === 'USD'), s => s.net_deger), tl = sum(dahil.filter(s => s.para_birimi !== 'USD'), s => s.net_deger);
+    el.querySelector('[data-sum]').innerHTML = `${l.length} sipariş · ${new Set(l.map(s => s.musteri_adi)).size} cari · <b>${usd(u)}</b>${tl ? ` + ${num(tl)} TL` : ''}${l.length - dahil.length ? ` · ${l.length - dahil.length} sipariş rapor dışı` : ''}`;
     const box = el.querySelector('[data-rows]');
-    if (!l.length) { box.innerHTML = '<div class="empty"><p>Bu filtrelerde sipariş yok. SAP sipariş listesini “Sipariş Excel\'i yükle” ile ekleyebilirsin.</p></div>'; return; }
+    if (f.gor === 'ceyrek') return ceyrekOzeti(box, +f.yil, () => draw());
+    if (!l.length) { box.innerHTML = '<div class="empty"><p>Bu filtrelerde sipariş yok. SAP sipariş listesini “Sipariş Excel\'i yükle” ile ekleyebilir ya da “Sipariş ekle” ile elle girebilirsin.</p></div>'; return; }
     if (f.gor === 'liste') {
-      box.innerHTML = `<table class="ptable otable"><thead><tr><th>Tarih</th><th>SAS no</th><th>Cari</th><th>Proje</th><th>Müşteri referansı</th><th class="r">Net değer</th></tr></thead><tbody>${l.map(s => `<tr data-sid="${s.id}" tabindex="0">
+      box.innerHTML = `<table class="ptable otable"><thead><tr><th>Tarih</th><th>Sipariş no</th><th>SAS no</th><th>Cari</th><th>Proje</th><th class="r">Net değer</th></tr></thead><tbody>${l.map(s => `<tr data-sid="${s.id}" tabindex="0" class="${s.rapor_disi ? 'disi' : ''}">
         <td data-l="Tarih" class="nowrap">${tarih(s.tarih)}</td>
-        <td data-l="SAS no" class="num nowrap"><b>${esc(s.belge_no || '—')}</b>${s.siparis_no ? `<small>Sipariş ${esc(s.siparis_no)}</small>` : ''}</td>
+        <td data-l="Sipariş no" class="num nowrap"><b>${esc(s.siparis_no || '—')}</b>${s.belge_no ? `<small>Satış belgesi ${esc(s.belge_no)}</small>` : ''}</td>
+        <td data-l="SAS no"><span class="sas">${esc(s.referans || '—')}</span>${s.siparis_notu ? `<small class="snot">Not: ${esc(s.siparis_notu.slice(0, 90))}</small>` : ''}</td>
         <td data-l="Cari">${s.firma_id ? `<a href="#/firma/${s.firma_id}" class="flink">${esc(s.musteri_adi || '')}</a>` : esc(s.musteri_adi || '—')}${s.drv ? ' <em class="flag soft">Drv</em>' : ''}</td>
         <td data-l="Proje">${s.proje_id ? `<a href="#/proje/${s.proje_id}" class="flink">${esc(pAd(s))}</a>` : `<span class="muted">${esc(s.proje_tanimi || '—')}</span> <small class="muted">projeye bağlı değil</small>`}</td>
-        <td data-l="Referans" class="muted">${esc(s.referans || '—')}</td>
-        <td data-l="Net değer" class="r num nowrap"><b>${tut(s)}</b></td></tr>`).join('')}</tbody></table>`;
-      box.querySelectorAll('tr[data-sid]').forEach(tr => { tr.onclick = e => { if (!e.target.closest('a')) siparisDetay(tr.dataset.sid); }; tr.onkeydown = e => { if (e.key === 'Enter') siparisDetay(tr.dataset.sid); }; });
+        <td data-l="Net değer" class="r num nowrap"><b>${tut(s)}</b>${s.rapor_disi ? '<small class="neg">rapor dışı</small>' : ''}</td></tr>`).join('')}</tbody></table>`;
+      box.querySelectorAll('tr[data-sid]').forEach(tr => { tr.onclick = e => { if (!e.target.closest('a')) siparisForm({ id: tr.dataset.sid }); }; tr.onkeydown = e => { if (e.key === 'Enter') siparisForm({ id: tr.dataset.sid }); }; });
     } else if (f.gor === 'cari') {
       const g = grupla(l, s => s.musteri_adi);
       box.innerHTML = `<table class="ptable"><thead><tr><th>Cari</th><th class="r">Sipariş</th><th class="r">Proje</th><th class="r">Toplam (USD)</th><th class="r">TL</th><th class="r">Pay</th><th>Son sipariş</th></tr></thead><tbody>${g.map(r => `<tr data-cari="${esc(r.k)}" tabindex="0">
@@ -184,32 +190,97 @@ export function siparislerView(el) {
   el.querySelectorAll('[data-k]').forEach(s => s.onchange = () => { f[s.dataset.k] = s.dataset.k === 'yil' ? +s.value : s.value; saveFilters(); draw(); });
   el.querySelectorAll('[data-gor]').forEach(b => b.onclick = () => { f.gor = b.dataset.gor; saveFilters(); el.querySelectorAll('[data-gor]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
   el.querySelector('[data-up]').onclick = siparisYukle;
-  el.querySelector('[data-hedef]').onclick = () => hedefForm(+f.yil);
-  el.querySelector('[data-exp]').onclick = () => exportXlsx(`siparisler-${today()}.xlsx`, { 'Siparişler': list().map(s => ({ 'Tarih': s.tarih, 'SAS no': s.belge_no, 'Müşteri sipariş no': s.siparis_no, 'Cari': s.musteri_adi, 'Cari no': s.musteri_no, 'Proje': pAd(s), 'Müşteri referansı': s.referans, 'Net değer': s.net_deger, 'Para birimi': s.para_birimi, 'Drv': s.drv ? 'Evet' : '' })) });
+  el.querySelector('[data-yeni]').onclick = () => siparisForm({});
+  el.querySelector('[data-exp]').onclick = () => exportXlsx(`siparisler-${today()}.xlsx`, { 'Siparişler': list().map(s => ({ 'Tarih': s.tarih, 'Sipariş no': s.siparis_no, 'SAS no': s.referans, 'Satış belgesi': s.belge_no, 'Cari': s.musteri_adi, 'Cari no': s.musteri_no, 'Proje': pAd(s), 'SAP proje tanımı': s.proje_tanimi, 'Net değer': s.net_deger, 'Para birimi': s.para_birimi, 'Sipariş notu': s.siparis_notu, 'Drv': s.drv ? 'Evet' : '', 'Rapor dışı': s.rapor_disi ? 'Evet' : '' })) });
   draw();
 }
 
-// Siparişi bir projeye bağla
-function siparisDetay(id) {
-  const s = byId('siparisler', id); if (!s) return;
-  const FORM = [{ title: 'Sipariş', fields: [{ k: 'proje_id', l: 'Bağlı proje', t: 'ref', ref: 'projeler', full: true, help: 'Proje adını yaz ve listeden seç. Boş bırakırsan bağlantı kalkar.' }] }];
-  const panel = openDrawer(`<header class="dh"><div><p class="muted">SAS no ${esc(s.belge_no || '—')} · ${tarih(s.tarih)}</p><h2 id="drawer-title">${esc(s.musteri_adi || 'Sipariş')}</h2>
-      <div class="dh-meta"><span><b>${num(s.net_deger)} ${esc(s.para_birimi)}</b></span>${s.drv ? '<span>Drv</span>' : ''}</div></div><button class="x" data-close aria-label="Kapat">×</button></header>
-    <form class="dbody form" novalidate><dl class="kv-list"><dt>Müşteri sipariş no</dt><dd>${esc(s.siparis_no || '—')}</dd><dt>Cari no</dt><dd>${esc(s.musteri_no || '—')}</dd><dt>Belge türü</dt><dd>${esc(s.belge_turu || '—')}</dd>
-      <dt>Müşteri referansı</dt><dd>${esc(s.referans || '—')}</dd><dt>SAP proje tanımı</dt><dd>${esc(s.proje_tanimi || '—')}</dd><dt>Teslim tarihi</dt><dd>${tarih(s.teslim_tarihi)}</dd></dl>
-      ${renderForm(FORM, s)}<div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`);
-  const form = panel.querySelector('form'); bindForm(form, FORM, s);
-  form.onsubmit = async e => { e.preventDefault(); const o = await readForm(form, FORM, s); await app.db.save('siparisler', o); toast('Sipariş güncellendi.'); closeDrawer(); app.refresh(); };
+const SIPARIS_FORM = [
+  { title: 'Sipariş', fields: [
+    { k: 'tarih', l: 'Sipariş tarihi', t: 'date', help: 'Hangi çeyreğe sayılacağını bu tarih belirler' },
+    { k: 'siparis_no', l: 'Sipariş no', ph: '2000…' },
+    { k: 'referans', l: 'SAS no', full: true, ph: 'Örn. DRV_EKOL_ELK_KILIÇLAR_HADDE_2809', help: 'SAP sipariş açıklamasına yazdığın not: kime ait, hangi proje' },
+    { k: 'firma_id', l: 'Cari (firma)', t: 'ref', ref: 'firmalar' },
+    { k: 'proje_id', l: 'Proje', t: 'ref', ref: 'projeler' },
+    { k: 'net_deger', l: 'Net değer', t: 'num' },
+    { k: 'para_birimi', l: 'Para birimi', t: 'sel', opts: ['USD', 'TRY', 'EUR'] },
+    { k: 'teslim_tarihi', l: 'Teslim tarihi', t: 'date' },
+    { k: 'belge_no', l: 'Satış belgesi', help: 'SAP belge numarası' },
+    { k: 'drv', l: 'Kanal', t: 'chk', cl: 'Drv üzerinden' },
+    { k: 'rapor_disi', l: 'Rapor', t: 'chk', cl: 'Çeyrek toplamlarına katma (iade, iptal, mükerrer…)' },
+  ]},
+  { title: 'Sipariş notu', note: 'Siparişin içeriğinde özel ya da ekstra olması gerekenler: özel renk sıcaklığı, optik, kablo boyu, montaj aparatı, etiket, teslim şartı…', fields: [
+    { k: 'siparis_notu', l: 'Sipariş notu', t: 'area', rows: 4, full: true },
+  ]},
+];
+export function siparisForm(init = {}) {
+  const s0 = init.id ? byId('siparisler', init.id) : { tarih: today(), para_birimi: 'USD', drv: true, rapor_disi: false, ...init, _new: true };
+  if (!s0) return;
+  const s = { ...s0 };
+  const panel = openDrawer(`<header class="dh"><div><p class="muted">${s._new ? 'Yeni sipariş' : 'Sipariş no ' + esc(s.siparis_no || '—') + ' · ' + tarih(s.tarih)}</p><h2 id="drawer-title">${esc(s.referans || s.musteri_adi || 'Sipariş')}</h2>
+      ${s._new ? '' : `<div class="dh-meta"><span><b>${num(s.net_deger)} ${esc(s.para_birimi)}</b></span><span>${esc(s.musteri_adi || '')}</span>${s.rapor_disi ? '<span class="neg">rapor dışı</span>' : ''}</div>`}</div><button class="x" data-close aria-label="Kapat">×</button></header>
+    ${s._new ? '' : '<div class="dh-actions"><button class="btn sm ghost danger" data-sil>Sil</button></div>'}
+    <form class="dbody form" novalidate>${renderForm(SIPARIS_FORM, s)}
+      ${s._new ? '' : `<details><summary>SAP'den gelen bilgiler</summary><dl class="kv-list"><dt>Cari adı (SAP)</dt><dd>${esc(s.musteri_adi || '—')}</dd><dt>Cari no</dt><dd>${esc(s.musteri_no || '—')}</dd><dt>Belge türü</dt><dd>${esc(s.belge_turu || '—')}</dd><dt>SAP proje tanımı</dt><dd>${esc(s.proje_tanimi || '—')}</dd></dl></details>`}
+      <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`, { wide: true });
+  const form = panel.querySelector('form'); bindForm(form, SIPARIS_FORM, s);
+  panel.querySelector('[data-sil]')?.addEventListener('click', async () => { if (!confirmBox('Sipariş silinsin mi? SAP listesini yeniden yüklersen tekrar gelir; yalnızca toplamlardan çıkarmak istiyorsan “Çeyrek toplamlarına katma”yı işaretle.')) return; await app.db.del('siparisler', s.id); toast('Sipariş silindi.'); closeDrawer(); app.refresh(); });
+  form.onsubmit = async e => {
+    e.preventDefault();
+    try {
+      const o = await readForm(form, SIPARIS_FORM, s);
+      if (!o.tarih) return toast('Sipariş tarihini yaz.', 'err');
+      if (o.net_deger == null) return toast('Tutarı yaz.', 'err');
+      if (o.firma_id && (s._new || o.firma_id !== s0.firma_id)) o.musteri_adi = firmaAd(o.firma_id);
+      if (o.proje_id && !o.proje_tanimi) o.proje_tanimi = byId('projeler', o.proje_id)?.ad;
+      await app.db.save('siparisler', o); toast('Sipariş kaydedildi.'); closeDrawer(); app.refresh();
+    } catch (err) { toast('Kaydedilemedi: ' + err.message, 'err'); }
+  };
 }
 
-function hedefForm(Y) {
-  const panel = openDrawer(`<header class="dh"><h2 id="drawer-title">${Y} satış hedefleri (USD)</h2><button class="x" data-close aria-label="Kapat">×</button></header>
-    <form class="dbody form"><div class="grid">${[1, 2, 3, 4].map(c => `<div class="fld"><label for="h${c}">${c}. çeyrek</label><input id="h${c}" type="number" inputmode="decimal" value="${S.hedefler.find(h => h.yil === Y && h.ceyrek === c)?.tutar_usd ?? ''}"></div>`).join('')}</div>
-    <div class="dfoot"><button type="submit" class="btn primary">Kaydet</button></div></form>`);
+// Çeyrek özeti: siparişlerden hesaplanan ile resmi (dönemsel tablo) rakamların karşılaştırması
+function ceyrekOzeti(box, Y, yenile) {
+  const G = [1, 2, 3, 4].map(c => ceyrekGercek(Y, c));
+  const top = k => G.reduce((a, g) => a + (+g[k] || 0), 0);
+  const fark = v => v == null ? '—' : `<span class="${Math.abs(v) < 1 ? '' : v > 0 ? 'pos' : 'neg'}">${v > 0 ? '+' : ''}${usd(v)}</span>`;
+  box.innerHTML = `<div class="card ceyrek-ozet"><div class="card-h"><h2>${Y} çeyrek özeti</h2><button type="button" class="btn sm primary" data-duz>Hedef ve resmi rakamları düzenle</button></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th></th>${G.map((_, i) => `<th class="r">${i + 1}. çeyrek</th>`).join('')}<th class="r">Yıl</th></tr></thead><tbody>
+      <tr><td>Hedef</td>${G.map(g => `<td class="r num">${g.hedef ? usd(g.hedef) : '—'}</td>`).join('')}<td class="r num"><b>${usd(top('hedef'))}</b></td></tr>
+      <tr><td>Siparişlerden (USD)</td>${G.map(g => `<td class="r num">${usd(g.usd)}</td>`).join('')}<td class="r num">${usd(top('usd'))}</td></tr>
+      <tr><td>Siparişlerden (TL)</td>${G.map(g => `<td class="r num">${g.tl ? num(g.tl) + ' ₺' : '—'}</td>`).join('')}<td class="r num">${top('tl') ? num(top('tl')) + ' ₺' : '—'}</td></tr>
+      <tr><td>Siparişlerden toplam (USD)<small>TL, çeyreğin kuruyla çevrilir</small></td>${G.map(g => `<td class="r num"><b>${usd(g.siparis)}</b><small>${g.adet} sipariş${g.haric ? ` · ${g.haric} rapor dışı` : ''}</small></td>`).join('')}<td class="r num"><b>${usd(top('siparis'))}</b></td></tr>
+      <tr><td>Resmi rakam (USD)<small>dönemsel tablodaki</small></td>${G.map(g => `<td class="r num">${g.resmi != null ? `<b>${usd(g.resmi)}</b><small>${usd(+g.resmiUsd || 0)}${+g.resmiTl ? ` + ${num(g.resmiTl)} ₺` : ''}</small>` : '—'}</td>`).join('')}<td class="r num">${G.some(g => g.resmi != null) ? '<b>' + usd(G.reduce((a, g) => a + (g.resmi ?? 0), 0)) + '</b>' : '—'}</td></tr>
+      <tr class="em"><td>Fark (resmi − sipariş)</td>${G.map(g => `<td class="r num">${fark(g.fark)}</td>`).join('')}<td class="r num">${G.some(g => g.fark != null) ? fark(G.reduce((a, g) => a + (g.fark ?? 0), 0)) : '—'}</td></tr>
+      <tr><td>Raporlarda kullanılan</td>${G.map(g => `<td class="r num"><b>${usd(g.gercek)}</b><small>${g.kaynak === 'resmi' ? 'resmi rakam' : 'siparişlerden'}${g.hedef ? ' · %' + num(Math.round(g.gercek / g.hedef * 100)) : ''}</small></td>`).join('')}<td class="r num"><b>${usd(top('gercek'))}</b></td></tr>
+      <tr><td>Kur (TL/USD)</td>${G.map(g => `<td class="r num">${g.kur ? num(g.kur) : '—'}</td>`).join('')}<td></td></tr>
+    </tbody></table></div>
+    <p class="hint">Resmi rakamı girdiğin çeyrekte panel, tahmin ve PowerPoint sunumu resmi rakamı kullanır; girmezsen siparişlerden hesaplanır. Fark çıkan çeyrekte sipariş listesini o çeyreğe göre filtreleyip eksik siparişi ekleyebilir, tarihini düzeltebilir ya da iade / iptal edilenleri “rapor dışı” yapabilirsin.</p>
+    ${G.map((g, i) => g.not ? `<p class="hint"><b>${i + 1}. çeyrek notu:</b> ${esc(g.not)}</p>` : '').join('')}
+    <div class="btnrow">${G.map((g, i) => `<button type="button" class="btn sm ghost" data-cq="${i + 1}">${i + 1}. çeyrek siparişleri</button>`).join('')}</div></div>`;
+  box.querySelector('[data-duz]').onclick = () => hedefForm(Y);
+  box.querySelectorAll('[data-cq]').forEach(b => b.onclick = () => { const f = F('siparisler', {}); f.gor = 'liste'; f.ceyrek = b.dataset.cq; f.yil = Y; saveFilters(); app.refresh(); });
+}
+
+export function hedefForm(Y) {
+  const v = (c, k) => { const h = hedefKaydi(Y, c); return h?.[k] ?? ''; };
+  const k0 = kur()?.USD ? Math.round(kur().USD * 10000) / 10000 : '';
+  const panel = openDrawer(`<header class="dh"><div><p class="muted">Satış hedefleri ve resmi rakamlar</p><h2 id="drawer-title">${Y} çeyrekleri</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+    <form class="dbody form"><p class="hint">Resmi rakam: şirketin dönemsel tablosundaki toplam USD ve TL satış. Boş bırakılan çeyrekte gerçekleşen siparişlerden hesaplanır. TL satış, girdiğin kurla dolara çevrilir.</p>
+      ${[1, 2, 3, 4].map(c => `<fieldset class="fs"><legend>${c}. çeyrek</legend><div class="grid">
+        <div class="fld"><label for="h${c}">Hedef (USD)</label><input id="h${c}" data-k="tutar_usd" data-c="${c}" type="number" inputmode="decimal" step="any" value="${v(c, 'tutar_usd')}"></div>
+        <div class="fld"><label for="ru${c}">Resmi USD satış</label><input id="ru${c}" data-k="resmi_usd" data-c="${c}" type="number" inputmode="decimal" step="any" value="${v(c, 'resmi_usd')}"></div>
+        <div class="fld"><label for="rt${c}">Resmi TL satış</label><input id="rt${c}" data-k="resmi_tl" data-c="${c}" type="number" inputmode="decimal" step="any" value="${v(c, 'resmi_tl')}"></div>
+        <div class="fld"><label for="k${c}">Kur (TL/USD)</label><input id="k${c}" data-k="kur" data-c="${c}" type="number" inputmode="decimal" step="any" value="${v(c, 'kur')}" placeholder="${k0}"></div>
+        <div class="fld full"><label for="n${c}">Not</label><input id="n${c}" data-k="notlar" data-c="${c}" value="${esc(v(c, 'notlar'))}" placeholder="Örn. 2 sipariş Nisan faturasına kaydı"></div></div></fieldset>`).join('')}
+      <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`, { wide: true });
   panel.querySelector('form').onsubmit = async e => {
     e.preventDefault();
-    for (const c of [1, 2, 3, 4]) { const v = parseFloat(panel.querySelector('#h' + c).value); const ex = S.hedefler.find(h => h.yil === Y && h.ceyrek === c); if (!isNaN(v)) await app.db.save('hedefler', { ...(ex || {}), yil: Y, ceyrek: c, tutar_usd: v }); }
-    toast('Hedefler kaydedildi.'); closeDrawer(); app.refresh();
+    for (const c of [1, 2, 3, 4]) {
+      const o = { ...(hedefKaydi(Y, c) || {}), yil: Y, ceyrek: c };
+      panel.querySelectorAll(`[data-c="${c}"]`).forEach(i => { const x = i.value.trim(); o[i.dataset.k] = i.dataset.k === 'notlar' ? (x || null) : (x === '' ? null : parseFloat(x)); });
+      if (hedefKaydi(Y, c) || ['tutar_usd', 'resmi_usd', 'resmi_tl', 'kur', 'notlar'].some(k => o[k] != null)) await app.db.save('hedefler', o);
+    }
+    toast('Çeyrek rakamları kaydedildi.'); closeDrawer(); app.refresh();
   };
 }
 

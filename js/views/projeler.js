@@ -5,6 +5,7 @@ import { esc, usd, num, pill, tarih, today, DURUMLAR, ACIK, ILLER, ILCELER, OSBL
 import { teklifForm } from './teklif.js';
 import { numuneForm } from './kayitlar.js';
 import { belgeBolumu } from '../belgeler.js';
+import { siparisForm } from './panel.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { googleBul, aramaMetni } from '../google.js';
 import { backToList } from '../main.js';
@@ -94,7 +95,7 @@ function filtered(f) {
     (f.rakip === 'Tümü' || p.rakip_marka === f.rakip) &&
     match(f.q, p.ad, p.lokasyon, p.osb, p.ilce, p.belde, p.notlar, p.teklif_no, p.takipci, ...ROLLER.map(([k]) => firmaAd(p[k]))));
 }
-const siparisToplam = p => { const ss = S.siparisler.filter(x => x.proje_id === p.id && x.para_birimi === 'USD'); return ss.length ? ss.reduce((a, x) => a + (+x.net_deger || 0), 0) : (p.siparis_tutari_usd || null); };
+const siparisToplam = p => { const ss = S.siparisler.filter(x => x.proje_id === p.id && x.para_birimi === 'USD' && !x.rapor_disi); return ss.length ? ss.reduce((a, x) => a + (+x.net_deger || 0), 0) : (p.siparis_tutari_usd || null); };
 const SORTS = {
   'Duruma göre': (a, b) => DURUMLAR.findIndex(d => d.k === a.durum) - DURUMLAR.findIndex(d => d.k === b.durum) || a.ad.localeCompare(b.ad, 'tr'),
   'Son güncellenen': (a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''),
@@ -284,6 +285,7 @@ export function projeDetay(id, init) {
     panel.querySelectorAll('[data-qd]').forEach(x => x.classList.toggle('on', x === b));
     if (d === 'Kayıp') form.querySelector('[data-show="kayip"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
+  panel.querySelectorAll('[data-sp]').forEach(b => b.onclick = () => siparisForm({ id: b.dataset.sp }));
   panel.querySelectorAll('[data-tk]').forEach(b => b.onclick = () => teklifForm({ id: b.dataset.tk }, () => projeDetay(p.id)));
   panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     const a = b.dataset.a;
@@ -324,7 +326,7 @@ function related(ziy, sip, gec, gor, tek) {
     ${ziy.length ? `<ul class="list">${ziy.map(z => `<li><span class="muted">${tarih(z.tarih)}</span><span>${esc(firmaAd(z.firma_id))} — ${esc((z.notlar || '').slice(0, 120))}</span></li>`).join('')}</ul>` : '<p class="hint">Bu projeye bağlı ziyaret yok.</p>'}
     ${gor.length ? `<h3>Görevler <span class="muted">${gor.length}</span></h3><ul class="list">${gor.map(g => `<li><span>${g.durum === 'Tamam' ? '✓' : '○'} ${esc(g.baslik)}</span><span class="muted">${tarih(g.son_tarih)}</span></li>`).join('')}</ul>` : ''}
     <h3>Siparişler <span class="muted">${sip.length}</span></h3>
-    ${sip.length ? `<ul class="list">${sip.map(s => `<li><span class="muted">${tarih(s.tarih)}</span><span>${esc(s.musteri_adi)} · ${esc(s.referans || '')}</span><b class="num">${num(s.net_deger)} ${esc(s.para_birimi)}</b></li>`).join('')}</ul>
+    ${sip.length ? `<ul class="list">${sip.map(s => `<li class="${s.rapor_disi ? 'disi' : ''}"><span class="muted">${tarih(s.tarih)}</span><button type="button" class="linkrow" data-sp="${s.id}"><b>${esc(s.siparis_no || 'Sipariş')} · ${esc(s.referans || s.musteri_adi || '')}</b>${s.siparis_notu ? `<span class="muted">Not: ${esc(s.siparis_notu.slice(0, 80))}</span>` : ''}</button><b class="num">${num(s.net_deger)} ${esc(s.para_birimi)}</b></li>`).join('')}</ul>
       <p class="hint">Toplam: ${usd(sip.filter(s => s.para_birimi === 'USD').reduce((a, s) => a + +s.net_deger, 0))}</p>` : '<p class="hint">Sipariş listesinde bu projeye bağlı kayıt yok.</p>'}
     ${gec.length ? `<h3>Durum geçmişi</h3><ul class="list">${gec.map(g => `<li><span class="muted">${tarih(g.tarih)}</span><span>${g.eski_durum ? esc(g.eski_durum) + ' → ' : ''}${esc(g.yeni_durum)}${g.notlar ? ' · ' + esc(g.notlar) : ''}</span></li>`).join('')}</ul>` : ''}
   </section>`;

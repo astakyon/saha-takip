@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 6)
+
+Siparişlere **sipariş notu** ve **rapor dışı** alanları, çeyreklere **resmi rakam** (USD satış, TL satış, kur) eklendi: [`supabase/schema.sql`](supabase/schema.sql) dosyasını bir kez yeniden çalıştır.
+
+- Siparişler: *Sipariş no* (SAP, 2000…), *SAS no* (sipariş açıklamasına yazılan not), *Sipariş notu* (özel / ekstra içerik). Her sipariş düzenlenebilir, elle eklenebilir, toplamlardan çıkarılabilir.
+- Siparişler → *Çeyrek özeti*: siparişlerden hesaplanan ile resmi rakamın farkı. Resmi rakam girilen çeyrekte panel, tahmin ve sunum onu kullanır.
+- Rapor → *Veri kontrolü*: eksik, çelişkili ve mükerrer kayıtlar; siparişi projeye bağlama ve firma birleştirme.
+
 ## Güncelleme notu (sürüm 5)
 
 Veritabanına **tahsilat** ve **belge** tabloları eklendi: bir kez **Supabase → SQL Editor**'de [`supabase/schema.sql`](supabase/schema.sql) dosyasının tamamını yeniden çalıştır.

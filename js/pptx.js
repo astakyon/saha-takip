@@ -4,6 +4,7 @@ import { byId, firmaAd, today, download, toast, openDrawer, closeDrawer, ACIK, n
 import { zipYaz } from './zip.js';
 import { TEMA } from './pptx-tema.js';
 import { benimAdim } from './sablon.js';
+import { yilGercek } from './ceyrek.js';
 
 const W = 12192000, H = 6858000, CM = 360000;
 const x = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
@@ -66,11 +67,11 @@ const lumenAralik = lm => lm < 5000 ? '0-5.000 lm' : lm < 10000 ? '5.000-10.000 
 
 export function sunumVerisi(Y, C) {
   const tem = (benimAdim() || 'Bölge Satış').split(/\s*[·|,-]\s*/)[0];
-  const sip = S.siparisler.filter(s => s.tarih?.startsWith(String(Y)) && s.para_birimi === 'USD');
-  const hed = [1, 2, 3, 4].map(c => +(S.hedefler.find(h => +h.yil === Y && +h.ceyrek === c)?.tutar_usd || 0));
-  const ger = [1, 2, 3, 4].map(c => c <= C ? sum(sip.filter(s => ceyrekOf(s.tarih) === c), s => s.net_deger) : 0);
+  const G = yilGercek(Y);
+  const hed = G.map(g => g.hedef);
+  const ger = G.map((g, i) => i + 1 <= C ? g.gercek : 0);
   const yP = S.projeler.filter(p => +p.takip_yili === Y);
-  const projeSip = p => sum(S.siparisler.filter(s => s.proje_id === p.id && s.para_birimi === 'USD' && s.tarih?.startsWith(String(Y))), s => s.net_deger) || +p.siparis_tutari_usd || 0;
+  const projeSip = p => sum(S.siparisler.filter(s => s.proje_id === p.id && s.para_birimi === 'USD' && !s.rapor_disi && s.tarih?.startsWith(String(Y))), s => s.net_deger) || +p.siparis_tutari_usd || 0;
   const musteri = p => firmaAd(p.alici_id) || firmaAd(p.emut_id) || firmaAd(p.gemut_id) || firmaAd(p.yatirimci_id);
   // Uzun listeler en büyük 22 kayıtla sınırlanır, kalanlar tek satırda toplanır (sunum 2 slaytı geçmesin)
   const kirp = (rows, val, n = 22, ozet) => rows.length <= n + 2 ? rows : [...rows.slice(0, n), ozet(rows.length - n, rows.slice(n).reduce((s, r) => s + val(r), 0))];

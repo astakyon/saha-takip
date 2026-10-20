@@ -18,6 +18,7 @@ import { numunelerView, servisView, masraflarView } from './views/kayitlar.js';
 import { paylasimAl, paylasimPaneli } from './paylas.js';
 import { tahsilatView } from './views/tahsilat.js';
 import { raporView } from './views/rapor.js';
+import { kontrolView } from './views/kontrol.js';
 import { kurGuncelle } from './kur.js';
 import { bildirimHazirla } from './bildirim.js';
 
@@ -41,6 +42,7 @@ const ROUTES = {
   servis:    { t: 'Servis ve şikayet', ico: 'wrench', v: servisView, g: 'Satış' },
   panel:     { t: 'Panel', ico: 'chart', v: panelView, g: 'Rapor' },
   rapor:     { t: 'Haftalık rapor', ico: 'report', v: raporView, g: 'Rapor' },
+  kontrol:   { t: 'Veri kontrolü', ico: 'check', v: kontrolView, g: 'Rapor' },
   siparisler:{ t: 'Siparişler', ico: 'receipt', v: siparislerView, g: 'Rapor' },
   urunler:   { t: 'Stok ve fiyat', ico: 'box', v: urunlerView, g: 'Rapor' },
   rakip:     { t: 'Rakip fiyatları', ico: 'tag', v: rakipView, g: 'Rapor' },

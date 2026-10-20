@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 5)
+--  Saha Satış Takip — Supabase şeması (sürüm 6)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -221,6 +221,15 @@ create table if not exists public.masraflar (
   tarih date not null default current_date, tip text default 'Yakıt', tutar numeric, km numeric, aciklama text, fis text,
   created_at timestamptz default now(), updated_at timestamptz default now()
 );
+-- Sürüm 6: sipariş notu, rapor dışı bırakma, çeyrek resmi rakamları
+alter table public.siparisler add column if not exists siparis_notu text;
+alter table public.siparisler add column if not exists rapor_disi boolean default false;
+alter table public.hedefler add column if not exists resmi_usd numeric;
+alter table public.hedefler add column if not exists resmi_tl numeric;
+alter table public.hedefler add column if not exists kur numeric;
+alter table public.hedefler add column if not exists notlar text;
+alter table public.hedefler alter column tutar_usd drop not null;
+
 -- Sürüm 5: tahsilat takibi ve belgeler
 create table if not exists public.tahsilatlar (
   id uuid primary key default gen_random_uuid(),
