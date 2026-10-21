@@ -5,6 +5,7 @@ import { gorevForm } from './ziyaret.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { yilGercek, ceyrekGercek, hedefKaydi, siparisUsd, donemKuru, ceyrekOf } from '../ceyrek.js';
 import { kur } from '../kur.js';
+import { yuklemeKaydet } from '../belgeler.js';
 
 const q = d => Math.floor((new Date(d).getMonth()) / 3) + 1;
 const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0);
@@ -321,5 +322,6 @@ async function siparisYukle() {
     const yeni = out.filter(o => !byBelge.has(o.belge_no + '|' + o.siparis_no)).length;
     await app.db.bulk('siparisler', out);
     toast(`${out.length} sipariş okundu, ${yeni} yeni kayıt eklendi.`); app.refresh();
+    yuklemeKaydet(file, 'SAP sipariş listesi', `${out.length} sipariş, ${yeni} yeni`);
   } catch (e) { console.error(e); toast('Dosya okunamadı: ' + e.message, 'err'); }
 }

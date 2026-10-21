@@ -15,35 +15,39 @@ import { tahsilatOzeti } from './tahsilat.js';
 
 const FIRMA_FORM = [
   { title: 'Firma', fields: [
-    { k: 'ad', l: 'Firma adı', auto: true, full: true },
+    { k: 'ad', l: 'Firma adı', auto: true, full: true, req: true },
     { k: 'tipler', l: 'Firma tipi', t: 'tags', opts: FIRMA_TIPLERI },
-    { k: 'segment', l: 'Segment', t: 'sel', opts: ['A', 'B', 'C'] },
-    { k: 'sektor', l: 'Sektör', t: 'combo', opts: SEKTORLER },
-    { k: 'key_account', l: 'Key account', t: 'chk', cl: 'Key account (stratejik müşteri)' },
     { k: 'telefon', l: 'Telefon', t: 'tel' }, { k: 'eposta', l: 'E-posta', t: 'email' },
-    { k: 'web', l: 'Web sitesi' }, { k: 'vergi_no', l: 'Vergi no' },
   ]},
-  { title: 'Konum', fields: [
+  { title: 'Konum', ozet: 'harita, il, ilçe, adres', kapali: o => !o._new, fields: [
+    { k: 'loc', l: 'Harita konumu', t: 'loc' },
     { k: 'il', l: 'İl', t: 'sel', opts: [...ILLER, 'Diğer'] },
     { k: 'ilce', l: 'İlçe', t: 'combo', opts: o => ILCELER[o.il] || [] },
-    { k: 'belde', l: 'Belde / mahalle' },
     { k: 'osb', l: 'OSB / sanayi bölgesi', t: 'combo', opts: o => OSBLER[o.il] || Object.values(OSBLER).flat() },
+    { k: 'belde', l: 'Belde / mahalle' },
     { k: 'adres', l: 'Adres', full: true },
-    { k: 'loc', l: 'Harita konumu', t: 'loc' },
   ]},
-  { title: 'Notlar ve fotoğraflar', fields: [
-    { k: 'notlar', l: 'Notlar', t: 'area', rows: 4 },
+  { title: 'Notlar ve fotoğraflar', kapali: false, fields: [
+    { k: 'notlar', l: 'Notlar', t: 'area', rows: 3 },
     { k: 'fotolar', l: 'Fotoğraflar (ofis, şantiye, logo)', t: 'photos' },
+  ]},
+  { title: 'Diğer bilgiler', ozet: 'segment, sektör, web, vergi no', kapali: true, fields: [
+    { k: 'segment', l: 'Segment', t: 'sel', opts: ['A', 'B', 'C'] },
+    { k: 'sektor', l: 'Sektör', t: 'combo', opts: SEKTORLER },
+    { k: 'web', l: 'Web sitesi' }, { k: 'vergi_no', l: 'Vergi no' },
+    { k: 'key_account', l: 'Key account', t: 'chk', cl: 'Key account (stratejik müşteri)' },
   ]},
 ];
 
 const KISI_FORM = [
   { title: 'Kişi', fields: [
-    { k: 'ad_soyad', l: 'Ad soyad', auto: true },
+    { k: 'ad_soyad', l: 'Ad soyad', auto: true, req: true, full: true },
     { k: 'firma_id', l: 'Firma', t: 'ref', ref: 'firmalar' },
-    { k: 'unvan', l: 'Unvan / görev' },
-    { k: 'rol', l: 'Karar sürecindeki rolü', t: 'sel', opts: ['Karar verici', 'Etkileyici', 'Teknik', 'Satınalma', 'Saha'] },
+    { k: 'unvan', l: 'Unvan / görev', t: 'combo', opts: ['Genel Müdür', 'Satınalma Müdürü', 'Satınalma', 'Proje Müdürü', 'Elektrik Mühendisi', 'Şantiye Şefi', 'Teknik Müdür', 'Firma Sahibi', 'Satış'] },
     { k: 'telefon', l: 'Cep telefonu', t: 'tel' }, { k: 'eposta', l: 'E-posta', t: 'email' },
+  ]},
+  { title: 'Diğer bilgiler', ozet: 'rol, doğum günü, notlar', kapali: o => !o.notlar, fields: [
+    { k: 'rol', l: 'Karar sürecindeki rolü', t: 'sel', opts: ['Karar verici', 'Etkileyici', 'Teknik', 'Satınalma', 'Saha'] },
     { k: 'dogum_gunu', l: 'Doğum günü', t: 'date' },
     { k: 'notlar', l: 'Notlar', t: 'area' },
   ]},
@@ -233,12 +237,14 @@ export function kisiDetay(id, init) {
       ${k.eposta ? `<a class="btn sm ghost" href="mailto:${esc(k.eposta)}">E-posta</a>` : ''}<button class="btn sm ghost" data-a="vcf">Rehbere kaydet</button>
       <button class="btn sm ghost danger" data-a="sil">Sil</button></div>`}
     <form class="dbody form" novalidate>
-      <fieldset class="fs"><legend>Kartvizit</legend>
+      ${k._new && !k.kartvizit_on ? `<div class="kv-cta-row"><button type="button" class="kv-cta" data-kv-hizli="cam"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span><b>Kartviziti çek</b><small>Ad, telefon, e-posta ve firma kendiliğinden dolar</small></span></button><button type="button" class="linkbtn" data-kv-hizli="gal">ya da galeriden seç</button></div>` : ''}
+      <div data-ocr></div>
+      ${renderForm(KISI_FORM, k)}
+      <details class="fs fs-d kv-d" ${!k._new && (k.kartvizit_on || k.kartvizit_arka) ? 'open' : ''}><summary><b>Kartvizit fotoğrafı</b><span class="muted">${k.kartvizit_on ? 'ön yüz' + (k.kartvizit_arka ? ' ve arka yüz' : '') + ' var' : 'yok'}</span></summary>
         <div class="kv-pair">${['kartvizit_on', 'kartvizit_arka'].map(s => `<div class="kv" data-kvs="${s}" data-val="${esc(k[s] || '')}"><div class="kv-img" role="img" aria-label="${s === 'kartvizit_on' ? 'Ön yüz' : 'Arka yüz'}"><span>${s === 'kartvizit_on' ? 'Ön yüz' : 'Arka yüz'}</span></div>
           <div class="ph-btns"><button type="button" class="btn sm" data-kv-cam>Çek</button><button type="button" class="btn sm ghost" data-kv-gal>Galeri</button><button type="button" class="btn sm ghost" data-kv-del hidden>Kaldır</button></div></div>`).join('')}</div>
-        <div class="btnrow"><button type="button" class="btn sm" data-ocr-btn ${k.kartvizit_on ? '' : 'hidden'}>Kartviziti oku ve formu doldur</button></div><div data-ocr></div>
-      </fieldset>
-      ${renderForm(KISI_FORM, k)}
+        <div class="btnrow"><button type="button" class="btn sm" data-ocr-btn ${k.kartvizit_on ? '' : 'hidden'}>Kartviziti oku ve formu doldur</button></div>
+      </details>
       ${projeler.length || ziy.length ? `<section class="rel"><h3>Projeler</h3><ul class="list">${projeler.map(p => `<li><a href="#/proje/${p.id}">${esc(p.ad)}</a>${pill(p.durum)}</li>`).join('') || '<li class="muted">—</li>'}</ul>
         <h3>Ziyaretler</h3><ul class="list">${ziy.map(z => `<li><span class="muted">${tarih(z.tarih)}</span><span>${esc((z.notlar || '').slice(0, 140))}</span></li>`).join('') || '<li class="muted">—</li>'}</ul></section>` : ''}
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div>
@@ -252,7 +258,7 @@ export function kisiDetay(id, init) {
       const { pickFiles } = await import('../ui.js');
       const [file] = await pickFiles({ capture: cap, multiple: false }); if (!file) return;
       try { toast('Kartvizit yükleniyor…'); box.dataset.val = await app.db.upload(file); await show(); toast('Kartvizit eklendi. Kaydetmeyi unutma.');
-        if (box.dataset.kvs === 'kartvizit_on') kartvizitPaneli(panel, form, box.dataset.val); } catch (e) { toast(e.message, 'err'); }
+        if (box.dataset.kvs === 'kartvizit_on') { panel.querySelector('.kv-cta-row')?.remove(); kartvizitPaneli(panel, form, box.dataset.val); panel.querySelector('[data-ocr]').scrollIntoView({ block: 'nearest' }); } } catch (e) { toast(e.message, 'err'); }
     };
     box.querySelector('[data-kv-cam]').onclick = () => add(true);
     box.querySelector('[data-kv-gal]').onclick = () => add(false);
@@ -262,6 +268,7 @@ export function kisiDetay(id, init) {
   });
   panel.querySelector('[data-ocr-btn]').onclick = () => kartvizitPaneli(panel, form, panel.querySelector('[data-kvs="kartvizit_on"]').dataset.val, k._ocr);
   if (k._new && k.kartvizit_on) kartvizitPaneli(panel, form, k.kartvizit_on);
+  panel.querySelectorAll('[data-kv-hizli]').forEach(b => b.onclick = () => { panel.querySelector(`[data-kvs="kartvizit_on"] ${b.dataset.kvHizli === 'cam' ? '[data-kv-cam]' : '[data-kv-gal]'}`).click(); });
   panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     if (b.dataset.a === 'wa') waGonder({ kisi: k });
     if (b.dataset.a === 'vcf') {

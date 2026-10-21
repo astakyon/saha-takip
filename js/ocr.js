@@ -11,6 +11,7 @@ function betik(src) {
 async function hazirla(ilerleme) {
   if (isci) return isci;
   if (!window.Tesseract) await (yukleniyor ||= betik(TESS));
+  if (!window.Tesseract) { yukleniyor = null; throw new Error('Okuma motoru indirilemedi. İnternet bağlantını kontrol et.'); }
   isci = await window.Tesseract.createWorker(['tur', 'eng'], 1, { logger: m => ilerleme && m.status && ilerleme(m.status, m.progress) });
   return isci;
 }

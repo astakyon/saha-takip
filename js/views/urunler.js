@@ -3,6 +3,7 @@ import { app, F, saveFilters } from '../state.js';
 import { esc, num, usd, tarih, today, gunEkle, RAKIPLER, URUN_AILELERI, byId, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, pickFiles, fold } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { cubuklar, ikili } from '../grafik.js';
+import { yuklemeKaydet } from '../belgeler.js';
 
 const num2 = n => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
 const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
@@ -124,6 +125,7 @@ async function stokYukle() {
     toast('Stok kaydediliyor…');
     await app.db.bulk('urunler', urunRows); await app.db.bulk('stok_gecmis', gecmis);
     toast(`Stok güncellendi: ${gelen.size} ürün${sifirla ? `, ${yok.length} ürün sıfırlandı` : ''}.`); app.refresh();
+    yuklemeKaydet(file, 'Bayi stok listesi', `${gelen.size} ürün${sifirla ? `, ${yok.length} ürün sıfırlandı` : ''}`);
   } catch (e) { console.error(e); toast('Dosya okunamadı: ' + e.message, 'err'); }
 }
 

@@ -19,7 +19,7 @@ export const TABLES = {
   urun_aileleri: ['id','aile','ad','aciklama','ozellikler','datasheet_url','fotolar'],
   ayarlar: ['id','anahtar','deger'],
   tahsilatlar: ['id','firma_id','cari','belge_no','tarih','vade','tutar','para_birimi','odenen','durum','odeme_tarihi','notlar'],
-  belgeler: ['id','proje_id','firma_id','ad','yol','tur','boyut','notlar'],
+  belgeler: ['id','proje_id','firma_id','ad','yol','tur','boyut','notlar','kategori'],
 };
 const ARRAYS = new Set(['tipler','fotolar','urun_gruplari']);
 

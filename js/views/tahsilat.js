@@ -4,6 +4,7 @@ import { app, F, saveFilters } from '../state.js';
 import { esc, num, tarih, today, gunEkle, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, pickFiles, fold } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { waGonder } from '../sablon.js';
+import { yuklemeKaydet } from '../belgeler.js';
 
 const PB = { USD: '$', EUR: '€', TRY: '₺', TL: '₺' };
 export const para = (v, pb = 'USD') => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0) + ' ' + (PB[pb] || pb || '');
@@ -146,6 +147,7 @@ async function tahsilatYukle() {
     if (!out.length) return toast('Dosyada alacak satırı bulunamadı.', 'err');
     const yeni = out.filter(o => !S.tahsilatlar.some(t => t.id === o.id)).length, eslesmeyen = out.filter(o => !o.firma_id).length;
     await app.db.bulk('tahsilatlar', out);
+    yuklemeKaydet(file, 'Cari ekstresi', `${out.length} fatura, ${yeni} yeni`);
     toast(`${out.length} fatura okundu: ${yeni} yeni, ${out.length - yeni} güncellendi.${eslesmeyen ? ` ${eslesmeyen} faturanın carisi firma listesinde bulunamadı.` : ''}`);
     app.refresh();
   } catch (e) { console.error(e); toast('Dosya okunamadı: ' + e.message, 'err'); }

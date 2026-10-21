@@ -1,5 +1,5 @@
 import { S, TABLES, getConfig, setConfig, idbGet } from '../db.js';
-import { app } from '../state.js';
+import { app, F, saveFilters } from '../state.js';
 import { esc, toast, download, exportXlsx, today, confirmBox, pickFiles, firmaAd } from '../ui.js';
 import { projeSatiri } from './projeler.js';
 import { birlestir, SIRA } from '../birlestir.js';
@@ -12,6 +12,7 @@ import { teklifAyarlari } from './teklif.js';
 import { kmlIndir } from '../paylas.js';
 import { kurAyarlari } from '../kur.js';
 import { bildirimAyarlari } from '../bildirim.js';
+import { yuklemeKaydet } from '../belgeler.js';
 
 const ORDER = SIRA;
 const ETIKET = { bolgeler: 'sanayi bölgesi', firmalar: 'firma', kisiler: 'kişi', projeler: 'proje', proje_gecmis: 'durum geçmişi', ziyaretler: 'ziyaret', gorevler: 'görev', urunler: 'ürün', stok_gecmis: 'stok geçmişi', rakip_fiyatlar: 'rakip fiyatı', siparisler: 'sipariş', hedefler: 'hedef', teklifler: 'teklif', numuneler: 'numune', servis_kayitlari: 'servis kaydı', masraflar: 'masraf', urun_aileleri: 'ürün ailesi', ayarlar: 'ayar', tahsilatlar: 'tahsilat kaydı', belgeler: 'belge' };
@@ -64,48 +65,61 @@ export async function ayarlarView(el) {
   let localCount = 0;
   if (sup) for (const t of ORDER) localCount += ((await idbGet('t:' + t)) || []).length;
   const pend = sup ? await app.db.pending() : 0;
-  el.innerHTML = `<header class="vh"><div><h1>Ayarlar ve veri</h1><p class="sum">${sup ? `Bulut: ${esc(app.db.user()?.email || '')}` : 'Deneme modu: veriler yalnızca bu cihazın tarayıcısında'}</p></div></header>
+  const f = F('ayarlar', { sekme: 'genel' });
+  if (!S.projeler.length && !S.firmalar.length && f.sekme === 'genel' && !f._ilk) { f.sekme = 'veri'; f._ilk = 1; }
+  const SEKME = [['genel', 'Genel'], ['veri', 'Veri ve yedek'], ['google', 'Google ve harita'], ['mesaj', 'Mesaj ve teklif']];
+  const toplam = counts.reduce((a, [, n]) => a + n, 0);
+  el.innerHTML = `<header class="vh"><div><h1>Ayarlar</h1><p class="sum">${sup ? `Hesap: ${esc(app.db.user()?.email || '')}` : 'Deneme modu: veriler yalnızca bu cihazda'}${pend ? ` · <b>${pend} değişiklik internet bekliyor</b>` : ''}</p></div></header>
+  <div class="seg ayar-sekme" role="tablist">${SEKME.map(([k, t]) => `<button type="button" role="tab" data-sekme="${k}" aria-selected="${f.sekme === k}" class="${f.sekme === k ? 'on' : ''}">${t}</button>`).join('')}</div>
   <div class="settings">
-    <section class="card"><h2>Bağlantı</h2>
-      ${sup ? `<p>Supabase'e bağlısın. Telefonda ve bilgisayarda aynı hesapla giriş yapınca aynı veriyi görürsün.${pend ? ` <b>${pend} değişiklik</b> internet bekliyor.` : ''}</p>
-        <div class="btnrow"><button class="btn ghost" data-out>Çıkış yap</button></div><details><summary>Bağlantı bilgilerini değiştir</summary>${connForm(cfg)}</details>`
-      : `<p>Şu an deneme modundasın. Uygulamayı deneyebilirsin ama veriler sadece bu tarayıcıda durur. Telefon ve bilgisayarda ortak kullanım için Supabase bilgilerini gir.</p>${connForm(cfg)}`}
+    <section class="card" data-tab="genel"><h2>Hesap</h2>
+      ${sup ? `<p>Bulut hesabına bağlısın; telefonda ve bilgisayarda aynı verileri görürsün.</p><div class="btnrow"><button class="btn ghost" data-out>Çıkış yap</button></div><details class="gelismis"><summary>Bağlantı bilgileri (Supabase)</summary>${connForm(cfg)}</details>`
+      : `<p>Şu an <b>deneme modundasın</b>: veriler yalnızca bu tarayıcıda durur. Telefon ve bilgisayarda ortak kullanmak için Supabase bilgilerini gir.</p>${connForm(cfg)}`}
     </section>
-    <section class="card"><h2>Başlangıç verisi</h2>
-      <p>Proje takip Excel'inden hazırlanan veri: projeler, firmalar ve yetkilileri, ziyaretler, sanayi bölgeleri, siparişler, bayi stoğu, rakip fiyatları ve hedefler.</p>
-      <p class="hint">Kayıtlar ada göre eşleştirilir: tekrar yüklemek kopya oluşturmaz, haritada yerleştirdiğin konumlar korunur.</p>
-      <p class="hint">Müşteri bilgilerin internete açık olmasın diye bu veri uygulamanın içinde değil, sana ayrıca verilen <b>baslangic-verisi.json</b> dosyasında. Dosyayı seçince kayıtlar ${sup ? 'buluta' : 'bu tarayıcıya'} yüklenir.</p>
-      <div class="btnrow"><button class="btn primary" data-seed>Başlangıç verisi dosyasını seç</button></div><div class="progress" data-prog hidden></div>
+    <section class="card" data-tab="genel"><h2>Telefona yükle</h2>
+      ${INST.standalone ? '<p><b>Uygulama yüklü.</b> Simgeye uzun basınca Ziyaret kaydet, Harita, Takvim ve Projeler kısayolları çıkar.</p>' : `<p>Ana ekrana Saha Takip simgesi eklenir, tam ekran açılır ve internet yokken de çalışır.</p><div class="btnrow"><button class="btn primary" data-install>Uygulamayı yükle</button></div>
+      <p class="hint">${INST.evt ? 'Düğmeye basınca telefon onay ister.' : isIOS ? 'iPhone: Safari Paylaş düğmesi → “Ana Ekrana Ekle”.' : 'Düğme çalışmazsa Chrome menüsü (⋮) → “Uygulamayı yükle”.'}</p>`}
+    </section>
+    <section class="card" data-tab="genel"><h2>Bildirimler</h2><div data-bildirim></div></section>
+    <section class="card" data-tab="genel"><h2>Döviz kuru</h2><div data-kur></div></section>
+
+    <section class="card" data-tab="veri"><h2>Kayıtlar</h2>
+      ${counts.length ? `<p><b>${toplam}</b> kayıt</p><ul class="counts">${counts.map(([t, n]) => `<li><b>${n}</b> ${ETIKET[t]}</li>`).join('')}</ul>` : '<p class="hint">Henüz kayıt yok. Aşağıdan başlangıç verisini yükleyebilirsin.</p>'}
+      <div class="btnrow"><a class="btn" href="#/dosyalar">Yüklediğin dosyalar</a><a class="btn ghost" href="#/kontrol">Veri kontrolü</a></div>
+    </section>
+    <section class="card" data-tab="veri"><h2>Yedek ve dışa aktarma</h2>
+      <div class="btnrow"><button class="btn" data-xlsx>Tümünü Excel'e aktar</button><button class="btn ghost" data-json>Yedek indir</button><button class="btn ghost" data-restore>Yedekten geri yükle</button></div>
+      <p class="hint">Yedek dosyası (JSON) tüm kayıtları içerir; telefon değiştirirken ya da büyük bir değişiklikten önce indir.</p>
+    </section>
+    <section class="card" data-tab="veri"><h2>Başlangıç verisi</h2>
+      <p>Proje takip Excel'inden hazırlanan <b>baslangic-verisi.json</b> dosyası: projeler, firmalar, kişiler, siparişler, stok, rakip fiyatları ve hedefler.</p>
+      <div class="btnrow"><button class="btn primary" data-seed>Dosyayı seç ve yükle</button></div><div class="progress" data-prog hidden></div>
+      <p class="hint">Kayıtlar ada göre eşleşir: tekrar yüklemek kopya oluşturmaz, haritadaki konumların korunur.</p>
       ${sup && localCount ? `<hr><p>Bu tarayıcıda deneme modunda girilmiş <b>${localCount} kayıt</b> var.</p><div class="btnrow"><button class="btn" data-migrate>Deneme verisini buluta taşı</button></div>` : ''}
     </section>
-    <section class="card"><h2>Google Haritalar</h2>
-      <p>${googleKey() ? '<b>Google API anahtarı kayıtlı.</b> Haritada “Google\'da ara” ile işletmeleri bulup adres, telefon, web ve konumlarını kayıtlarına aktarabilirsin.' : 'Google\'daki işletmeleri arayıp bilgilerini çekmek için bir API anahtarı gerekiyor.'}</p>
+    <section class="card danger-card" data-tab="veri"><details class="danger-zone"><summary>Tüm verileri sil</summary><p>${sup ? 'Buluttaki' : 'Bu tarayıcıdaki'} tüm kayıtlar silinir ve geri alınamaz. Önce yedek indir.</p><button class="btn danger" data-wipe>Tüm verileri sil</button></details></section>
+
+    <section class="card" data-tab="google"><h2>Google'da arama</h2>
+      <p>${googleKey() ? '<b>Google anahtarı kayıtlı.</b> Haritada “Google\'da ara” ile işletmelerin adres, telefon ve konumunu kayıtlarına aktarabilirsin.' : 'Haritada Google\'daki işletmeleri aramak için bir API anahtarı gerekiyor.'}</p>
       <details ${googleKey() ? '' : 'open'}><summary>${googleKey() ? 'Anahtarı değiştir' : 'Anahtar nasıl alınır?'}</summary>${anahtarFormu()}</details>
-      <hr><p><b>Google'dan konum aktar:</b> Google Benim Haritalarım (KML/KMZ), Google Takeout'taki kaydedilen yerler (JSON, CSV) veya Google Haritalar bağlantıları. Bunun için API anahtarı gerekmez.</p>
+    </section>
+    <section class="card" data-tab="google"><h2>Konum aktar ve dışa aktar</h2>
+      <p>Google Benim Haritalarım (KML/KMZ), Takeout'taki kaydedilen yerler ya da Google Haritalar bağlantıları. Anahtar gerekmez.</p>
       <div class="btnrow"><button class="btn" data-gimport>Google'dan konum aktar</button><button class="btn ghost" data-kml>Haritayı KML olarak indir</button></div>
-      <p class="hint">KML dosyasını Google Benim Haritalarım'a (mymaps.google.com → Yeni harita → İçe aktar) yükleyince projelerin ve firmaların Google Haritalar uygulamasında da görünür.</p>
-      <hr><p><b>Google Haritalar'dan paylaş:</b> Uygulama telefona yüklüyse Google Haritalar'da bir yere dokun → <b>Paylaş</b> → <b>Saha Takip</b>. Yer yeni firma ya da proje olarak kaydedilir veya mevcut kayda konum atanır.</p>
-      <details><summary>Kısa bağlantılardan konum alma (maps.app.goo.gl)</summary>
-        <p class="hint">Google Haritalar paylaşımda çoğu zaman kısa bağlantı gönderir. Konumu bu bağlantıdan okumak için Supabase'e küçük bir fonksiyon eklenmeli (bir kez):</p>
-        <ol class="hint"><li>Supabase paneli → <b>Edge Functions</b> → <b>Deploy a new function</b> → <b>Via Editor</b>.</li><li>Fonksiyon adı: <code>kisa-link</code></li><li>Depodaki <code>supabase/functions/kisa-link/index.ts</code> dosyasının içeriğini yapıştır → <b>Deploy</b>.</li></ol>
-        <p class="hint">Fonksiyon kurulmadıysa Google API anahtarıyla ad ve adresten, o da yoksa adresten yaklaşık konum bulunur.</p></details>
+      <p class="hint">KML dosyasını mymaps.google.com'a yükleyince projelerin Google Haritalar'da da görünür.</p>
     </section>
-    <section class="card"><h2>Döviz kuru</h2><div data-kur></div></section>
-    <section class="card"><h2>Bildirimler</h2><div data-bildirim></div></section>
-    <section class="card"><h2>Mesaj şablonları</h2><p class="hint">Kişi ve firma kartındaki WhatsApp düğmesi bu şablonları kullanır.</p><div data-sablon></div></section>
-    <section class="card"><h2>Teklif bilgileri</h2><p class="hint">PDF teklifin üst bilgisi ve alt koşulları.</p><div data-teklifb></div></section>
-    <section class="card"><h2>Kayıtlar</h2>
-      ${counts.length ? `<ul class="counts">${counts.map(([t, n]) => `<li><b>${n}</b> ${ETIKET[t]}</li>`).join('')}</ul>` : '<p class="hint">Henüz kayıt yok.</p>'}
-      <div class="btnrow"><button class="btn" data-xlsx>Tümünü Excel'e aktar</button><button class="btn ghost" data-json>Yedek indir (JSON)</button><button class="btn ghost" data-restore>Yedekten geri yükle</button></div>
-      <details class="danger-zone"><summary>Tüm verileri sil</summary><p>Bu işlem ${sup ? 'buluttaki' : 'bu tarayıcıdaki'} tüm kayıtları siler ve geri alınamaz. Önce yedek indir.</p><button class="btn danger" data-wipe>Tüm verileri sil</button></details>
+    <section class="card" data-tab="google"><h2>Google Haritalar'dan paylaş</h2>
+      <p>Google Haritalar'da bir yere dokun → <b>Paylaş</b> → <b>Saha Takip</b>. Yer yeni firma ya da proje olarak kaydedilir veya mevcut kayda konum atanır. Uygulamanın telefona yüklü olması gerekir.</p>
+      <details class="gelismis"><summary>Gelişmiş: kısa bağlantılardan tam konum</summary>
+        <p class="hint">Google çoğu zaman <code>maps.app.goo.gl</code> kısa bağlantısı gönderir. Konumu tam okumak için Supabase'e bir kez küçük bir fonksiyon eklenir: Supabase paneli → <b>Edge Functions</b> → <b>Deploy a new function</b> → <b>Via Editor</b> → adı <code>kisa-link</code> → depodaki <code>supabase/functions/kisa-link/index.ts</code> içeriğini yapıştır → <b>Deploy</b>. Eklenmezse konum ad ve adresten bulunur.</p></details>
     </section>
-    <section class="card"><h2>Telefona uygulama olarak yükle</h2>
-      ${INST.standalone ? '<p><b>Uygulama yüklü.</b> Ana ekrandaki “Saha Takip” simgesinden açıyorsun.</p>' : `<div class="btnrow"><button class="btn primary" data-install>Uygulamayı yükle</button></div>
-      <p class="hint">${INST.evt ? 'Düğmeye basınca telefon yükleme onayı ister.' : isIOS ? 'iPhone\'da Safari\'nin Paylaş düğmesi → “Ana Ekrana Ekle”.' : 'Düğme çalışmazsa Chrome menüsünden (⋮) “Uygulamayı yükle” veya “Ana ekrana ekle”yi seç.'}</p>`}
-      <p>Yüklenince uygulama listende ve ana ekranında <b>Saha Takip</b> simgesi olur; tam ekran açılır. Simgeye uzun basınca <b>Ziyaret kaydet</b>, <b>Harita</b>, <b>Takvim</b> ve <b>Projeler</b> kısayolları çıkar.</p>
-      <p class="hint">İnternet yokken son yüklenen veriler görünür; değişiklikler bağlantı gelince gönderilir. Uygulama ben yeni sürüm gönderdikçe kendiliğinden güncellenir.</p>
-    </section>
+
+    <section class="card" data-tab="mesaj"><h2>WhatsApp mesaj şablonları</h2><p class="hint">Kişi ve firma kartındaki WhatsApp düğmesi bu şablonları kullanır.</p><div data-sablon></div></section>
+    <section class="card" data-tab="mesaj"><h2>Teklif bilgileri</h2><p class="hint">PDF teklifin üst bilgisi ve alt koşulları.</p><div data-teklifb></div></section>
   </div>`;
+  const sekmeGoster = k => { el.querySelectorAll('[data-tab]').forEach(x => x.hidden = x.dataset.tab !== k); el.querySelectorAll('[data-sekme]').forEach(b => { b.classList.toggle('on', b.dataset.sekme === k); b.setAttribute('aria-selected', b.dataset.sekme === k); }); };
+  el.querySelectorAll('[data-sekme]').forEach(b => b.onclick = () => { f.sekme = b.dataset.sekme; saveFilters(); sekmeGoster(f.sekme); });
+  sekmeGoster(f.sekme);
   bindConn(el);
   anahtarBagla(el, () => ayarlarView(el));
   sablonDuzenleyici(el.querySelector('[data-sablon]'));
@@ -137,7 +151,7 @@ export async function ayarlarView(el) {
   el.querySelector('[data-json]').onclick = () => download(`saha-takip-yedek-${today()}.json`, JSON.stringify({ version: 1, tarih: new Date().toISOString(), ...Object.fromEntries(ORDER.map(t => [t, S[t]])) }));
   el.querySelector('[data-restore]').onclick = async () => {
     const [f] = await pickFiles({ accept: '.json,application/json', multiple: false }); if (!f) return;
-    try { const d = JSON.parse(await f.text()); await importAll(d, el, 'yedek'); } catch (e) { toast('Yedek okunamadı: ' + e.message, 'err'); }
+    try { const d = JSON.parse(await f.text()); await importAll(d, el, 'yedek', f); } catch (e) { toast('Yedek okunamadı: ' + e.message, 'err'); }
   };
   el.querySelector('[data-wipe]').onclick = async () => {
     if (!confirmBox('Tüm veriler silinsin mi? Bu işlem geri alınamaz.')) return;
@@ -145,7 +159,7 @@ export async function ayarlarView(el) {
   };
 }
 
-async function importAll(d, el, mod = 'guncelle') {
+async function importAll(d, el, mod = 'guncelle', dosya = null) {
   const prog = el.querySelector('[data-prog]'); prog.hidden = false;
   try {
     const { plan, ozet } = birlestir(d, mod);
@@ -158,6 +172,7 @@ async function importAll(d, el, mod = 'guncelle') {
     }
     prog.hidden = true;
     toast(`${ozet.yeni} yeni kayıt eklendi, ${ozet.guncel} kayıt güncellendi${ozet.ayni ? `, ${ozet.ayni} kayıt zaten günceldi` : ''}.`);
+    if (dosya) await yuklemeKaydet(dosya, mod === 'yedek' ? 'Yedek' : 'Başlangıç verisi', `${ozet.yeni} yeni, ${ozet.guncel} güncellenen kayıt`);
     ayarlarView(el);
   } catch (e) { console.error(e); prog.hidden = true; toast('Yükleme durdu: ' + e.message + (/relation|does not exist|schema cache|column/i.test(e.message) ? ' — supabase/schema.sql dosyasını Supabase SQL Editor\'de yeniden çalıştırdın mı?' : ''), 'err'); }
 }
@@ -168,13 +183,13 @@ async function seedYukle(el) {
   let d;
   try { d = JSON.parse(await f.text()); } catch (e) { return toast('Dosya okunamadı: ' + e.message, 'err'); }
   if (!d.projeler) return toast('Bu dosya başlangıç verisi değil. baslangic-verisi.json dosyasını seç.', 'err');
-  if (!S.projeler.length && !S.firmalar.length) return importAll(d, el, 'guncelle');
+  if (!S.projeler.length && !S.firmalar.length) return importAll(d, el, 'guncelle', f);
   const p = openDrawer(`<header class="dh"><div><p class="muted">${esc(d.kaynak || 'Başlangıç verisi')}</p><h2 id="drawer-title">Mevcut verilerle birleştir</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <div class="dbody"><p>Uygulamada zaten <b>${S.projeler.length} proje</b> ve <b>${S.firmalar.length} firma</b> var. Dosyadaki ${(d.projeler || []).length} proje ve ${(d.firmalar || []).length} firma adına göre eşleştirilecek; eşleşmeyenler yeni kayıt olarak eklenir, hiçbir kayıt silinmez.</p>
     <p class="hint">Haritada yerleştirdiğin konumlar, fotoğraflar, kartvizitler ve çizdiğin bölge sınırları her iki seçenekte de korunur. Notlar birleştirilir.</p>
     <div class="choice"><button type="button" class="btn primary" data-m="guncelle">Dosyadaki bilgilerle güncelle</button><small>Durum, tutar, firmalar gibi alanlar dosyadaki haliyle değişir. Excel listen daha güncelse bunu seç.</small></div>
     <div class="choice"><button type="button" class="btn" data-m="ekle">Yalnızca eksikleri tamamla</button><small>Uygulamada değiştirdiğin alanlara dokunulmaz; sadece boş alanlar doldurulur ve yeni kayıtlar eklenir.</small></div></div>`);
-  p.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { closeDrawer(); importAll(d, el, b.dataset.m); });
+  p.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { closeDrawer(); importAll(d, el, b.dataset.m, f); });
 }
 
 // Deneme modunda (tarayıcıda) girilen veriyi ve fotoğrafları Supabase'e taşır

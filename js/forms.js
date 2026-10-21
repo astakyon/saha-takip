@@ -60,24 +60,36 @@ function control(f, v, obj) {
   }
 }
 
+// Bölüm seçenekleri: kapali: true | (obj) => bool  → açılır-kapanır bölüm (başlıkta dolu alan sayısı görünür)
+const dolu = v => v !== null && v !== undefined && v !== '' && v !== false && !(Array.isArray(v) && !v.length);
 export function renderForm(sections, obj) {
-  return sections.map(sec => `
-    <fieldset class="fs" ${sec.show ? `data-show="${sec.id}"` : ''} ${sec.show && !sec.show(obj) ? 'hidden' : ''}>
-      ${sec.title ? `<legend>${esc(sec.title)}</legend>` : ''}
+  return sections.map(sec => {
+    const kap = typeof sec.kapali === 'function' ? sec.kapali(obj) : sec.kapali;
+    const icerik = renderFields(sec, obj);
+    const gizli = sec.show && !sec.show(obj) ? 'hidden' : '';
+    if (sec.kapali !== undefined) {
+      const n = obj._new ? 0 : sec.fields.filter(f => f.t !== 'loc' && dolu(obj[f.k])).length;
+      return `<details class="fs fs-d" ${sec.show ? `data-show="${sec.id}"` : ''} ${gizli} ${kap ? '' : 'open'}><summary><b>${esc(sec.title)}</b><span class="muted">${sec.ozet ? esc(sec.ozet) : ''}${n ? ` · ${n} alan dolu` : ''}</span></summary>${icerik}</details>`;
+    }
+    return `<fieldset class="fs" ${sec.show ? `data-show="${sec.id}"` : ''} ${gizli}>${sec.title ? `<legend>${esc(sec.title)}</legend>` : ''}${icerik}</fieldset>`;
+  }).join('');
+}
+function renderFields(sec, obj) {
+  return `
       ${sec.note ? `<p class="hint">${esc(sec.note)}</p>` : ''}
       <div class="grid">
       ${sec.fields.map(f => {
         const [id, html] = control(f, obj[f.k], obj);
         return `<div class="fld ${f.full || ['area', 'photos', 'loc', 'tags'].includes(f.t) ? 'full' : ''} ${f.t === 'chk' ? 'is-chk' : ''}" ${f.show ? `data-showf="${f.k}"` : ''} ${f.show && !f.show(obj) ? 'hidden' : ''}>
-          ${f.t === 'chk' ? '' : `<label for="${id}">${esc(f.l)}</label>`}${html}${f.help ? `<small>${esc(f.help)}</small>` : ''}</div>`;
+          ${f.t === 'chk' ? '' : `<label for="${id}">${esc(f.l)}${f.req ? ' <span class="req" aria-hidden="true">*</span>' : ''}</label>`}${html}${f.help ? `<small>${esc(f.help)}</small>` : ''}</div>`;
       }).join('')}
-      </div>
-    </fieldset>`).join('');
+      </div>`;
 }
 
 // Form alanlarını bağlar (fotoğraf, konum, koşullu gösterim, hesaplama)
 export function bindForm(root, sections, obj, { onChange } = {}) {
   mikBagla(root);
+  root.querySelectorAll('details.fs-d').forEach(d => d.addEventListener('toggle', () => { if (d.open) d.querySelectorAll('[data-loc]').forEach(b => setTimeout(() => b._map?.invalidateSize(), 50)); }));
   // fotoğraflar
   root.querySelectorAll('[data-photos]').forEach(box => {
     const list = () => JSON.parse(box.dataset.val || '[]');
@@ -117,7 +129,7 @@ export function bindForm(root, sections, obj, { onChange } = {}) {
     const el = box.querySelector('.minimap');
     const lat = parseFloat(box.dataset.lat), lng = parseFloat(box.dataset.lng);
     const il = obj.il && IL_MERKEZ[obj.il];
-    const m = L.map(el, { zoomControl: true, attributionControl: false }).setView(!isNaN(lat) ? [lat, lng] : il ? [il[0], il[1]] : [36.9, 35.3], !isNaN(lat) ? 14 : il ? 10 : 8);
+    const m = box._map = L.map(el, { zoomControl: true, attributionControl: false }).setView(!isNaN(lat) ? [lat, lng] : il ? [il[0], il[1]] : [36.9, 35.3], !isNaN(lat) ? 14 : il ? 10 : 8);
     const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
     const sat = L.layerGroup([L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
       L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 })]);

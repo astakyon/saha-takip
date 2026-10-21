@@ -3,7 +3,7 @@ import { S } from './db.js';
 import { app } from './state.js';
 import { esc, toast, pickFiles, confirmBox, tarih } from './ui.js';
 
-const boyutYaz = b => !b ? '' : b < 1024 * 1024 ? Math.max(1, Math.round(b / 1024)) + ' KB' : (b / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB';
+export const boyutYaz = b => !b ? '' : b < 1024 * 1024 ? Math.max(1, Math.round(b / 1024)) + ' KB' : (b / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB';
 const TUR = [[/pdf/, 'PDF'], [/sheet|excel|csv/, 'Excel'], [/word|document/, 'Word'], [/presentation|powerpoint/, 'Sunum'], [/image/, 'Görsel'], [/dwg|dxf|acad/, 'Çizim'], [/zip|rar|7z/, 'Arşiv']];
 export const turAd = (t, ad = '') => (TUR.find(([r]) => r.test(t || '') || r.test(ad.split('.').pop().toLowerCase())) || [0, (ad.split('.').pop() || 'Dosya').toUpperCase()])[1];
 
@@ -31,7 +31,7 @@ export function belgeBolumu(kutu, hedef) {
       for (const f of files) {
         toast(`${f.name} yükleniyor…`);
         const yol = kamera ? await app.db.upload(f) : await app.db.uploadFile(f);
-        await app.db.save('belgeler', { ...hedef, ad: kamera ? `Fotoğraf ${new Date().toLocaleDateString('tr-TR')}` : f.name, yol, tur: kamera ? 'image/jpeg' : f.type, boyut: f.size });
+        await app.db.save('belgeler', { ...hedef, kategori: 'Belge', ad: kamera ? `Fotoğraf ${new Date().toLocaleDateString('tr-TR')}` : f.name, yol, tur: kamera ? 'image/jpeg' : f.type, boyut: f.size });
       }
       toast(files.length > 1 ? `${files.length} belge eklendi.` : 'Belge eklendi.'); ciz();
     } catch (e) { console.error(e); toast('Yüklenemedi: ' + e.message, 'err'); }
@@ -46,4 +46,13 @@ export async function belgeAc(b) {
   const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener';
   if (u.startsWith('blob:') && !/pdf|image/.test(b.tur || '')) a.download = b.ad;
   a.click();
+}
+
+// İçe aktarılan dosyanın (Excel, JSON, KML…) bir kopyasını “Yüklenen dosyalar” arasına kaydeder. Hata olursa yüklemeyi bozmaz.
+export async function yuklemeKaydet(file, tur, ozet) {
+  try {
+    if (!file || file.size > 40 * 1024 * 1024) return;
+    const yol = await app.db.uploadFile(file);
+    await app.db.save('belgeler', { ad: file.name, yol, tur: file.type || null, boyut: file.size, kategori: 'Yükleme: ' + tur, notlar: ozet || null });
+  } catch (e) { console.warn('yükleme kaydı', e); }
 }

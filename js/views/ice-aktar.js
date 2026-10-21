@@ -5,6 +5,7 @@ import { app } from '../state.js';
 import { esc, fold, toast, openDrawer, closeDrawer, pickFiles } from '../ui.js';
 import { konumAlgila, inMulti, toMulti } from '../geo.js';
 import { googleKey, adaGoreBul } from '../google.js';
+import { yuklemeKaydet } from '../belgeler.js';
 
 // ---------- Google Haritalar bağlantısından koordinat ----------
 export function linkCoz(url) {
@@ -142,7 +143,7 @@ function eslestir(n, hedef) {
 
 // ---------- Panel ----------
 export function iceAktarPaneli(sonra) {
-  let noktalar = [];
+  let noktalar = []; const dosyalar = [];
   const p = openDrawer(`<header class="dh"><div><p class="muted">Google Haritalar</p><h2 id="drawer-title">Google'dan konum aktar</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <div class="dbody imp">
       <details class="howto"><summary>Konumları Google'dan nasıl alırım?</summary>
@@ -159,7 +160,7 @@ export function iceAktarPaneli(sonra) {
   const ekle = yeni => { noktalar = noktalar.concat(yeni.map(n => ({ ...n, _id: uuid(), sec: !(n.lat == null && /^Adsız/.test(n.ad)) }))); ciz(); };
   p.querySelector('[data-file]').onclick = async () => {
     const files = await pickFiles({ accept: '.kml,.kmz,.json,.geojson,.csv,.txt', multiple: true });
-    for (const f of files) { try { const r = await dosyaOku(f); if (!r.length) toast(f.name + ': nokta bulunamadı.', 'err'); ekle(r); } catch (e) { toast(e.message, 'err'); } }
+    for (const f of files) { try { const r = await dosyaOku(f); if (r.length) dosyalar.push(f); if (!r.length) toast(f.name + ': nokta bulunamadı.', 'err'); ekle(r); } catch (e) { toast(e.message, 'err'); } }
   };
   p.querySelector('[data-links]').onclick = () => { const t = p.querySelector('#imp-links').value; if (!t.trim()) return; ekle(metin(t)); p.querySelector('#imp-links').value = ''; };
 
@@ -240,6 +241,7 @@ export function iceAktarPaneli(sonra) {
         for (const [t, r] of ic) await app.db.save(t, r);
       }
       toast(`${yeni} yeni kayıt eklendi, ${guncel} kaydın konumu güncellendi.`);
+      for (const f of dosyalar) yuklemeKaydet(f, 'Google konumları', `${yeni} yeni, ${guncel} güncellenen kayıt`);
       closeDrawer(); sonra ? sonra() : app.refresh();
     } catch (e) { go.disabled = false; go.textContent = 'Seçilenleri aktar'; toast('Aktarılamadı: ' + e.message, 'err'); }
   }

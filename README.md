@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 7)
+
+Belgelere tür alanı eklendi: [`supabase/schema.sql`](supabase/schema.sql) dosyasını bir kez yeniden çalıştır.
+
+- **Dosyalar** ekranı: eklediğin her belge, fotoğraf, kartvizit, fiş ve yüklediğin her Excel / yedek dosyası tek tek; önizleme, indirme, ilgili kayda gitme.
+- **Ayarlar** sekmelere ayrıldı: Genel, Veri ve yedek, Google ve harita, Mesaj ve teklif.
+- **Yeni proje, yeni kişi ve yeni firma** formları sadeleşti: önce gerekli alanlar, ayrıntılar açılır bölümlerde; yeni kişide tek dokunuşla kartvizit okuma.
+
 ## Güncelleme notu (sürüm 6)
 
 Siparişlere **sipariş notu** ve **rapor dışı** alanları, çeyreklere **resmi rakam** (USD satış, TL satış, kur) eklendi: [`supabase/schema.sql`](supabase/schema.sql) dosyasını bir kez yeniden çalıştır.

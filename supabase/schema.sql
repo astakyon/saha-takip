@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 6)
+--  Saha Satış Takip — Supabase şeması (sürüm 7)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -246,6 +246,10 @@ create table if not exists public.belgeler (
   ad text not null, yol text not null, tur text, boyut bigint, notlar text,
   created_at timestamptz default now(), updated_at timestamptz default now()
 );
+
+-- Sürüm 7: belge türü (yüklenen Excel dosyaları vb.)
+alter table public.belgeler add column if not exists kategori text;
+
 create table if not exists public.urun_aileleri (
   id uuid primary key default gen_random_uuid(),
   owner uuid not null default auth.uid() references auth.users(id) on delete cascade,

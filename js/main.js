@@ -19,6 +19,7 @@ import { paylasimAl, paylasimPaneli } from './paylas.js';
 import { tahsilatView } from './views/tahsilat.js';
 import { raporView } from './views/rapor.js';
 import { kontrolView } from './views/kontrol.js';
+import { dosyalarView } from './views/dosyalar.js';
 import { kurGuncelle } from './kur.js';
 import { bildirimHazirla } from './bildirim.js';
 
@@ -33,6 +34,7 @@ const ROUTES = {
   kisiler:   { t: 'Kişiler', ico: 'user', v: kisilerView, g: 'Saha' },
   bolgeler:  { t: 'Sanayi bölgeleri', ico: 'zone', v: bolgelerView, g: 'Saha' },
   masraflar: { t: 'Masraf ve km', ico: 'wallet', v: masraflarView, g: 'Saha' },
+  dosyalar:  { t: 'Dosyalar', ico: 'doc', v: dosyalarView, g: 'Saha' },
   tahsilat:  { t: 'Tahsilat', ico: 'coins', v: tahsilatView, g: 'Satış' },
   teklifler: { t: 'Teklifler', ico: 'doc', v: tekliflerView, g: 'Satış' },
   araclar:   { t: 'Aydınlatma araçları', ico: 'calc', v: araclarView, g: 'Satış' },

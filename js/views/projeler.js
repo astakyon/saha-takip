@@ -11,54 +11,38 @@ import { googleBul, aramaMetni } from '../google.js';
 import { backToList } from '../main.js';
 import { ziyaretForm, gorevForm } from './ziyaret.js';
 
+// Proje formu: yeni projede yalnızca gerekli alanlar açık; ayrıntılar açılır bölümlerde
+const yeniMi = o => !!o._new;
 export const PROJE_FORM = [
   { title: 'Proje', fields: [
-    { k: 'ad', l: 'Proje adı', auto: true, full: true },
-    { k: 'durum', l: 'Aşama / durum', t: 'sel', opts: DURUMLAR.map(d => d.k), ph: 'Seç' },
-    { k: 'durum_alt', l: 'Durum notu', t: 'combo', opts: ['Drv depodan', 'AOSB genişleme', 'Sözlü onay', 'İhaleye çıkacak'], ph: 'İsteğe bağlı' },
+    { k: 'ad', l: 'Proje adı', auto: true, full: true, req: true, ph: 'Örn. Oyak Çimento Ek Kapsam' },
+    { k: 'durum', l: 'Aşama', t: 'sel', opts: DURUMLAR.map(d => d.k), ph: 'Seç' },
+    { k: 'tutar_usd', l: 'Tahmini tutar (USD)', t: 'num' },
+    { k: 'beklenen_tarih', l: 'Beklenen sipariş tarihi', t: 'date' },
     { k: 'takip_yili', l: 'Takip yılı', t: 'sel', opts: [2025, 2026, 2027, 2028].map(String) },
-    { k: 'kritik', l: 'Kritik', t: 'chk', cl: 'Kritik proje' },
-    { k: 'hedef_listesi', l: 'Hedef listesi', t: 'chk', cl: 'Yıllık hedef proje listesinde' },
-    { k: 'baska_bolge', l: 'Başka bölge', t: 'chk', cl: 'Başka bölgeyle ortak takip' },
-    { k: 'sektor', l: 'Sektör', t: 'combo', opts: SEKTORLER },
-    { k: 'alt_sektor', l: 'Alt sektör' },
-    { k: 'yeni_refit', l: 'Yeni mi, refit mi?', t: 'sel', opts: ['Yeni', 'Refit', 'Yeni + Refit'] },
-    { k: 'icerik', l: 'Kapsam', t: 'combo', opts: ['AYD', 'AYD + BB', 'BB'], help: 'AYD aydınlatma, BB busbar' },
-    { k: 'teklif_no', l: 'Teklif no' },
-    { k: 'crm_kodu', l: 'CRM kart no' },
   ]},
-  { title: 'Konum', fields: [
-    { k: 'il', l: 'İl', t: 'sel', opts: [...ILLER, 'Diğer'] },
-    { k: 'ilce', l: 'İlçe', t: 'combo', opts: o => ILCELER[o.il] || [] },
-    { k: 'belde', l: 'Belde / mahalle' },
-    { k: 'osb', l: 'OSB / sanayi bölgesi', t: 'combo', opts: o => OSBLER[o.il] || Object.values(OSBLER).flat() },
-    { k: 'lokasyon', l: 'Lokasyon notu' },
-    { k: 'adres', l: 'Adres', full: true },
-    { k: 'loc', l: 'Harita konumu', t: 'loc' },
-  ]},
-  { title: 'Paydaşlar', note: 'Firma adını yaz. Listede yoksa kaydederken yeni firma olarak eklenir.', fields: [
-    { k: 'yatirimci_id', l: 'Yatırımcı / işveren', t: 'ref', ref: 'firmalar', tip: 'Yatırımcı' },
-    { k: 'projeci_id', l: 'Projeyi çizen firma', t: 'ref', ref: 'firmalar', tip: 'Proje Bürosu' },
-    { k: 'danisman_id', l: 'Danışman / kontrolör', t: 'ref', ref: 'firmalar', tip: 'Danışman' },
-    { k: 'gemut_id', l: 'Gemüt (genel müteahhit)', t: 'ref', ref: 'firmalar', tip: 'Gemüt' },
+  { title: 'Firmalar', ozet: 'Emüt, Gemüt, alıcı, bayi…', kapali: o => !yeniMi(o), note: 'Firma adını yaz. Listede yoksa kaydederken yeni firma olarak eklenir.', fields: [
     { k: 'emut_id', l: 'Emüt (elektrik müteahhidi)', t: 'ref', ref: 'firmalar', tip: 'Emüt' },
     { k: 'alici_id', l: 'Malzeme alıcısı', t: 'ref', ref: 'firmalar', tip: 'Malzeme Alıcısı' },
+    { k: 'gemut_id', l: 'Gemüt (genel müteahhit)', t: 'ref', ref: 'firmalar', tip: 'Gemüt' },
+    { k: 'yatirimci_id', l: 'Yatırımcı / işveren', t: 'ref', ref: 'firmalar', tip: 'Yatırımcı' },
     { k: 'kanal', l: 'Satış kanalı', t: 'sel', opts: ['Bayi', 'Direkt'] },
     { k: 'bayi_id', l: 'Bayi', t: 'ref', ref: 'firmalar', tip: 'Bayi', show: o => o.kanal !== 'Direkt' },
+    { k: 'projeci_id', l: 'Projeyi çizen firma', t: 'ref', ref: 'firmalar', tip: 'Proje Bürosu' },
+    { k: 'danisman_id', l: 'Danışman / kontrolör', t: 'ref', ref: 'firmalar', tip: 'Danışman' },
     { k: 'ilgili_kisi_id', l: 'Proje ilgilisi (kişi)', t: 'ref', ref: 'kisiler' },
     { k: 'takipci', l: 'Takip eden (bayi / ekip)' },
     { k: 'takipci_tel', l: 'Takip eden telefonu', t: 'tel' },
     { k: 'calisildi', l: 'Proje çalışıldı mı?', t: 'combo', opts: ['Çalışıldı - Drv', 'Çalışıldı - EAE', 'Çalışıldı - Ben', 'Çalışılmadı'] },
   ]},
-  { title: 'Satış süreci', fields: [
-    { k: 'tutar_usd', l: 'Tahmini tutar (USD)', t: 'num' },
-    { k: 'olasilik', l: 'Kazanma olasılığı (%)', t: 'num' },
-    { k: 'beklenen_tarih', l: 'Beklenen sipariş tarihi', t: 'date' },
-    { k: 'santiye_asamasi', l: 'Şantiye aşaması', t: 'sel', opts: SANTIYE, help: 'İnce işler ve elektrik tesisatı aşamasında Bugün ekranı ziyaret hatırlatır' },
-    { k: 'alim_tarihi', l: 'Tahmini aydınlatma alımı', t: 'date', help: '30 gün kala Bugün ekranında uyarı çıkar' },
-    { k: 'urun_gruplari', l: 'Ürün grupları', t: 'tags', opts: URUN_AILELERI, free: true },
-    { k: 'ziyaret_edilecek', l: 'Ziyaret', t: 'chk', cl: 'Ziyaret edilecek' },
-    { k: 'sorulacak', l: 'Sorulacak / yapılacak' },
+  { title: 'Konum', ozet: 'harita, il, ilçe, OSB', kapali: o => !yeniMi(o), fields: [
+    { k: 'loc', l: 'Harita konumu', t: 'loc' },
+    { k: 'il', l: 'İl', t: 'sel', opts: [...ILLER, 'Diğer'] },
+    { k: 'ilce', l: 'İlçe', t: 'combo', opts: o => ILCELER[o.il] || [] },
+    { k: 'osb', l: 'OSB / sanayi bölgesi', t: 'combo', opts: o => OSBLER[o.il] || Object.values(OSBLER).flat() },
+    { k: 'belde', l: 'Belde / mahalle' },
+    { k: 'lokasyon', l: 'Lokasyon notu' },
+    { k: 'adres', l: 'Adres', full: true },
   ]},
   { id: 'sip', title: 'Sipariş', show: o => o.durum === 'Sipariş', fields: [
     { k: 'siparis_tutari_usd', l: 'Sipariş tutarı (USD)', t: 'num' },
@@ -75,10 +59,30 @@ export const PROJE_FORM = [
     { k: 'bizim_urun', l: 'Bizim teklif ettiğimiz ürün' },
     { k: 'kayip_aciklama', l: 'Kayıp nedeni detayı', t: 'area', full: true },
   ]},
-  { title: 'Notlar ve fotoğraflar', fields: [
-    { k: 'notlar', l: 'Notlar', t: 'area', rows: 4 },
-    { k: 'referans', l: 'Referans', t: 'chk', cl: 'Referans proje (galeride ve sunumda göster)' },
+  { title: 'Notlar ve fotoğraflar', kapali: false, fields: [
+    { k: 'notlar', l: 'Notlar', t: 'area', rows: 3 },
     { k: 'fotolar', l: 'Proje fotoğrafları', t: 'photos' },
+  ]},
+  { title: 'Satış ayrıntıları', ozet: 'olasılık, şantiye, ürünler, teklif no', kapali: true, fields: [
+    { k: 'olasilik', l: 'Kazanma olasılığı (%)', t: 'num', help: 'Boş bırakırsan aşamaya göre hesaplanır' },
+    { k: 'santiye_asamasi', l: 'Şantiye aşaması', t: 'sel', opts: SANTIYE, help: 'İnce işler ve elektrik tesisatı aşamasında Bugün ekranı ziyaret hatırlatır' },
+    { k: 'alim_tarihi', l: 'Tahmini aydınlatma alımı', t: 'date', help: '30 gün kala Bugün ekranında uyarı çıkar' },
+    { k: 'urun_gruplari', l: 'Ürün grupları', t: 'tags', opts: URUN_AILELERI, free: true },
+    { k: 'teklif_no', l: 'Teklif no' },
+    { k: 'crm_kodu', l: 'CRM kart no' },
+    { k: 'durum_alt', l: 'Durum notu', t: 'combo', opts: ['Drv depodan', 'AOSB genişleme', 'Sözlü onay', 'İhaleye çıkacak'], ph: 'İsteğe bağlı' },
+    { k: 'sorulacak', l: 'Sorulacak / yapılacak' },
+    { k: 'ziyaret_edilecek', l: 'Ziyaret', t: 'chk', cl: 'Ziyaret edilecek' },
+  ]},
+  { title: 'Sınıflandırma', ozet: 'sektör, kapsam, listeler', kapali: true, fields: [
+    { k: 'sektor', l: 'Sektör', t: 'combo', opts: SEKTORLER },
+    { k: 'alt_sektor', l: 'Alt sektör' },
+    { k: 'yeni_refit', l: 'Yeni mi, refit mi?', t: 'sel', opts: ['Yeni', 'Refit', 'Yeni + Refit'] },
+    { k: 'icerik', l: 'Kapsam', t: 'combo', opts: ['AYD', 'AYD + BB', 'BB'], help: 'AYD aydınlatma, BB busbar' },
+    { k: 'kritik', l: 'Kritik', t: 'chk', cl: 'Kritik proje' },
+    { k: 'hedef_listesi', l: 'Hedef listesi', t: 'chk', cl: 'Yıllık hedef proje listesinde' },
+    { k: 'baska_bolge', l: 'Başka bölge', t: 'chk', cl: 'Başka bölgeyle ortak takip' },
+    { k: 'referans', l: 'Referans', t: 'chk', cl: 'Referans proje (galeride ve sunumda göster)' },
   ]},
 ];
 
