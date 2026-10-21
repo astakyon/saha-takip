@@ -755,3 +755,9 @@ tr.disi td b { text-decoration: line-through; }
 .card.kontrol > ul { margin-bottom: 12px; }
 .kb { min-width: 28px; height: 24px; border-radius: 999px; display: inline-grid; place-items: center; font: 700 13px var(--f); padding: 0 8px; }
 .kb.var { background: #FDECEC; color: var(--red); } .kb.yok { background: #E6F4EA; color: var(--green); }
+.kataloglar { margin-bottom: 14px; }
+.kat-list li a { flex: 1; }
+.kat-list .x { background: none; border: 0; font-size: 20px; color: var(--muted); cursor: pointer; }
+.kat-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); column-gap: 18px; }
+.kat-list li:nth-child(2) { border-top: 0; }
+@media (max-width: 640px) { .kat-list li:nth-child(2) { border-top: 1px solid var(--line-2); } .kat-list .ra .btn:nth-child(2) { display: none; } }

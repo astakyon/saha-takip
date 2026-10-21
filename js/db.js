@@ -108,6 +108,7 @@ class LocalAdapter {
   }
   async url(path) {
     if (!path) return null;
+    if (/^https?:\/\//.test(path)) return path;
     if (this.urlCache.has(path)) return this.urlCache.get(path);
     const b = await idbGet(path, 'photos'); if (!b) return null;
     const u = URL.createObjectURL(b); this.urlCache.set(path, u); return u;
@@ -232,6 +233,7 @@ class SupaAdapter {
   }
   async url(path) {
     if (!path) return null;
+    if (/^https?:\/\//.test(path)) return path;
     const c = this.urlCache.get(path); if (c && c.exp > Date.now()) return c.u;
     const { data, error } = await this.c.storage.from('fotograflar').createSignedUrl(path, 3600);
     if (error) return null;
