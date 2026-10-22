@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 8)
+--  Saha Satış Takip — Supabase şeması (sürüm 9)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -393,3 +393,66 @@ create policy "foto_yaz" on storage.objects for insert to authenticated
   with check (bucket_id = 'fotograflar' and (storage.foldername(name))[1] = public.veri_sahibi()::text);
 create policy "foto_sil" on storage.objects for delete to authenticated
   using (bucket_id = 'fotograflar' and (storage.foldername(name))[1] = public.veri_sahibi()::text);
+
+-- ---------- Sürüm 9: görev atama ----------
+-- Görev bir ekip üyesine atanabilir; atanan kişi, görevler bölümüne yetkisi olmasa da kendi görevini görür ve tamamlar.
+alter table public.gorevler add column if not exists atanan text;
+alter table public.gorevler add column if not exists tamamlayan text;
+drop policy if exists "atanan_oku" on public.gorevler;
+drop policy if exists "atanan_degistir" on public.gorevler;
+create policy "atanan_oku" on public.gorevler for select to authenticated
+  using (atanan is not null and lower(atanan) = public.benim_epostam() and public.ekipte(owner::text));
+create policy "atanan_degistir" on public.gorevler for update to authenticated
+  using (atanan is not null and lower(atanan) = public.benim_epostam() and public.ekipte(owner::text))
+  with check (lower(atanan) = public.benim_epostam() and public.ekipte(owner::text));
+
+-- ---------- Sürüm 9: değişiklik geçmişi (kim, neyi, ne zaman değiştirdi) ----------
+create table if not exists public.degisiklikler (
+  id bigserial primary key,
+  owner uuid not null,
+  tablo text not null, kayit_id uuid, islem text not null,
+  kim text, kim_id uuid, zaman timestamptz not null default now(),
+  ozet text, degisen jsonb
+);
+create index if not exists degisiklikler_kayit_idx on public.degisiklikler (owner, tablo, kayit_id, zaman desc);
+create index if not exists degisiklikler_zaman_idx on public.degisiklikler (owner, zaman desc);
+alter table public.degisiklikler enable row level security;
+drop policy if exists "gecmis_oku" on public.degisiklikler;
+create policy "gecmis_oku" on public.degisiklikler for select to authenticated using (owner = auth.uid());
+
+create or replace function public.degisiklik_yaz() returns trigger language plpgsql security definer set search_path = public as $f$
+declare eski jsonb; yeni jsonb; r jsonb; fark jsonb := '{}'::jsonb; k text;
+begin
+  if auth.uid() is null then return null; end if;
+  if tg_op = 'DELETE' then eski := to_jsonb(old);
+  elsif tg_op = 'INSERT' then yeni := to_jsonb(new);
+  else
+    eski := to_jsonb(old); yeni := to_jsonb(new);
+    for k in select jsonb_object_keys(yeni) loop
+      if k not in ('updated_at', 'created_at') and (eski -> k) is distinct from (yeni -> k) then
+        fark := fark || jsonb_build_object(k, jsonb_build_object('e', eski -> k, 'y', yeni -> k));
+      end if;
+    end loop;
+    if fark = '{}'::jsonb then return null; end if;
+  end if;
+  r := coalesce(yeni, eski);
+  insert into public.degisiklikler (owner, tablo, kayit_id, islem, kim, kim_id, ozet, degisen)
+  values ((r ->> 'owner')::uuid, tg_table_name, (r ->> 'id')::uuid,
+          case tg_op when 'INSERT' then 'ekleme' when 'UPDATE' then 'değişiklik' else 'silme' end,
+          public.benim_epostam(), auth.uid(),
+          left(coalesce(r ->> 'ad', r ->> 'baslik', r ->> 'ad_soyad', r ->> 'kod', r ->> 'siparis_no', r ->> 'teklif_no', r ->> 'cari', r ->> 'urun_ad', ''), 200),
+          case when tg_op = 'UPDATE' then fark else null end);
+  -- bir yıldan eski kayıtları ara sıra temizle
+  if random() < 0.002 then delete from public.degisiklikler where zaman < now() - interval '365 days'; end if;
+  return null;
+end $f$;
+
+do $$
+declare t text;
+begin
+  foreach t in array array['projeler','firmalar','kisiler','ziyaretler','gorevler','siparisler','teklifler','urunler',
+                           'tahsilatlar','numuneler','servis_kayitlari','belgeler','bolgeler','hedefler'] loop
+    execute format('drop trigger if exists gecmis on public.%I', t);
+    execute format('create trigger gecmis after insert or update or delete on public.%I for each row execute function public.degisiklik_yaz()', t);
+  end loop;
+end $$;

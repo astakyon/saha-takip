@@ -886,3 +886,15 @@ details.fs-d > .kv-pair, details.fs-d > .btnrow { margin-bottom: 14px; }
 .kf-ipucu { color: var(--muted); font-size: 12.5px; }
 .kf-form { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .kf-form input { padding: 6px 10px; border: 1px solid var(--ink); border-radius: 999px; font: inherit; min-width: 200px; }
+.gecmis li { display: grid; grid-template-columns: 112px 1fr; gap: 10px; align-items: start; font-size: 14px; }
+.gecmis li small { color: var(--muted); }
+@media (max-width: 599px) { .gecmis li { grid-template-columns: 1fr; gap: 2px; } }
+.atanan-r { font: 600 11.5px var(--f); background: #E0E7FF; color: #3730A3; border-radius: 4px; padding: 1px 6px; margin-left: 6px; white-space: nowrap; }
+/* Salt okunur bölüm (ekip üyesi “Görür” yetkisiyle) */
+body.salt-oku #view [data-new], body.salt-oku #view [data-yeni], body.salt-oku #view [data-up], body.salt-oku #view [data-kv],
+body.salt-oku .drawer .dfoot button[type=submit], body.salt-oku .drawer .dh-actions [data-sil], body.salt-oku .drawer [data-a="sil"],
+body.salt-oku .drawer .ph-btns, body.salt-oku .drawer [data-loc-me], body.salt-oku .drawer [data-loc-clear], body.salt-oku .drawer [data-ekle], body.salt-oku .drawer [data-cek] { display: none !important; }
+body.salt-oku #view select.dsel, body.salt-oku #view [data-tasi] { pointer-events: none; }
+body.salt-oku .drawer form.form :is(input, select, textarea) { pointer-events: none; background: transparent; }
+body.salt-oku #view::before { content: 'Bu bölümü yalnızca görüntüleyebilirsin.'; display: block; font-size: 13px; color: #3730A3; background: #EEF2FF; border-radius: 8px; padding: 6px 12px; margin-bottom: 12px; }
+section.card:empty { display: none; }

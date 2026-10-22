@@ -100,7 +100,11 @@ export function bugunView(el) {
   const t = today(), yarin = gunEkle(t, 1);
   const planli = S.ziyaretler.filter(z => z.tarih === t && zDurum(z) === 'Planlandı');
   const yapilan = S.ziyaretler.filter(z => z.tarih === t && zDurum(z) === 'Yapıldı').sort((a, b) => (a.saat || '').localeCompare(b.saat || ''));
-  const gorev = S.gorevler.filter(g => g.durum !== 'Tamam' && g.son_tarih && g.son_tarih <= t).sort((a, b) => a.son_tarih.localeCompare(b.son_tarih));
+  const ben = (app.db.user?.()?.email || '').toLowerCase(), uye = !sahipMi();
+  const gorev = S.gorevler.filter(g => g.durum !== 'Tamam' && (uye ? true : g.son_tarih && g.son_tarih <= t && (!g.atanan || g.atanan === ben))).sort((a, b) => (a.son_tarih || '9').localeCompare(b.son_tarih || '9'));
+  const ekipAcik = uye ? [] : S.gorevler.filter(g => g.durum !== 'Tamam' && g.atanan && g.atanan !== ben);
+  const ekipBitti = uye ? [] : S.gorevler.filter(g => g.durum === 'Tamam' && g.tamamlayan && g.tamamlayan !== ben && (g.updated_at || '') >= gunEkle(t, -3));
+  const kimAd = e => (app.ekip || []).find(u => u.eposta === e)?.ad || e;
   const yarinZ = S.ziyaretler.filter(z => z.tarih === yarin && zDurum(z) === 'Planlandı'), yarinG = S.gorevler.filter(g => g.durum !== 'Tamam' && g.son_tarih === yarin);
   const zg = zamaniGelenler(), gid = gidilmeyenler(), dg = dogumGunleri();
   const stok = stokUyarilari();
@@ -113,7 +117,7 @@ export function bugunView(el) {
   const sirali = rotaSirala(planli);
   const rota = rotaUrl(sirali.map(x => x.p));
   const z1 = z => `<li><button type="button" class="linkbtn" data-zid="${z.id}"><b>${z.saat ? esc(z.saat) + ' · ' : ''}${esc(firmaAd(z.firma_id) || 'Ziyaret')}</b></button><span class="muted">${esc([byId('kisiler', z.kisi_id)?.ad_soyad, z.amac, byId('projeler', z.proje_id)?.ad].filter(Boolean).join(' · '))}</span>${z.sonuc_tipi ? `<span class="tag-s res">${esc(z.sonuc_tipi)}</span>` : ''}</li>`;
-  const g1 = g => `<li class="${g.son_tarih < t ? 'late' : ''}"><label class="chk"><input type="checkbox" data-done="${g.id}" aria-label="Tamamlandı"></label><button type="button" class="linkbtn" data-gid="${g.id}">${esc(g.baslik)}</button><span class="muted">${g.son_tarih < t ? tarih(g.son_tarih) : 'bugün'}</span></li>`;
+  const g1 = g => `<li class="${g.son_tarih < t ? 'late' : ''}"><label class="chk"><input type="checkbox" data-done="${g.id}" aria-label="Tamamlandı"></label><button type="button" class="linkbtn" data-gid="${g.id}">${esc(g.baslik)}</button><span class="muted">${!g.son_tarih ? '' : g.son_tarih < t ? tarih(g.son_tarih) : g.son_tarih === t ? 'bugün' : tarih(g.son_tarih)}</span></li>`;
   const gun = new Date(t + 'T00:00').toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
   el.innerHTML = `<header class="vh"><div><h1>Bugün</h1><p class="sum">${esc(gun)} · ${planli.length} planlı ziyaret · ${gorev.length} görev${kmBugun ? ` · yaklaşık ${kmBugun} km yol` : ''}${kurYazi() ? `<br><span class="kur">${kurYazi()}</span>` : ''}</p></div>
     <div class="vh-act"><button class="btn ghost" data-yakin>Yakınımdakiler</button><button class="btn primary" data-yeni>Ziyaret kaydet</button></div></header>
@@ -127,7 +131,7 @@ export function bugunView(el) {
           ${sirali.length > 10 ? '<p class="hint">Google Haritalar tek rotada en fazla 10 durak gösterir; ilk 10 durak eklendi.</p>' : ''}`
         : `<p class="hint">Bugün için planlı ziyaret yok.</p><div class="btnrow"><a class="btn ghost" href="#/takvim">Takvimden ziyaret planla</a></div>`}
       </section>
-      <section class="card"><h2>Görevler</h2>${gorev.length ? `<ul class="list chk-list">${gorev.slice(0, 10).map(g1).join('')}</ul>` : '<p class="hint">Bugün için açık görev yok.</p>'}<p><a href="#/gorevler">Görev takvimi</a></p></section>
+      <section class="card"><h2>${uye ? 'Sana atanan görevler' : 'Görevler'}</h2>${gorev.length ? `<ul class="list chk-list">${gorev.slice(0, 10).map(g1).join('')}</ul>` : `<p class="hint">${uye ? 'Sana atanmış açık görev yok.' : 'Bugün için açık görev yok.'}</p>`}${ekipAcik.length ? `<p class="hint">Ekipte ${ekipAcik.length} açık görev: ${esc([...new Set(ekipAcik.map(g => kimAd(g.atanan)))].join(', '))}</p>` : ''}${uye ? '' : '<p><a href="#/gorevler">Görev takvimi</a></p>'}</section>
       <section class="card"><h2>Bugün yapılanlar</h2>${yapilan.length ? `<ul class="list">${yapilan.map(z1).join('')}</ul>` : '<p class="hint">Henüz ziyaret kaydı yok.</p>'}${kmBugun ? `<p class="hint">Ziyaret noktalarına göre yaklaşık ${kmBugun} km. <a href="#/masraflar">Masraflara ekle</a></p>` : ''}</section>
       <section class="card"><h2>Zamanı gelen projeler <span class="muted">${zg.length}</span></h2>
         ${zg.length ? `<ul class="list">${zg.slice(0, 8).map(x => `<li><a href="#/proje/${x.p.id}"><b>${esc(x.p.ad)}</b><span class="muted">${esc(x.neden.join(', '))}${x.sz ? ` · son ziyaret ${tarih(x.sz)}` : ' · hiç ziyaret yok'}</span></a>${pill(x.p.durum)}</li>`).join('')}</ul>`
@@ -136,7 +140,8 @@ export function bugunView(el) {
         ${gid.length ? `<ul class="list">${gid.slice(0, 8).map(x => `<li><a href="#/firma/${x.f.id}"><b>${esc(x.f.ad)}</b><span class="muted">${x.f.segment ? `<em class="seg-r">${esc(x.f.segment)}</em> ` : ''}${x.son ? `${x.gun} gündür gidilmedi` : 'hiç ziyaret kaydı yok'}${x.proje ? ` · ${x.proje} açık proje` : ''}</span></a><button type="button" class="btn sm ghost" data-planla="${x.f.id}">Planla</button></li>`).join('')}</ul>` : '<p class="hint">Ziyaret aralığı geçen aktif firma yok. Aralık firma segmentine göre: A 30, B 60, C 90 gün, segmentsiz 45 gün.</p>'}</section>
       <section class="card"><h2>Yarın</h2>${yarinZ.length || yarinG.length ? `<ul class="list">${yarinZ.map(z1).join('')}${yarinG.map(g => `<li><button type="button" class="linkbtn" data-gid="${g.id}">○ ${esc(g.baslik)}</button></li>`).join('')}</ul>` : '<p class="hint">Yarın için plan yok.</p>'}</section>
       ${dg.length ? `<section class="card"><h2>Doğum günleri</h2><ul class="list">${dg.map(x => `<li><span><b>${esc(x.k.ad_soyad)}</b><span class="muted"> · ${firmaAd(x.k.firma_id) ? esc(firmaAd(x.k.firma_id)) + ' · ' : ''}${x.kalan === 0 ? 'bugün' : x.kalan === 1 ? 'yarın' : x.gun.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}</span></span><button type="button" class="btn sm ghost" data-dg="${x.k.id}">Tebrik et</button></li>`).join('')}</ul></section>` : ''}
-      ${yedek || stok.yetersiz.length || stok.hareketsiz.length || numune.length || servis.length || teklif.length || gecT.length ? `<section class="card"><h2>Uyarılar</h2><ul class="list">
+      ${ekipBitti.length || yedek || stok.yetersiz.length || stok.hareketsiz.length || numune.length || servis.length || teklif.length || gecT.length ? `<section class="card"><h2>Uyarılar</h2><ul class="list">
+        ${ekipBitti.map(g => `<li><button type="button" class="linkrow" data-gid="${g.id}"><b>${esc(kimAd(g.tamamlayan))} görevi tamamladı</b><span class="muted">${esc(g.baslik)}</span></button></li>`).join('')}
         ${yedek ? `<li><a href="#/ayarlar" data-yedekgit><b>${yg === null ? 'Henüz tam yedek almadın' : `Son tam yedek ${yg} gün önce`}</b><span class="muted">Ayarlar → Veri ve yedek → Tam yedek (ZIP); dosyayı bilgisayarında sakla</span></a></li>` : ''}
         ${gecT.length ? `<li><a href="#/tahsilat"><b class="neg">${gecT.length} faturanın vadesi geçti</b><span class="muted">${esc(gecT.slice(0, 3).map(x => (firmaAd(x.firma_id) || x.cari) + ' ' + tPara(tKalan(x), x.para_birimi)).join(', '))}</span></a></li>` : ''}
         ${stok.yetersiz.length ? `<li><a href="#/urunler"><b>${stok.yetersiz.length} üründe stok yetersiz</b><span class="muted">yaklaşan tekliflerin ihtiyacı depodaki stoktan fazla</span></a></li>` : ''}
@@ -154,7 +159,7 @@ export function bugunView(el) {
   el.querySelectorAll('[data-zid]').forEach(b => b.onclick = () => ziyaretForm({ id: b.dataset.zid }));
   el.querySelectorAll('[data-yapildi]').forEach(b => b.onclick = () => { ziyaretForm({ id: b.dataset.yapildi }); setTimeout(() => document.querySelector('[data-done]')?.click(), 200); });
   el.querySelectorAll('[data-gid]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.gid }));
-  el.querySelectorAll('[data-done]').forEach(c => c.onchange = async () => { const g = byId('gorevler', c.dataset.done); await app.db.save('gorevler', { ...g, durum: c.checked ? 'Tamam' : 'Açık' }); toast('Görev tamamlandı.'); app.refresh(); });
+  el.querySelectorAll('[data-done]').forEach(c => c.onchange = async () => { const g = byId('gorevler', c.dataset.done); await app.db.save('gorevler', { ...g, durum: c.checked ? 'Tamam' : 'Açık', tamamlayan: c.checked ? ben || null : null }); toast('Görev tamamlandı.'); app.refresh(); });
   el.querySelectorAll('[data-planla]').forEach(b => b.onclick = () => ziyaretForm({ firma_id: b.dataset.planla, durum: 'Planlandı', tarih: yarin }));
   el.querySelectorAll('[data-dg]').forEach(b => b.onclick = () => waGonder({ kisi: byId('kisiler', b.dataset.dg), sablonAdi: 'Doğum günü' }));
 }

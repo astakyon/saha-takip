@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 14) — SQL gerekir
+
+1. **Önce SQL:** Supabase → SQL Editor → güncel `supabase/schema.sql` dosyasının tamamını yapıştır → Run (şema sürüm 9).
+2. **Görev atama:** Görev formunda “Kime atandı”. Atanan ekip üyesi görevi kendi Bugün ekranında görür (görevler bölümüne yetkisi olmasa da) ve tamamlar; tamamlayınca senin Bugün → Uyarılar'da görünür.
+3. **Değişiklik geçmişi:** Proje ve firma kartının altında “Kim, ne zaman değiştirdi?”; Ayarlar → Kullanıcılar'da son 60 değişiklik, kişiye göre süzülebilir. Yalnızca veri sahibi görür; bir yıldan eski kayıtlar silinir.
+4. **Salt okunur bölümler:** Ekip üyesi “Görür” yetkili bölümde ekleme/düzenleme düğmelerini görmez.
+
 ## Güncelleme notu (sürüm 13)
 
 - **Kayıtlı filtreler:** Liste ekranlarında (projeler, firmalar, kişiler, ziyaretler, görevler, siparişler, teklifler, tahsilat, numune, servis, stok, rakip, dosyalar, bölgeler, katalog, referanslar) filtreleri ayarla, “Bu filtreyi kaydet” ile adlandır; üstteki “Kayıtlı” satırından tek dokunuşla aç. “Filtreleri temizle” her şeyi varsayılana döndürür. Telefon ve bilgisayarda aynı.

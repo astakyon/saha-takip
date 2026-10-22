@@ -87,6 +87,7 @@ export async function ayarlarView(el) {
     </section>
     ${sahipMi() ? '' : `<section class="card" data-tab="genel"><h2>Ekip üyesi</h2><p>Bu hesapla veri sahibinin sana açtığı bölümleri görüyorsun. Yeni bölüm için veri sahibinden yetki iste.</p></section>`}
     <section class="card wide-card" data-tab="kullanici"><h2>Kullanıcılar ve yetkiler</h2><div data-kullanici></div></section>
+    <section class="card wide-card" data-tab="kullanici" data-sondeg></section>
     <section class="card" data-tab="genel" id="menu-karti"><h2>Menü</h2><div data-menu></div></section>
     <section class="card" data-tab="genel"><h2>Gizlilik</h2>
       <label class="chk"><input type="checkbox" data-gizli ${ayar('gizli_mod', false) === true ? 'checked' : ''}> <span><b>Gizli mod</b>: kayıtlarımı ve konumumu dış servislere gönderme</span></label>
@@ -137,7 +138,7 @@ export async function ayarlarView(el) {
   </div>`;
   let kulYuklendi = false;
   const sekmeGoster = k => {
-    if (k === 'kullanici' && !kulYuklendi) { kulYuklendi = true; kullaniciAyarlari(el.querySelector('[data-kullanici]')); } el.querySelectorAll('[data-tab]').forEach(x => x.hidden = x.dataset.tab !== k); el.querySelectorAll('[data-sekme]').forEach(b => { b.classList.toggle('on', b.dataset.sekme === k); b.setAttribute('aria-selected', b.dataset.sekme === k); }); };
+    if (k === 'kullanici' && !kulYuklendi) { kulYuklendi = true; kullaniciAyarlari(el.querySelector('[data-kullanici]')); import('../gecmis.js').then(m => m.sonDegisiklikler(el.querySelector('[data-sondeg]'))); } el.querySelectorAll('[data-tab]').forEach(x => x.hidden = x.dataset.tab !== k); el.querySelectorAll('[data-sekme]').forEach(b => { b.classList.toggle('on', b.dataset.sekme === k); b.setAttribute('aria-selected', b.dataset.sekme === k); }); };
   el.querySelectorAll('[data-sekme]').forEach(b => b.onclick = () => { f.sekme = b.dataset.sekme; saveFilters(); sekmeGoster(f.sekme); });
   sekmeGoster(f.sekme);
   bindConn(el);

@@ -5,7 +5,7 @@ export const TABLES = {
   projeler: ['id','ad','durum','durum_alt','kritik','takip_yili','hedef_listesi','baska_bolge','il','ilce','belde','bolge_id','osb','lokasyon','adres','lat','lng','konum_yaklasik','icerik','kanal','bayi_id','takipci','takipci_tel','calisildi','tutar_usd','olasilik','beklenen_tarih','teklif_no','crm_kodu','urun_gruplari','sektor','alt_sektor','yeni_refit','yatirimci_id','projeci_id','danisman_id','gemut_id','emut_id','alici_id','ilgili_kisi_id','ziyaret_edilecek','sorulacak','notlar','fotolar','siparis_tutari_usd','siparis_tarihi','bizim_teklif_usd','bizim_urun','rakip_marka','rakip_urun','rakip_birim_fiyat','rakip_miktar','rakip_toplam_usd','kayip_nedeni','kayip_aciklama','google_place_id','google_url','santiye_asamasi','alim_tarihi','referans'],
   proje_gecmis: ['id','proje_id','tarih','eski_durum','yeni_durum','notlar'],
   ziyaretler: ['id','tarih','saat','durum','firma_id','kisi_id','proje_id','amac','notlar','sonuc_tipi','sonuc','lat','lng','fotolar'],
-  gorevler: ['id','baslik','son_tarih','oncelik','durum','firma_id','proje_id','kisi_id','notlar'],
+  gorevler: ['id','baslik','son_tarih','oncelik','durum','firma_id','proje_id','kisi_id','notlar','atanan','tamamlayan'],
   urunler: ['id','kod','aciklama','aciklama2','aile','birim','stok','birim_fiyat_usd','stok_tarihi','depo'],
   stok_gecmis: ['id','kod','stok','birim_fiyat_usd','tarih','depo'],
   rakip_fiyatlar: ['id','aile','lumen_aralik','marka','urun_adi','fiyat_metin','birim_fiyat','para_birimi','tarih','kaynak','proje_id','notlar'],
@@ -197,7 +197,7 @@ class SupaAdapter {
   }
   async pending() { return ((await idbGet('outbox')) || []).length; }
   async save(t, obj) {
-    if (this.yazamaz(t)) throw new Error('Bu bölümde düzenleme yetkin yok. Veri sahibinden yetki iste.');
+    if (this.yazamaz(t, obj)) throw new Error('Bu bölümde düzenleme yetkin yok. Veri sahibinden yetki iste.');
     const row = pick(t, obj); if (!row.id) row.id = uuid();
     const i = S[t].findIndex(x => x.id === row.id);
     const full = { ...(i >= 0 ? S[t][i] : {}), ...row, updated_at: new Date().toISOString() };
@@ -212,7 +212,12 @@ class SupaAdapter {
     }
     return full;
   }
-  yazamaz(t) { return this.yetki?.ben_sahip === false && this.yetki.yetkiler?.[t] !== 'yaz' && t !== 'ayarlar'; }
+  yazamaz(t, row) {
+    if (this.yetki?.ben_sahip !== false || t === 'ayarlar' || this.yetki.yetkiler?.[t] === 'yaz') return false;
+    // kendisine atanan görevi güncelleyebilir
+    if (t === 'gorevler' && row?.atanan && row.atanan.toLowerCase() === (this.user()?.email || '').toLowerCase() && S.gorevler.some(g => g.id === row.id)) return false;
+    return true;
+  }
   async del(t, id) {
     if (this.yazamaz(t)) throw new Error('Bu bölümde silme yetkin yok.');
     S[t] = S[t].filter(x => x.id !== id); this.cache();

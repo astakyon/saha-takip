@@ -20,7 +20,7 @@ import { tahsilatView } from './views/tahsilat.js';
 import { raporView } from './views/rapor.js';
 import { kontrolView } from './views/kontrol.js';
 import { dosyalarView } from './views/dosyalar.js';
-import { rotaIzinli, sahipMi } from './yetki.js';
+import { rotaIzinli, sahipMi, rotaYazilabilir } from './yetki.js';
 import { menuDuzeni } from './menu.js';
 import { hizliKur, aramaAc } from './hizli.js';
 import { filtreIzle } from './filtre.js';
@@ -110,12 +110,14 @@ function renderNav(cur) {
 }
 
 let lastView = null, lastShown = null;
+const saltOku = k => document.body.classList.toggle('salt-oku', !sahipMi() && !rotaYazilabilir(k));
 async function route() {
   const parts = (location.hash.replace(/^#\/?/, '') || 'bugun').split('/');
   const [k, id] = parts;
   if (DETAIL[k] && !rotaIzinli({ proje: 'projeler', firma: 'firmalar', kisi: 'kisiler' }[k])) { location.hash = '#/bugun'; return; }
   if (DETAIL[k]) {
     if (!lastView) await show('bugun');
+    saltOku({ proje: 'projeler', firma: 'firmalar', kisi: 'kisiler' }[k]);
     DETAIL[k](id);
     return;
   }
@@ -125,6 +127,7 @@ async function route() {
 }
 async function show(k) {
   lastView = k;
+  saltOku(k);
   renderNav(k);
   const el = document.getElementById('view');
   el.className = 'view-' + k;
@@ -162,6 +165,8 @@ async function boot() {
     if (app.db.mode === 'supabase' && !ok) { document.getElementById('nav').innerHTML = ''; return loginView(view, boot); }
     await app.db.loadAll();
     app.yetki = app.db.yetki || null;
+    app.ekip = [];
+    if (app.db.mode === 'supabase' && sahipMi()) app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif').then(({ data }) => { app.ekip = (data || []).filter(u => u.aktif); }).catch(() => {});
     if (app.db.offline) toast('Çevrimdışısın: son kaydedilen veriler gösteriliyor.');
   } catch (e) {
     view.innerHTML = `<div class="empty"><h2>Veriler yüklenemedi</h2><p>${esc(e.message)}</p><p><a class="btn" href="#/ayarlar">Bağlantı ayarlarını aç</a></p></div>`;
