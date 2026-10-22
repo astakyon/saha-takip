@@ -32,6 +32,15 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 21)
+
+- **Ürün önerisi (Proje → Satış):** proje adı/notundan alan tahmini (üretim, depo, nemli alan, Ex, ofis, çevre, AVM/hastane, kanopi); uygun EAE aileleri, Drv stoğu ve ürün sayfası bağlantısı. Alan elle değiştirilebilir.
+- **Şartname kontrolü (Proje → Satış):** IP, IK, lm/W, CRI, renk sıcaklığı, garanti, sertifika, DALI gir; son revizyon teklif kalemleri ✓ / ✗ / ? olarak karşılaştırılır.
+- **Şantiye fotoğrafları (Proje → Belgeler):** “Şantiye fotoğrafı çek” → aşama sorulur, ziyaret olarak kaydedilir, tarih sırasıyla zaman çizelgesi.
+- **Toplu duyuru (Firmalar → Toplu duyuru):** tip/il/segment/key account süzgeci, şablon ya da kendi mesajın ({ad}, {firma}); her alıcı için hazır WhatsApp mesajı, “Sıradakini aç”; gönderim firmanın ziyaret geçmişine not düşer.
+- **Rakip fiyat eğilimi (Rakip fiyatları → Analiz):** aynı aile ve markada ilk ve son USD fiyatı, % değişim.
+- **Ziyaret yoğunluğu (Harita → Katmanlar):** sanayi bölgeleri son 90 gündeki ziyaret sayısına göre, firmalar son ziyaret tarihine göre renklenir.
+
 ## Güncelleme notu (sürüm 20)
 
 - **Toplu düzeltme (Projeler → Toplu düzelt):** satırlara dokunarak seç; aşama, takip yılı, il, kanal/bayi, hedef listesi, kritik tek seferde değişir; aşama değişikliği durum geçmişine “Toplu düzeltme” notuyla yazılır.

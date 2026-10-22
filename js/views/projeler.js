@@ -303,6 +303,33 @@ export function yeniProje(init) {
   projeDetay(null, { durum: 'Proje', takip_yili: new Date().getFullYear() >= 2026 ? 2026 : 2026, kanal: 'Bayi', bayi_id: S.firmalar.find(x => x.ad === 'Drv Elektrik')?.id || null, fotolar: [], urun_gruplari: [], konum_yaklasik: false, ...init });
 }
 
+// Şantiye ilerleme fotoğrafları: projenin ve projeye bağlı ziyaretlerin fotoğrafları tarih sırasıyla
+function santiyeBolumu(kutu, p) {
+  if (!kutu) return;
+  const ciz = async () => {
+    const pr = byId('projeler', p.id) || p;
+    const gruplar = S.ziyaretler.filter(z => z.proje_id === p.id && (z.fotolar || []).length).sort((a, b) => b.tarih.localeCompare(a.tarih)).map(z => ({ tarih: z.tarih, baslik: z.notlar || z.amac || 'Ziyaret', fotolar: z.fotolar }));
+    if ((pr.fotolar || []).length) gruplar.push({ tarih: null, baslik: 'Proje fotoğrafları', fotolar: pr.fotolar });
+    kutu.innerHTML = `<h3>Şantiye ilerlemesi <span class="muted">${gruplar.reduce((a, g) => a + g.fotolar.length, 0)} fotoğraf</span></h3>
+      <div class="btnrow"><button type="button" class="btn sm" data-sfoto>Şantiye fotoğrafı çek</button>${pr.santiye_asamasi ? `<span class="muted">Aşama: ${esc(pr.santiye_asamasi)}</span>` : ''}</div>
+      ${gruplar.length ? `<ol class="santiye">${gruplar.map(g => `<li><div class="st-h"><b>${g.tarih ? tarih(g.tarih) : 'Tarihsiz'}</b><small class="muted">${esc(String(g.baslik).slice(0, 90))}</small></div><div class="st-f">${g.fotolar.map(y => `<img alt="" loading="lazy" data-yol="${esc(y)}">`).join('')}</div></li>`).join('')}</ol>`
+        : '<p class="hint">Her şantiye ziyaretinde bir fotoğraf çek; elektrik aşamasına ne kadar kaldığı burada tarih sırasıyla görünür.</p>'}`;
+    kutu.querySelectorAll('img[data-yol]').forEach(async im => { const u = await app.db.url(im.dataset.yol); if (u) { im.src = u; im.onclick = () => window.open(u, '_blank', 'noopener'); } });
+    kutu.querySelector('[data-sfoto]').onclick = async () => {
+      const { pickFiles } = await import('../ui.js');
+      const fs = await pickFiles({ accept: 'image/*', multiple: false, capture: true }); if (!fs.length) return;
+      const asama = prompt('Şantiye aşaması (isteğe bağlı): ' + SANTIYE.join(' / '), pr.santiye_asamasi || '');
+      try {
+        toast('Fotoğraf yükleniyor…');
+        const yol = await app.db.upload(fs[0]);
+        await app.db.save('ziyaretler', { tarih: today(), durum: 'Yapıldı', amac: 'Şantiye', proje_id: p.id, firma_id: pr.emut_id || pr.gemut_id || pr.alici_id || null, notlar: 'Şantiye fotoğrafı' + (asama ? ' – ' + asama : ''), fotolar: [yol] });
+        if (asama && SANTIYE.includes(asama) && asama !== pr.santiye_asamasi) await app.db.save('projeler', { ...pr, santiye_asamasi: asama });
+        toast('Şantiye fotoğrafı eklendi.'); ciz();
+      } catch (e) { toast('Yüklenemedi: ' + e.message, 'err'); }
+    };
+  };
+  ciz();
+}
 const projeSekme = { id: null, k: 'bilgi' };   // aynı proje yeniden açılınca son sekme
 export function projeDetay(id, init) {
   const p0 = id ? byId('projeler', id) : { id: uuid(), ...init, _new: true };
@@ -327,7 +354,7 @@ export function projeDetay(id, init) {
     <form class="dbody form" novalidate>
       <div data-ps="bilgi" ${p._new || sekme === 'bilgi' ? '' : 'hidden'}>${renderForm(PROJE_FORM, p)}
       <div class="calc" data-calc hidden></div></div>
-      ${p._new ? '' : (() => { const r = related(ziy, sip, gec, gor, tek); return `<div data-ps="ziyaret" ${sekme === 'ziyaret' ? '' : 'hidden'}>${r.ziyaret}</div><div data-ps="satis" ${sekme === 'satis' ? '' : 'hidden'}>${r.satis}</div><div data-ps="belge" ${sekme === 'belge' ? '' : 'hidden'}><section class="rel" data-belgeler></section></div><div data-ps="gecmis" ${sekme === 'gecmis' ? '' : 'hidden'}>${r.gecmis}<section class="rel" data-gecmis></section></div>`; })()}
+      ${p._new ? '' : (() => { const r = related(ziy, sip, gec, gor, tek); return `<div data-ps="ziyaret" ${sekme === 'ziyaret' ? '' : 'hidden'}>${r.ziyaret}</div><div data-ps="satis" ${sekme === 'satis' ? '' : 'hidden'}>${r.satis}<section class="rel" data-oneri></section><section class="rel" data-sartname></section></div><div data-ps="belge" ${sekme === 'belge' ? '' : 'hidden'}><section class="rel" data-santiye></section><section class="rel" data-belgeler></section></div><div data-ps="gecmis" ${sekme === 'gecmis' ? '' : 'hidden'}>${r.gecmis}<section class="rel" data-gecmis></section></div>`; })()}
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div>
     </form>`, { wide: true, onClose: () => backToList() });
   const form = panel.querySelector('form');
@@ -338,6 +365,8 @@ export function projeDetay(id, init) {
     if (k === 'bilgi') panel.querySelectorAll('[data-loc]').forEach(m => setTimeout(() => m._map?.invalidateSize(), 50));
     panel.scrollTop = 0;
   });
+  if (!p._new) import('../oneri.js').then(m => { m.oneriBolumu(panel.querySelector('[data-oneri]'), p); m.sartnameBolumu(panel.querySelector('[data-sartname]'), p); });
+  if (!p._new) santiyeBolumu(panel.querySelector('[data-santiye]'), p);
   if (!p._new) { belgeBolumu(panel.querySelector('[data-belgeler]'), { proje_id: p.id }); kayitGecmisi(panel.querySelector('[data-gecmis]'), 'projeler', p.id); }
   const calc = (o, root) => {
     const box = root.querySelector('[data-calc]');

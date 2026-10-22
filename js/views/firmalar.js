@@ -60,7 +60,7 @@ export function firmalarView(el) {
   const f = F('firmalar', { q: '', tip: 'Tümü', il: 'Tümü', key: false, sort: 'Ada göre' });
   el.innerHTML = `
   <header class="vh"><div><h1>Firmalar</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Yeni firma</button></div></header>
+    <div class="vh-act"><button class="btn ghost" data-duyuru>Toplu duyuru</button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Yeni firma</button></div></header>
   <div class="filters">
     <input type="search" data-q placeholder="Firma adı, not ara" value="${esc(f.q)}" aria-label="Firmalarda ara">
     <div class="chips" role="group" aria-label="Firma tipi">${['Tümü', ...FIRMA_TIPLERI].map(t => `<button type="button" class="chip ${f.tip === t ? 'on' : ''}" data-t="${t}" style="--c:#1D2B36">${t}</button>`).join('')}</div>
@@ -88,6 +88,7 @@ export function firmalarView(el) {
   el.querySelectorAll('[data-k]').forEach(s => s.onchange = () => { f[s.dataset.k] = s.value; saveFilters(); draw(); });
   el.querySelectorAll('[data-b]').forEach(s => s.onchange = () => { f[s.dataset.b] = s.checked; saveFilters(); draw(); });
   el.querySelector('[data-new]').onclick = () => yeniFirma({});
+  el.querySelector('[data-duyuru]').onclick = async () => (await import('../duyuru.js')).topluDuyuru();
   el.querySelector('[data-exp]').onclick = () => {
     exportXlsx(`firmalar-${today()}.xlsx`, {
       'Firmalar': list().map(x => ({ 'Firma': x.ad, 'Tip': (x.tipler || []).join(', '), 'İl': x.il, 'İlçe': x.ilce, 'Telefon': x.telefon, 'E-posta': x.eposta, 'Segment': x.segment, 'Key account': x.key_account ? 'Evet' : '', 'Proje': stats.get(x.id).p, 'Sipariş': stats.get(x.id).k, 'Kayıp': stats.get(x.id).s, 'Son ziyaret': stats.get(x.id).z, 'Notlar': x.notlar })),

@@ -48,7 +48,9 @@ export async function mapView(el) {
       <label class="chk"><input type="checkbox" data-layer="yaklasik" ${f.yaklasik ? 'checked' : ''}> <span>Yaklaşık konumlu projeler</span></label>
       <label class="chk"><input type="checkbox" data-layer="firma" ${f.firma ? 'checked' : ''}> <span>Firmalar</span></label>
       <label class="chk"><input type="checkbox" data-layer="ziyaret" ${f.ziyaret ? 'checked' : ''}> <span>Ziyaretler</span></label>
-      <label class="chk"><input type="checkbox" data-layer="bolge" ${f.bolge ? 'checked' : ''}> <span>Sanayi bölgeleri</span></label></div>
+      <label class="chk"><input type="checkbox" data-layer="bolge" ${f.bolge ? 'checked' : ''}> <span>Sanayi bölgeleri</span></label>
+      <label class="chk"><input type="checkbox" data-layer="isi" ${f.isi ? 'checked' : ''}> <span>Ziyaret yoğunluğu (son 90 gün)</span></label></div>
+      <div class="isi-lejant" data-isilej ${f.isi ? '' : 'hidden'}><span style="--c:#B91C1C">hiç</span><span style="--c:#EA580C">1–2</span><span style="--c:#CA8A04">3–5</span><span style="--c:#15803D">6+</span> ziyaret (bölge) · firmalar: son ziyaret 20 / 45 / 90 gün</div>
       <div class="lrow"><label>Takip yılı <select data-yil>${['Tümü', 2026, 2027].map(y => `<option ${f.yil == y ? 'selected' : ''}>${y}</option>`).join('')}</select></label></div>
       <div class="legend">${DURUMLAR.map(d => `<label class="lg"><input type="checkbox" data-durum="${d.k}" ${f.durumlar.includes(d.k) ? 'checked' : ''}><span class="dot" style="--c:${d.c}"></span>${d.k}</label>`).join('')}</div>
       <p class="hint">Yakınlaştırınca proje adları raptiyelerin üstünde görünür. Yaklaşık konumlu projeler (ilçe veya OSB merkezine yerleştirilmiş olanlar) varsayılan olarak gizli; “Konum ata” ile tek tek yerleştir.</p>
@@ -225,15 +227,32 @@ export async function mapView(el) {
       L.polygon(coords, { color: on ? '#1D2B36' : '#46606F', weight: on ? 3 : (any ? 1.6 : 1), opacity: on ? 0.9 : (any ? 0.6 : 0.35), fillColor: '#1D2B36', fillOpacity: on ? 0.03 : 0, dashArray: on ? null : '4 4', interactive: false }).addTo(borderLayer);
     }
   }
+  // Ziyaret yoğunluğu: son 90 günde bölgedeki yapılan ziyaretler (firma/proje bölgesi ya da konum bölge içinde)
+  const isiRenk = n => n === 0 ? '#B91C1C' : n <= 2 ? '#EA580C' : n <= 5 ? '#CA8A04' : '#15803D';
+  function isiSay(b, multi) {
+    const sinir = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10);
+    let n = 0;
+    for (const z of S.ziyaretler) {
+      if ((z.durum || 'Yapıldı') !== 'Yapıldı' || z.tarih < sinir) continue;
+      const fi = byId('firmalar', z.firma_id), pr = byId('projeler', z.proje_id);
+      const yer = z.lat != null ? [z.lat, z.lng] : pr?.lat != null ? [pr.lat, pr.lng] : fi?.lat != null ? [fi.lat, fi.lng] : null;
+      if (pr?.bolge_id === b.id || fi?.bolge_id === b.id || (yer && inMulti(yer[1], yer[0], multi))) n++;
+    }
+    return { n };
+  }
+  const sonZiyaretGun = id => { const t = S.ziyaretler.filter(z => z.firma_id === id && (z.durum || 'Yapıldı') === 'Yapıldı').map(z => z.tarih).sort().pop(); return t ? Math.round((Date.now() - new Date(t)) / 864e5) : null; };
   function drawRegions() {
+    const lej = el.querySelector('[data-isilej]'); if (lej) lej.hidden = !f.isi;
     regionLayer.clearLayers();
-    if (!f.bolge) return;
+    if (!f.bolge && !f.isi) return;
     for (const b of S.bolgeler || []) {
       const m = toMulti(b.geojson); if (!m) continue;
       if (f.il !== 'Tümü' && b.il && b.il !== f.il) continue;
-      const col = bolgeRenk(b);
+      const isi = f.isi ? isiSay(b, m) : null;
+      const col = isi ? isiRenk(isi.n) : bolgeRenk(b);
       const poly = L.polygon(m.map(p => p.map(r => r.map(([x, y]) => [y, x]))), { color: col, weight: 2, fillColor: col, fillOpacity: 0.12 });
-      poly.bindTooltip(esc(b.ad), { permanent: true, direction: 'center', className: 'bolge-label' });
+      poly.bindTooltip(esc(b.ad) + (isi ? ` · ${isi.n} ziyaret` : ''), { permanent: true, direction: 'center', className: 'bolge-label' });
+      if (isi) poly.setStyle({ fillOpacity: 0.3 });
       poly.bindPopup(() => bolgePopup(b), { maxWidth: 300 });
       poly.on('click', e => { if (mode) { L.DomEvent.stop(e); map.fire('click', e); } });
       poly.addTo(regionLayer);
@@ -255,7 +274,7 @@ export async function mapView(el) {
     }
     if (f.firma) for (const x of S.firmalar) {
       if (!ilOk(x) || x.lat == null || (x.konum_yaklasik && !f.yaklasik) || !match(f.q, x.ad, x.notlar)) continue;
-      const m = L.marker([x.lat, x.lng], { icon: markerIcon('f', '#1D2B36', x.konum_yaklasik), title: x.ad, draggable: moveOn, autoPan: true });
+      const m = L.marker([x.lat, x.lng], { icon: markerIcon('f', f.isi ? (g => g == null || g > 90 ? '#B91C1C' : g > 45 ? '#EA580C' : g > 20 ? '#CA8A04' : '#15803D')(sonZiyaretGun(x.id)) : '#1D2B36', x.konum_yaklasik), title: x.ad, draggable: moveOn, autoPan: true });
       if (moveOn) m.on('dragend', () => { const ll = m.getLatLng(); yerlestir('firmalar', x, [+ll.lat.toFixed(6), +ll.lng.toFixed(6)]); });
       m.bindTooltip(esc(x.ad), { permanent: true, direction: 'top', className: 'mk-label', offset: [0, -2] });
       m.bindPopup(() => firmaPopup(x), { maxWidth: 300, minWidth: 230 });
