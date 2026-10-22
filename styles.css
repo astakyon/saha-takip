@@ -902,3 +902,9 @@ section.card:empty { display: none; }
 .gdur.tamam { color: #15803D; } .gdur.gec { color: var(--red); } .gdur.acik { color: var(--muted); font-weight: 500; }
 .mi em { font-style: normal; opacity: .75; }
 .mi.done { text-decoration: line-through; opacity: .7; }
+/* Proje sekmeleri */
+.p-sekme { display: flex; gap: 2px; overflow-x: auto; padding: 0 20px; border-bottom: 1px solid var(--line); background: var(--card); scrollbar-width: none; }
+.p-sekme::-webkit-scrollbar { display: none; }
+.p-sekme button { flex: none; background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 12px 9px; font: 600 14px var(--f, inherit); color: var(--muted); cursor: pointer; white-space: nowrap; }
+.p-sekme button.on { color: var(--ink); border-bottom-color: var(--lumen, #F5B800); }
+.p-sekme i { font-style: normal; font-size: 12px; background: var(--line); border-radius: 999px; padding: 0 6px; margin-left: 4px; color: var(--ink); }

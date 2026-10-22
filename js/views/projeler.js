@@ -4,7 +4,7 @@ import { esc, usd, num, pill, tarih, today, DURUMLAR, ACIK, ILLER, ILCELER, OSBL
   byId, firmaAd, match, toast, openDrawer, closeDrawer, exportXlsx, directionsUrl, confirmBox, durumRenk, SANTIYE, olasilik, gunEkle } from '../ui.js';
 import { teklifForm } from './teklif.js';
 import { numuneForm } from './kayitlar.js';
-import { belgeBolumu } from '../belgeler.js';
+import { belgeBolumu, belgeleri } from '../belgeler.js';
 import { kayitGecmisi } from '../gecmis.js';
 import { siparisForm } from './panel.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
@@ -249,6 +249,7 @@ export function yeniProje(init) {
   projeDetay(null, { durum: 'Proje', takip_yili: new Date().getFullYear() >= 2026 ? 2026 : 2026, kanal: 'Bayi', bayi_id: S.firmalar.find(x => x.ad === 'Drv Elektrik')?.id || null, fotolar: [], urun_gruplari: [], konum_yaklasik: false, ...init });
 }
 
+const projeSekme = { id: null, k: 'bilgi' };   // aynı proje yeniden açılınca son sekme
 export function projeDetay(id, init) {
   const p0 = id ? byId('projeler', id) : { id: uuid(), ...init, _new: true };
   if (!p0) { toast('Proje bulunamadı.', 'err'); return backToList(); }
@@ -258,6 +259,7 @@ export function projeDetay(id, init) {
   const gec = S.proje_gecmis.filter(g => g.proje_id === p.id).sort((a, b) => b.tarih.localeCompare(a.tarih));
   const gor = S.gorevler.filter(g => g.proje_id === p.id);
   const tek = S.teklifler.filter(x => x.proje_id === p.id).sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
+  const sekme = ['bilgi', 'ziyaret', 'satis', 'belge', 'gecmis'].includes(init?.sekme) ? init.sekme : (projeSekme.id === p.id ? projeSekme.k : 'bilgi');
   const panel = openDrawer(`
     <header class="dh" style="--c:${durumRenk(p.durum)}"><div><p class="muted">${p._new ? 'Yeni proje' : 'Proje'}</p><h2 id="drawer-title">${esc(p.ad || 'Yeni proje')}</h2>
       ${p._new ? '' : `<div class="dh-meta">${pill(p.durum)}<span>${usd(p.tutar_usd)}</span><span>${esc([p.ilce, p.il].filter(Boolean).join(', '))}</span></div>`}</div>
@@ -266,14 +268,22 @@ export function projeDetay(id, init) {
       <button class="btn sm" data-a="ziyaret">Ziyaret ekle</button><button class="btn sm" data-a="gorev">Görev ekle</button><button class="btn sm" data-a="teklif">Teklif hazırla</button><button class="btn sm ghost" data-a="numune">Numune ver</button><button class="btn sm ghost" data-a="google">Google'dan konum al</button>${p.google_url ? `<a class="btn sm ghost" href="${esc(p.google_url)}" target="_blank" rel="noopener">Google Haritalar</a>` : ''}
       ${p.lat != null ? `<a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}">Yol tarifi</a>` : ''}
       <button class="btn sm ghost danger" data-a="sil">Sil</button></div>
-      <div class="quick-durum" role="group" aria-label="Durumu hızlı değiştir">${DURUMLAR.map(d => `<button type="button" data-qd="${d.k}" class="${p.durum === d.k ? 'on' : ''}" style="--c:${d.c}">${d.k}</button>`).join('')}</div>`}
+      <div class="quick-durum" role="group" aria-label="Durumu hızlı değiştir">${DURUMLAR.map(d => `<button type="button" data-qd="${d.k}" class="${p.durum === d.k ? 'on' : ''}" style="--c:${d.c}">${d.k}</button>`).join('')}</div>
+      <div class="p-sekme" role="tablist" aria-label="Proje bölümleri">${[['bilgi', 'Bilgiler', ''], ['ziyaret', 'Ziyaret ve görev', ziy.length + gor.length], ['satis', 'Teklif ve sipariş', tek.length + sip.length], ['belge', 'Belgeler', belgeleri({ proje_id: p.id }).length], ['gecmis', 'Geçmiş', gec.length]].map(([k, t, n]) => `<button type="button" role="tab" data-psk="${k}" aria-selected="${k === sekme}" class="${k === sekme ? 'on' : ''}">${t}${n ? ` <i>${n}</i>` : ''}</button>`).join('')}</div>`}
     <form class="dbody form" novalidate>
-      ${renderForm(PROJE_FORM, p)}
-      <div class="calc" data-calc hidden></div>
-      ${p._new ? '' : '<section class="rel" data-belgeler></section>' + related(ziy, sip, gec, gor, tek) + '<section class="rel" data-gecmis></section>'}
+      <div data-ps="bilgi" ${p._new || sekme === 'bilgi' ? '' : 'hidden'}>${renderForm(PROJE_FORM, p)}
+      <div class="calc" data-calc hidden></div></div>
+      ${p._new ? '' : (() => { const r = related(ziy, sip, gec, gor, tek); return `<div data-ps="ziyaret" ${sekme === 'ziyaret' ? '' : 'hidden'}>${r.ziyaret}</div><div data-ps="satis" ${sekme === 'satis' ? '' : 'hidden'}>${r.satis}</div><div data-ps="belge" ${sekme === 'belge' ? '' : 'hidden'}><section class="rel" data-belgeler></section></div><div data-ps="gecmis" ${sekme === 'gecmis' ? '' : 'hidden'}>${r.gecmis}<section class="rel" data-gecmis></section></div>`; })()}
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div>
     </form>`, { wide: true, onClose: () => backToList() });
   const form = panel.querySelector('form');
+  panel.querySelectorAll('[data-psk]').forEach(b => b.onclick = () => {
+    const k = b.dataset.psk; projeSekme.id = p.id; projeSekme.k = k;
+    panel.querySelectorAll('[data-psk]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
+    panel.querySelectorAll('[data-ps]').forEach(x => x.hidden = x.dataset.ps !== k);
+    if (k === 'bilgi') panel.querySelectorAll('[data-loc]').forEach(m => setTimeout(() => m._map?.invalidateSize(), 50));
+    panel.scrollTop = 0;
+  });
   if (!p._new) { belgeBolumu(panel.querySelector('[data-belgeler]'), { proje_id: p.id }); kayitGecmisi(panel.querySelector('[data-gecmis]'), 'projeler', p.id); }
   const calc = (o, root) => {
     const box = root.querySelector('[data-calc]');
@@ -326,14 +336,20 @@ export function projeDetay(id, init) {
 }
 
 function related(ziy, sip, gec, gor, tek) {
-  return `<section class="rel">
-    ${tek.length ? `<h3>Teklifler <span class="muted">${tek.length}</span></h3><ul class="list">${tek.map(x => `<li><button type="button" class="linkbtn" data-tk="${x.id}">${esc(x.teklif_no || 'Teklif')}</button><span class="muted">${tarih(x.tarih)} · ${esc(x.durum)}</span><b class="num">${num(x.toplam)} ${esc(x.para_birimi || '')}</b></li>`).join('')}</ul>` : ''}
+  return {
+    ziyaret: `<section class="rel">
     <h3>Ziyaretler <span class="muted">${ziy.length}</span></h3>
     ${ziy.length ? `<ul class="list">${ziy.map(z => `<li><span class="muted">${tarih(z.tarih)}</span><span>${esc(firmaAd(z.firma_id))} — ${esc((z.notlar || '').slice(0, 120))}</span></li>`).join('')}</ul>` : '<p class="hint">Bu projeye bağlı ziyaret yok.</p>'}
     ${gor.length ? `<h3>Görevler <span class="muted">${gor.length}</span></h3><ul class="list">${gor.map(g => `<li><span>${g.durum === 'Tamam' ? '✓' : '○'} ${esc(g.baslik)}</span><span class="muted">${tarih(g.son_tarih)}</span></li>`).join('')}</ul>` : ''}
+  </section>`,
+    satis: `<section class="rel">
+    ${tek.length ? `<h3>Teklifler <span class="muted">${tek.length}</span></h3><ul class="list">${tek.map(x => `<li><button type="button" class="linkbtn" data-tk="${x.id}">${esc(x.teklif_no || 'Teklif')}</button><span class="muted">${tarih(x.tarih)} · ${esc(x.durum)}</span><b class="num">${num(x.toplam)} ${esc(x.para_birimi || '')}</b></li>`).join('')}</ul>` : ''}
     <h3>Siparişler <span class="muted">${sip.length}</span></h3>
     ${sip.length ? `<ul class="list">${sip.map(s => `<li class="${s.rapor_disi ? 'disi' : ''}"><span class="muted">${tarih(s.tarih)}</span><button type="button" class="linkrow" data-sp="${s.id}"><b>${esc(s.siparis_no || 'Sipariş')} · ${esc(s.referans || s.musteri_adi || '')}</b>${s.siparis_notu ? `<span class="muted">Not: ${esc(s.siparis_notu.slice(0, 80))}</span>` : ''}</button><b class="num">${num(s.net_deger)} ${esc(s.para_birimi)}</b></li>`).join('')}</ul>
       <p class="hint">Toplam: ${usd(sip.filter(s => s.para_birimi === 'USD').reduce((a, s) => a + +s.net_deger, 0))}</p>` : '<p class="hint">Sipariş listesinde bu projeye bağlı kayıt yok.</p>'}
-    ${gec.length ? `<h3>Durum geçmişi</h3><ul class="list">${gec.map(g => `<li><span class="muted">${tarih(g.tarih)}</span><span>${g.eski_durum ? esc(g.eski_durum) + ' → ' : ''}${esc(g.yeni_durum)}${g.notlar ? ' · ' + esc(g.notlar) : ''}</span></li>`).join('')}</ul>` : ''}
-  </section>`;
+  </section>`,
+    gecmis: `<section class="rel">
+    ${gec.length ? `<h3>Durum geçmişi</h3><ul class="list">${gec.map(g => `<li><span class="muted">${tarih(g.tarih)}</span><span>${g.eski_durum ? esc(g.eski_durum) + ' → ' : ''}${esc(g.yeni_durum)}${g.notlar ? ' · ' + esc(g.notlar) : ''}</span></li>`).join('')}</ul>` : '<p class="hint">Durum değişikliği kaydı yok.</p>'}
+  </section>`,
+  };
 }
