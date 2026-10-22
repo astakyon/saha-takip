@@ -1,7 +1,7 @@
 // Saha Takip service worker: uygulama dosyalarını ve harita karolarını önbelleğe alır
-const V = 'saha-v24';
+const V = 'saha-v25';
 const SHELL = ['./', 'index.html', 'styles.css', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon-180.png', 'icons/icon.svg', 'js/kurulum.js', 'js/birlestir.js', 'js/google.js', 'js/views/ice-aktar.js',
-  'js/main.js', 'js/altlik.js', 'js/osm-bolge.js', 'js/tasima.js', 'js/yetki.js', 'js/views/kullanicilar.js', 'js/views/bayi.js', 'js/tema.js', 'js/menu.js', 'js/hizli.js', 'js/kayip.js', 'js/gizli.js', 'js/esle.js', 'js/filtre.js', 'js/gecmis.js', 'js/db.js', 'js/ui.js', 'js/forms.js', 'js/state.js',
+  'js/main.js', 'js/altlik.js', 'js/osm-bolge.js', 'js/tasima.js', 'js/yetki.js', 'js/views/kullanicilar.js', 'js/views/bayi.js', 'js/tema.js', 'js/push.js', 'js/menu.js', 'js/hizli.js', 'js/kayip.js', 'js/gizli.js', 'js/esle.js', 'js/filtre.js', 'js/gecmis.js', 'js/db.js', 'js/ui.js', 'js/forms.js', 'js/state.js',
   'js/views/map.js', 'js/views/projeler.js', 'js/views/firmalar.js', 'js/views/ziyaret.js',
   'js/views/urunler.js', 'js/views/panel.js', 'js/views/ayarlar.js', 'js/views/bolgeler.js', 'js/geo.js', 'js/data/iller.js',
   'js/ayar.js', 'js/sablon.js', 'js/sunum.js', 'js/zip.js', 'js/pptx.js', 'js/pptx-tema.js', 'js/paylas.js',
@@ -63,9 +63,14 @@ async function ozetGoster(zorla) {
   await self.registration.showNotification('Saha Takip · Bugün', { body: satir.join('\n') || 'Bugün için planlı ziyaret ya da görev yok.', icon: 'icons/icon-192.png', badge: 'icons/icon-mono-512.png', tag: 'gunluk-ozet', data: { url: './#/bugun' } });
   await idbIstek(d, s => s.put(bugun, 'bildirim-son'), 'readwrite');
 }
+// Anlık bildirim (bildir Edge Function'ından)
+self.addEventListener('push', e => {
+  let d = {}; try { d = e.data ? e.data.json() : {}; } catch { d = { govde: e.data?.text() || '' }; }
+  e.waitUntil(self.registration.showNotification(d.baslik || 'Saha Takip', { body: d.govde || '', icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', tag: d.tag || undefined, data: { url: self.registration.scope + (d.hedef || '#/bugun') } }));
+});
 self.addEventListener('periodicsync', e => { if (e.tag === 'gunluk-ozet') e.waitUntil(ozetGoster(false)); });
 self.addEventListener('message', e => { if (e.data?.tip === 'ozet-goster') e.waitUntil(ozetGoster(!!e.data.zorla)); });
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => { const c = cs.find(x => x.url.includes(self.registration.scope)); if (c) { c.focus(); return c.navigate ? c.navigate(self.registration.scope + '#/bugun') : null; } return self.clients.openWindow(e.notification.data?.url || './#/bugun'); }));
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => { const hedef = e.notification.data?.url || self.registration.scope + '#/bugun'; const c = cs.find(x => x.url.includes(self.registration.scope)); if (c) { c.focus(); return c.navigate ? c.navigate(hedef) : null; } return self.clients.openWindow(e.notification.data?.url || './#/bugun'); }));
 });

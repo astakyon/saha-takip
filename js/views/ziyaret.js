@@ -208,7 +208,7 @@ export function gorevForm(init = {}, after) {
     if (!o.baslik) return toast('Görevi yaz.', 'err');
     o.atanan = o.atanan || null;
     if (o.durum === 'Tamam' && g.durum !== 'Tamam') o.tamamlayan = (app.db.user?.()?.email || '').toLowerCase() || null; else if (o.durum !== 'Tamam') o.tamamlayan = null;
-    await app.db.save('gorevler', o); toast('Görev kaydedildi.'); closeDrawer(); after ? after() : app.refresh();
+    await app.db.save('gorevler', o); import('../push.js').then(m => m.gorevBildir(g0._new ? null : g0, o)); toast('Görev kaydedildi.'); closeDrawer(); after ? after() : app.refresh();
   };
 }
 
@@ -238,7 +238,7 @@ export function gorevlerView(el) {
   const bagla = root => {
     root.querySelectorAll('[data-id]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.id }));
     root.querySelectorAll('[data-zid]').forEach(b => b.onclick = () => ziyaretForm({ id: b.dataset.zid }));
-    root.querySelectorAll('[data-done]').forEach(c => c.onchange = async () => { const g = byId('gorevler', c.dataset.done); await app.db.save('gorevler', { ...g, durum: c.checked ? 'Tamam' : 'Açık', tamamlayan: c.checked ? (app.db.user?.()?.email || '').toLowerCase() || null : null }); draw(); });
+    root.querySelectorAll('[data-done]').forEach(c => c.onchange = async () => { const g = byId('gorevler', c.dataset.done); const y = { ...g, durum: c.checked ? 'Tamam' : 'Açık', tamamlayan: c.checked ? (app.db.user?.()?.email || '').toLowerCase() || null : null }; try { await app.db.save('gorevler', y); import('../push.js').then(m => m.gorevBildir(g, y)); } catch (e) { toast('Kaydedilemedi: ' + e.message, 'err'); } draw(); });
   };
   const draw = () => {
     const acik = S.gorevler.filter(g => g.durum !== 'Tamam');

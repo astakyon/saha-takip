@@ -45,6 +45,7 @@ export async function denemeBildirimi() {
 
 export function bildirimAyarlari(root) {
   const ciz = async () => {
+    const pkutu = document.createElement('div'); pkutu.className = 'push-kutu';
     const b = ayar('bildirim') || {}, izin = bildirimDestek() ? Notification.permission : 'yok', per = await periyodikDestek();
     const yuklu = matchMedia('(display-mode: standalone)').matches;
     root.innerHTML = !bildirimDestek() ? '<p class="hint">Bu tarayıcı bildirim desteklemiyor.</p>' : `
@@ -53,6 +54,7 @@ export function bildirimAyarlari(root) {
       <div class="frow"><label>Saat <input type="time" data-saat value="${esc(b.saat || '08:00')}"></label></div>
       <div class="btnrow">${b.acik && izin === 'granted' ? '<button type="button" class="btn" data-deneme>Şimdi dene</button><button type="button" class="btn ghost" data-kapat>Kapat</button>' : '<button type="button" class="btn primary" data-ac>Bildirimleri aç</button>'}</div>
       <p class="hint">${!yuklu ? 'Bildirimlerin kendiliğinden gelmesi için uygulamanın telefona <b>yüklü</b> olması gerekir. ' : ''}${per ? 'Bildirim zamanını Chrome belirler: seçtiğin saatten sonraki ilk uygun anda, günde bir kez gelir. Telefon uzun süre kullanılmazsa gecikebilir.' : 'Bu cihaz arka planda zamanlanmış bildirimi desteklemiyor; hatırlatma uygulamayı açtığında gösterilir.'}</p>`;
+    root.appendChild(pkutu); import('./push.js').then(m => m.pushAyarlari(pkutu));
     root.querySelector('[data-ac]')?.addEventListener('click', async () => { try { const { periyodik } = await bildirimAc(root.querySelector('[data-saat]').value); toast(periyodik ? 'Günlük hatırlatma açıldı.' : 'Bildirim izni verildi; hatırlatma uygulamayı açtığında gösterilecek.'); ciz(); } catch (e) { toast(e.message, 'err'); ciz(); } });
     root.querySelector('[data-kapat]')?.addEventListener('click', async () => { await bildirimKapat(); toast('Günlük hatırlatma kapatıldı.'); ciz(); });
     root.querySelector('[data-deneme]')?.addEventListener('click', async () => { try { await denemeBildirimi(); } catch (e) { toast(e.message, 'err'); } });

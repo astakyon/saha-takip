@@ -32,6 +32,15 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 18) — anlık bildirim (bir kez kurulum)
+
+1. Supabase SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (şema sürüm 10: `push_abonelikleri`).
+2. Uygulamada Ayarlar → Genel → Bildirimler → **Anahtar üret**; üç değeri (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT) Supabase → Edge Functions → **Secrets**'a ekle.
+3. Edge Functions → Deploy a new function → Via Editor → adı **bildir** → `supabase/functions/bildir/index.ts` içeriğini yapıştır → Deploy.
+4. Uygulamada “Kurulumu kontrol et” → “Bu cihazda aç”. Ekip üyeleri de kendi telefonlarında “Bu cihazda aç”a dokunur.
+
+Görev bir ekip üyesine atanınca ona, ekip üyesi görevi tamamlayınca veri sahibine bildirim gider. iPhone'da yalnızca ana ekrana eklenmiş uygulamada (iOS 16.4+) çalışır.
+
 ## Güncelleme notu (sürüm 17)
 
 - **Koyu tema (Ayarlar → Genel → Görünüm):** Açık · Koyu · Cihaza göre. Seçim hesapta saklanır, tüm cihazlarda geçerli olur.

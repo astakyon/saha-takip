@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 9)
+--  Saha Satış Takip — Supabase şeması (sürüm 10)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -456,3 +456,18 @@ begin
     execute format('create trigger gecmis after insert or update or delete on public.%I for each row execute function public.degisiklik_yaz()', t);
   end loop;
 end $$;
+
+-- ---------- Sürüm 10: anlık bildirim abonelikleri (Web Push) ----------
+-- Her cihaz bir satır; kişi yalnızca kendi cihazlarını görür ve yönetir. Bildirimleri “bildir” Edge Function'ı gönderir.
+create table if not exists public.push_abonelikleri (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  eposta text default public.benim_epostam(),
+  endpoint text not null unique,
+  p256dh text not null, auth text not null,
+  cihaz text, created_at timestamptz default now()
+);
+create index if not exists push_abonelikleri_eposta_idx on public.push_abonelikleri (eposta);
+alter table public.push_abonelikleri enable row level security;
+drop policy if exists "kendi_cihazim" on public.push_abonelikleri;
+create policy "kendi_cihazim" on public.push_abonelikleri for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());

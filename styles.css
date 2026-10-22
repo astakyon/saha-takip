@@ -945,3 +945,6 @@ section.card:empty { display: none; }
 :root[data-tema="koyu"] :is(.leaflet-tooltip.mk-label, .map-info, .pin-legend, .leaflet-control-layers, .leaflet-bar a) { color: #1D2B36; }
 :root[data-tema="koyu"] :is(.leaflet-popup-content-wrapper, .leaflet-popup-tip) { background: var(--card); color: var(--ink); }
 @media (prefers-color-scheme: dark) { :root[data-tema="oto"] :is(.leaflet-tooltip.mk-label, .map-info, .pin-legend, .leaflet-control-layers, .leaflet-bar a) { color: #1D2B36; } :root[data-tema="oto"] :is(.leaflet-popup-content-wrapper, .leaflet-popup-tip) { background: var(--card); color: var(--ink); } }
+.kurulum ol { padding-left: 20px; display: grid; gap: 8px; }
+.anahtar { margin: 8px 0; } .anahtar label { font: 600 12px var(--f); color: var(--muted); }
+.anahtar > div { display: flex; gap: 6px; } .anahtar input { flex: 1; min-width: 0; font: 12.5px ui-monospace, monospace; padding: 6px 8px; }
