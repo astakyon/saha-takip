@@ -16,6 +16,7 @@ import { yuklemeKaydet } from '../belgeler.js';
 import { ayar, ayarYaz } from '../ayar.js';
 import { sahipMi } from '../yetki.js';
 import { kullaniciAyarlari } from './kullanicilar.js';
+import { menuAyarlari } from '../menu.js';
 
 const ORDER = SIRA;
 const ETIKET = { bolgeler: 'sanayi bölgesi', firmalar: 'firma', kisiler: 'kişi', projeler: 'proje', proje_gecmis: 'durum geçmişi', ziyaretler: 'ziyaret', gorevler: 'görev', urunler: 'ürün', stok_gecmis: 'stok geçmişi', rakip_fiyatlar: 'rakip fiyatı', siparisler: 'sipariş', hedefler: 'hedef', teklifler: 'teklif', numuneler: 'numune', servis_kayitlari: 'servis kaydı', masraflar: 'masraf', urun_aileleri: 'ürün ailesi', ayarlar: 'ayar', tahsilatlar: 'tahsilat kaydı', belgeler: 'belge' };
@@ -72,6 +73,8 @@ export async function ayarlarView(el) {
   const f = F('ayarlar', { sekme: 'genel' });
   if (!S.projeler.length && !S.firmalar.length && f.sekme === 'genel' && !f._ilk) { f.sekme = 'veri'; f._ilk = 1; }
   const SEKME = sahipMi() ? [['genel', 'Genel'], ['kullanici', 'Kullanıcılar'], ['veri', 'Veri ve yedek'], ['google', 'Google ve harita'], ['mesaj', 'Mesaj ve teklif']] : [['genel', 'Genel']];
+  let menuAc = false; try { menuAc = !!sessionStorage.getItem('menu-ac'); sessionStorage.removeItem('menu-ac'); } catch {}
+  if (menuAc) f.sekme = 'genel';
   if (!SEKME.some(([k]) => k === f.sekme)) f.sekme = 'genel';
   const toplam = counts.reduce((a, [, n]) => a + n, 0);
   el.innerHTML = `<header class="vh"><div><h1>Ayarlar</h1><p class="sum">${sup ? `Hesap: ${esc(app.db.user()?.email || '')}` : 'Deneme modu: veriler yalnızca bu cihazda'}${pend ? ` · <b>${pend} değişiklik internet bekliyor</b>` : ''}</p></div></header>
@@ -83,6 +86,7 @@ export async function ayarlarView(el) {
     </section>
     ${sahipMi() ? '' : `<section class="card" data-tab="genel"><h2>Ekip üyesi</h2><p>Bu hesapla veri sahibinin sana açtığı bölümleri görüyorsun. Yeni bölüm için veri sahibinden yetki iste.</p></section>`}
     <section class="card wide-card" data-tab="kullanici"><h2>Kullanıcılar ve yetkiler</h2><div data-kullanici></div></section>
+    <section class="card" data-tab="genel" id="menu-karti"><h2>Menü</h2><div data-menu></div></section>
     <section class="card" data-tab="genel"><h2>Telefona yükle</h2>
       ${INST.standalone ? '<p><b>Uygulama yüklü.</b> Simgeye uzun basınca Ziyaret kaydet, Harita, Takvim ve Projeler kısayolları çıkar.</p>' : `<p>Ana ekrana Saha Takip simgesi eklenir, tam ekran açılır ve internet yokken de çalışır.</p><div class="btnrow"><button class="btn primary" data-install>Uygulamayı yükle</button></div>
       <p class="hint">${INST.evt ? 'Düğmeye basınca telefon onay ister.' : isIOS ? 'iPhone: Safari Paylaş düğmesi → “Ana Ekrana Ekle”.' : 'Düğme çalışmazsa Chrome menüsü (⋮) → “Uygulamayı yükle”.'}</p>`}
@@ -135,6 +139,8 @@ export async function ayarlarView(el) {
   anahtarBagla(el, () => ayarlarView(el));
   sablonDuzenleyici(el.querySelector('[data-sablon]'));
   kurAyarlari(el.querySelector('[data-kur]'));
+  menuAyarlari(el.querySelector('[data-menu]'));
+  if (menuAc) setTimeout(() => el.querySelector('#menu-karti')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   bildirimAyarlari(el.querySelector('[data-bildirim]'));
   teklifAyarlari(el.querySelector('[data-teklifb]'));
   el.querySelector('[data-kml]').onclick = () => kmlIndir();

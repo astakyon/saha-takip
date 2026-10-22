@@ -21,15 +21,16 @@ import { raporView } from './views/rapor.js';
 import { kontrolView } from './views/kontrol.js';
 import { dosyalarView } from './views/dosyalar.js';
 import { rotaIzinli, sahipMi } from './yetki.js';
+import { menuDuzeni } from './menu.js';
 import { kurGuncelle } from './kur.js';
 import { bildirimHazirla } from './bildirim.js';
 
 const ROUTES = {
-  bugun:     { t: 'Bugün', ico: 'sun', v: bugunView, main: true },
-  harita:    { t: 'Harita', ico: 'map', v: mapView, main: true },
-  projeler:  { t: 'Projeler', ico: 'folder', v: projelerView, main: true },
-  takvim:    { t: 'Takvim', ico: 'cal', v: takvimView, main: true },
-  firmalar:  { t: 'Firmalar', ico: 'building', v: firmalarView, main: true },
+  bugun:     { t: 'Bugün', ico: 'sun', v: bugunView, main: true, g: 'Saha' },
+  harita:    { t: 'Harita', ico: 'map', v: mapView, main: true, g: 'Saha' },
+  projeler:  { t: 'Projeler', ico: 'folder', v: projelerView, main: true, g: 'Saha' },
+  takvim:    { t: 'Takvim', ico: 'cal', v: takvimView, main: true, g: 'Saha' },
+  firmalar:  { t: 'Firmalar', ico: 'building', v: firmalarView, main: true, g: 'Saha' },
   ziyaretler:{ t: 'Ziyaretler', ico: 'pin', v: ziyaretlerView, g: 'Saha' },
   gorevler:  { t: 'Görevler', ico: 'check', v: gorevlerView, g: 'Saha' },
   kisiler:   { t: 'Kişiler', ico: 'user', v: kisilerView, g: 'Saha' },
@@ -52,6 +53,7 @@ const ROUTES = {
   ayarlar:   { t: 'Ayarlar', ico: 'gear', v: ayarlarView, g: 'Rapor' },
 };
 const DETAIL = { proje: projeDetay, firma: firmaDetay, kisi: kisiDetay };
+app.rotalar = ROUTES;
 
 const ICONS = {
   map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Zm0 0v14m6-12v14"/>',
@@ -82,16 +84,22 @@ const ICONS = {
 };
 export const icon = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
 
+let navSon = 'bugun';
+window.addEventListener('menu', () => renderNav(navSon));
 function renderNav(cur) {
   const nav = document.getElementById('nav');
+  const { gizli, ana } = menuDuzeni(ROUTES);
+  navSon = cur;
   const item = (k, r) => `<a href="#/${k}" class="${k === cur ? 'on' : ''}" ${k === cur ? 'aria-current="page"' : ''}>${icon(r.ico)}<span>${r.t}</span></a>`;
   const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : !sahipMi() ? `<span class="mode-badge">Ekip üyesi${app.yetki?.ad ? ' · ' + esc(app.yetki.ad) : ''}</span>` : '';
   nav.innerHTML = `
     <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b>${mode}</div>
-    <div class="nav-main">${Object.entries(ROUTES).filter(([k, r]) => r.main && rotaIzinli(k)).map(([k, r]) => item(k, r)).join('')}
-      <button class="nav-more ${!ROUTES[cur]?.main ? 'on' : ''}" type="button" aria-haspopup="true">${icon('more')}<span>Diğer</span></button></div>
-    <div class="nav-rest">${['Saha', 'Satış', 'Rapor'].map(g => `<p class="nav-g">${g}</p>` + Object.entries(ROUTES).filter(([k, r]) => r.g === g && rotaIzinli(k)).map(([k, r]) => item(k, r)).join('')).join('')}
-      <button type="button" class="nav-inst" data-inst ${canInstall() ? '' : 'hidden'}>${icon('down')}<span>Telefona yükle</span></button></div>`;
+    <div class="nav-main">${ana.filter(rotaIzinli).map(k => item(k, ROUTES[k])).join('')}
+      <button class="nav-more ${!ana.includes(cur) ? 'on' : ''}" type="button" aria-haspopup="true">${icon('more')}<span>Diğer</span></button></div>
+    <div class="nav-rest">${['Saha', 'Satış', 'Rapor'].map(g => `<p class="nav-g">${g}</p>` + Object.entries(ROUTES).filter(([k, r]) => r.g === g && !ana.includes(k) && !gizli.has(k) && rotaIzinli(k)).map(([k, r]) => item(k, r)).join('')).join('')}
+      <button type="button" class="nav-inst" data-inst ${canInstall() ? '' : 'hidden'}>${icon('down')}<span>Telefona yükle</span></button>
+      <a href="#/ayarlar" class="nav-duzen" data-menuduzen>${icon('gear', 18)}<span>Menüyü düzenle</span></a></div>`;
+  nav.querySelector('[data-menuduzen]').addEventListener('click', () => { try { sessionStorage.setItem('menu-ac', '1'); } catch {} if (location.hash === '#/ayarlar') window.dispatchEvent(new HashChangeEvent('hashchange')); });
   nav.querySelector('[data-inst]').onclick = () => { nav.classList.remove('more-open'); install(); };
   nav.querySelector('.nav-more').onclick = () => nav.classList.toggle('more-open');
   nav.querySelectorAll('.nav-rest a').forEach(a => a.addEventListener('click', () => nav.classList.remove('more-open')));
