@@ -191,7 +191,7 @@ const GOREV_FORM = [{ title: 'Görev', fields: [
   { k: 'kisi_id', l: 'Kişi', t: 'ref', ref: 'kisiler' },
   { k: 'proje_id', l: 'Proje', t: 'ref', ref: 'projeler' },
   { k: 'notlar', l: 'Not', t: 'area' },
-  { k: 'atanan', l: 'Kime atandı', t: 'sel', ph: 'Bana', opts: () => (app.ekip || []).map(u => ({ v: u.eposta, l: u.ad || u.eposta })), show: () => (app.ekip || []).length > 0, help: 'Atadığın kişi görevi kendi Bugün ekranında görür ve tamamlar' },
+  { k: 'atanan', l: 'Kime atandı', t: 'sel', ph: 'Bana', opts: () => (app.ekip || []).map(u => ({ v: u.eposta, l: (u.ad || u.eposta) + (u.yetkiler?._rol ? ' — ' + u.yetkiler._rol : '') })), show: () => (app.ekip || []).length > 0, help: 'Atadığın kişi görevi kendi Bugün ekranında görür ve tamamlar' },
 ]}];
 
 export function gorevForm(init = {}, after) {

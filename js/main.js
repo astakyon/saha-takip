@@ -93,7 +93,7 @@ function renderNav(cur) {
   const { gizli, ana } = menuDuzeni(ROUTES);
   navSon = cur;
   const item = (k, r) => `<a href="#/${k}" class="${k === cur ? 'on' : ''}" ${k === cur ? 'aria-current="page"' : ''}>${icon(r.ico)}<span>${r.t}</span></a>`;
-  const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : !sahipMi() ? `<span class="mode-badge">Ekip üyesi${app.yetki?.ad ? ' · ' + esc(app.yetki.ad) : ''}</span>` : '';
+  const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : !sahipMi() ? `<span class="mode-badge">${esc(app.yetki?.yetkiler?._rol || 'Ekip üyesi')}${app.yetki?.ad ? ' · ' + esc(app.yetki.ad) : ''}</span>` : '';
   nav.innerHTML = `
     <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b>${mode}</div>
     <button type="button" class="nav-ara" data-navara><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Ara</span><kbd>/</kbd></button>
@@ -166,7 +166,7 @@ async function boot() {
     await app.db.loadAll();
     app.yetki = app.db.yetki || null;
     app.ekip = [];
-    if (app.db.mode === 'supabase' && sahipMi()) app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif').then(({ data }) => { app.ekip = (data || []).filter(u => u.aktif); if (app.ekip.length && ['gorevler', 'bugun'].includes(lastView) && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});
+    if (app.db.mode === 'supabase' && sahipMi()) app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif,yetkiler').then(({ data }) => { app.ekip = (data || []).filter(u => u.aktif); if (app.ekip.length && ['gorevler', 'bugun'].includes(lastView) && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});
     if (app.db.offline) toast('Çevrimdışısın: son kaydedilen veriler gösteriliyor.');
   } catch (e) {
     view.innerHTML = `<div class="empty"><h2>Veriler yüklenemedi</h2><p>${esc(e.message)}</p><p><a class="btn" href="#/ayarlar">Bağlantı ayarlarını aç</a></p></div>`;
