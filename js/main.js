@@ -166,7 +166,7 @@ async function boot() {
     await app.db.loadAll();
     app.yetki = app.db.yetki || null;
     app.ekip = [];
-    if (app.db.mode === 'supabase' && sahipMi()) app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif').then(({ data }) => { app.ekip = (data || []).filter(u => u.aktif); }).catch(() => {});
+    if (app.db.mode === 'supabase' && sahipMi()) app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif').then(({ data }) => { app.ekip = (data || []).filter(u => u.aktif); if (app.ekip.length && ['gorevler', 'bugun'].includes(lastView) && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});
     if (app.db.offline) toast('Çevrimdışısın: son kaydedilen veriler gösteriliyor.');
   } catch (e) {
     view.innerHTML = `<div class="empty"><h2>Veriler yüklenemedi</h2><p>${esc(e.message)}</p><p><a class="btn" href="#/ayarlar">Bağlantı ayarlarını aç</a></p></div>`;

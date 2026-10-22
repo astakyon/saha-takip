@@ -213,19 +213,28 @@ export function gorevForm(init = {}, after) {
 }
 
 export function gorevlerView(el) {
-  const f = F('gorevler', { goster: 'Açık', gor: 'takvim', ay: today().slice(0, 7), gun: today(), ziyaret: true });
+  const f = F('gorevler', { goster: 'Tümü', kim: 'Herkes', gor: 'takvim', ay: today().slice(0, 7), gun: today(), ziyaret: true });
   const t = today();
+  if (f._gv !== 2) { f.goster = 'Tümü'; f._gv = 2; saveFilters(); }
+  if (!f.kim) f.kim = 'Herkes';
+  const ben = (app.db.user?.()?.email || '').toLowerCase();
+  const kimAd = e => !e ? 'Ben' : e === ben ? 'Ben' : (app.ekip || []).find(u => u.eposta === e)?.ad || e.split('@')[0];
+  const kisaAd = e => kimAd(e).split(/[\s(]/)[0];
+  const ekipVar = (app.ekip || []).length > 0 || S.gorevler.some(g => g.atanan);
   el.innerHTML = `<header class="vh"><div><h1>Görevler</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn ghost" data-xls>Excel</button><button class="btn primary" data-new>Yeni görev</button></div></header>
     <div class="filters">
       <div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="takvim" class="${f.gor === 'takvim' ? 'on' : ''}">Takvim</button><button type="button" data-gor="liste" class="${f.gor === 'liste' ? 'on' : ''}">Liste</button></div>
       <div class="frow"><div class="seg" role="group" aria-label="Durum">${['Açık', 'Tamam', 'Tümü'].map(x => `<button type="button" data-g="${x}" class="${f.goster === x ? 'on' : ''}">${x === 'Tamam' ? 'Tamamlanan' : x}</button>`).join('')}</div>
+      ${ekipVar ? `<label>Kişi <select data-kim>${['Herkes', 'Ben', ...(app.ekip || []).map(u => u.eposta), ...new Set(S.gorevler.map(g => g.atanan).filter(a => a && !(app.ekip || []).some(u => u.eposta === a)))].map(v => `<option value="${esc(v)}" ${f.kim === v ? 'selected' : ''}>${esc(v === 'Herkes' || v === 'Ben' ? v : kimAd(v))}</option>`).join('')}</select></label>` : ''}
       <label class="chk" data-zv ${f.gor === 'takvim' ? '' : 'hidden'}><input type="checkbox" data-z ${f.ziyaret ? 'checked' : ''}> <span>Planlı ziyaretleri de göster</span></label></div></div>
     <div data-body></div>`;
-  const filt = g => f.goster === 'Tümü' || (f.goster === 'Tamam' ? g.durum === 'Tamam' : g.durum !== 'Tamam');
+  const kimFilt = g => f.kim === 'Herkes' || (f.kim === 'Ben' ? !g.atanan || g.atanan === ben : g.atanan === f.kim);
+  const filt = g => kimFilt(g) && (f.goster === 'Tümü' || (f.goster === 'Tamam' ? g.durum === 'Tamam' : g.durum !== 'Tamam'));
+  const durumYazi = g => g.durum === 'Tamam' ? `<span class="gdur tamam">✓ Tamamlandı${g.tamamlayan ? ' · ' + esc(kimAd(g.tamamlayan)) : ''}${g.updated_at ? ' · ' + tarih(String(g.updated_at).slice(0, 10)) : ''}</span>` : geciken(g) ? '<span class="gdur gec">Gecikti</span>' : '<span class="gdur acik">Açık</span>';
   const geciken = g => g.son_tarih && g.son_tarih < t && g.durum !== 'Tamam';
   const gorevSatir = g => `<li class="${g.durum === 'Tamam' ? 'done' : ''} ${geciken(g) ? 'late' : ''} pr-${g.oncelik === 'Yüksek' ? 'hi' : g.oncelik === 'Düşük' ? 'lo' : 'n'}">
       <label class="chk"><input type="checkbox" data-done="${g.id}" ${g.durum === 'Tamam' ? 'checked' : ''} aria-label="Tamamlandı"></label>
-      <button type="button" class="task-b" data-id="${g.id}"><b>${esc(g.baslik)}${g.atanan ? `<span class="atanan-r">→ ${esc((app.ekip || []).find(u => u.eposta === g.atanan)?.ad || g.atanan)}</span>` : ''}</b><small>${[g.son_tarih ? tarih(g.son_tarih) : 'Tarihsiz', firmaAd(g.firma_id), byId('projeler', g.proje_id)?.ad, g.oncelik !== 'Normal' ? g.oncelik + ' öncelik' : ''].filter(Boolean).map(esc).join(' · ')}</small></button></li>`;
+      <button type="button" class="task-b" data-id="${g.id}"><b>${esc(g.baslik)}${g.atanan ? `<span class="atanan-r">→ ${esc(kimAd(g.atanan))}</span>` : ''}</b><small>${durumYazi(g)} · ${[g.son_tarih ? 'son tarih ' + tarih(g.son_tarih) : 'Tarihsiz', firmaAd(g.firma_id), byId('projeler', g.proje_id)?.ad, g.oncelik && g.oncelik !== 'Normal' ? g.oncelik + ' öncelik' : ''].filter(Boolean).map(esc).join(' · ')}</small></button></li>`;
   const bagla = root => {
     root.querySelectorAll('[data-id]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.id }));
     root.querySelectorAll('[data-zid]').forEach(b => b.onclick = () => ziyaretForm({ id: b.dataset.zid }));
@@ -258,7 +267,7 @@ export function gorevlerView(el) {
         ${days.map(d => { const g = gunG(d), z = gunZ(d), n = g.length + z.length;
           return `<div class="mc ${d.slice(0, 7) !== f.ay ? 'out' : ''} ${d === t ? 'today' : ''} ${d === sec ? 'sel' : ''} ${g.some(geciken) ? 'has-late' : ''}" role="gridcell" data-d="${d}" tabindex="0" aria-label="${new Date(d + 'T00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}: ${g.length} görev${z.length ? `, ${z.length} ziyaret` : ''}">
             <span class="dn">${+d.slice(8)}</span>
-            <div class="mc-items">${g.slice(0, 3).map(x => `<span class="mi ${x.durum === 'Tamam' ? 'done' : ''} ${geciken(x) ? 'late' : ''} ${x.oncelik === 'Yüksek' ? 'hi' : ''}">${esc(x.baslik)}</span>`).join('')}${z.slice(0, Math.max(0, 3 - g.length)).map(x => `<span class="mi zi">${esc(firmaAd(x.firma_id) || 'Ziyaret')}</span>`).join('')}${n > 3 ? `<span class="more">+${n - 3}</span>` : ''}</div>
+            <div class="mc-items">${g.slice(0, 3).map(x => `<span class="mi ${x.durum === 'Tamam' ? 'done' : ''} ${geciken(x) ? 'late' : ''} ${x.oncelik === 'Yüksek' ? 'hi' : ''}">${x.durum === 'Tamam' ? '✓ ' : ''}${esc(x.baslik)}${x.atanan ? ` <em>· ${esc(kisaAd(x.atanan))}</em>` : ''}</span>`).join('')}${z.slice(0, Math.max(0, 3 - g.length)).map(x => `<span class="mi zi">${esc(firmaAd(x.firma_id) || 'Ziyaret')}</span>`).join('')}${n > 3 ? `<span class="more">+${n - 3}</span>` : ''}</div>
             ${n ? `<span class="dots">${g.length ? `<i class="dg">${g.length}</i>` : ''}${z.length ? `<i class="dz">${z.length}</i>` : ''}</span>` : ''}</div>`; }).join('')}
       </div>
       <section class="day-detail"><header><h3>${new Date(sec + 'T00:00').toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}</h3><button type="button" class="btn sm primary" data-add="${sec}">+ Görev ekle</button></header>
@@ -273,7 +282,8 @@ export function gorevlerView(el) {
   el.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { f.goster = b.dataset.g; saveFilters(); el.querySelectorAll('[data-g]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
   el.querySelectorAll('[data-gor]').forEach(b => b.onclick = () => { f.gor = b.dataset.gor; saveFilters(); el.querySelectorAll('[data-gor]').forEach(x => x.classList.toggle('on', x === b)); el.querySelector('[data-zv]').hidden = f.gor !== 'takvim'; draw(); });
   el.querySelector('[data-z]').onchange = e => { f.ziyaret = e.target.checked; saveFilters(); draw(); };
+  el.querySelector('[data-kim]')?.addEventListener('change', e => { f.kim = e.target.value; saveFilters(); draw(); });
   el.querySelector('[data-new]').onclick = () => gorevForm({ son_tarih: f.gor === 'takvim' ? f.gun : today() });
-  el.querySelector('[data-xls]').onclick = () => exportXlsx(`gorevler-${today()}.xlsx`, { 'Görevler': S.gorevler.slice().sort((a, b) => (a.son_tarih || '9').localeCompare(b.son_tarih || '9')).map(g => ({ 'Görev': g.baslik, 'Son tarih': g.son_tarih, 'Öncelik': g.oncelik, 'Durum': g.durum, 'Firma': firmaAd(g.firma_id), 'Proje': byId('projeler', g.proje_id)?.ad, 'Kişi': byId('kisiler', g.kisi_id)?.ad_soyad, 'Not': g.notlar })) });
+  el.querySelector('[data-xls]').onclick = () => exportXlsx(`gorevler-${today()}.xlsx`, { 'Görevler': S.gorevler.slice().sort((a, b) => (a.son_tarih || '9').localeCompare(b.son_tarih || '9')).map(g => ({ 'Görev': g.baslik, 'Son tarih': g.son_tarih, 'Öncelik': g.oncelik, 'Durum': g.durum, 'Atanan': g.atanan ? kimAd(g.atanan) : '', 'Tamamlayan': g.tamamlayan ? kimAd(g.tamamlayan) : '', 'Firma': firmaAd(g.firma_id), 'Proje': byId('projeler', g.proje_id)?.ad, 'Kişi': byId('kisiler', g.kisi_id)?.ad_soyad, 'Not': g.notlar })) });
   draw();
 }
