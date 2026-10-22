@@ -41,6 +41,7 @@ export async function kisaLinkAc(url) {
   } catch { return null; }
 }
 async function adrestenKonum(q) {
+  if ((await import('./gizli.js')).gizliMod()) return null;
   try {
     const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=tr&limit=1&q=${encodeURIComponent(q)}`, { headers: { 'Accept-Language': 'tr' } });
     const [h] = await r.json(); return h ? { lat: +(+h.lat).toFixed(6), lng: +(+h.lon).toFixed(6), yaklasik: true } : null;

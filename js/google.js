@@ -14,6 +14,7 @@ let gmLoad = null;
 export function loadGoogle() {
   if (window.google?.maps?.importLibrary) return Promise.resolve(window.google.maps);
   if (gmLoad) return gmLoad;
+  if (ayar('gizli_mod', false) === true) return Promise.reject(Object.assign(new Error('Gizli mod açık: Google servisleri kapalı (Ayarlar → Genel → Gizlilik).'), { code: 'GIZLI' }));
   const key = googleKey();
   if (!key) return Promise.reject(Object.assign(new Error('Google API anahtarı girilmemiş.'), { code: 'NO_KEY' }));
   gmLoad = new Promise((res, rej) => {

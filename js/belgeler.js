@@ -1,7 +1,7 @@
 // Proje ve firmalara belge ekleme (PDF, Excel, Word, çizim, fotoğraf…)
 import { S } from './db.js';
 import { app } from './state.js';
-import { esc, toast, pickFiles, confirmBox, tarih } from './ui.js';
+import { esc, toast, pickFiles, confirmBox, tarih, silGeriAl } from './ui.js';
 
 export const boyutYaz = b => !b ? '' : b < 1024 * 1024 ? Math.max(1, Math.round(b / 1024)) + ' KB' : (b / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB';
 const TUR = [[/pdf/, 'PDF'], [/sheet|excel|csv/, 'Excel'], [/word|document/, 'Word'], [/presentation|powerpoint/, 'Sunum'], [/image/, 'Görsel'], [/dwg|dxf|acad/, 'Çizim'], [/zip|rar|7z/, 'Arşiv']];
@@ -20,8 +20,8 @@ export function belgeBolumu(kutu, hedef) {
     kutu.querySelector('[data-cek]').onclick = () => ekle(true);
     kutu.querySelectorAll('[data-ac]').forEach(b => b.onclick = () => belgeAc(S.belgeler.find(x => x.id === b.dataset.ac)));
     kutu.querySelectorAll('[data-sil]').forEach(b => b.onclick = async () => {
-      const x = S.belgeler.find(y => y.id === b.dataset.sil); if (!x || !confirmBox(`“${x.ad}” silinsin mi?`)) return;
-      await app.db.del('belgeler', x.id); try { await app.db.removePhoto(x.yol); } catch {} toast('Belge silindi.'); ciz();
+      const x = S.belgeler.find(y => y.id === b.dataset.sil); if (!x) return;
+      await silGeriAl('belgeler', x, `“${x.ad}”`, ciz, x.yol);
     });
   };
   const ekle = async kamera => {

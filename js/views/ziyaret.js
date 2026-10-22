@@ -1,6 +1,6 @@
 import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, fold, tarih, today, ZIYARET_AMAC, ZIYARET_DURUM, SONUC_TIPLERI, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx } from '../ui.js';
+import { esc, fold, tarih, today, ZIYARET_AMAC, ZIYARET_DURUM, SONUC_TIPLERI, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, silGeriAl } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 
 export const zDurum = z => z.durum || 'Yapıldı';
@@ -94,7 +94,7 @@ export function ziyaretForm(init = {}, after) {
     form.querySelector('[data-show="sonuc"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setTimeout(() => form.querySelector('[name=sonuc_tipi]')?.focus(), 400);
   });
-  panel.querySelector('[data-sil]')?.addEventListener('click', async () => { if (confirmBox('Ziyaret silinsin mi?')) { await app.db.del('ziyaretler', z.id); toast('Ziyaret silindi.'); closeDrawer(); after ? after() : app.refresh(); } });
+  panel.querySelector('[data-sil]')?.addEventListener('click', async () => { closeDrawer(); await silGeriAl('ziyaretler', z0, 'Ziyaret', () => after ? after() : app.refresh()); });
   form.onsubmit = async e => {
     e.preventDefault();
     try {
@@ -200,7 +200,7 @@ export function gorevForm(init = {}, after) {
     ${g._new ? '' : '<div class="dh-actions"><button class="btn sm ghost danger" data-sil>Sil</button></div>'}
     <form class="dbody form" novalidate>${renderForm(GOREV_FORM, g)}<div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`);
   const form = panel.querySelector('form'); bindForm(form, GOREV_FORM, g);
-  panel.querySelector('[data-sil]')?.addEventListener('click', async () => { await app.db.del('gorevler', g.id); closeDrawer(); app.refresh(); });
+  panel.querySelector('[data-sil]')?.addEventListener('click', async () => { closeDrawer(); await silGeriAl('gorevler', g0, 'Görev', () => after ? after() : app.refresh()); });
   form.onsubmit = async e => {
     e.preventDefault();
     const o = await readForm(form, GOREV_FORM, g);

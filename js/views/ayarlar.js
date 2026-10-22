@@ -88,6 +88,9 @@ export async function ayarlarView(el) {
     ${sahipMi() ? '' : `<section class="card" data-tab="genel"><h2>Ekip üyesi</h2><p>Bu hesapla veri sahibinin sana açtığı bölümleri görüyorsun. Yeni bölüm için veri sahibinden yetki iste.</p></section>`}
     <section class="card wide-card" data-tab="kullanici"><h2>Kullanıcılar ve yetkiler</h2><div data-kullanici></div></section>
     <section class="card" data-tab="genel" id="menu-karti"><h2>Menü</h2><div data-menu></div></section>
+    <section class="card" data-tab="genel"><h2>Gizlilik</h2>
+      <label class="chk"><input type="checkbox" data-gizli ${ayar('gizli_mod', false) === true ? 'checked' : ''}> <span><b>Gizli mod</b>: kayıtlarımı ve konumumu dış servislere gönderme</span></label>
+      <p class="hint">Açıkken kapananlar: Google uydu/harita katmanı ve Google'da firma arama, OpenStreetMap ile adres ve il/ilçe bulma, sesle yazma (Google konuşma tanıma). Konum yine telefonda alınır, il ve sanayi bölgesi cihazda hesaplanır. Açık kalanlar: kendi Supabase veritabanın, harita görüntüsü (Esri ya da OpenStreetMap; yalnızca baktığın bölgenin görüntüsü istenir), döviz kuru.</p></section>
     <section class="card" data-tab="genel"><h2>Telefona yükle</h2>
       ${INST.standalone ? '<p><b>Uygulama yüklü.</b> Simgeye uzun basınca Ziyaret kaydet, Harita, Takvim ve Projeler kısayolları çıkar.</p>' : `<p>Ana ekrana Saha Takip simgesi eklenir, tam ekran açılır ve internet yokken de çalışır.</p><div class="btnrow"><button class="btn primary" data-install>Uygulamayı yükle</button></div>
       <p class="hint">${INST.evt ? 'Düğmeye basınca telefon onay ister.' : isIOS ? 'iPhone: Safari Paylaş düğmesi → “Ana Ekrana Ekle”.' : 'Düğme çalışmazsa Chrome menüsü (⋮) → “Uygulamayı yükle”.'}</p>`}
@@ -167,6 +170,7 @@ export async function ayarlarView(el) {
     });
   };
   el.querySelector('[data-cikti]').onchange = e => ayarYaz('cikti_sakla', e.target.checked);
+  el.querySelector('[data-gizli]').onchange = async e => { await ayarYaz('gizli_mod', e.target.checked); toast(e.target.checked ? 'Gizli mod açık: Google ve adres servisleri kapatıldı.' : 'Gizli mod kapalı.'); };
   const zprog = el.querySelector('[data-zprog]'), zil = (t, o) => { zprog.hidden = false; zprog.innerHTML = `<span style="width:${Math.round((o || 0) * 100)}%"></span><b>${t}</b>`; };
   el.querySelector('[data-zip]').onclick = async e => {
     e.target.disabled = true; zil('Hazırlanıyor…', 0.02);

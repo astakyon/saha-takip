@@ -143,3 +143,23 @@ export function exportXlsx(name, sheets) {
   download(name, blob);
   import('./belgeler.js').then(m => m.ciktiKaydet(blob, name, 'Excel', Object.entries(sheets).map(([k, v]) => `${k}: ${v.length} satır`).join(', '))).catch(() => {});
 }
+
+// Geri alınabilir bildirim: “Silindi — Geri al” (10 sn). geriAl() çağrılırsa sonuc false olur.
+let gaT = null, gaBekleyen = null;
+export function geriAlToast(msg, geriAl, bitince) {
+  if (gaBekleyen) { const b = gaBekleyen; gaBekleyen = null; b(); }   // önceki bekleyen silmeyi tamamla
+  const el = document.getElementById('toast');
+  clearTimeout(tt); clearTimeout(gaT);
+  el.innerHTML = `<span></span><button type="button" class="toast-geri">Geri al</button>`;
+  el.firstChild.textContent = msg; el.className = 'show act';
+  const bitir = () => { el.className = ''; gaBekleyen = null; bitince && bitince(); };
+  gaBekleyen = bitir;
+  el.querySelector('.toast-geri').onclick = async () => { clearTimeout(gaT); gaBekleyen = null; el.className = ''; await geriAl(); toast('Geri alındı.'); };
+  gaT = setTimeout(bitir, 10000);
+}
+// Kaydı sil, 10 sn içinde geri alınabilsin. dosyaYolu verilirse dosya süre dolunca silinir.
+export async function silGeriAl(tablo, kayit, ad, yenile, dosyaYolu) {
+  const { app } = await import('./state.js');
+  await app.db.del(tablo, kayit.id); yenile && yenile();
+  geriAlToast(`${ad} silindi.`, async () => { await app.db.save(tablo, kayit); yenile && yenile(); }, dosyaYolu ? () => app.db.removePhoto(dosyaYolu).catch(() => {}) : null);
+}

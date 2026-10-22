@@ -1,8 +1,9 @@
 // Sesle yazdırma: not alanlarındaki mikrofon düğmesi (Chrome / Android'de Google konuşma tanıma, Türkçe)
 import { toast } from './ui.js';
+import { gizliMod } from './gizli.js';
 
 const SR = () => window.SpeechRecognition || window.webkitSpeechRecognition;
-export const sesDestek = () => !!SR();
+export const sesDestek = () => !!SR() && !gizliMod();
 let aktif = null;
 
 export function sesleYaz(alan, dugme) {

@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 11)
+
+- **Gizli mod (Ayarlar → Genel → Gizlilik):** Google katmanları ve firma araması, OpenStreetMap adres bulma ve sesle yazma kapanır; kayıt ve konum dış servislere gitmez.
+- **Geri al:** Ziyaret, görev ve belge silince 10 saniye içinde “Geri al”.
+- **Dosya adı, etiket ve not:** Dosyalar'da önizlemeden yeniden adlandır, etiketle (Şartname, Teklif, Proje çizimi…), not ekle.
+- **Firma özeti:** Firma kartının üstünde açık proje ve tutarı, sipariş/kayıp, SAP sipariş, son ziyaretten bu yana gün, açık fatura, segment.
+
 ## Güncelleme notu (sürüm 10)
 
 - **Kayıp analizi (Panel):** işi alan marka, neden ve il bazında adet ve tutar; kaç kayıpta bilgi eksik olduğu görünür. “Eksikleri tamamla” ile tüm kayıp projelerde marka ve nedeni tek ekrandan doldurursun.

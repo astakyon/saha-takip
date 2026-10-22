@@ -864,3 +864,10 @@ details.fs-d > .kv-pair, details.fs-d > .btnrow { margin-bottom: 14px; }
 .rapor-kart .ledger-mini { display: flex; gap: 18px; flex-wrap: wrap; margin: 6px 0 10px; }
 .rapor-kart .ledger-mini b { display: block; font-size: 20px; }
 .rapor-kart .ledger-mini span { font-size: 12.5px; color: var(--muted); }
+#toast.act { pointer-events: auto; display: flex; gap: 14px; align-items: center; }
+.toast-geri { background: none; border: 0; color: var(--lumen, #F5B800); font: 700 14px var(--f, inherit); cursor: pointer; padding: 4px 2px; text-transform: uppercase; letter-spacing: .04em; }
+.belge-duzen { display: grid; grid-template-columns: 1fr 180px; gap: 8px; margin: 4px 0 14px; }
+.belge-duzen .full { grid-column: 1 / -1; }
+.belge-duzen input, .belge-duzen select { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+@media (max-width: 599px) { .belge-duzen { grid-template-columns: 1fr; } }
+.dh-meta .neg { color: var(--red); }

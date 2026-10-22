@@ -1,6 +1,7 @@
 // Konum algılama: il (sınır içinde mi), ilçe (en yakın merkez), belde/mahalle (çevrimiçi adres sorgusu)
 // ve sanayi bölgesi (kullanıcının çizdiği bölgeler + bilinen OSB merkezleri).
 import { S, idbGet, idbSet } from './db.js';
+import { gizliMod } from './gizli.js';
 import { IL_SINIR } from './data/iller.js';
 
 export const ILLER4 = ['Adana', 'Mersin', 'Hatay', 'Osmaniye'];
@@ -98,7 +99,7 @@ export function bolgeBul(lat, lng) {
 const revCache = new Map();
 let lastRev = 0;
 export async function adresBul(lat, lng) {
-  if (!navigator.onLine) return null;
+  if (!navigator.onLine || gizliMod()) return null;
   const key = lat.toFixed(4) + ',' + lng.toFixed(4);
   if (revCache.has(key)) return revCache.get(key);
   const wait = 1100 - (Date.now() - lastRev); if (wait > 0) await new Promise(r => setTimeout(r, wait));

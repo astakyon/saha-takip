@@ -1,7 +1,8 @@
 // Dosyalar: eklediğin her dosya ve fotoğraf tek tek — belgeler, yüklenen Excel/JSON dosyaları, proje/firma/ziyaret fotoğrafları, kartvizitler, fişler
 import { S } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, tarih, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, pickFiles, fold } from '../ui.js';
+import { esc, tarih, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, pickFiles, fold, silGeriAl } from '../ui.js';
+export const ETIKETLER = ['Şartname', 'Teklif', 'Proje çizimi', 'Sözleşme', 'Fatura', 'Katalog', 'Fotoğraf', 'Rapor', 'Diğer'];
 import { turAd, boyutYaz, belgeAc } from '../belgeler.js';
 
 const gorselMi = (yol, tur) => /^image\//.test(tur || '') || /\.(jpe?g|png|webp|gif)$/i.test(yol || '');
@@ -12,7 +13,7 @@ export function tumDosyalar() {
   const ekle = (o) => l.push({ ...o, gorsel: gorselMi(o.yol, o.tur) });
   for (const b of S.belgeler) {
     const yk = /^Yükleme/.test(b.kategori || ''), ck = /^Çıktı/.test(b.kategori || '');
-    ekle({ id: 'b:' + b.id, b, yol: b.yol, ad: b.ad, tur: b.tur, boyut: b.boyut, tarih: b.created_at, grup: yk ? 'Yüklemeler' : ck ? 'Çıktılar' : 'Belgeler', alt: yk || ck ? b.kategori.replace(/^(Yükleme|Çıktı):\s*/, '') + (b.notlar ? ' · ' + b.notlar : '') : b.notlar,
+    ekle({ id: 'b:' + b.id, b, yol: b.yol, ad: b.ad, tur: b.tur, boyut: b.boyut, tarih: b.created_at, grup: yk ? 'Yüklemeler' : ck ? 'Çıktılar' : 'Belgeler', alt: yk || ck ? b.kategori.replace(/^(Yükleme|Çıktı):\s*/, '') + (b.notlar ? ' · ' + b.notlar : '') : [(b.kategori || '').replace(/^Belge:?\s*/, ''), b.notlar].filter(Boolean).join(' · '),
       kayit: b.proje_id ? { t: 'proje', id: b.proje_id, ad: byId('projeler', b.proje_id)?.ad } : b.firma_id ? { t: 'firma', id: b.firma_id, ad: firmaAd(b.firma_id) } : null, sil: { t: 'belgeler', id: b.id } });
   }
   const foto = (t, grup, kt, adf) => { for (const r of S[t]) (r.fotolar || []).forEach((yol, i) => { if (yerel(yol)) ekle({ id: `${t}:${r.id}:${i}`, yol, ad: `${adf(r)} · fotoğraf ${i + 1}`, tarih: r.updated_at || r.created_at, grup, kayit: kt(r), cikar: { t, id: r.id, alan: 'fotolar', yol } }); }); };
@@ -65,11 +66,18 @@ async function onizle(x, yenile) {
   const kayitLink = x.kayit ? `<a class="btn sm ghost" href="#/${x.kayit.t}/${x.kayit.id}">${x.kayit.t === 'proje' ? 'Projeye' : x.kayit.t === 'firma' ? 'Firmaya' : 'Kişiye'} git: ${esc(x.kayit.ad || '')}</a>` : '';
   const p = openDrawer(`<header class="dh"><div><p class="muted">${esc(x.grup)}${x.alt ? ' · ' + esc(x.alt) : ''}</p><h2 id="drawer-title">${esc(x.ad)}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <div class="dh-actions"><button class="btn sm primary" data-ac>Aç</button><button class="btn sm" data-indir>İndir</button>${kayitLink}${x.sil || x.cikar ? '<button class="btn sm ghost danger" data-sil>Sil</button>' : ''}</div>
-    <div class="dbody">${x.b && x.grup === 'Belgeler' ? `<div class="fld bagla"><label for="dz-k">Bağlı olduğu kayıt</label><input id="dz-k" list="dz-kl" value="${esc(x.kayit ? (x.kayit.t === 'proje' ? 'Proje: ' : 'Firma: ') + (x.kayit.ad || '') : '')}" placeholder="Proje ya da firma adı yaz" autocomplete="off"><datalist id="dz-kl">${S.projeler.map(p => `<option value="Proje: ${esc(p.ad)}">`).join('')}${S.firmalar.map(f => `<option value="Firma: ${esc(f.ad)}">`).join('')}</datalist><button type="button" class="btn sm" data-bagla>Kaydet</button></div>` : ''}
+    <div class="dbody">${x.b ? `<div class="belge-duzen"><input data-bad value="${esc(x.b.ad || '')}" aria-label="Dosya adı" placeholder="Dosya adı">${x.grup === 'Belgeler' ? `<select data-bet aria-label="Etiket"><option value="">Etiket yok</option>${ETIKETLER.map(e => `<option ${(x.b.kategori || '').replace(/^Belge:?\s*/, '') === e ? 'selected' : ''}>${e}</option>`).join('')}</select>` : '<span></span>'}<input class="full" data-bnot value="${esc(x.b.notlar || '')}" placeholder="Not (örn. revizyon 2, onaylı)" aria-label="Not"><div class="full btnrow"><button type="button" class="btn sm" data-bkaydet>Adı ve etiketi kaydet</button></div></div>` : ''}${x.b && x.grup === 'Belgeler' ? `<div class="fld bagla"><label for="dz-k">Bağlı olduğu kayıt</label><input id="dz-k" list="dz-kl" value="${esc(x.kayit ? (x.kayit.t === 'proje' ? 'Proje: ' : 'Firma: ') + (x.kayit.ad || '') : '')}" placeholder="Proje ya da firma adı yaz" autocomplete="off"><datalist id="dz-kl">${S.projeler.map(p => `<option value="Proje: ${esc(p.ad)}">`).join('')}${S.firmalar.map(f => `<option value="Firma: ${esc(f.ad)}">`).join('')}</datalist><button type="button" class="btn sm" data-bagla>Kaydet</button></div>` : ''}
       ${x.gorsel ? '<img class="onizleme" alt="" data-img>' : `<p class="hint">${esc(turAd(x.tur, x.ad))}${x.boyut ? ' · ' + boyutYaz(x.boyut) : ''}${x.tarih ? ' · ' + tarih(String(x.tarih).slice(0, 10)) : ''}</p><p>Dosyayı görmek için <b>Aç</b>'a dokun.</p>`}</div>`, { wide: x.gorsel });
   const u = await app.db.url(x.yol);
   if (x.gorsel && u) p.querySelector('[data-img]').src = u;
   p.querySelector('[data-ac]').onclick = () => belgeAc({ yol: x.yol, ad: x.ad, tur: x.tur });
+  p.querySelector('[data-bkaydet]')?.addEventListener('click', async () => {
+    const ad = p.querySelector('[data-bad]').value.trim(); if (!ad) return toast('Dosya adı boş olamaz.', 'err');
+    const et = p.querySelector('[data-bet]');
+    const o = { ...x.b, ad, notlar: p.querySelector('[data-bnot]').value.trim() || null };
+    if (et) o.kategori = et.value ? 'Belge: ' + et.value : 'Belge';
+    await app.db.save('belgeler', o); toast('Kaydedildi.'); closeDrawer(); yenile();
+  });
   p.querySelector('[data-bagla]')?.addEventListener('click', async () => {
     const v = p.querySelector('#dz-k').value.trim(), m = /^(Proje|Firma):\s*(.+)$/.exec(v);
     const o = { ...x.b, proje_id: null, firma_id: null };
@@ -78,6 +86,7 @@ async function onizle(x, yenile) {
   });
   p.querySelector('[data-indir]').onclick = async () => { const v = await app.db.url(x.yol); if (!v) return toast('Dosya alınamadı.', 'err'); const a = document.createElement('a'); a.href = v; a.download = x.ad; a.target = '_blank'; a.click(); };
   p.querySelector('[data-sil]')?.addEventListener('click', async () => {
+    if (x.sil) { const r = byId(x.sil.t, x.sil.id); closeDrawer(); if (r) return silGeriAl(x.sil.t, r, `“${x.ad}”`, yenile, x.yol); return; }
     if (!confirmBox(`“${x.ad}” silinsin mi?`)) return;
     if (x.sil) await app.db.del(x.sil.t, x.sil.id);
     else { const r = byId(x.cikar.t, x.cikar.id); if (r) { const o = { ...r }; if (Array.isArray(o[x.cikar.alan])) o[x.cikar.alan] = o[x.cikar.alan].filter(y => y !== x.cikar.yol); else o[x.cikar.alan] = null; await app.db.save(x.cikar.t, o); } }
