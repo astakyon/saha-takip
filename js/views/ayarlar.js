@@ -92,6 +92,7 @@ export async function ayarlarView(el) {
     <section class="card" data-tab="genel"><h2>Gizlilik</h2>
       <label class="chk"><input type="checkbox" data-gizli ${ayar('gizli_mod', false) === true ? 'checked' : ''}> <span><b>Gizli mod</b>: kayıtlarımı ve konumumu dış servislere gönderme</span></label>
       <p class="hint">Açıkken kapananlar: Google uydu/harita katmanı ve Google'da firma arama, OpenStreetMap ile adres ve il/ilçe bulma, sesle yazma (Google konuşma tanıma). Konum yine telefonda alınır, il ve sanayi bölgesi cihazda hesaplanır. Açık kalanlar: kendi Supabase veritabanın, harita görüntüsü (Esri ya da OpenStreetMap; yalnızca baktığın bölgenin görüntüsü istenir), döviz kuru.</p></section>
+    <section class="card" data-tab="genel"><h2>Uygulama sürümü</h2><p>Bu cihazda açık sürüm: <b data-surum></b></p><p class="hint">Yeni bir özellik görünmüyorsa “Şimdi güncelle”ye dokun; uygulama en son sürümü indirip yeniden açılır. Verilerin silinmez.</p><div class="btnrow"><button type="button" class="btn" data-guncelle>Şimdi güncelle</button></div></section>
     <section class="card" data-tab="genel"><h2>Telefona yükle</h2>
       ${INST.standalone ? '<p><b>Uygulama yüklü.</b> Simgeye uzun basınca Ziyaret kaydet, Harita, Takvim ve Projeler kısayolları çıkar.</p>' : `<p>Ana ekrana Saha Takip simgesi eklenir, tam ekran açılır ve internet yokken de çalışır.</p><div class="btnrow"><button class="btn primary" data-install>Uygulamayı yükle</button></div>
       <p class="hint">${INST.evt ? 'Düğmeye basınca telefon onay ister.' : isIOS ? 'iPhone: Safari Paylaş düğmesi → “Ana Ekrana Ekle”.' : 'Düğme çalışmazsa Chrome menüsü (⋮) → “Uygulamayı yükle”.'}</p>`}
@@ -170,6 +171,13 @@ export async function ayarlarView(el) {
       'Tahsilat': S.tahsilatlar.map(t => ({ Cari: firmaAd(t.firma_id) || t.cari, 'Fatura no': t.belge_no, Tarih: t.tarih, Vade: t.vade, Tutar: t.tutar, Ödenen: t.odenen, 'Para birimi': t.para_birimi })),
       'Masraflar': S.masraflar.map(m => ({ Tarih: m.tarih, Tür: m.tip, Tutar: m.tutar, Km: m.km, Açıklama: m.aciklama })),
     });
+  };
+  import('../state.js').then(m => { const b = el.querySelector('[data-surum]'); if (b) b.textContent = m.SURUM; });
+  el.querySelector('[data-guncelle]').onclick = async () => {
+    toast('Güncelleniyor…');
+    try { const rs = await navigator.serviceWorker?.getRegistrations?.() || []; await Promise.all(rs.map(r => r.update().catch(() => {}))); } catch {}
+    try { const ks = await caches.keys(); await Promise.all(ks.filter(k => k !== 'tiles').map(k => caches.delete(k))); } catch {}
+    location.reload();
   };
   el.querySelector('[data-cikti]').onchange = e => ayarYaz('cikti_sakla', e.target.checked);
   el.querySelector('[data-eslesifirla]')?.addEventListener('click', async () => { await ayarYaz('excel_esle', null); toast('Excel sütun eşleştirmeleri sıfırlandı; bir sonraki yüklemede yeniden sorulur.'); });

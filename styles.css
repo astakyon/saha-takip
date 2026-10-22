@@ -909,3 +909,4 @@ section.card:empty { display: none; }
 .p-sekme button.on { color: var(--ink); border-bottom-color: var(--lumen, #F5B800); }
 .p-sekme i { font-style: normal; font-size: 12px; background: var(--line); border-radius: 999px; padding: 0 6px; margin-left: 4px; color: var(--ink); }
 .rol-r { font: 600 11.5px var(--f); font-style: normal; background: var(--lumen-soft, #FFF4D1); color: var(--ink); border-radius: 4px; padding: 1px 7px; }
+.rol-sec { display: flex; gap: 6px; flex-wrap: wrap; } .rol-sec select, .rol-sec input { flex: 1; min-width: 140px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: var(--card, #fff); }
