@@ -103,9 +103,14 @@ async function stokYukle() {
     const hi = rows.findIndex(r => r.some(c => /kod/i.test(String(c || ''))));
     const h = (rows[hi] || []).map(c => fold(c || ''));
     const col = (...re) => h.findIndex(x => re.some(r => r.test(x)));
-    const cKod = Math.max(0, col(/uretici kod/, /^kod/, /malzeme/)), cAc = Math.max(1, col(/aciklama/)), cBir = col(/birim/), cStok = col(/fiili stok/, /^stok/, /miktar/);
-    let cFiyat = col(/fiyat/);
-    if (cFiyat < 0 && rows.slice(hi + 1).some(r => typeof r[9] === 'number')) cFiyat = 9; // depo formatı: sağdaki blokta birim fiyat
+    let cFiyat0 = col(/fiyat/);
+    if (cFiyat0 < 0 && rows.slice(hi + 1).some(r => typeof r[9] === 'number')) cFiyat0 = 9; // depo formatı: sağdaki blokta birim fiyat
+    const { sutunlariEsle } = await import('../esle.js');
+    const M = await sutunlariEsle('stok', 'Bayi stok listesi', (rows[hi] || []).map(x => String(x ?? '')), rows.slice(hi + 1, hi + 4), [
+      { k: 'kod', l: 'Ürün kodu', zorunlu: true }, { k: 'ac', l: 'Açıklama', zorunlu: true }, { k: 'bir', l: 'Birim' }, { k: 'stok', l: 'Stok miktarı', zorunlu: true }, { k: 'fiyat', l: 'Birim fiyat (USD)' }],
+      { kod: Math.max(0, col(/uretici kod/, /^kod/, /malzeme/)), ac: Math.max(1, col(/aciklama/)), bir: col(/birim/), stok: col(/fiili stok/, /^stok/, /miktar/), fiyat: cFiyat0 });
+    if (!M) return toast('Yükleme iptal edildi.');
+    const cKod = M.kod, cAc = M.ac, cBir = M.bir, cStok = M.stok, cFiyat = M.fiyat;
     const gelen = new Map();
     for (const r of rows.slice(hi + 1)) {
       const kod = r[cKod] != null ? String(r[cKod]).trim() : ''; if (!kod || !r[cAc]) continue;

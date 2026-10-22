@@ -128,8 +128,12 @@ async function tahsilatYukle() {
     if (hi < 0) return toast('Başlık satırı bulunamadı: “Cari” ve “Tutar” sütunları olmalı.', 'err');
     const h = rows[hi].map(c => fold(c || ''));
     const col = (...re) => h.findIndex(x => re.some(r => r.test(x)));
-    const C = { cari: col(/cari ad|musteri ad|unvan/, /^cari$/, /cari|musteri|firma/), no: col(/fatura no|belge no|evrak no/, /fatura|belge|evrak/), tarih: col(/fatura tarihi|belge tarihi/, /^tarih/), vade: col(/vade/),
+    const C0 = { cari: col(/cari ad|musteri ad|unvan/, /^cari$/, /cari|musteri|firma/), no: col(/fatura no|belge no|evrak no/, /fatura|belge|evrak/), tarih: col(/fatura tarihi|belge tarihi/, /^tarih/), vade: col(/vade/),
       tutar: col(/^tutar/, /fatura tutari|borc|tutar/), pb: col(/para birimi|doviz|pb$|cinsi/), odenen: col(/odenen|tahsil edilen|alacak/) };
+    const { sutunlariEsle } = await import('../esle.js');
+    const C = await sutunlariEsle('tahsilat', 'Cari ekstresi', rows[hi].map(x => String(x ?? '')), rows.slice(hi + 1, hi + 4), [
+      { k: 'cari', l: 'Cari / müşteri adı', zorunlu: true }, { k: 'no', l: 'Fatura no' }, { k: 'tarih', l: 'Fatura tarihi' }, { k: 'vade', l: 'Vade tarihi' }, { k: 'tutar', l: 'Tutar', zorunlu: true }, { k: 'pb', l: 'Para birimi' }, { k: 'odenen', l: 'Ödenen' }], C0);
+    if (!C) return toast('Yükleme iptal edildi.');
     const dt = v => v instanceof Date ? new Date(v.getTime() - v.getTimezoneOffset() * 6e4).toISOString().slice(0, 10) : typeof v === 'string' && /\d{1,2}[./]\d{1,2}[./]\d{4}/.test(v) ? v.split(/[./]/).reverse().map(x => x.padStart(2, '0')).join('-') : typeof v === 'number' && v > 30000 ? new Date(Date.UTC(1899, 11, 30) + v * 864e5).toISOString().slice(0, 10) : null;
     const sayi = v => typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/\./g, '').replace(',', '.')) || 0;
     const mevcut = new Map(S.tahsilatlar.map(t => [nn(cariAd(t)) + '|' + nn(t.belge_no), t]));

@@ -32,6 +32,10 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 12)
+
+- **Excel sütun eşleştirmesi hatırlanır:** Sipariş, cari ekstresi ve stok Excel'i ilk yüklendiğinde algılanan sütunlar gösterilir; düzeltip kaydedersin. Sonraki yüklemelerde başlıklar aynıysa soru sorulmaz. Başlıklar değişirse ekran yeniden açılır. Sıfırlamak için Ayarlar → Veri ve yedek.
+
 ## Güncelleme notu (sürüm 11)
 
 - **Gizli mod (Ayarlar → Genel → Gizlilik):** Google katmanları ve firma araması, OpenStreetMap adres bulma ve sesle yazma kapanır; kayıt ve konum dış servislere gitmez.

@@ -306,8 +306,13 @@ async function siparisYukle() {
     if (hi < 0) return toast('“Müşteri Sipariş No” başlığı bulunamadı. SAP sipariş listesini seç.', 'err');
     const h = rows[hi].map(c => String(c || '').trim());
     const c = n => h.findIndex(x => x.toLocaleLowerCase('tr').startsWith(n));
-    const C = { no: c('müşteri sipariş'), belge: c('satış belgesi'), tur: c('belge türü'), mno: c('müşteri'), mad: c('müşteri adı'), tar: c('yaratma'), tes: c('teslimat'), ref: c('müşteri referans'), net: c('net değer'), pb: c('belge para'), pt: c('proje tanım') };
-    C.mno = h.findIndex(x => x === 'Müşteri');
+    const C0 = { no: c('müşteri sipariş'), belge: c('satış belgesi'), tur: c('belge türü'), mno: c('müşteri'), mad: c('müşteri adı'), tar: c('yaratma'), tes: c('teslimat'), ref: c('müşteri referans'), net: c('net değer'), pb: c('belge para'), pt: c('proje tanım') };
+    C0.mno = h.findIndex(x => x === 'Müşteri');
+    const { sutunlariEsle } = await import('../esle.js');
+    const C = await sutunlariEsle('siparis', 'SAP sipariş listesi', h, rows.slice(hi + 1, hi + 4), [
+      { k: 'no', l: 'Sipariş no (2000…)', zorunlu: true }, { k: 'belge', l: 'Satış belgesi' }, { k: 'tur', l: 'Belge türü' }, { k: 'mno', l: 'Müşteri no' }, { k: 'mad', l: 'Müşteri adı', zorunlu: true },
+      { k: 'tar', l: 'Sipariş tarihi (yaratma)', zorunlu: true }, { k: 'tes', l: 'Teslim tarihi' }, { k: 'ref', l: 'SAS notu (müşteri referansı)' }, { k: 'net', l: 'Net değer', zorunlu: true }, { k: 'pb', l: 'Para birimi' }, { k: 'pt', l: 'Proje tanımı' }], C0);
+    if (!C) return toast('Yükleme iptal edildi.');
     const dt = v => v instanceof Date ? new Date(v.getTime() - v.getTimezoneOffset() * 6e4).toISOString().slice(0, 10) : (typeof v === 'string' && /\d{2}\.\d{2}\.\d{4}/.test(v) ? v.split('.').reverse().join('-') : null);
     const byBelge = new Map(S.siparisler.map(s => [s.belge_no + '|' + s.siparis_no, s]));
     const drv = S.firmalar.find(x => /^drv/i.test(x.ad));

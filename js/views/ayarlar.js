@@ -106,6 +106,7 @@ export async function ayarlarView(el) {
       <p><b>Tam yedek (ZIP):</b> bütün kayıtlar (JSON ve her tablo ayrı CSV), bütün fotoğraf ve belgeler, veritabanı şeması ve taşıma talimatı tek dosyada. Başka bir Supabase hesabına ya da başka bir sunucuya taşımak için bunu kullan.</p>
       <div class="btnrow"><button class="btn primary" data-zip>Tam yedek indir (ZIP)</button><button class="btn ghost" data-zipyukle>Tam yedekten geri yükle</button></div><div class="progress" data-zprog hidden></div>
       <hr><div class="btnrow"><button class="btn" data-xlsx>Tümünü Excel'e aktar</button><button class="btn ghost" data-json>Kayıt yedeği (JSON)</button><button class="btn ghost" data-restore>JSON yedekten geri yükle</button></div>
+      <p class="hint">Sipariş, cari ekstresi ve stok Excel'lerinde sütun eşleştirmesi ilk yüklemede sorulur ve hatırlanır. ${Object.keys(ayar('excel_esle', {}) || {}).length ? `Kayıtlı: ${Object.keys(ayar('excel_esle', {})).map(k => ({ siparis: 'sipariş', tahsilat: 'cari ekstresi', stok: 'stok' })[k] || k).join(', ')}. <button type="button" class="linkbtn" data-eslesifirla>Sıfırla</button>` : ''}</p>
       <label class="chk"><input type="checkbox" data-cikti ${ayar('cikti_sakla', true) !== false ? 'checked' : ''}> <span>Aldığım Excel ve PowerPoint çıktılarının bir kopyasını Dosyalar'da sakla</span></label>
     </section>
     <section class="card" data-tab="veri"><h2>Başlangıç verisi</h2>
@@ -170,6 +171,7 @@ export async function ayarlarView(el) {
     });
   };
   el.querySelector('[data-cikti]').onchange = e => ayarYaz('cikti_sakla', e.target.checked);
+  el.querySelector('[data-eslesifirla]')?.addEventListener('click', async () => { await ayarYaz('excel_esle', null); toast('Excel sütun eşleştirmeleri sıfırlandı; bir sonraki yüklemede yeniden sorulur.'); });
   el.querySelector('[data-gizli]').onchange = async e => { await ayarYaz('gizli_mod', e.target.checked); toast(e.target.checked ? 'Gizli mod açık: Google ve adres servisleri kapatıldı.' : 'Gizli mod kapalı.'); };
   const zprog = el.querySelector('[data-zprog]'), zil = (t, o) => { zprog.hidden = false; zprog.innerHTML = `<span style="width:${Math.round((o || 0) * 100)}%"></span><b>${t}</b>`; };
   el.querySelector('[data-zip]').onclick = async e => {
