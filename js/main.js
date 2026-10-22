@@ -190,6 +190,18 @@ async function boot() {
 window.addEventListener('schema-old', () => toast('Veritabanı güncel değil: Supabase SQL Editor\'de supabase/schema.sql dosyasını yeniden çalıştır. Yeni alanlar (Google bilgileri) o zamana kadar kaydedilmez.', 'err'));
 window.addEventListener('outbox', e => { if (e.detail) toast('Bağlantı yok: değişiklik kaydedildi, internet gelince gönderilecek.'); });
 window.__reboot = boot;
+// Ekipten gelen değişiklikler: uygulamaya geri dönüldüğünde (2 dk'dan fazla geçtiyse) ve açıkken 5 dk'da bir verileri sessizce tazele
+let sonTazele = Date.now(), tazeleniyor = false;
+async function tazele(zorla) {
+  if (tazeleniyor || !app.db || app.db.mode !== 'supabase' || !navigator.onLine || document.hidden) return;
+  if (!zorla && Date.now() - sonTazele < 120000) return;
+  tazeleniyor = true;
+  try { await app.db.loadAll(); sonTazele = Date.now(); if (!document.querySelector('.drawer.open') && !document.activeElement?.matches?.('input, textarea, select')) { const y = window.scrollY; app.refresh(); window.scrollTo(0, y); } }
+  catch {} finally { tazeleniyor = false; }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) tazele(); });
+window.addEventListener('focus', () => tazele());
+setInterval(() => { if (Date.now() - sonTazele > 300000) tazele(true); }, 60000);
 onInstallChange(() => { const b = document.querySelector('[data-inst]'); if (b) b.hidden = !canInstall(); });
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});

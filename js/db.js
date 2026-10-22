@@ -189,7 +189,9 @@ class SupaAdapter {
     const rest = [];
     for (const op of q) {
       try {
-        if (op.op === 'del') { const r = await this.c.from(op.t).delete().eq('id', op.id); if (r.error) throw r.error; } else await upsertSafe(this.c, op.t, op.row);
+        if (op.op === 'del') { const r = await this.c.from(op.t).delete().eq('id', op.id); if (r.error) throw r.error; }
+        else if (op.op === 'upd') { const r = await this.c.from(op.t).update(strip(op.t, op.row)).eq('id', op.row.id); if (r.error) throw r.error; }
+        else await upsertSafe(this.c, op.t, op.row);
       } catch (e) { rest.push(op); }
     }
     await idbSet('outbox', rest);
@@ -199,16 +201,25 @@ class SupaAdapter {
   async save(t, obj) {
     if (this.yazamaz(t, obj)) throw new Error('Bu bölümde düzenleme yetkin yok. Veri sahibinden yetki iste.');
     const row = pick(t, obj); if (!row.id) row.id = uuid();
-    const i = S[t].findIndex(x => x.id === row.id);
+    const i = S[t].findIndex(x => x.id === row.id), onceki = i >= 0 ? S[t][i] : null;
+    // Ekleme yetkisi olmayan ekip üyesi (ör. kendisine atanan görev) yalnızca var olan kaydı günceller; upsert ekleme izni de ister
+    const sadeceGuncelle = this.yetki?.ben_sahip === false && this.yetki.yetkiler?.[t] !== 'yaz' && i >= 0;
     const full = { ...(i >= 0 ? S[t][i] : {}), ...row, updated_at: new Date().toISOString() };
     if (i >= 0) S[t][i] = full; else S[t].push(full);
     this.cache();
     try {
       if (this.schemaOld && t === 'bolgeler') throw new Error('Bölgeleri kaydetmek için Supabase SQL Editor\'de supabase/schema.sql dosyasını yeniden çalıştır.');
-      await upsertSafe(this.c, t, row);
+      if (sadeceGuncelle) { const r = await this.c.from(t).update(strip(t, row)).eq('id', row.id).select('id'); if (r.error) throw r.error; if (!r.data?.length) throw new Error('row-level security: güncelleme yetkisi yok'); }
+      else await upsertSafe(this.c, t, row);
     } catch (e) {
-      if (e && e.message && /fetch|network|Failed/i.test(e.message)) { await this.queue({ op: 'up', t, row }); window.dispatchEvent(new CustomEvent('outbox', { detail: 1 })); }
-      else throw schemaErr(e);
+      if (e && e.message && /fetch|network|Failed/i.test(e.message)) { await this.queue({ op: sadeceGuncelle ? 'upd' : 'up', t, row }); window.dispatchEvent(new CustomEvent('outbox', { detail: 1 })); }
+      else {
+        // Kaydedilemeyen değişikliği ekrandan geri al
+        const j = S[t].findIndex(x => x.id === row.id);
+        if (onceki) S[t][j] = onceki; else if (j >= 0) S[t].splice(j, 1);
+        this.cache();
+        throw schemaErr(e);
+      }
     }
     return full;
   }
