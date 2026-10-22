@@ -8,6 +8,14 @@ import { waGonder } from '../sablon.js';
 import { stokUyarilari } from './urunler.js';
 import { kurYazi } from '../kur.js';
 import { gecikenler, kalan as tKalan, para as tPara } from './tahsilat.js';
+import { ayar } from '../ayar.js';
+import { sahipMi } from '../yetki.js';
+
+// Segmente göre ziyaret sıklığı: A 30, B 60, C 90 gün; segmentsiz firmalarda 45 gün
+export const SIKLIK = { A: 30, B: 60, C: 90 };
+export const siklik = f => SIKLIK[f.segment] || ayar('ziyaret_siklik', 45);
+// Tam yedek hatırlatması: 7 günden eski ya da hiç alınmamışsa
+export function yedekGunu() { const s = ayar('son_tam_yedek'); return s ? gunFarki(s.slice(0, 10), today()) : null; }
 
 // Ziyaretin konumu: kendi konumu, yoksa firmanın ya da projenin kesin konumu
 export function ziyaretYeri(z) {
@@ -56,13 +64,13 @@ export function zamaniGelenler() {
     return { p, neden, sz, oncelik: (p.alim_tarihi || p.beklenen_tarih || '9') };
   }).filter(Boolean).filter(x => !x.sz || gunFarki(x.sz, t) > 14).sort((a, b) => a.oncelik.localeCompare(b.oncelik));
 }
-export function gidilmeyenler(gun = 30) {
+export function gidilmeyenler(gun = null) {
   const t = today(), son = sonZiyaret();
   const aktif = new Set();
   for (const p of S.projeler) if (ACIK.includes(p.durum) || p.durum === 'Sipariş') for (const k of ['emut_id', 'gemut_id', 'alici_id', 'bayi_id', 'projeci_id', 'danisman_id']) if (p[k]) aktif.add(p[k]);
   return S.firmalar.filter(f => aktif.has(f.id) || (f.tipler || []).some(x => ['Bayi', 'Emüt', 'Malzeme Alıcısı'].includes(x)))
     .map(f => ({ f, son: son.get(f.id) || null, gun: son.get(f.id) ? gunFarki(son.get(f.id), t) : null, proje: S.projeler.filter(p => ACIK.includes(p.durum) && [p.emut_id, p.gemut_id, p.alici_id, p.bayi_id].includes(f.id)).length }))
-    .filter(x => x.gun === null || x.gun > gun).sort((a, b) => (b.proje - a.proje) || ((b.gun ?? 9999) - (a.gun ?? 9999)));
+    .filter(x => x.gun === null || x.gun > (gun ?? siklik(x.f))).sort((a, b) => (b.proje - a.proje) || ((b.gun ?? 9999) - (a.gun ?? 9999)));
 }
 export function dogumGunleri(gun = 7) {
   const t = new Date(today() + 'T00:00');
@@ -85,6 +93,7 @@ export function bugunView(el) {
   const servis = S.servis_kayitlari.filter(s => s.durum !== 'Çözüldü');
   const teklif = S.teklifler.filter(x => x.durum === 'Gönderildi' && x.gecerlilik && x.gecerlilik <= gunEkle(t, 7));
   const gecT = gecikenler();
+  const yg = yedekGunu(), yedek = sahipMi() && S.projeler.length > 0 && (yg === null || yg >= 7);
   const kmBugun = gunKm(t);
   const sirali = rotaSirala(planli);
   const rota = rotaUrl(sirali.map(x => x.p));
@@ -108,10 +117,11 @@ export function bugunView(el) {
         ${zg.length ? `<ul class="list">${zg.slice(0, 8).map(x => `<li><a href="#/proje/${x.p.id}"><b>${esc(x.p.ad)}</b><span class="muted">${esc(x.neden.join(', '))}${x.sz ? ` · son ziyaret ${tarih(x.sz)}` : ' · hiç ziyaret yok'}</span></a>${pill(x.p.durum)}</li>`).join('')}</ul>`
         : '<p class="hint">Aydınlatma alım tarihi ya da şantiye aşaması yaklaşan proje yok. Projelere “Şantiye aşaması” ve “Tahmini aydınlatma alımı” girdikçe burada uyarı alırsın.</p>'}</section>
       <section class="card"><h2>Uzun süredir gidilmeyenler <span class="muted">${gid.length}</span></h2>
-        ${gid.length ? `<ul class="list">${gid.slice(0, 8).map(x => `<li><a href="#/firma/${x.f.id}"><b>${esc(x.f.ad)}</b><span class="muted">${x.son ? `${x.gun} gündür gidilmedi` : 'hiç ziyaret kaydı yok'}${x.proje ? ` · ${x.proje} açık proje` : ''}</span></a><button type="button" class="btn sm ghost" data-planla="${x.f.id}">Planla</button></li>`).join('')}</ul>` : '<p class="hint">30 günden uzun süredir gidilmeyen aktif firma yok.</p>'}</section>
+        ${gid.length ? `<ul class="list">${gid.slice(0, 8).map(x => `<li><a href="#/firma/${x.f.id}"><b>${esc(x.f.ad)}</b><span class="muted">${x.f.segment ? `<em class="seg-r">${esc(x.f.segment)}</em> ` : ''}${x.son ? `${x.gun} gündür gidilmedi` : 'hiç ziyaret kaydı yok'}${x.proje ? ` · ${x.proje} açık proje` : ''}</span></a><button type="button" class="btn sm ghost" data-planla="${x.f.id}">Planla</button></li>`).join('')}</ul>` : '<p class="hint">Ziyaret aralığı geçen aktif firma yok. Aralık firma segmentine göre: A 30, B 60, C 90 gün, segmentsiz 45 gün.</p>'}</section>
       <section class="card"><h2>Yarın</h2>${yarinZ.length || yarinG.length ? `<ul class="list">${yarinZ.map(z1).join('')}${yarinG.map(g => `<li><button type="button" class="linkbtn" data-gid="${g.id}">○ ${esc(g.baslik)}</button></li>`).join('')}</ul>` : '<p class="hint">Yarın için plan yok.</p>'}</section>
       ${dg.length ? `<section class="card"><h2>Doğum günleri</h2><ul class="list">${dg.map(x => `<li><span><b>${esc(x.k.ad_soyad)}</b><span class="muted"> · ${firmaAd(x.k.firma_id) ? esc(firmaAd(x.k.firma_id)) + ' · ' : ''}${x.kalan === 0 ? 'bugün' : x.kalan === 1 ? 'yarın' : x.gun.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}</span></span><button type="button" class="btn sm ghost" data-dg="${x.k.id}">Tebrik et</button></li>`).join('')}</ul></section>` : ''}
-      ${stok.yetersiz.length || stok.hareketsiz.length || numune.length || servis.length || teklif.length || gecT.length ? `<section class="card"><h2>Uyarılar</h2><ul class="list">
+      ${yedek || stok.yetersiz.length || stok.hareketsiz.length || numune.length || servis.length || teklif.length || gecT.length ? `<section class="card"><h2>Uyarılar</h2><ul class="list">
+        ${yedek ? `<li><a href="#/ayarlar" data-yedekgit><b>${yg === null ? 'Henüz tam yedek almadın' : `Son tam yedek ${yg} gün önce`}</b><span class="muted">Ayarlar → Veri ve yedek → Tam yedek (ZIP); dosyayı bilgisayarında sakla</span></a></li>` : ''}
         ${gecT.length ? `<li><a href="#/tahsilat"><b class="neg">${gecT.length} faturanın vadesi geçti</b><span class="muted">${esc(gecT.slice(0, 3).map(x => (firmaAd(x.firma_id) || x.cari) + ' ' + tPara(tKalan(x), x.para_birimi)).join(', '))}</span></a></li>` : ''}
         ${stok.yetersiz.length ? `<li><a href="#/urunler"><b>${stok.yetersiz.length} üründe stok yetersiz</b><span class="muted">yaklaşan tekliflerin ihtiyacı depodaki stoktan fazla</span></a></li>` : ''}
         ${stok.hareketsiz.length ? `<li><a href="#/urunler"><b>${stok.hareketsiz.length} ürün 60 günü aşkın süredir hareketsiz</b><span class="muted">kampanyaya uygun stok</span></a></li>` : ''}
@@ -121,6 +131,7 @@ export function bugunView(el) {
       </ul></section>` : ''}
     </div>`;
   el.querySelector('[data-yeni]').onclick = () => ziyaretForm({});
+  el.querySelector('[data-yedekgit]')?.addEventListener('click', () => { try { sessionStorage.setItem('ayar-sekme', 'veri'); } catch {} });
   el.querySelector('[data-yakin]').onclick = () => yakinimdakiler();
   el.querySelectorAll('[data-zid]').forEach(b => b.onclick = () => ziyaretForm({ id: b.dataset.zid }));
   el.querySelectorAll('[data-yapildi]').forEach(b => b.onclick = () => { ziyaretForm({ id: b.dataset.yapildi }); setTimeout(() => document.querySelector('[data-done]')?.click(), 200); });

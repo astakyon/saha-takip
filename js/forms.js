@@ -1,6 +1,13 @@
 // Genel form oluşturucu: alan tanımlarından form üretir, değerleri okur.
 import { S } from './db.js';
-import { esc, byId, fold, pickFiles, myLocation, toast, IL_MERKEZ } from './ui.js';
+import { esc, byId, fold, pickFiles, myLocation, toast, IL_MERKEZ, today, gunEkle } from './ui.js';
+
+// İleri tarihli alanlarda hızlı seçim düğmeleri
+const ILERI = new Set(['sonraki_tarih', 'sonraki_ziyaret', 'son_tarih', 'gecerlilik', 'beklenen_tarih', 'alim_tarihi', 'iade_tarihi', 'vade']);
+const DK = [[0, 'Bugün'], [1, 'Yarın'], [3, '3 gün'], [7, '1 hafta'], [14, '2 hafta'], [30, '1 ay']];
+// Yeni kayıtta son seçilen değer hazır gelsin
+const HATIRLA = new Set(['il', 'bayi_id', 'kanal']);
+const sonDeger = k => { try { return JSON.parse(localStorage.getItem('saha-son:' + k) || 'null'); } catch { return null; } };
 import { app } from './state.js';
 import { konumAlgila, konumMetni } from './geo.js';
 import { mikDugme, mikBagla } from './ses.js';
@@ -23,7 +30,7 @@ function control(f, v, obj) {
   switch (f.t) {
     case 'area': return [id, `<div class="area-wrap"><textarea ${name} rows="${f.rows || 3}" ${ph}>${esc(v)}</textarea>${mikDugme()}</div>`];
     case 'num': return [id, `<input ${name} type="number" inputmode="decimal" step="any" value="${v ?? ''}" ${ph}>`];
-    case 'date': return [id, `<input ${name} type="date" value="${v ? String(v).slice(0, 10) : ''}">`];
+    case 'date': return [id, `<input ${name} type="date" value="${v ? String(v).slice(0, 10) : ''}">${ILERI.has(f.k) || f.ileri ? `<div class="dk" role="group" aria-label="Hızlı tarih">${DK.map(([n, t]) => `<button type="button" data-dk="${n}">${t}</button>`).join('')}</div>` : ''}`];
     case 'time': return [id, `<input ${name} type="time" value="${esc(v || '')}">`];
     case 'chk': return [id, `<label class="chk"><input ${name} type="checkbox" ${v ? 'checked' : ''}> <span>${esc(f.cl || f.l)}</span></label>`];
     case 'sel': {
@@ -80,7 +87,8 @@ function renderFields(sec, obj) {
       ${sec.note ? `<p class="hint">${esc(sec.note)}</p>` : ''}
       <div class="grid">
       ${sec.fields.map(f => {
-        const [id, html] = control(f, obj[f.k], obj);
+        const v0 = obj[f.k] ?? (obj._new && HATIRLA.has(f.k) ? sonDeger(f.k) : undefined);
+        const [id, html] = control(f, v0, obj);
         return `<div class="fld ${f.full || ['area', 'photos', 'loc', 'tags'].includes(f.t) ? 'full' : ''} ${f.t === 'chk' ? 'is-chk' : ''}" ${f.show ? `data-showf="${f.k}"` : ''} ${f.show && !f.show(obj) ? 'hidden' : ''}>
           ${f.t === 'chk' ? '' : `<label for="${id}">${esc(f.l)}${f.req ? ' <span class="req" aria-hidden="true">*</span>' : ''}</label>`}${html}${f.help ? `<small>${esc(f.help)}</small>` : ''}</div>`;
       }).join('')}
@@ -90,6 +98,7 @@ function renderFields(sec, obj) {
 // Form alanlarını bağlar (fotoğraf, konum, koşullu gösterim, hesaplama)
 export function bindForm(root, sections, obj, { onChange } = {}) {
   mikBagla(root);
+  root.querySelectorAll('[data-dk]').forEach(b => b.onclick = () => { const i = b.closest('.fld').querySelector('input[type=date]'); i.value = gunEkle(today(), +b.dataset.dk); i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
   root.querySelectorAll('details.fs-d').forEach(d => d.addEventListener('toggle', () => { if (d.open) d.querySelectorAll('[data-loc]').forEach(b => setTimeout(() => b._map?.invalidateSize(), 50)); }));
   // fotoğraflar
   root.querySelectorAll('[data-photos]').forEach(box => {
@@ -217,6 +226,7 @@ export async function readForm(root, sections, obj) {
       }
     }
     out[f.k] = v;
+    if (HATIRLA.has(f.k) && v) try { localStorage.setItem('saha-son:' + f.k, JSON.stringify(v)); } catch {}
     if (f.k === 'firma_id') raw.firma_id_resolved = v;
   }
   const lb = root.querySelector('[data-loc]');

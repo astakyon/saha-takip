@@ -75,6 +75,7 @@ export async function ayarlarView(el) {
   const SEKME = sahipMi() ? [['genel', 'Genel'], ['kullanici', 'Kullanıcılar'], ['veri', 'Veri ve yedek'], ['google', 'Google ve harita'], ['mesaj', 'Mesaj ve teklif']] : [['genel', 'Genel']];
   let menuAc = false; try { menuAc = !!sessionStorage.getItem('menu-ac'); sessionStorage.removeItem('menu-ac'); } catch {}
   if (menuAc) f.sekme = 'genel';
+  try { const s = sessionStorage.getItem('ayar-sekme'); if (s) { f.sekme = s; sessionStorage.removeItem('ayar-sekme'); } } catch {}
   if (!SEKME.some(([k]) => k === f.sekme)) f.sekme = 'genel';
   const toplam = counts.reduce((a, [, n]) => a + n, 0);
   el.innerHTML = `<header class="vh"><div><h1>Ayarlar</h1><p class="sum">${sup ? `Hesap: ${esc(app.db.user()?.email || '')}` : 'Deneme modu: veriler yalnızca bu cihazda'}${pend ? ` · <b>${pend} değişiklik internet bekliyor</b>` : ''}</p></div></header>
@@ -169,7 +170,7 @@ export async function ayarlarView(el) {
   const zprog = el.querySelector('[data-zprog]'), zil = (t, o) => { zprog.hidden = false; zprog.innerHTML = `<span style="width:${Math.round((o || 0) * 100)}%"></span><b>${t}</b>`; };
   el.querySelector('[data-zip]').onclick = async e => {
     e.target.disabled = true; zil('Hazırlanıyor…', 0.02);
-    try { const { tamYedekIndir } = await import('../tasima.js'); const r = await tamYedekIndir(zil); zprog.hidden = true; toast(`Tam yedek indirildi: ${r.kayit} kayıt, ${r.dosya} dosya, ${(r.boyut / 1048576).toFixed(1).replace('.', ',')} MB${r.eksik ? ` (${r.eksik} dosya alınamadı)` : ''}.`); }
+    try { const { tamYedekIndir } = await import('../tasima.js'); const r = await tamYedekIndir(zil); zprog.hidden = true; ayarYaz('son_tam_yedek', new Date().toISOString()); toast(`Tam yedek indirildi: ${r.kayit} kayıt, ${r.dosya} dosya, ${(r.boyut / 1048576).toFixed(1).replace('.', ',')} MB${r.eksik ? ` (${r.eksik} dosya alınamadı)` : ''}.`); }
     catch (err) { zprog.hidden = true; toast('Yedek alınamadı: ' + err.message, 'err'); }
     e.target.disabled = false;
   };

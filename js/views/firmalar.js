@@ -193,7 +193,7 @@ async function kartvizitPaneli(panel, form, yol, hazir) {
   });
 }
 // Kişiler ekranından: kartvizit fotoğrafı çek → oku → yeni kişi formu
-async function kartvizittenKisi() {
+export async function kartvizittenKisi() {
   const { pickFiles } = await import('../ui.js');
   const [file] = await pickFiles({ capture: true, multiple: false }); if (!file) return;
   try {

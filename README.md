@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 9)
+
+- **Hızlı ekle (+):** Her ekranda sağ altta; ziyaret, plan, görev, kartvizit, kişi, proje, firma, teklif, masraf.
+- **Genel arama:** Bilgisayarda sol menüdeki “Ara” ya da klavyede `/` (Ctrl+K); telefonda + düğmesinin üstündeki büyüteç. Proje, firma, kişi, telefon, sipariş no, SAS notu, teklif, ziyaret notu, görev, ürün kodu ve dosya adında arar.
+- **Menü düzeni:** Ayarlar → Genel → Menü: ekranları göster/gizle, ana çubuğu seç.
+- **Tarih kısayolları:** İleri tarihli alanlarda Bugün / Yarın / 3 gün / 1 hafta / 2 hafta / 1 ay.
+- **Son seçilen il, bayi ve kanal** yeni kayıtta hazır gelir.
+- **Ziyaret sıklığı segmente göre:** A 30, B 60, C 90 gün, segmentsiz 45 gün (Bugün → Uzun süredir gidilmeyenler).
+- **Yedek hatırlatması:** 7 günden eski ya da hiç alınmamış tam yedek Bugün → Uyarılar'da görünür.
+
 ## Güncelleme notu (sürüm 8)
 
 1. **Önce SQL:** Supabase → SQL Editor → `supabase/schema.sql` dosyasının tamamını yapıştır → **Run**. Dosya önceki tüm sürümlerin değişikliklerini içerir; bir kez çalıştırman yeterli, tekrar çalıştırmak zarar vermez.

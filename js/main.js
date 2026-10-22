@@ -22,6 +22,7 @@ import { kontrolView } from './views/kontrol.js';
 import { dosyalarView } from './views/dosyalar.js';
 import { rotaIzinli, sahipMi } from './yetki.js';
 import { menuDuzeni } from './menu.js';
+import { hizliKur, aramaAc } from './hizli.js';
 import { kurGuncelle } from './kur.js';
 import { bildirimHazirla } from './bildirim.js';
 
@@ -94,11 +95,13 @@ function renderNav(cur) {
   const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : !sahipMi() ? `<span class="mode-badge">Ekip üyesi${app.yetki?.ad ? ' · ' + esc(app.yetki.ad) : ''}</span>` : '';
   nav.innerHTML = `
     <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b>${mode}</div>
+    <button type="button" class="nav-ara" data-navara><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Ara</span><kbd>/</kbd></button>
     <div class="nav-main">${ana.filter(rotaIzinli).map(k => item(k, ROUTES[k])).join('')}
       <button class="nav-more ${!ana.includes(cur) ? 'on' : ''}" type="button" aria-haspopup="true">${icon('more')}<span>Diğer</span></button></div>
     <div class="nav-rest">${['Saha', 'Satış', 'Rapor'].map(g => `<p class="nav-g">${g}</p>` + Object.entries(ROUTES).filter(([k, r]) => r.g === g && !ana.includes(k) && !gizli.has(k) && rotaIzinli(k)).map(([k, r]) => item(k, r)).join('')).join('')}
       <button type="button" class="nav-inst" data-inst ${canInstall() ? '' : 'hidden'}>${icon('down')}<span>Telefona yükle</span></button>
       <a href="#/ayarlar" class="nav-duzen" data-menuduzen>${icon('gear', 18)}<span>Menüyü düzenle</span></a></div>`;
+  nav.querySelector('[data-navara]').onclick = () => aramaAc();
   nav.querySelector('[data-menuduzen]').addEventListener('click', () => { try { sessionStorage.setItem('menu-ac', '1'); } catch {} if (location.hash === '#/ayarlar') window.dispatchEvent(new HashChangeEvent('hashchange')); });
   nav.querySelector('[data-inst]').onclick = () => { nav.classList.remove('more-open'); install(); };
   nav.querySelector('.nav-more').onclick = () => nav.classList.toggle('more-open');
@@ -170,7 +173,9 @@ async function boot() {
   const empty = Object.values(S).every(a => !a.length);
   if (empty && !location.hash) location.hash = '#/ayarlar';
   await route();
+  hizliKur();
   if (act === 'ziyaret') ziyaretForm({});
+  if (act === 'ara') aramaAc();
   if (pay) paylasimPaneli(pay);
   kurGuncelle().then(k => { if (k && lastView === 'bugun' && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});
   bildirimHazirla().catch(() => {});
