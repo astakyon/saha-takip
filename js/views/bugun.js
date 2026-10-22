@@ -9,6 +9,8 @@ import { stokUyarilari } from './urunler.js';
 import { kurYazi } from '../kur.js';
 import { gecikenler, kalan as tKalan, para as tPara } from './tahsilat.js';
 import { ayar } from '../ayar.js';
+import { haftaVerisi, haftaBasi } from './rapor.js';
+import { F, saveFilters } from '../state.js';
 import { sahipMi } from '../yetki.js';
 
 // Segmente göre ziyaret sıklığı: A 30, B 60, C 90 gün; segmentsiz firmalarda 45 gün
@@ -81,6 +83,19 @@ export function dogumGunleri(gun = 7) {
   }).filter(x => x.kalan <= gun).sort((a, b) => a.kalan - b.kalan);
 }
 
+// Pazartesi–Çarşamba: geçen haftanın raporu hazır kartı (açılınca ya da kapatılınca o hafta bir daha çıkmaz)
+function raporKarti() {
+  const t = today(), gun = (new Date(t + 'T00:00').getDay() + 6) % 7; if (gun > 2) return '';
+  let gor = null; try { gor = localStorage.getItem('saha-rapor-gor'); } catch {}
+  if (gor === haftaBasi(t)) return '';
+  const d = haftaVerisi(gunEkle(haftaBasi(t), -7));
+  if (!d.ziy.length && !d.sip.length && !d.gec.length) return '';
+  return `<section class="card wide rapor-kart"><div class="card-h"><h2>Geçen haftanın raporu hazır</h2><button type="button" class="x" data-raporkapat aria-label="Kartı kapat">×</button></div>
+    <p class="muted">${tarih(d.bas)} – ${tarih(d.son)}</p>
+    <div class="ledger-mini"><div><b>${d.ziy.length}</b><span>ziyaret · ${d.gunler.length} gün</span></div><div><b>${d.sip.length}</b><span>sipariş${d.sipUsd ? ' · ' + usd(d.sipUsd) : ''}</span></div><div><b>${d.kazan.length}</b><span>kazanılan proje</span></div><div><b>${d.kayb.length}</b><span>kaybedilen</span></div><div><b>${d.yeniP.length}</b><span>yeni proje</span></div></div>
+    <div class="btnrow"><button type="button" class="btn primary" data-raporac>Raporu aç</button><span class="hint">PDF, Excel ya da WhatsApp ile gönderebilirsin.</span></div></section>`;
+}
+
 export function bugunView(el) {
   const t = today(), yarin = gunEkle(t, 1);
   const planli = S.ziyaretler.filter(z => z.tarih === t && zDurum(z) === 'Planlandı');
@@ -103,6 +118,7 @@ export function bugunView(el) {
   el.innerHTML = `<header class="vh"><div><h1>Bugün</h1><p class="sum">${esc(gun)} · ${planli.length} planlı ziyaret · ${gorev.length} görev${kmBugun ? ` · yaklaşık ${kmBugun} km yol` : ''}${kurYazi() ? `<br><span class="kur">${kurYazi()}</span>` : ''}</p></div>
     <div class="vh-act"><button class="btn ghost" data-yakin>Yakınımdakiler</button><button class="btn primary" data-yeni>Ziyaret kaydet</button></div></header>
     <div class="dash today-grid">
+      ${raporKarti()}
       <section class="card wide"><h2>Bugünün planı</h2>
         ${planli.length ? `<ol class="route">${sirali.map((x, i) => `<li><span class="rn">${i + 1}</span><span class="rt"><b>${x.z.saat ? esc(x.z.saat) + ' · ' : ''}${esc(firmaAd(x.z.firma_id) || 'Ziyaret')}</b><small>${esc([byId('kisiler', x.z.kisi_id)?.ad_soyad, x.z.amac, byId('projeler', x.z.proje_id)?.ad].filter(Boolean).join(' · '))}</small></span>
           <span class="ra"><a class="btn sm ghost" href="${directionsUrl(x.p[0], x.p[1])}" target="_blank" rel="noopener">Yol</a><button type="button" class="btn sm" data-yapildi="${x.z.id}">Yapıldı</button></span></li>`).join('')}</ol>
@@ -131,6 +147,8 @@ export function bugunView(el) {
       </ul></section>` : ''}
     </div>`;
   el.querySelector('[data-yeni]').onclick = () => ziyaretForm({});
+  el.querySelector('[data-raporac]')?.addEventListener('click', () => { const g = gunEkle(haftaBasi(today()), -7); try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} const fr = F('rapor', {}); fr.bas = g; saveFilters(); location.hash = '#/rapor'; });
+  el.querySelector('[data-raporkapat]')?.addEventListener('click', e => { try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} e.target.closest('section').remove(); });
   el.querySelector('[data-yedekgit]')?.addEventListener('click', () => { try { sessionStorage.setItem('ayar-sekme', 'veri'); } catch {} });
   el.querySelector('[data-yakin]').onclick = () => yakinimdakiler();
   el.querySelectorAll('[data-zid]').forEach(b => b.onclick = () => ziyaretForm({ id: b.dataset.zid }));

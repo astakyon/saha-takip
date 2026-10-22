@@ -1,4 +1,5 @@
 import { S, uuid } from '../db.js';
+import { kayipKarti, kayipTamamla } from '../kayip.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, usd, num, tarih, today, DURUMLAR, ACIK, byId, firmaAd, match, toast, exportXlsx, pickFiles, fold, durumRenk, openDrawer, closeDrawer, pill, olasilik, confirmBox } from '../ui.js';
 import { gorevForm } from './ziyaret.js';
@@ -69,9 +70,7 @@ export function panelView(el) {
         <p class="hint">Kazanma oranı = kazanılan / (kazanılan + kaybedilen). Sipariş, cari adı firmayla eşleşen SAP siparişlerinden${ROL === 'bayi_id' ? '; stok değeri, depo adı bayiyle eşleşen ürünlerden' : ''} hesaplanır.</p>` : `<p class="hint">Projelerde ${KARNE_ROL[ROL].toLowerCase()} seçilmemiş.</p>`}</section>
     <section class="card"><h2>Durumlara göre projeler (${Y})</h2>
       <ul class="hbars">${DURUMLAR.map(d => { const ps = yP.filter(p => p.durum === d.k); return ps.length ? `<li><span>${d.k}</span><span class="hb"><i style="width:${ps.length / durumMax * 100}%;--c:${d.c}"></i></span><b>${ps.length}</b><small>${usd(sum(ps, p => p.tutar_usd))}</small></li>` : ''; }).join('')}</ul></section>
-    <section class="card"><h2>Kayıplar: hangi markaya?</h2>
-      ${Object.keys(markalar).length ? `<table class="tbl"><thead><tr><th>Marka</th><th class="r">Proje</th><th class="r">Bizim teklif</th><th class="r">Rakip</th></tr></thead><tbody>${Object.entries(markalar).sort((a, b) => b[1].n - a[1].n).map(([m, v]) => `<tr><td>${esc(m)}</td><td class="r">${v.n}</td><td class="r">${usd(v.biz)}</td><td class="r">${v.rakip ? usd(v.rakip) : '—'}</td></tr>`).join('')}</tbody></table>
-      <p class="hint">Nedenler: ${Object.entries(nedenler).map(([k, v]) => `${esc(k)} ${v}`).join(', ')}</p>` : '<p class="hint">Bu yıl kayıp proje yok.</p>'}</section>
+    ${kayipKarti(Y)}
     <section class="card"><h2>Yaklaşan beklenen siparişler</h2>
       ${beklenen.length ? `<ul class="list">${beklenen.map(p => `<li><a href="#/proje/${p.id}"><b>${esc(p.ad)}</b><span class="muted">${tarih(p.beklenen_tarih)} · ${usd(p.tutar_usd)}</span></a>${pill(p.durum)}</li>`).join('')}</ul>` : '<p class="hint">Beklenen sipariş tarihi girilmiş açık proje yok.</p>'}</section>
     <section class="card"><h2>Açık görevler</h2>
@@ -93,6 +92,7 @@ export function panelView(el) {
   el.querySelectorAll('[data-karne]').forEach(b => b.onclick = () => { f.karne = b.dataset.karne; saveFilters(); const y = window.scrollY; panelView(el); window.scrollTo(0, y); });
   el.querySelectorAll('[data-g]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.g }));
   el.querySelectorAll('[data-s]').forEach(b => b.onclick = () => sunum(b.dataset.s, Y));
+  el.querySelector('[data-kayiptamam]')?.addEventListener('click', () => kayipTamamla(Y, () => { const y = window.scrollY; panelView(el); window.scrollTo(0, y); }));
   el.querySelector('[data-pptx]').onclick = async () => { const { ceyrekSunumu } = await import('../pptx.js'); ceyrekSunumu(Y); };
 }
 

@@ -193,7 +193,8 @@ export async function durumDegistir(p, yeni) {
     if (yeni === 'Sipariş' && !p.siparis_tarihi) o.siparis_tarihi = today();
     await app.db.save('projeler', o);
     await app.db.save('proje_gecmis', { proje_id: p.id, tarih: new Date().toISOString(), eski_durum: eski, yeni_durum: yeni });
-    toast(`${p.ad}: ${eski} → ${yeni}${yeni === 'Kayıp' ? '. Kayıp bilgisini girmek için projeyi aç.' : ''}`);
+    toast(`${p.ad}: ${eski} → ${yeni}`);
+    if (yeni === 'Kayıp' && !document.querySelector('.drawer.open')) import('../kayip.js').then(m => m.kayipSor(o, () => app.refresh && app.refresh()));
     return true;
   } catch (e) { toast(e.message, 'err'); return false; }
 }

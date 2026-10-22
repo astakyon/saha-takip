@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 10)
+
+- **Kayıp analizi (Panel):** işi alan marka, neden ve il bazında adet ve tutar; kaç kayıpta bilgi eksik olduğu görünür. “Eksikleri tamamla” ile tüm kayıp projelerde marka ve nedeni tek ekrandan doldurursun.
+- **Kayıp'a çekilen proje:** hunide ya da listede Kayıp'a taşınınca marka, neden, rakip fiyatı ve açıklama sorulur.
+- **Pazartesi raporu:** Pazartesi–Çarşamba Bugün ekranında geçen haftanın özeti ve “Raporu aç” kartı.
+
 ## Güncelleme notu (sürüm 9)
 
 - **Hızlı ekle (+):** Her ekranda sağ altta; ziyaret, plan, görev, kartvizit, kişi, proje, firma, teklif, masraf.
