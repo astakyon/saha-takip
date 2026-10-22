@@ -119,7 +119,11 @@ async function stokYukle() {
     if (!gelen.size) return toast('Dosyada ürün satırı bulunamadı. Başlıkta “Kod” ve “Stok” sütunları olmalı.', 'err');
     const mevcut = new Map(S.urunler.map(u => [u.kod, u]));
     const yok = S.urunler.filter(u => !gelen.has(u.kod) && u.stok > 0);
-    const sifirla = yok.length && confirmBox(`${gelen.size} ürün okundu. Yeni listede olmayan ${yok.length} ürünün stoğu 0 yapılsın mı?`);
+    const { onizleOnay } = await import('../esle.js');
+    const gl = [...gelen.values()], yeniU = gl.filter(g => !mevcut.has(g.kod)), degisenU = gl.filter(g => mevcut.has(g.kod) && (+mevcut.get(g.kod).stok || 0) !== g.stok);
+    const on = await onizleOnay({ baslik: 'Bayi stok listesi', sayilar: [['yeni ürün', yeniU.length, 'yeni'], ['stoğu değişen', degisenU.length, 'guncel'], ['aynı kalan', gl.length - yeniU.length - degisenU.length, ''], ['listede olmayan', yok.length, yok.length ? 'uyari' : '']], ornekBaslik: ['Kod', 'Açıklama', 'Eski stok', 'Yeni stok'], ornek: [...degisenU, ...yeniU].slice(0, 8).map(g => [g.kod, g.aciklama, mevcut.get(g.kod)?.stok ?? '—', g.stok]), secenek: yok.length ? { metin: `Yeni listede olmayan ${yok.length} ürünün stoğunu 0 yap`, varsayilan: true } : null });
+    if (!on.ok) return toast('İçe aktarma iptal edildi.');
+    const sifirla = yok.length && on.secim;
     const t = today(), urunRows = [], gecmis = [];
     for (const g of gelen.values()) {
       const u = mevcut.get(g.kod);

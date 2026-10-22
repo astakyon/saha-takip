@@ -8,7 +8,7 @@ import { waGonder } from '../sablon.js';
 import { stokUyarilari } from './urunler.js';
 import { kurYazi } from '../kur.js';
 import { gecikenler, kalan as tKalan, para as tPara } from './tahsilat.js';
-import { ayar } from '../ayar.js';
+import { ayar, ayarYaz } from '../ayar.js';
 import { haftaVerisi, haftaBasi } from './rapor.js';
 import { F, saveFilters } from '../state.js';
 import { sahipMi } from '../yetki.js';
@@ -106,6 +106,38 @@ async function kmMasrafa(gun) {
   else { const { masrafForm } = await import('./kayitlar.js'); masrafForm({ tarih: gun, tip: 'Yakıt', km, aciklama: 'Saha yolu (ziyaret noktalarından tahmin)' }); toast('Tutarın kendiliğinden hesaplanması için Ayarlar → Genel → Araç bölümüne tüketim ve litre fiyatını gir.'); }
 }
 
+// ---------- Bugün kartlarının sırası ve görünürlüğü (Düzenle) ----------
+const KARTLAR = [['plan', 'Bugünün planı'], ['gorev', 'Görevler'], ['yapilan', 'Bugün yapılanlar'], ['zaman', 'Zamanı gelen projeler'], ['gidilmeyen', 'Uzun süredir gidilmeyenler'], ['yarin', 'Yarın'], ['dogum', 'Doğum günleri'], ['uyari', 'Uyarılar'], ['rapor', 'Geçen haftanın raporu']];
+const kartAnahtar = h => { const t = (h || '').trim(); if (/^Bugünün planı/.test(t)) return 'plan'; if (/görevler$|^Görevler/i.test(t) && !/^Bugün/.test(t)) return 'gorev'; if (/^Bugün yapılanlar/.test(t)) return 'yapilan'; if (/^Zamanı gelen/.test(t)) return 'zaman'; if (/^Uzun süredir/.test(t)) return 'gidilmeyen'; if (/^Yarın/.test(t)) return 'yarin'; if (/^Doğum/.test(t)) return 'dogum'; if (/^Uyarılar/.test(t)) return 'uyari'; if (/haftanın raporu/.test(t)) return 'rapor'; return null; };
+const kartAyar = () => ({ sira: [], gizli: [], ...(ayar('bugun_kartlar') || {}) });
+function kartDuzeniUygula(el) {
+  const a = kartAyar(), dash = el.querySelector('.dash'); if (!dash) return;
+  const sira = [...a.sira, ...KARTLAR.map(([k]) => k).filter(k => !a.sira.includes(k))];
+  const kartlar = [...dash.children].map(s => ({ s, k: kartAnahtar(s.querySelector('h2')?.textContent) }));
+  for (const { s, k } of kartlar) { if (k) s.dataset.kart = k; if (k && a.gizli.includes(k)) s.hidden = true; }
+  kartlar.filter(x => x.k).sort((x, y) => sira.indexOf(x.k) - sira.indexOf(y.k)).forEach(({ s }) => dash.appendChild(s));
+}
+function kartDuzeniPaneli(el) {
+  const ciz = () => {
+    const a = kartAyar(), sira = [...a.sira, ...KARTLAR.map(([k]) => k).filter(k => !a.sira.includes(k))];
+    const p = openDrawer(`<header class="dh"><div><p class="muted">Bugün ekranı</p><h2 id="drawer-title">Kartları düzenle</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+      <div class="dbody"><p class="hint">Okları kullanarak sırala, istemediğin kartı kapat. Telefonda ve bilgisayarda aynı düzen geçerli olur.</p>
+      <ul class="list kart-duzen">${sira.map((k, i) => `<li data-k="${k}"><span class="grow"><b>${esc(KARTLAR.find(x => x[0] === k)[1])}</b></span>
+        <button type="button" class="btn sm ghost" data-yukari ${i ? '' : 'disabled'} aria-label="Yukarı">↑</button><button type="button" class="btn sm ghost" data-asagi ${i < sira.length - 1 ? '' : 'disabled'} aria-label="Aşağı">↓</button>
+        <label class="tg" title="Göster"><input type="checkbox" data-goster ${a.gizli.includes(k) ? '' : 'checked'} aria-label="Göster"><span></span></label></li>`).join('')}</ul>
+      <div class="btnrow"><button type="button" class="btn ghost" data-sifirla>Varsayılan düzen</button></div></div>`);
+    const kaydet = async yeni => { await ayarYaz('bugun_kartlar', yeni); bugunView(el); ciz(); };
+    p.querySelectorAll('li[data-k]').forEach(li => {
+      const k = li.dataset.k, i = sira.indexOf(k);
+      li.querySelector('[data-yukari]').onclick = () => { const s = [...sira]; [s[i - 1], s[i]] = [s[i], s[i - 1]]; kaydet({ ...a, sira: s }); };
+      li.querySelector('[data-asagi]').onclick = () => { const s = [...sira]; [s[i + 1], s[i]] = [s[i], s[i + 1]]; kaydet({ ...a, sira: s }); };
+      li.querySelector('[data-goster]').onchange = e => kaydet({ ...a, sira, gizli: e.target.checked ? a.gizli.filter(x => x !== k) : [...a.gizli, k] });
+    });
+    p.querySelector('[data-sifirla]').onclick = async () => { await ayarYaz('bugun_kartlar', null); bugunView(el); ciz(); };
+  };
+  ciz();
+}
+
 export function bugunView(el) {
   const t = today(), yarin = gunEkle(t, 1);
   const planli = S.ziyaretler.filter(z => z.tarih === t && zDurum(z) === 'Planlandı');
@@ -131,7 +163,7 @@ export function bugunView(el) {
   const g1 = g => `<li class="${g.son_tarih < t ? 'late' : ''}"><label class="chk"><input type="checkbox" data-done="${g.id}" aria-label="Tamamlandı"></label><button type="button" class="linkbtn" data-gid="${g.id}">${esc(g.baslik)}</button><span class="muted">${!g.son_tarih ? '' : g.son_tarih < t ? tarih(g.son_tarih) : g.son_tarih === t ? 'bugün' : tarih(g.son_tarih)}</span></li>`;
   const gun = new Date(t + 'T00:00').toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
   el.innerHTML = `<header class="vh"><div><h1>Bugün</h1><p class="sum">${esc(gun)} · ${planli.length} planlı ziyaret · ${gorev.length} görev${kmBugun ? ` · yaklaşık ${kmBugun} km yol` : ''}${kurYazi() ? `<br><span class="kur">${kurYazi()}</span>` : ''}</p></div>
-    <div class="vh-act"><button class="btn ghost" data-yakin>Yakınımdakiler</button><button class="btn primary" data-yeni>Ziyaret kaydet</button></div></header>
+    <div class="vh-act"><button class="btn ghost" data-kduzen title="Kartları sırala ve gizle">Düzenle</button><button class="btn ghost" data-yakin>Yakınımdakiler</button><button class="btn primary" data-yeni>Ziyaret kaydet</button></div></header>
     <div class="dash today-grid">
       ${raporKarti()}
       <section class="card wide"><h2>Bugünün planı</h2>
@@ -163,6 +195,8 @@ export function bugunView(el) {
         ${teklif.length ? `<li><a href="#/teklifler"><b>${teklif.length} teklifin geçerliliği doluyor</b><span class="muted">${esc(teklif.slice(0, 3).map(x => byId('projeler', x.proje_id)?.ad || x.teklif_no).join(', '))}</span></a></li>` : ''}
       </ul></section>` : ''}
     </div>`;
+  kartDuzeniUygula(el);
+  el.querySelector('[data-kduzen]').onclick = () => kartDuzeniPaneli(el);
   el.querySelector('[data-yeni]').onclick = () => ziyaretForm({});
   el.querySelectorAll('[data-kmyaz]').forEach(b => b.onclick = () => kmMasrafa(b.dataset.kmyaz));
   el.querySelector('[data-raporac]')?.addEventListener('click', () => { const g = gunEkle(haftaBasi(today()), -7); try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} const fr = F('rapor', {}); fr.bas = g; saveFilters(); location.hash = '#/rapor'; });

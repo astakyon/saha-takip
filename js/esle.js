@@ -48,3 +48,20 @@ export function sutunlariEsle(anahtar, baslik, h, ornek, alanlar, oto) {
   });
 }
 export async function eslemeleriSifirla() { await ayarYaz('excel_esle', null); }
+
+/**
+ * İçe aktarma önizlemesi: kaç kayıt eklenecek / güncellenecek / değişmeyecek; örnek satırlar. İsteğe bağlı bir onay kutusu.
+ * @returns Promise<{ ok: boolean, secim: boolean }>
+ */
+export function onizleOnay({ baslik, sayilar, ornekBaslik = [], ornek = [], secenek = null }) {
+  return new Promise(res => {
+    let bitti = false;
+    const p = openDrawer(`<header class="dh"><div><p class="muted">İçe aktarma önizlemesi</p><h2 id="drawer-title">${esc(baslik)}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+      <div class="dbody"><div class="onizle-say">${sayilar.map(([t, n, cls]) => `<div class="${cls || ''}"><b>${n}</b><span>${esc(t)}</span></div>`).join('')}</div>
+      ${ornek.length ? `<h3>İlk satırlar</h3><div class="tbl-wrap"><table class="tbl"><thead><tr>${ornekBaslik.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${ornek.map(r => `<tr>${r.map(v => `<td>${esc(goster(v))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : ''}
+      ${secenek ? `<label class="chk"><input type="checkbox" data-sec ${secenek.varsayilan ? 'checked' : ''}> <span>${esc(secenek.metin)}</span></label>` : ''}
+      <p class="hint">Hiçbir kayıt silinmez. Onaylamazsan hiçbir şey değişmez.</p></div>
+      <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn primary" data-onay>İçe aktar</button></div>`, { wide: true, onClose: () => { if (!bitti) { bitti = true; res({ ok: false, secim: false }); } } });
+    p.querySelector('[data-onay]').onclick = () => { bitti = true; const secim = !!p.querySelector('[data-sec]')?.checked; closeDrawer(); res({ ok: true, secim }); };
+  });
+}

@@ -98,6 +98,22 @@ function renderFields(sec, obj) {
 // Form alanlarını bağlar (fotoğraf, konum, koşullu gösterim, hesaplama)
 export function bindForm(root, sections, obj, { onChange } = {}) {
   mikBagla(root);
+  // Tutar alanlarının altında anlık karşılık: USD alanında TL; para birimi seçilen formda (tutar, net_deger, toplam) USD/TL
+  import('./kur.js').then(({ kur }) => {
+    const k = kur(); if (!k?.USD) return;
+    const pb = () => root.querySelector('[name=para_birimi]')?.value || null;
+    const fmt = (v, d = 0) => new Intl.NumberFormat('tr-TR', { maximumFractionDigits: d }).format(v);
+    const alanlar = [...root.querySelectorAll('input[type=number][name]')].filter(i => /_usd$/.test(i.name) || (['tutar', 'net_deger', 'toplam'].includes(i.name) && root.querySelector('[name=para_birimi]')));
+    for (const i of alanlar) {
+      const s = document.createElement('small'); s.className = 'karsilik'; i.after(s);
+      const yaz = () => {
+        const v = parseFloat(i.value); if (!v) { s.textContent = ''; return; }
+        const p = /_usd$/.test(i.name) ? 'USD' : (pb() || 'USD').replace('TL', 'TRY');
+        s.textContent = p === 'USD' ? `≈ ${fmt(v * k.USD)} ₺` : p === 'EUR' ? `≈ ${fmt(v * (k.EUR || 0))} ₺ · ${fmt(v * (k.EUR || 0) / k.USD)} $` : `≈ ${fmt(v / k.USD)} $`;
+      };
+      i.addEventListener('input', yaz); root.querySelector('[name=para_birimi]')?.addEventListener('change', yaz); yaz();
+    }
+  }).catch(() => {});
   root.querySelectorAll('[data-dk]').forEach(b => b.onclick = () => { const i = b.closest('.fld').querySelector('input[type=date]'); i.value = gunEkle(today(), +b.dataset.dk); i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
   root.querySelectorAll('details.fs-d').forEach(d => d.addEventListener('toggle', () => { if (d.open) d.querySelectorAll('[data-loc]').forEach(b => setTimeout(() => b._map?.invalidateSize(), 50)); }));
   // fotoğraflar

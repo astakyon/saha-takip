@@ -330,6 +330,10 @@ async function siparisYukle() {
         proje_id: ex?.proje_id || projeBul(pt)?.id || null, drv: isDrv });
     }
     const yeni = out.filter(o => !byBelge.has(o.belge_no + '|' + o.siparis_no)).length;
+    const { onizleOnay } = await import('../esle.js');
+    const degisen = out.filter(o => { const ex = byBelge.get(o.belge_no + '|' + o.siparis_no); return ex && ['tarih', 'net_deger', 'referans', 'para_birimi', 'teslim_tarihi', 'musteri_adi'].some(k => String(ex[k] ?? '') !== String(o[k] ?? '')); }).length;
+    const on = await onizleOnay({ baslik: 'SAP sipariş listesi', sayilar: [['yeni sipariş', yeni, 'yeni'], ['güncellenecek', degisen, 'guncel'], ['değişmeyecek', out.length - yeni - degisen, '']], ornekBaslik: ['Sipariş no', 'Tarih', 'Cari', 'SAS notu', 'Net değer', 'PB'], ornek: out.filter(o => !byBelge.has(o.belge_no + '|' + o.siparis_no)).concat(out).slice(0, 6).map(o => [o.siparis_no, o.tarih, o.musteri_adi, o.referans, o.net_deger, o.para_birimi]) });
+    if (!on.ok) return toast('İçe aktarma iptal edildi.');
     await app.db.bulk('siparisler', out);
     toast(`${out.length} sipariş okundu, ${yeni} yeni kayıt eklendi.`); app.refresh();
     yuklemeKaydet(file, 'SAP sipariş listesi', `${out.length} sipariş, ${yeni} yeni`);

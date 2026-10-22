@@ -956,3 +956,16 @@ section.card:empty { display: none; }
 .rev-list b { font-size: 13px; margin-right: 4px; }
 :root[data-yazi="buyuk"] :is(#view:not(.view-harita), .drawer-panel, #nav, #toast, .fab-menu) { zoom: 1.12; }
 :root[data-yazi="cokbuyuk"] :is(#view:not(.view-harita), .drawer-panel, #nav, #toast, .fab-menu) { zoom: 1.25; }
+.onizle-say { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.onizle-say > div { background: var(--zemin-2); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; }
+.onizle-say b { font: 700 24px var(--fc); } .onizle-say span { font-size: 13px; color: var(--muted); }
+.onizle-say .yeni { background: var(--yesil-soft); } .onizle-say .guncel { background: var(--mavi-soft); } .onizle-say .uyari { background: var(--sari-soft); }
+.karsilik { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.kart-duzen li { display: flex; gap: 6px; align-items: center; }
+.sec-k { display: inline-flex; margin-right: 6px; vertical-align: middle; } .sec-k input { width: 18px; height: 18px; min-height: 0; }
+.toplu-bar { position: sticky; bottom: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px; margin-top: 12px; box-shadow: 0 -6px 20px rgba(29, 43, 54, .15); }
+.toplu-bar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); } .toplu-bar select { min-height: 34px; padding: 4px 8px; width: auto; max-width: 180px; }
+.toplu-bar .tb-act { margin-left: auto; display: flex; gap: 8px; }
+@media (max-width: 899px) { .toplu-bar { bottom: calc(var(--nav-h) + var(--safe-b) + 8px); } }
+[data-toplu].on { background: var(--koyu); color: #fff; border-color: var(--koyu); }
+body:has(.toplu-bar) #fab { display: none; }

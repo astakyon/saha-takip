@@ -150,6 +150,9 @@ async function tahsilatYukle() {
     }
     if (!out.length) return toast('Dosyada alacak satırı bulunamadı.', 'err');
     const yeni = out.filter(o => !S.tahsilatlar.some(t => t.id === o.id)).length, eslesmeyen = out.filter(o => !o.firma_id).length;
+    const { onizleOnay } = await import('../esle.js');
+    const on = await onizleOnay({ baslik: 'Cari ekstresi', sayilar: [['yeni fatura', yeni, 'yeni'], ['güncellenecek', out.length - yeni, 'guncel'], ['firması eşleşmeyen', eslesmeyen, eslesmeyen ? 'uyari' : '']], ornekBaslik: ['Cari', 'Fatura no', 'Tarih', 'Vade', 'Tutar', 'Ödenen'], ornek: out.slice(0, 6).map(o => [o.cari, o.belge_no, o.tarih, o.vade, o.tutar + ' ' + o.para_birimi, o.odenen]) });
+    if (!on.ok) return toast('İçe aktarma iptal edildi.');
     await app.db.bulk('tahsilatlar', out);
     yuklemeKaydet(file, 'Cari ekstresi', `${out.length} fatura, ${yeni} yeni`);
     toast(`${out.length} fatura okundu: ${yeni} yeni, ${out.length - yeni} güncellendi.${eslesmeyen ? ` ${eslesmeyen} faturanın carisi firma listesinde bulunamadı.` : ''}`);

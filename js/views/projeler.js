@@ -119,7 +119,7 @@ export function projelerView(el) {
   const rakipler = [...new Set(S.projeler.map(p => p.rakip_marka).filter(Boolean))].sort();
   el.innerHTML = `
   <header class="vh"><div><h1>Projeler</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="liste" class="${f.gor !== 'huni' ? 'on' : ''}">Liste</button><button type="button" data-gor="huni" class="${f.gor === 'huni' ? 'on' : ''}">Satış hunisi</button></div><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Yeni proje</button></div></header>
+    <div class="vh-act"><div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="liste" class="${f.gor !== 'huni' ? 'on' : ''}">Liste</button><button type="button" data-gor="huni" class="${f.gor === 'huni' ? 'on' : ''}">Satış hunisi</button></div><button class="btn ghost" data-toplu aria-pressed="false">Toplu düzelt</button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Yeni proje</button></div></header>
   <div class="filters">
     <input type="search" data-q placeholder="Proje, firma (Emüt, Gemüt…), OSB, not ara" value="${esc(f.q)}" aria-label="Projelerde ara">
     <div class="seg" role="group" aria-label="Takip yılı">${['Tümü', '2026', '2027'].map(y => `<button type="button" data-yil="${y}" class="${String(f.yil) === y ? 'on' : ''}">${y === 'Tümü' ? 'Tüm projeler' : y + ' listesi'}</button>`).join('')}</div>
@@ -139,6 +139,7 @@ export function projelerView(el) {
   <div class="ptable-wrap" data-rows></div>`;
 
   let goster = 80;   // uzun listede ilk 80 satır, sonra “daha fazla”
+  let secMod = false; const secili = new Set();   // toplu düzeltme
   const draw = () => {
     const base = S.projeler.filter(p => f.yil === 'Tümü' || String(p.takip_yili) === String(f.yil));
     DURUMLAR.forEach(d => { const c = el.querySelector(`[data-cnt="${d.k}"]`); if (c) c.textContent = base.filter(p => p.durum === d.k).length || ''; });
@@ -148,9 +149,9 @@ export function projelerView(el) {
     el.querySelector('[data-sum]').innerHTML = `${list.length} proje · açık potansiyel <b>${usd(acik.reduce((s, p) => s + (+p.tutar_usd || 0), 0))}</b> · ağırlıklı <b>${usd(acik.reduce((s, p) => s + (+p.tutar_usd || 0) * olasilik(p) / 100, 0))}</b> · sipariş <b>${usd(sipT)}</b>`;
     if (f.gor === 'huni') return huni(el.querySelector('[data-rows]'), list, draw);
     el.querySelector('[data-rows]').innerHTML = list.length ? `<table class="ptable">
-      <thead><tr><th class="c-dur">Durum</th><th class="c-sip r">Sipariş</th><th class="c-ad">Proje</th><th>Yer</th><th>Bölge / OSB</th><th>Yatırımcı</th><th>Projeci</th><th>Danışman</th><th>Gemüt</th><th>Emüt</th><th>Malzeme alıcısı</th><th>Kanal</th><th class="r">Tutar</th><th>Yıl</th><th>Kayıp / rakip</th></tr></thead>
+      <thead><tr><th class="c-dur">${secMod ? `<label class="sec-k"><input type="checkbox" data-hepsi ${list.length && list.every(p => secili.has(p.id)) ? 'checked' : ''} aria-label="Listedeki tüm projeleri seç"></label>` : ''}Durum</th><th class="c-sip r">Sipariş</th><th class="c-ad">Proje</th><th>Yer</th><th>Bölge / OSB</th><th>Yatırımcı</th><th>Projeci</th><th>Danışman</th><th>Gemüt</th><th>Emüt</th><th>Malzeme alıcısı</th><th>Kanal</th><th class="r">Tutar</th><th>Yıl</th><th>Kayıp / rakip</th></tr></thead>
       <tbody>${list.slice(0, goster).map(p => { const st = siparisToplam(p); return `<tr data-pid="${p.id}" style="--c:${durumRenk(p.durum)}" tabindex="0">
-        <td class="c-dur" data-l="Durum"><select class="dsel" data-dsel="${p.id}" aria-label="${esc(p.ad)} durumu" style="--c:${durumRenk(p.durum)}">${DURUMLAR.map(d => `<option ${d.k === p.durum ? 'selected' : ''}>${d.k}</option>`).join('')}</select></td>
+        <td class="c-dur" data-l="Durum">${secMod ? `<label class="sec-k"><input type="checkbox" data-sec="${p.id}" ${secili.has(p.id) ? 'checked' : ''} aria-label="${esc(p.ad)} seç"></label>` : ''}<select class="dsel" data-dsel="${p.id}" aria-label="${esc(p.ad)} durumu" style="--c:${durumRenk(p.durum)}">${DURUMLAR.map(d => `<option ${d.k === p.durum ? 'selected' : ''}>${d.k}</option>`).join('')}</select></td>
         <td class="c-sip r num" data-l="Sipariş">${st ? usd(st) : '<span class="muted">—</span>'}</td>
         <td class="c-ad" data-l="Proje"><b>${esc(p.ad)}</b>${p.kritik ? ' <em class="flag">Kritik</em>' : ''}${p.hedef_listesi ? ' <em class="flag soft">Hedef</em>' : ''}${p.lat == null || p.konum_yaklasik ? ' <em class="flag gray">Konum bekliyor</em>' : ''}${p.notlar ? `<small>${esc(p.notlar.slice(0, 80))}</small>` : ''}</td>
         <td data-l="Yer">${esc([p.belde, p.ilce, p.il].filter(Boolean).join(', ') || p.lokasyon || '—')}</td>
@@ -165,15 +166,66 @@ export function projelerView(el) {
     el.querySelector('[data-daha]')?.addEventListener('click', () => { const y = window.scrollY; goster += 80; draw(); window.scrollTo(0, y); });
     const open = id => { location.hash = '#/proje/' + id; };
     el.querySelectorAll('tr[data-pid]').forEach(tr => {
-      tr.onclick = e => { if (e.target.closest('select, a')) return; open(tr.dataset.pid); };
+      tr.onclick = e => { if (e.target.closest('select, a, label')) return; if (secMod) { const c = tr.querySelector('[data-sec]'); c.checked = !c.checked; c.dispatchEvent(new Event('change')); return; } open(tr.dataset.pid); };
       tr.onkeydown = e => { if (e.key === 'Enter' && !e.target.closest('select, a')) open(tr.dataset.pid); };
     });
+    el.querySelectorAll('[data-sec]').forEach(c => c.onchange = () => { c.checked ? secili.add(c.dataset.sec) : secili.delete(c.dataset.sec); topluBar(); });
+    el.querySelector('[data-hepsi]')?.addEventListener('change', e => { for (const p of list) e.target.checked ? secili.add(p.id) : secili.delete(p.id); draw(); });
+    topluBar();
     el.querySelectorAll('[data-dsel]').forEach(sel => sel.onchange = async () => {
       const p = byId('projeler', sel.dataset.dsel), eski = p.durum;
       if (await durumDegistir(p, sel.value)) { sel.style.setProperty('--c', durumRenk(sel.value)); sel.closest('tr').style.setProperty('--c', durumRenk(sel.value)); }
       else sel.value = eski;
     });
   };
+  // ---------- Toplu düzeltme ----------
+  const bayiListesi = () => S.firmalar.filter(x => (x.tipler || []).includes('Bayi') || S.projeler.some(p => p.bayi_id === x.id)).sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+  function topluBar() {
+    let bar = el.querySelector('[data-tbar]');
+    if (!secMod) { bar?.remove(); return; }
+    if (!bar) {
+      bar = document.createElement('div'); bar.className = 'toplu-bar'; bar.dataset.tbar = '';
+      const sec = (k, ad, opts) => `<label>${ad} <select data-tk="${k}"><option value="">Değiştirme</option>${opts.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('')}</select></label>`;
+      bar.innerHTML = `<b data-tsay></b>
+        ${sec('durum', 'Aşama', DURUMLAR.map(d => [d.k, d.k]))}
+        ${sec('takip_yili', 'Takip yılı', ['2025', '2026', '2027', '2028'].map(y => [y, y]))}
+        ${sec('il', 'İl', [...ILLER, 'Diğer'].map(x => [x, x]))}
+        ${sec('kanal', 'Kanal', [['Direkt', 'Direkt'], ...bayiListesi().map(x => ['bayi:' + x.id, 'Bayi: ' + x.ad])])}
+        ${sec('hedef_listesi', 'Hedef listesi', [['1', 'Ekle'], ['0', 'Çıkar']])}
+        ${sec('kritik', 'Kritik', [['1', 'İşaretle'], ['0', 'Kaldır']])}
+        <span class="tb-act"><button type="button" class="btn primary" data-tuygula>Uygula</button><button type="button" class="btn ghost" data-tbitir>Bitir</button></span>`;
+      el.appendChild(bar);
+      bar.querySelector('[data-tbitir]').onclick = () => { secMod = false; secili.clear(); el.querySelector('[data-toplu]').setAttribute('aria-pressed', 'false'); el.querySelector('[data-toplu]').classList.remove('on'); draw(); };
+      bar.querySelector('[data-tuygula]').onclick = topluUygula;
+    }
+    bar.querySelector('[data-tsay]').textContent = secili.size ? `${secili.size} proje seçili` : 'Satırlara dokunarak proje seç';
+  }
+  async function topluUygula() {
+    const bar = el.querySelector('[data-tbar]'), d = Object.fromEntries([...bar.querySelectorAll('[data-tk]')].map(s => [s.dataset.tk, s.value]).filter(([, v]) => v !== ''));
+    if (!secili.size) return toast('Önce proje seç.', 'err');
+    if (!Object.keys(d).length) return toast('Değiştirilecek en az bir alan seç.', 'err');
+    const ps = [...secili].map(id => byId('projeler', id)).filter(Boolean);
+    const ozet = Object.entries(d).map(([k, v]) => ({ durum: 'aşama', takip_yili: 'takip yılı', il: 'il', kanal: 'kanal', hedef_listesi: 'hedef listesi', kritik: 'kritik' })[k] + ': ' + (k === 'kanal' && v.startsWith('bayi:') ? firmaAd(v.slice(5)) : v === '1' ? 'evet' : v === '0' ? 'hayır' : v)).join(', ');
+    if (!confirmBox(`${ps.length} projede şu değişiklik yapılacak:\n${ozet}\n\nDevam edilsin mi?`)) return;
+    const simdi = new Date().toISOString(), gecmis = [];
+    const yeni = ps.map(p => {
+      const o = { ...p };
+      if (d.durum && d.durum !== p.durum) { o.durum = d.durum; gecmis.push({ id: uuid(), proje_id: p.id, tarih: simdi, eski_durum: p.durum, yeni_durum: d.durum, notlar: 'Toplu düzeltme' }); if (d.durum === 'Sipariş' && !p.siparis_tarihi) o.siparis_tarihi = today(); }
+      if (d.takip_yili) o.takip_yili = +d.takip_yili;
+      if (d.il) o.il = d.il;
+      if (d.kanal) { if (d.kanal === 'Direkt') { o.kanal = 'Direkt'; o.bayi_id = null; } else { o.kanal = 'Bayi'; o.bayi_id = d.kanal.slice(5); } }
+      if (d.hedef_listesi) o.hedef_listesi = d.hedef_listesi === '1';
+      if (d.kritik) o.kritik = d.kritik === '1';
+      return o;
+    });
+    try {
+      toast('Kaydediliyor…');
+      await app.db.bulk('projeler', yeni); if (gecmis.length) await app.db.bulk('proje_gecmis', gecmis);
+      toast(`${yeni.length} proje güncellendi.${d.durum === 'Kayıp' ? ' Kayıp bilgisini Panel → Kayıp analizi → Eksikleri tamamla ile girebilirsin.' : ''}`);
+      secili.clear(); bar.querySelectorAll('[data-tk]').forEach(s => s.value = ''); draw();
+    } catch (e) { toast('Kaydedilemedi: ' + e.message, 'err'); }
+  }
+  el.querySelector('[data-toplu]').onclick = e => { secMod = !secMod; secili.clear(); e.currentTarget.setAttribute('aria-pressed', String(secMod)); e.currentTarget.classList.toggle('on', secMod); if (secMod && f.gor === 'huni') { f.gor = 'liste'; saveFilters(); el.querySelectorAll('[data-gor]').forEach(x => x.classList.toggle('on', x.dataset.gor === 'liste')); el.classList.remove('is-huni'); } draw(); if (secMod) toast('Satırlara dokunarak projeleri seç, alttaki çubuktan değiştir.'); };
   const reset = () => { Object.assign(f, { q: '', durumlar: [], il: 'Tümü', kanal: 'Tümü', kritik: false, hedef: false, ziyaret: false, rakip: 'Tümü' }); saveFilters(); projelerView(el); };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelectorAll('[data-yil]').forEach(b => b.onclick = () => { f.yil = b.dataset.yil; saveFilters(); el.querySelectorAll('[data-yil]').forEach(x => x.classList.toggle('on', x === b)); draw(); });

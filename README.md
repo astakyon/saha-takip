@@ -32,6 +32,15 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 20)
+
+- **Toplu düzeltme (Projeler → Toplu düzelt):** satırlara dokunarak seç; aşama, takip yılı, il, kanal/bayi, hedef listesi, kritik tek seferde değişir; aşama değişikliği durum geçmişine “Toplu düzeltme” notuyla yazılır.
+- **Para karşılığı:** USD tutar alanlarının altında TL karşılığı; para birimi seçilen formlarda (sipariş, tahsilat) diğer para birimi.
+- **Bugün kartları:** Bugün → Düzenle: kartları sırala, istemediğini gizle.
+- **Sesli not (+ menüsü):** konuşarak not; firma/proje seçilirse ziyaret notu, seçilmezse görev.
+- **Kişi birleştirme (Veri kontrolü → Kişiler):** aynı ad ya da telefonlu kişiler; bağlı ziyaret, görev, teklif taşınır.
+- **İçe aktarma önizlemesi:** sipariş, cari ekstresi ve stok Excel'inde kaç kayıt ekleneceği/güncelleneceği önce gösterilir; stokta listede olmayanları sıfırlama seçimi.
+
 ## Güncelleme notu (sürüm 19) — kısmen yapılanlar tamamlandı
 
 - **Bekleyen kayıt rozeti:** İnternetsizken girilen kayıt sayısı menüde (telefonda sağ üstte) görünür; gönderilince “Bekleyen kayıtlar gönderildi”.

@@ -1,7 +1,7 @@
 // Hızlı ekle (+) düğmesi ve genel arama. Her ekranda sağ altta; bilgisayarda “/” ya da Ctrl+K ile arama açılır.
 import { S } from './db.js';
 import { app } from './state.js';
-import { esc, fold, byId, firmaAd, tarih, today, gunEkle, openDrawer, closeDrawer, usd } from './ui.js';
+import { esc, fold, byId, firmaAd, tarih, today, gunEkle, openDrawer, closeDrawer, usd, toast } from './ui.js';
 import { izin } from './yetki.js';
 import { menuDuzeni } from './menu.js';
 
@@ -13,6 +13,7 @@ function ogeler() {
   return [
     { ad: 'Ziyaret kaydet', alt: 'yapılan görüşme', t: 'ziyaretler', r: 'ziyaretler', f: async () => (await import('./views/ziyaret.js')).ziyaretForm({}) },
     { ad: 'Ziyaret planla', alt: 'yarın için', t: 'ziyaretler', r: 'ziyaretler', f: async () => (await import('./views/ziyaret.js')).ziyaretForm({ durum: 'Planlandı', tarih: y }) },
+    { ad: 'Sesli not', alt: 'konuş, sonra firmaya bağla', t: 'gorevler', r: 'bugun', f: () => sesliNot() },
     { ad: 'Görev', alt: 'yapılacak iş, hatırlatma', t: 'gorevler', r: 'gorevler', f: async () => (await import('./views/ziyaret.js')).gorevForm({}) },
     { ad: 'Kartvizit', alt: 'fotoğrafla kişi ekle', t: 'kisiler', r: 'kisiler', f: async () => (await import('./views/firmalar.js')).kartvizittenKisi() },
     { ad: 'Kişi', alt: 'elle', t: 'kisiler', r: 'kisiler', f: async () => (await import('./views/firmalar.js')).kisiDetay(null, {}) },
@@ -51,6 +52,34 @@ export function hizliKur() {
   // Haritada kendi düğmeleri var; orada gizle
   const guncelle = () => { b.hidden = /^#\/harita/.test(location.hash) || !!document.querySelector('.login'); };
   window.addEventListener('hashchange', guncelle); guncelle();
+}
+
+// ---------- Sesli hızlı not ----------
+// Konuşarak not al; firma/proje seçilirse ziyaret notu, seçilmezse görev olarak kaydedilir (sonra bağlanabilir)
+export async function sesliNot() {
+  const { mikDugme, mikBagla, sesDestek } = await import('./ses.js');
+  const dl = (id, t, k) => `<datalist id="${id}">${S[t].map(x => `<option value="${esc(x[k])}">`).join('')}</datalist>`;
+  const p = openDrawer(`<header class="dh"><div><p class="muted">${sesDestek() ? 'Mikrofona dokun ve konuş' : 'Yaz'}</p><h2 id="drawer-title">Hızlı not</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+    <form class="dbody form"><div class="fld full"><label for="sn-t">Not</label><div class="area-wrap"><textarea id="sn-t" rows="5" placeholder="Örn. Medcem şantiyesinde elektrik ihalesi kasımda, Ahmet Bey teklif istiyor"></textarea>${mikDugme()}</div></div>
+      <div class="grid"><div class="fld"><label for="sn-f">Firma (isteğe bağlı)</label><input id="sn-f" list="sn-fl" autocomplete="off">${dl('sn-fl', 'firmalar', 'ad')}</div>
+      <div class="fld"><label for="sn-p">Proje (isteğe bağlı)</label><input id="sn-p" list="sn-pl" autocomplete="off">${dl('sn-pl', 'projeler', 'ad')}</div></div>
+      <p class="hint">Firma ya da proje seçersen bugünün ziyaret notu olarak kaydedilir; seçmezsen görevlerine düşer, sonra ilgili firmaya bağlarsın.</p>
+      <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`);
+  mikBagla(p);
+  const ta = p.querySelector('#sn-t');
+  setTimeout(() => { const m = p.querySelector('[data-mic]'); if (m) m.click(); else ta.focus(); }, 250);
+  p.querySelector('form').onsubmit = async e => {
+    e.preventDefault();
+    p.querySelector('[data-mic].on')?.click();
+    const metin = ta.value.trim(); if (!metin) return toast('Notu yaz ya da söyle.', 'err');
+    const bul = (t, k, v) => v ? S[t].find(x => fold(x[k]) === fold(v)) : null;
+    const f = bul('firmalar', 'ad', p.querySelector('#sn-f').value.trim()), pr = bul('projeler', 'ad', p.querySelector('#sn-p').value.trim());
+    try {
+      if (f || pr) { await app.db.save('ziyaretler', { tarih: today(), durum: 'Yapıldı', amac: 'Genel ziyaret', firma_id: f?.id || pr?.emut_id || pr?.alici_id || null, proje_id: pr?.id || null, notlar: metin, fotolar: [] }); toast('Ziyaret notu kaydedildi.'); }
+      else { await app.db.save('gorevler', { baslik: metin.length > 70 ? metin.slice(0, 70) + '…' : metin, notlar: metin, durum: 'Açık', oncelik: 'Normal', son_tarih: today() }); toast('Not görevlerine eklendi.'); }
+      closeDrawer(); app.refresh();
+    } catch (err) { toast('Kaydedilemedi: ' + err.message, 'err'); }
+  };
 }
 
 // ---------- Genel arama ----------

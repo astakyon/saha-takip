@@ -60,7 +60,32 @@ export function kontroller() {
     [...gr.values()].filter(l => l.length > 1), l => `<span class="grow">${l.map(f => `<a href="#/firma/${f.id}">${esc(f.ad)}</a>`).join(' · ')}</span><button type="button" class="btn sm" data-birlestir="${l.map(f => f.id).join(',')}">Birleştir</button>`);
   ekle('konum', 'Firmalar', 'Haritada yeri işaretli olmayan aktif firmalar', 'Rota ve Yakınımdakiler için konum gerekir. Harita → Google\'da ara ile hızlıca eklenebilir.',
     S.firmalar.filter(f => f.lat == null && P.some(p => ACIK.includes(p.durum) && ROL.some(r => p[r] === f.id))), f => `<a href="#/firma/${f.id}"><b>${esc(f.ad)}</b></a>`);
+  // Kişiler: aynı ad (aynı firmada ya da firmasız) ya da aynı telefon
+  const tel = s => String(s || '').replace(/\D/g, '').slice(-10);
+  const kAd = k => fold(k.ad_soyad || '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const kg = new Map(), ekleG = (anahtar, k) => { if (!anahtar) return; (kg.get(anahtar) || kg.set(anahtar, new Set()).get(anahtar)).add(k); };
+  for (const x of S.kisiler) { const a = kAd(x); if (a.length >= 5) ekleG('ad:' + a + '|' + (x.firma_id || '-'), x); if (tel(x.telefon).length === 10) ekleG('tel:' + tel(x.telefon), x); }
+  // firmasız kişi aynı adlı firmalı kişiyle de eşleşir
+  for (const x of S.kisiler.filter(x => !x.firma_id)) for (const y of S.kisiler) if (y !== x && y.firma_id && kAd(y) === kAd(x) && kAd(x).length >= 5) ekleG('ad:' + kAd(x) + '|' + y.firma_id, x);
+  const gorulen = new Set(), kGruplar = [];
+  for (const set of kg.values()) { const l = [...set]; if (l.length < 2) continue; const anahtar = l.map(k => k.id).sort().join(','); if (gorulen.has(anahtar)) continue; gorulen.add(anahtar); kGruplar.push(l); }
+  ekle('kisi-cift', 'Kişiler', 'Aynı kişi iki kez kayıtlı olabilir', 'Adı (aynı firmada) ya da telefonu aynı. Aynı kişiyse birleştir: ziyaretler, görevler, teklifler, numuneler tek kayda taşınır, eksik bilgiler tamamlanır.',
+    kGruplar, l => `<span class="grow">${l.map(x => `<a href="#/kisi/${x.id}">${esc(x.ad_soyad)}</a><small class="muted"> ${esc([firmaAd(x.firma_id), x.telefon].filter(Boolean).join(' · '))}</small>`).join(' · ')}</span><button type="button" class="btn sm" data-kbirlestir="${l.map(x => x.id).join(',')}">Birleştir</button>`);
   return k;
+}
+
+// Kişileri tek kayda birleştirir (ilk kayıt kalır)
+export async function kisiBirlestir(kalanId, gidenIds) {
+  const kalan = { ...byId('kisiler', kalanId) };
+  const BAG = { ziyaretler: ['kisi_id'], gorevler: ['kisi_id'], teklifler: ['kisi_id'], numuneler: ['kisi_id'], servis_kayitlari: ['kisi_id'], projeler: ['ilgili_kisi_id'] };
+  for (const gid of gidenIds) {
+    const g = byId('kisiler', gid); if (!g) continue;
+    for (const [t, alan] of Object.entries(BAG)) for (const r of (S[t] || []).filter(r => alan.some(a => r[a] === gid))) { const o = { ...r }; for (const a of alan) if (o[a] === gid) o[a] = kalanId; await app.db.save(t, o); }
+    for (const a of ['firma_id', 'unvan', 'telefon', 'eposta', 'rol', 'kartvizit_on', 'kartvizit_arka', 'dogum_gunu']) if (!kalan[a] && g[a]) kalan[a] = g[a];
+    if (g.telefon && kalan.telefon && g.telefon.replace(/\D/g, '') !== kalan.telefon.replace(/\D/g, '')) kalan.notlar = [kalan.notlar, 'Diğer telefon: ' + g.telefon].filter(Boolean).join('\n');
+    if (g.notlar && g.notlar !== kalan.notlar) kalan.notlar = [kalan.notlar, g.notlar].filter(Boolean).join('\n');
+    await app.db.save('kisiler', kalan); await app.db.del('kisiler', gid);
+  }
 }
 
 // İki ya da daha fazla firmayı tek kayda birleştirir (ilk kayıt kalır)
@@ -82,7 +107,7 @@ export function kontrolView(el) {
   const f = F('kontrol', { acik: null });
   const K = kontroller(), sorun = K.filter(x => x.kayitlar.length);
   el.innerHTML = `<header class="vh"><div><h1>Veri kontrolü</h1><p class="sum">${sorun.length ? `${sorun.length} başlıkta ${sorun.reduce((a, x) => a + x.kayitlar.length, 0)} kayıt gözden geçirilmeli` : 'Sorun bulunmadı'}</p></div><div class="vh-act"><button class="btn ghost" data-xls>Excel</button></div></header>
-    ${['Projeler', 'Siparişler', 'Çeyrekler', 'Firmalar'].map(g => `<section class="kontrol-grup"><h2>${g}</h2>${K.filter(x => x.grup === g).map(x => `<details class="card kontrol" data-k="${x.id}" ${f.acik === x.id ? 'open' : ''}>
+    ${['Projeler', 'Siparişler', 'Çeyrekler', 'Firmalar', 'Kişiler'].map(g => `<section class="kontrol-grup"><h2>${g}</h2>${K.filter(x => x.grup === g).map(x => `<details class="card kontrol" data-k="${x.id}" ${f.acik === x.id ? 'open' : ''}>
       <summary><span class="kb ${x.kayitlar.length ? 'var' : 'yok'}">${x.kayitlar.length || '✓'}</span><b>${esc(x.baslik)}</b></summary>
       ${x.kayitlar.length ? `<p class="hint">${esc(x.aciklama)}</p><ul class="list">${x.kayitlar.slice(0, 40).map(r => `<li>${x.satir(r)}</li>`).join('')}</ul>${x.kayitlar.length > 40 ? `<p class="hint">+${x.kayitlar.length - 40} kayıt daha</p>` : ''}` : '<p class="hint">Sorun yok.</p>'}</details>`).join('')}</section>`).join('')}`;
   el.querySelector('[data-xls]').onclick = () => exportXlsx(`veri-kontrolu-${today()}.xlsx`, { 'Kontrol': sorun.flatMap(x => x.kayitlar.map(r => ({ 'Grup': x.grup, 'Sorun': x.baslik, 'Kayıt': Array.isArray(r) ? r.map(f => f.ad).join(' / ') : r.ad || [r.siparis_no, r.referans || r.musteri_adi].filter(Boolean).join(' · ') || (r.c ? r.c + '. çeyrek' : ''), 'Durum / tarih': r.durum || r.tarih || r.beklenen_tarih || '', 'Tutar': r.tutar_usd || r.net_deger || '' }))) });
@@ -92,6 +117,15 @@ export function kontrolView(el) {
   el.querySelectorAll('[data-bagla]').forEach(b => b.onclick = async () => { const [sid, pid] = b.dataset.bagla.split(':'); await app.db.save('siparisler', { ...byId('siparisler', sid), proje_id: pid }); toast('Sipariş projeye bağlandı.'); kontrolView(el); });
   el.querySelectorAll('[data-disi]').forEach(b => b.onclick = async () => { await app.db.save('siparisler', { ...byId('siparisler', b.dataset.disi), rapor_disi: true }); toast('Sipariş rapor dışı bırakıldı.'); kontrolView(el); });
   el.querySelectorAll('[data-cozet]').forEach(a => a.onclick = () => { const fs = F('siparisler', {}); fs.gor = 'ceyrek'; fs.yil = new Date().getFullYear(); saveFilters(); });
+  el.querySelectorAll('[data-kbirlestir]').forEach(b => b.onclick = async () => {
+    const ks = b.dataset.kbirlestir.split(',').map(i => byId('kisiler', i)).filter(Boolean);
+    const say = x => ['ziyaretler', 'gorevler', 'teklifler'].reduce((a, t) => a + S[t].filter(r => r.kisi_id === x.id).length, 0) + (x.telefon ? 1 : 0) + (x.eposta ? 1 : 0) + (x.firma_id ? 1 : 0);
+    ks.sort((a, c) => say(c) - say(a));
+    if (!confirmBox(`Şu kişiler “${ks[0].ad_soyad}” adıyla tek kayıt olacak:\n${ks.map(x => '• ' + x.ad_soyad + (x.telefon ? ' · ' + x.telefon : '')).join('\n')}\n\nBağlı ziyaret, görev ve teklifler taşınır. Devam edilsin mi?`)) return;
+    b.disabled = true;
+    try { await kisiBirlestir(ks[0].id, ks.slice(1).map(x => x.id)); toast(`${ks.length} kayıt birleştirildi.`); } catch (e) { toast('Birleştirilemedi: ' + e.message, 'err'); }
+    kontrolView(el);
+  });
   el.querySelectorAll('[data-birlestir]').forEach(b => b.onclick = async () => {
     const ids = b.dataset.birlestir.split(','), fs = ids.map(i => byId('firmalar', i));
     const say = f => S.projeler.filter(p => ROL.some(r => p[r] === f.id)).length + S.siparisler.filter(s => s.firma_id === f.id).length + S.kisiler.filter(k => k.firma_id === f.id).length;
