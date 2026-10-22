@@ -11,7 +11,8 @@ const GRUPLAR = ['Saha', 'Satış', 'Rapor'];
 export function menuDuzeni(R = app.rotalar || {}) {
   const m = ayar('menu') || {};
   const gizli = new Set((m.gizli || []).filter(k => R[k] && !SABIT.includes(k)));
-  const vars = Object.keys(R).filter(k => R[k].main);
+  let vars = Object.keys(R).filter(k => R[k].main);
+  if (app.yetki?.yetkiler?._rol === 'Bayi' && R.bayi) vars = ['bugun', 'bayi', ...vars.filter(k => k !== 'bugun')];   // bayi rolündeki üyeye ana çubukta Bayi paneli
   const ana = (Array.isArray(m.ana) && m.ana.length ? m.ana : vars).filter(k => R[k] && !gizli.has(k)).slice(0, ANA_EN_COK);
   return { gizli, ana, ozel: !!(m.gizli?.length || m.ana?.length) };
 }

@@ -20,6 +20,7 @@ import { tahsilatView } from './views/tahsilat.js';
 import { raporView } from './views/rapor.js';
 import { kontrolView } from './views/kontrol.js';
 import { dosyalarView } from './views/dosyalar.js';
+import { bayiView } from './views/bayi.js';
 import { rotaIzinli, sahipMi, rotaYazilabilir } from './yetki.js';
 import { menuDuzeni } from './menu.js';
 import { hizliKur, aramaAc } from './hizli.js';
@@ -40,6 +41,7 @@ const ROUTES = {
   masraflar: { t: 'Masraf ve km', ico: 'wallet', v: masraflarView, g: 'Saha' },
   dosyalar:  { t: 'Dosyalar', ico: 'doc', v: dosyalarView, g: 'Saha' },
   tahsilat:  { t: 'Tahsilat', ico: 'coins', v: tahsilatView, g: 'Satış' },
+  bayi:      { t: 'Bayi paneli', ico: 'box', v: bayiView, g: 'Satış' },
   teklifler: { t: 'Teklifler', ico: 'doc', v: tekliflerView, g: 'Satış' },
   araclar:   { t: 'Aydınlatma araçları', ico: 'calc', v: araclarView, g: 'Satış' },
   katalog:   { t: 'Ürün kataloğu', ico: 'book', v: katalogView, g: 'Satış' },

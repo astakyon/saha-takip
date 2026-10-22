@@ -9,7 +9,7 @@ export const MODULLER = [
   { k: 'bolgeler', ad: 'Sanayi bölgeleri', t: ['bolgeler'], rota: ['bolgeler'] },
   { k: 'siparisler', ad: 'Siparişler, hedefler ve panel', t: ['siparisler', 'hedefler'], rota: ['siparisler', 'panel'] },
   { k: 'teklifler', ad: 'Teklifler', t: ['teklifler'], rota: ['teklifler'] },
-  { k: 'stok', ad: 'Stok, fiyat ve katalog', t: ['urunler', 'stok_gecmis', 'urun_aileleri'], rota: ['urunler', 'katalog', 'araclar'] },
+  { k: 'stok', ad: 'Stok, fiyat ve katalog', t: ['urunler', 'stok_gecmis', 'urun_aileleri'], rota: ['urunler', 'bayi', 'katalog', 'araclar'] },
   { k: 'rakip', ad: 'Rakip fiyatları', t: ['rakip_fiyatlar'], rota: ['rakip'] },
   { k: 'tahsilat', ad: 'Tahsilat', t: ['tahsilatlar'], rota: ['tahsilat'] },
   { k: 'numune', ad: 'Numune ve servis', t: ['numuneler', 'servis_kayitlari'], rota: ['numuneler', 'servis'] },

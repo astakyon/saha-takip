@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 16)
+
+- **Bayi paneli (Satış → Bayi paneli):** bayinin stok adetleri −/+ ya da yazarak tek tek güncellenir (anında kaydedilir, stok geçmişine işlenir); tekliflere yetmeyen stok, bayinin siparişleri ve bayi üzerinden giden açık projeler. Rolü “Bayi” olan ekip üyesinin ana çubuğunda ikinci sırada çıkar. Stok yetkisi “Görür” ise yalnızca görüntüler.
+- **Rol / ünvan:** Ayarlar → Kullanıcılar'da açılır listeden seçilir ya da “Başka (yaz)”.
+- **Uygulama sürümü ve “Şimdi güncelle”:** Ayarlar → Genel.
+
 ## Güncelleme notu (sürüm 15)
 
 - **Proje sayfasında sekmeler:** Bilgiler · Ziyaret ve görev · Teklif ve sipariş · Belgeler · Geçmiş. Sekmede kayıt sayısı görünür; aynı proje yeniden açılınca son sekme hatırlanır. Kaydet her sekmede çalışır.

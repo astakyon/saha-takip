@@ -910,3 +910,13 @@ section.card:empty { display: none; }
 .p-sekme i { font-style: normal; font-size: 12px; background: var(--line); border-radius: 999px; padding: 0 6px; margin-left: 4px; color: var(--ink); }
 .rol-r { font: 600 11.5px var(--f); font-style: normal; background: var(--lumen-soft, #FFF4D1); color: var(--ink); border-radius: 4px; padding: 1px 7px; }
 .rol-sec { display: flex; gap: 6px; flex-wrap: wrap; } .rol-sec select, .rol-sec input { flex: 1; min-width: 140px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: var(--card, #fff); }
+/* Bayi paneli */
+.bstok li { display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: background .4s; }
+.bstok li.kaydedildi { background: #DCFCE7; }
+.bs-ad { display: flex; flex-direction: column; min-width: 0; }
+.bs-adet { display: flex; align-items: center; gap: 4px; flex: none; }
+.bs-adet input { width: 76px; text-align: right; padding: 7px 8px; border: 1px solid var(--line); border-radius: 6px; font: 600 15px var(--f, inherit); font-variant-numeric: tabular-nums; }
+.bs-adet .btn { min-width: 34px; padding: 4px 0; font-size: 18px; line-height: 1; }
+.bs-adet small { width: 34px; }
+@media (max-width: 599px) { .bstok li { flex-wrap: wrap; } .bs-ad { flex: 1 1 100%; } .bs-adet { margin-left: auto; } .bs-adet input { width: 90px; } }
+@media (max-width: 599px) { .bs-adet small { display: none; } }
