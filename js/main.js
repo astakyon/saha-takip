@@ -23,6 +23,7 @@ import { dosyalarView } from './views/dosyalar.js';
 import { rotaIzinli, sahipMi } from './yetki.js';
 import { menuDuzeni } from './menu.js';
 import { hizliKur, aramaAc } from './hizli.js';
+import { filtreIzle } from './filtre.js';
 import { kurGuncelle } from './kur.js';
 import { bildirimHazirla } from './bildirim.js';
 
@@ -172,6 +173,7 @@ async function boot() {
   const pay = paylasimAl();
   const empty = Object.values(S).every(a => !a.length);
   if (empty && !location.hash) location.hash = '#/ayarlar';
+  filtreIzle(document.getElementById('view'), () => lastView);
   await route();
   hizliKur();
   if (act === 'ziyaret') ziyaretForm({});

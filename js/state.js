@@ -12,6 +12,7 @@ export function saveFilters() {
   try { localStorage.setItem('saha-filters', JSON.stringify(app.filters)); } catch {}
 }
 export function F(view, defaults) {
+  (app.filtreVars ||= {})[view] ||= { ...defaults };
   app.filters[view] = { ...defaults, ...(app.filters[view] || {}) };
   return app.filters[view];
 }

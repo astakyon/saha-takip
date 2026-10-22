@@ -872,3 +872,17 @@ details.fs-d > .kv-pair, details.fs-d > .btnrow { margin-bottom: 14px; }
 @media (max-width: 599px) { .belge-duzen { grid-template-columns: 1fr; } }
 .dh-meta .neg { color: var(--red); }
 .esle-tbl select { width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 6px; font: inherit; } .esle-tbl td[data-ornek] { font-size: 13px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Kayıtlı filtreler */
+.kfiltre { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%; font-size: 13.5px; }
+.kf-l { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; margin-right: 2px; }
+.kf { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; background: var(--card, #fff); overflow: hidden; }
+.kf.on { border-color: var(--ink); background: var(--ink); }
+.kf.on button { color: #fff; }
+.kf button { background: none; border: 0; font: 500 13.5px var(--f, inherit); padding: 5px 4px 5px 12px; cursor: pointer; color: var(--ink); }
+.kf .kf-x { padding: 5px 10px 5px 6px; opacity: .55; }
+.kf .kf-x:hover { opacity: 1; }
+.kf-yeni, .kf-temiz { background: none; border: 1px dashed var(--line); border-radius: 999px; padding: 5px 12px; font: 500 13.5px var(--f, inherit); cursor: pointer; color: var(--ink); }
+.kf-temiz { border-style: solid; border-color: transparent; color: var(--blue, #2563EB); }
+.kf-ipucu { color: var(--muted); font-size: 12.5px; }
+.kf-form { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.kf-form input { padding: 6px 10px; border: 1px solid var(--ink); border-radius: 999px; font: inherit; min-width: 200px; }
