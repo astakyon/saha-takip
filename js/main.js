@@ -25,6 +25,7 @@ import { rotaIzinli, sahipMi, rotaYazilabilir } from './yetki.js';
 import { menuDuzeni } from './menu.js';
 import { hizliKur, aramaAc } from './hizli.js';
 import { filtreIzle } from './filtre.js';
+import { temaUygula } from './tema.js';
 import { kurGuncelle } from './kur.js';
 import { bildirimHazirla } from './bildirim.js';
 
@@ -167,6 +168,7 @@ async function boot() {
     if (app.db.mode === 'supabase' && !ok) { document.getElementById('nav').innerHTML = ''; return loginView(view, boot); }
     await app.db.loadAll();
     app.yetki = app.db.yetki || null;
+    temaUygula();
     app.ekip = [];
     if (app.db.mode === 'supabase' && sahipMi()) app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif,yetkiler').then(({ data }) => { app.ekip = (data || []).filter(u => u.aktif); if (app.ekip.length && ['gorevler', 'bugun'].includes(lastView) && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});
     if (app.db.offline) toast('Çevrimdışısın: son kaydedilen veriler gösteriliyor.');

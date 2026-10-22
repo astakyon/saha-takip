@@ -89,6 +89,7 @@ export async function ayarlarView(el) {
     <section class="card wide-card" data-tab="kullanici"><h2>Kullanıcılar ve yetkiler</h2><div data-kullanici></div></section>
     <section class="card wide-card" data-tab="kullanici" data-sondeg></section>
     <section class="card" data-tab="genel" id="menu-karti"><h2>Menü</h2><div data-menu></div></section>
+    <section class="card" data-tab="genel"><h2>Görünüm</h2><div class="seg" role="group" aria-label="Tema" data-tema>${[['acik', 'Açık'], ['koyu', 'Koyu'], ['oto', 'Cihaza göre']].map(([k, t]) => `<button type="button" data-tm="${k}" class="${(ayar('tema', 'acik') || 'acik') === k ? 'on' : ''}">${t}</button>`).join('')}</div><p class="hint">Koyu tema akşam ve gece kullanımında gözü daha az yorar. “Cihaza göre” telefonun gece/gündüz ayarını izler.</p></section>
     <section class="card" data-tab="genel"><h2>Gizlilik</h2>
       <label class="chk"><input type="checkbox" data-gizli ${ayar('gizli_mod', false) === true ? 'checked' : ''}> <span><b>Gizli mod</b>: kayıtlarımı ve konumumu dış servislere gönderme</span></label>
       <p class="hint">Açıkken kapananlar: Google uydu/harita katmanı ve Google'da firma arama, OpenStreetMap ile adres ve il/ilçe bulma, sesle yazma (Google konuşma tanıma). Konum yine telefonda alınır, il ve sanayi bölgesi cihazda hesaplanır. Açık kalanlar: kendi Supabase veritabanın, harita görüntüsü (Esri ya da OpenStreetMap; yalnızca baktığın bölgenin görüntüsü istenir), döviz kuru.</p></section>
@@ -179,6 +180,7 @@ export async function ayarlarView(el) {
     try { const ks = await caches.keys(); await Promise.all(ks.filter(k => k !== 'tiles').map(k => caches.delete(k))); } catch {}
     location.reload();
   };
+  el.querySelectorAll('[data-tm]').forEach(b => b.onclick = async () => { const { temaSec } = await import('../tema.js'); await temaSec(b.dataset.tm); el.querySelectorAll('[data-tm]').forEach(x => x.classList.toggle('on', x === b)); });
   el.querySelector('[data-cikti]').onchange = e => ayarYaz('cikti_sakla', e.target.checked);
   el.querySelector('[data-eslesifirla]')?.addEventListener('click', async () => { await ayarYaz('excel_esle', null); toast('Excel sütun eşleştirmeleri sıfırlandı; bir sonraki yüklemede yeniden sorulur.'); });
   el.querySelector('[data-gizli]').onchange = async e => { await ayarYaz('gizli_mod', e.target.checked); toast(e.target.checked ? 'Gizli mod açık: Google ve adres servisleri kapatıldı.' : 'Gizli mod kapalı.'); };
