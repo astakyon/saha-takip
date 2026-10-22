@@ -37,6 +37,9 @@ const FORM = [{ title: 'Teklif', fields: [
 ]}];
 const NOT_FORM = [{ title: 'Not ve koşullar', fields: [{ k: 'notlar', l: 'Teklif notu', t: 'area', rows: 3, ph: 'Teslim süresi, ödeme koşulu, garanti…' }] }];
 
+// Revizyon: aynı kök numaralı teklifler (T-2026-014, T-2026-014-R2, -R3…)
+export const revKok = no => String(no || '').replace(/-R\d+$/i, '');
+export const revNo = no => { const m = /-R(\d+)$/i.exec(no || ''); return m ? +m[1] : 1; };
 export function teklifForm(init = {}, after) {
   const t0 = init.id ? byId('teklifler', init.id) : null;
   const t = t0 ? { ...t0, kalemler: (t0.kalemler || []).map(k => ({ ...k })) } : {
@@ -45,7 +48,8 @@ export function teklifForm(init = {}, after) {
   };
   t.kalemler = t.kalemler || [];
   const panel = openDrawer(`<header class="dh"><div><p class="muted">${t._new ? 'Yeni teklif' : 'Teklif'}</p><h2 id="drawer-title">${esc(t.teklif_no || 'Teklif')}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
-    ${t._new ? '' : `<div class="dh-actions"><button class="btn sm" data-a="pdf">PDF / yazdır</button><button class="btn sm" data-a="wa">WhatsApp</button><button class="btn sm ghost" data-a="kopya">Kopyasını oluştur</button><button class="btn sm ghost danger" data-a="sil">Sil</button></div>`}
+    ${t._new ? '' : `<div class="dh-actions"><button class="btn sm" data-a="pdf">PDF / yazdır</button><button class="btn sm" data-a="wa">WhatsApp</button><button class="btn sm" data-a="revize">Revize et</button><button class="btn sm ghost" data-a="kopya">Kopyasını oluştur</button><button class="btn sm ghost danger" data-a="sil">Sil</button></div>`}
+    ${(() => { if (t._new) return ''; const rv = S.teklifler.filter(x => revKok(x.teklif_no) === revKok(t.teklif_no)).sort((a, b) => revNo(a.teklif_no) - revNo(b.teklif_no)); return rv.length > 1 ? `<div class="rev-list"><b>Revizyonlar</b>${rv.map(x => `<button type="button" class="chip ${x.id === t.id ? 'on' : ''}" data-rev="${x.id}">${esc(x.teklif_no)} · ${esc(x.durum)} · ${para(x.toplam, x.para_birimi)}</button>`).join('')}</div>` : ''; })()}
     <form class="dbody form" novalidate>${renderForm(FORM, t)}
       <fieldset class="fs"><legend>Ürünler</legend>
         <div class="kalem-ekle"><input data-ara list="tk-ul" placeholder="Ürün kodu ya da açıklama yaz (örn. HBL 152)" aria-label="Ürün ekle" autocomplete="off"><datalist id="tk-ul">${S.urunler.filter(u => urunBilgi(u.aciklama).w || u.birim_fiyat_usd).map(u => `<option value="${esc(u.kod + ' · ' + u.aciklama)}">`).join('')}</datalist><button type="button" class="btn sm" data-bos>Serbest kalem</button></div>
@@ -55,6 +59,7 @@ export function teklifForm(init = {}, after) {
       ${renderForm(NOT_FORM, t)}
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button>${t._new ? '<button type="button" class="btn" data-kaydet-pdf>Kaydet ve PDF</button>' : ''}<button type="submit" class="btn primary">Kaydet</button></div>
     </form>`, { wide: true });
+  panel.querySelectorAll('[data-rev]').forEach(b => b.onclick = () => { if (b.dataset.rev !== t.id) teklifForm({ id: b.dataset.rev }, after); });
   const form = panel.querySelector('form');
   bindForm(form, [...FORM, ...NOT_FORM], t, { onChange: o => { Object.assign(t, { iskonto: o.iskonto, kdv: o.kdv, para_birimi: o.para_birimi }); toplam(); } });
   const kbox = form.querySelector('[data-kalemler]');
@@ -111,6 +116,7 @@ export function teklifForm(init = {}, after) {
     const a = b.dataset.a;
     if (a === 'pdf') teklifYazdir(t0);
     if (a === 'wa') { const k = byId('kisiler', t0.kisi_id); window.open(waLink(k?.telefon || byId('firmalar', t0.firma_id)?.telefon || '', teklifMetni(t0)), '_blank', 'noopener'); }
+    if (a === 'revize') { const { id, created_at, updated_at, ...r } = t0; const kok = revKok(t0.teklif_no); const n = Math.max(1, ...S.teklifler.filter(x => revKok(x.teklif_no) === kok).map(x => revNo(x.teklif_no))) + 1; teklifForm({ ...r, teklif_no: `${kok}-R${n}`, tarih: today(), gecerlilik: gunEkle(today(), 15), durum: 'Taslak', kalemler: (t0.kalemler || []).map(k => ({ ...k })), notlar: [t0.notlar, `${t0.teklif_no} teklifinin revizyonu.`].filter(Boolean).join('\n') }, after); }
     if (a === 'kopya') { const { id, created_at, updated_at, ...r } = t0; teklifForm({ ...r, teklif_no: yeniTeklifNo(), tarih: today(), gecerlilik: gunEkle(today(), 15), durum: 'Taslak', kalemler: (t0.kalemler || []).map(k => ({ ...k })) }); }
     if (a === 'sil' && confirmBox(`${t0.teklif_no} silinsin mi?`)) { await app.db.del('teklifler', t0.id); toast('Teklif silindi.'); closeDrawer(); app.refresh(); }
   });
@@ -173,9 +179,13 @@ export function tekliflerView(el) {
   const draw = () => {
     const l = S.teklifler.filter(t => (f.durum === 'Tümü' || t.durum === f.durum) && match(f.q, t.teklif_no, firmaAd(t.firma_id), byId('projeler', t.proje_id)?.ad, t.notlar)).sort((a, b) => (b.tarih || '').localeCompare(a.tarih || '') || (b.teklif_no || '').localeCompare(a.teklif_no || ''));
     const acik = l.filter(t => ['Taslak', 'Gönderildi'].includes(t.durum) && t.para_birimi === 'USD');
-    el.querySelector('[data-sum]').textContent = `${l.length} teklif · bekleyen ${new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(acik.reduce((a, t) => a + (+t.toplam || 0), 0))} $`;
+    const son = new Map(); for (const t of S.teklifler) { const k = revKok(t.teklif_no); if (!son.has(k) || revNo(t.teklif_no) > revNo(son.get(k).teklif_no)) son.set(k, t); }   // her teklifin son revizyonu
+    const sonlar = [...son.values()], kabul = sonlar.filter(t => t.durum === 'Kabul'), red = sonlar.filter(t => t.durum === 'Red');
+    const oran = kabul.length + red.length ? Math.round(kabul.length / (kabul.length + red.length) * 100) : null;
+    const usdTop = a => new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(a.filter(t => (t.para_birimi || 'USD') === 'USD').reduce((s, t) => s + (+t.toplam || 0), 0));
+    el.querySelector('[data-sum]').innerHTML = `${l.length} teklif · bekleyen ${new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(acik.reduce((a, t) => a + (+t.toplam || 0), 0))} $ · kazanma oranı <b>${oran == null ? '—' : '%' + oran}</b> <span class="muted">(${kabul.length} kabul ${usdTop(kabul)} $, ${red.length} red ${usdTop(red)} $; revizyonlarda son hali sayılır)</span>`;
     const t0 = today();
-    el.querySelector('[data-rows]').innerHTML = l.length ? `<ul class="cards">${l.map(t => `<li><button type="button" class="card-btn" data-id="${t.id}"><span class="cb-top"><b>${esc(t.teklif_no || 'Teklif')}</b>${tpill(t.durum)}</span>
+    el.querySelector('[data-rows]').innerHTML = l.length ? `<ul class="cards">${l.map(t => `<li><button type="button" class="card-btn" data-id="${t.id}"><span class="cb-top"><b>${esc(t.teklif_no || 'Teklif')}</b>${S.teklifler.some(x => x !== t && revKok(x.teklif_no) === revKok(t.teklif_no)) ? `<em class="rol-r">${revNo(t.teklif_no) > 1 ? 'Revizyon ' + revNo(t.teklif_no) : 'İlk teklif'}</em>` : ''}${tpill(t.durum)}</span>
       <span>${esc(firmaAd(t.firma_id) || '—')}</span><small class="muted">${esc(byId('projeler', t.proje_id)?.ad || '')}</small>
       <span class="cb-bot"><b class="num">${para(t.toplam, t.para_birimi)}</b><small class="${t.durum === 'Gönderildi' && t.gecerlilik && t.gecerlilik < t0 ? 'neg' : 'muted'}">${tarih(t.tarih)}${t.gecerlilik ? ' · geçerlilik ' + tarih(t.gecerlilik) : ''}</small></span></button></li>`).join('')}</ul>`
       : '<div class="empty"><p>Teklif yok. “Yeni teklif” ile ürün ekleyip PDF ya da WhatsApp olarak gönderebilirsin.</p></div>';

@@ -32,6 +32,18 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 19) — kısmen yapılanlar tamamlandı
+
+- **Bekleyen kayıt rozeti:** İnternetsizken girilen kayıt sayısı menüde (telefonda sağ üstte) görünür; gönderilince “Bekleyen kayıtlar gönderildi”.
+- **Teklif revizyonu ve kazanma oranı:** Teklifte “Revize et” → aynı numaraya -R2, -R3…; teklifte revizyon listesi; Teklifler ekranında kazanma oranı (her teklifin son revizyonu sayılır).
+- **Günlük bildirime teklif ve sipariş:** Sabah özetinde geçerliliği 2 gün içinde dolan teklifler ve dün gelen siparişler.
+- **Değişiklik geçmişinde “Geri al”:** Değişen alanlar eski haline döner.
+- **Enerji tasarrufu PowerPoint:** Aydınlatma araçları → Enerji tasarrufu → “PowerPoint sunumu” (3 slayt).
+- **Km → masraf:** Bugün ekranında “Masrafa yaz”; dünün yolu yazılmadıysa Uyarılar'da hatırlatma. Tutar için Ayarlar → Genel → Araç (litre/100 km, litre fiyatı).
+- **Harita:** Proje ve firma raptiyesinden doğrudan “Ziyaret ekle”.
+- **Yazı boyutu:** Ayarlar → Genel → Görünüm → Normal / Büyük / Çok büyük.
+- **Hız:** Projeler listesi 80'er satır çizilir, “daha fazla göster”.
+
 ## Güncelleme notu (sürüm 18) — anlık bildirim (bir kez kurulum)
 
 1. Supabase SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (şema sürüm 10: `push_abonelikleri`).

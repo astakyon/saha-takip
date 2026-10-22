@@ -25,7 +25,7 @@ import { rotaIzinli, sahipMi, rotaYazilabilir } from './yetki.js';
 import { menuDuzeni } from './menu.js';
 import { hizliKur, aramaAc } from './hizli.js';
 import { filtreIzle } from './filtre.js';
-import { temaUygula } from './tema.js';
+import { temaUygula, yaziUygula } from './tema.js';
 import { kurGuncelle } from './kur.js';
 import { bildirimHazirla } from './bildirim.js';
 
@@ -98,7 +98,7 @@ function renderNav(cur) {
   const item = (k, r) => `<a href="#/${k}" class="${k === cur ? 'on' : ''}" ${k === cur ? 'aria-current="page"' : ''}>${icon(r.ico)}<span>${r.t}</span></a>`;
   const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : !sahipMi() ? `<span class="mode-badge">${esc(app.yetki?.yetkiler?._rol || 'Ekip üyesi')}${app.yetki?.ad ? ' · ' + esc(app.yetki.ad) : ''}</span>` : '';
   nav.innerHTML = `
-    <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b>${mode}</div>
+    <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b>${mode}<a href="#/ayarlar" id="bekleyen" class="bekleyen" hidden title="İnternet gelince gönderilecek kayıtlar"></a></div>
     <button type="button" class="nav-ara" data-navara><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Ara</span><kbd>/</kbd></button>
     <div class="nav-main">${ana.filter(rotaIzinli).map(k => item(k, ROUTES[k])).join('')}
       <button class="nav-more ${!ana.includes(cur) ? 'on' : ''}" type="button" aria-haspopup="true">${icon('more')}<span>Diğer</span></button></div>
@@ -106,6 +106,7 @@ function renderNav(cur) {
       <button type="button" class="nav-inst" data-inst ${canInstall() ? '' : 'hidden'}>${icon('down')}<span>Telefona yükle</span></button>
       <a href="#/ayarlar" class="nav-duzen" data-menuduzen>${icon('gear', 18)}<span>Menüyü düzenle</span></a></div>`;
   nav.querySelector('[data-navara]').onclick = () => aramaAc();
+  bekleyenGuncelle();
   nav.querySelector('[data-menuduzen]').addEventListener('click', () => { try { sessionStorage.setItem('menu-ac', '1'); } catch {} if (location.hash === '#/ayarlar') window.dispatchEvent(new HashChangeEvent('hashchange')); });
   nav.querySelector('[data-inst]').onclick = () => { nav.classList.remove('more-open'); install(); };
   nav.querySelector('.nav-more').onclick = () => nav.classList.toggle('more-open');
@@ -168,7 +169,7 @@ async function boot() {
     if (app.db.mode === 'supabase' && !ok) { document.getElementById('nav').innerHTML = ''; return loginView(view, boot); }
     await app.db.loadAll();
     app.yetki = app.db.yetki || null;
-    temaUygula();
+    temaUygula(); yaziUygula();
     app.ekip = [];
     if (app.db.mode === 'supabase' && sahipMi()) app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif,yetkiler').then(({ data }) => { app.ekip = (data || []).filter(u => u.aktif); if (app.ekip.length && ['gorevler', 'bugun'].includes(lastView) && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});
     if (app.db.offline) toast('Çevrimdışısın: son kaydedilen veriler gösteriliyor.');
@@ -192,7 +193,18 @@ async function boot() {
   bildirimHazirla().catch(() => {});
 }
 window.addEventListener('schema-old', () => toast('Veritabanı güncel değil: Supabase SQL Editor\'de supabase/schema.sql dosyasını yeniden çalıştır. Yeni alanlar (Google bilgileri) o zamana kadar kaydedilmez.', 'err'));
-window.addEventListener('outbox', e => { if (e.detail) toast('Bağlantı yok: değişiklik kaydedildi, internet gelince gönderilecek.'); });
+window.addEventListener('outbox', e => { if (e.detail) toast('Bağlantı yok: değişiklik kaydedildi, internet gelince gönderilecek.'); bekleyenGuncelle(); });
+// Gönderilmeyi bekleyen kayıt sayısı (menüde rozet); sıfıra inince “gönderildi” bildirimi
+let sonBekleyen = 0;
+async function bekleyenGuncelle() {
+  const n = app.db?.pending ? await app.db.pending().catch(() => 0) : 0;
+  const b = document.getElementById('bekleyen');
+  if (b) { b.hidden = !n; b.textContent = n ? `${n} kayıt bekliyor` : ''; }
+  if (sonBekleyen && !n) toast('Bekleyen kayıtlar gönderildi.');
+  sonBekleyen = n;
+}
+window.addEventListener('online', () => setTimeout(bekleyenGuncelle, 3000));
+setInterval(bekleyenGuncelle, 30000);
 window.__reboot = boot;
 // Ekipten gelen değişiklikler: uygulamaya geri dönüldüğünde (2 dk'dan fazla geçtiyse) ve açıkken 5 dk'da bir verileri sessizce tazele
 let sonTazele = Date.now(), tazeleniyor = false;

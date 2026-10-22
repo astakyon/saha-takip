@@ -96,6 +96,16 @@ function raporKarti() {
     <div class="btnrow"><button type="button" class="btn primary" data-raporac>Raporu aç</button><span class="hint">PDF, Excel ya da WhatsApp ile gönderebilirsin.</span></div></section>`;
 }
 
+// Günün km'si masraflara yazıldı mı (o tarihte km girilmiş masraf var mı)
+const kmYazildi = gun => S.masraflar.some(m => m.tarih === gun && +m.km > 0);
+// Yakıt tutarı tahmini: km × (litre/100 km) × litre fiyatı (Ayarlar → Genel → Araç)
+export const yakitTutar = km => { const l = +ayar('yakit_lt100', 0), f = +ayar('yakit_tl', 0); return l && f ? Math.round(km * l / 100 * f) : 0; };
+async function kmMasrafa(gun) {
+  const km = gunKm(gun), tutar = yakitTutar(km);
+  if (tutar) { await app.db.save('masraflar', { tarih: gun, tip: 'Yakıt', km, tutar, aciklama: 'Saha yolu (ziyaret noktalarından tahmin)' }); toast(`${tarih(gun)}: ${km} km, ${num(tutar)} TL masraflara yazıldı.`); app.refresh(); }
+  else { const { masrafForm } = await import('./kayitlar.js'); masrafForm({ tarih: gun, tip: 'Yakıt', km, aciklama: 'Saha yolu (ziyaret noktalarından tahmin)' }); toast('Tutarın kendiliğinden hesaplanması için Ayarlar → Genel → Araç bölümüne tüketim ve litre fiyatını gir.'); }
+}
+
 export function bugunView(el) {
   const t = today(), yarin = gunEkle(t, 1);
   const planli = S.ziyaretler.filter(z => z.tarih === t && zDurum(z) === 'Planlandı');
@@ -112,6 +122,7 @@ export function bugunView(el) {
   const servis = S.servis_kayitlari.filter(s => s.durum !== 'Çözüldü');
   const teklif = S.teklifler.filter(x => x.durum === 'Gönderildi' && x.gecerlilik && x.gecerlilik <= gunEkle(t, 7));
   const gecT = gecikenler();
+  const dun = gunEkle(t, -1), kmDun = gunKm(dun), kmDunEksik = kmDun > 0 && !kmYazildi(dun);
   const yg = yedekGunu(), yedek = sahipMi() && S.projeler.length > 0 && (yg === null || yg >= 7);
   const kmBugun = gunKm(t);
   const sirali = rotaSirala(planli);
@@ -132,7 +143,7 @@ export function bugunView(el) {
         : `<p class="hint">Bugün için planlı ziyaret yok.</p><div class="btnrow"><a class="btn ghost" href="#/takvim">Takvimden ziyaret planla</a></div>`}
       </section>
       <section class="card"><h2>${uye ? 'Sana atanan görevler' : 'Görevler'}</h2>${gorev.length ? `<ul class="list chk-list">${gorev.slice(0, 10).map(g1).join('')}</ul>` : `<p class="hint">${uye ? 'Sana atanmış açık görev yok.' : 'Bugün için açık görev yok.'}</p>`}${ekipAcik.length ? `<p class="hint">Ekipte ${ekipAcik.length} açık görev: ${esc([...new Set(ekipAcik.map(g => kimAd(g.atanan)))].join(', '))}</p>` : ''}${uye ? '' : '<p><a href="#/gorevler">Görev takvimi</a></p>'}</section>
-      <section class="card"><h2>Bugün yapılanlar</h2>${yapilan.length ? `<ul class="list">${yapilan.map(z1).join('')}</ul>` : '<p class="hint">Henüz ziyaret kaydı yok.</p>'}${kmBugun ? `<p class="hint">Ziyaret noktalarına göre yaklaşık ${kmBugun} km. <a href="#/masraflar">Masraflara ekle</a></p>` : ''}</section>
+      <section class="card"><h2>Bugün yapılanlar</h2>${yapilan.length ? `<ul class="list">${yapilan.map(z1).join('')}</ul>` : '<p class="hint">Henüz ziyaret kaydı yok.</p>'}${kmBugun ? `<p class="hint">Ziyaret noktalarına göre yaklaşık ${kmBugun} km.${kmYazildi(t) ? ' Masraflara yazıldı.' : ` <button type="button" class="linkbtn" data-kmyaz="${t}">Masrafa yaz</button>`}</p>` : ''}</section>
       <section class="card"><h2>Zamanı gelen projeler <span class="muted">${zg.length}</span></h2>
         ${zg.length ? `<ul class="list">${zg.slice(0, 8).map(x => `<li><a href="#/proje/${x.p.id}"><b>${esc(x.p.ad)}</b><span class="muted">${esc(x.neden.join(', '))}${x.sz ? ` · son ziyaret ${tarih(x.sz)}` : ' · hiç ziyaret yok'}</span></a>${pill(x.p.durum)}</li>`).join('')}</ul>`
         : '<p class="hint">Aydınlatma alım tarihi ya da şantiye aşaması yaklaşan proje yok. Projelere “Şantiye aşaması” ve “Tahmini aydınlatma alımı” girdikçe burada uyarı alırsın.</p>'}</section>
@@ -140,7 +151,8 @@ export function bugunView(el) {
         ${gid.length ? `<ul class="list">${gid.slice(0, 8).map(x => `<li><a href="#/firma/${x.f.id}"><b>${esc(x.f.ad)}</b><span class="muted">${x.f.segment ? `<em class="seg-r">${esc(x.f.segment)}</em> ` : ''}${x.son ? `${x.gun} gündür gidilmedi` : 'hiç ziyaret kaydı yok'}${x.proje ? ` · ${x.proje} açık proje` : ''}</span></a><button type="button" class="btn sm ghost" data-planla="${x.f.id}">Planla</button></li>`).join('')}</ul>` : '<p class="hint">Ziyaret aralığı geçen aktif firma yok. Aralık firma segmentine göre: A 30, B 60, C 90 gün, segmentsiz 45 gün.</p>'}</section>
       <section class="card"><h2>Yarın</h2>${yarinZ.length || yarinG.length ? `<ul class="list">${yarinZ.map(z1).join('')}${yarinG.map(g => `<li><button type="button" class="linkbtn" data-gid="${g.id}">○ ${esc(g.baslik)}</button></li>`).join('')}</ul>` : '<p class="hint">Yarın için plan yok.</p>'}</section>
       ${dg.length ? `<section class="card"><h2>Doğum günleri</h2><ul class="list">${dg.map(x => `<li><span><b>${esc(x.k.ad_soyad)}</b><span class="muted"> · ${firmaAd(x.k.firma_id) ? esc(firmaAd(x.k.firma_id)) + ' · ' : ''}${x.kalan === 0 ? 'bugün' : x.kalan === 1 ? 'yarın' : x.gun.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}</span></span><button type="button" class="btn sm ghost" data-dg="${x.k.id}">Tebrik et</button></li>`).join('')}</ul></section>` : ''}
-      ${ekipBitti.length || yedek || stok.yetersiz.length || stok.hareketsiz.length || numune.length || servis.length || teklif.length || gecT.length ? `<section class="card"><h2>Uyarılar</h2><ul class="list">
+      ${kmDunEksik || ekipBitti.length || yedek || stok.yetersiz.length || stok.hareketsiz.length || numune.length || servis.length || teklif.length || gecT.length ? `<section class="card"><h2>Uyarılar</h2><ul class="list">
+        ${kmDunEksik ? `<li><span><b>Dünün yolu masrafa yazılmadı</b><span class="muted"> · yaklaşık ${kmDun} km${yakitTutar(kmDun) ? ' ≈ ' + num(yakitTutar(kmDun)) + ' TL yakıt' : ''}</span></span><button type="button" class="btn sm" data-kmyaz="${dun}">Masrafa yaz</button></li>` : ''}
         ${ekipBitti.map(g => `<li><button type="button" class="linkrow" data-gid="${g.id}"><b>${esc(kimAd(g.tamamlayan))} görevi tamamladı</b><span class="muted">${esc(g.baslik)}</span></button></li>`).join('')}
         ${yedek ? `<li><a href="#/ayarlar" data-yedekgit><b>${yg === null ? 'Henüz tam yedek almadın' : `Son tam yedek ${yg} gün önce`}</b><span class="muted">Ayarlar → Veri ve yedek → Tam yedek (ZIP); dosyayı bilgisayarında sakla</span></a></li>` : ''}
         ${gecT.length ? `<li><a href="#/tahsilat"><b class="neg">${gecT.length} faturanın vadesi geçti</b><span class="muted">${esc(gecT.slice(0, 3).map(x => (firmaAd(x.firma_id) || x.cari) + ' ' + tPara(tKalan(x), x.para_birimi)).join(', '))}</span></a></li>` : ''}
@@ -152,6 +164,7 @@ export function bugunView(el) {
       </ul></section>` : ''}
     </div>`;
   el.querySelector('[data-yeni]').onclick = () => ziyaretForm({});
+  el.querySelectorAll('[data-kmyaz]').forEach(b => b.onclick = () => kmMasrafa(b.dataset.kmyaz));
   el.querySelector('[data-raporac]')?.addEventListener('click', () => { const g = gunEkle(haftaBasi(today()), -7); try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} const fr = F('rapor', {}); fr.bas = g; saveFilters(); location.hash = '#/rapor'; });
   el.querySelector('[data-raporkapat]')?.addEventListener('click', e => { try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} e.target.closest('section').remove(); });
   el.querySelector('[data-yedekgit]')?.addEventListener('click', () => { try { sessionStorage.setItem('ayar-sekme', 'veri'); } catch {} });

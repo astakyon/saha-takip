@@ -295,6 +295,8 @@ export async function mapView(el) {
       ${p.notlar ? `<p class="pp-note">${esc(p.notlar.slice(0, 200))}${p.notlar.length > 200 ? '…' : ''}</p>` : ''}
       ${p.konum_yaklasik ? '<p class="hint">Yaklaşık konum. “Konumu taşı” ile gerçek yerine koy.</p>' : ''}
       <div class="pp-act"><a class="btn sm" href="#/proje/${p.id}">Detay</a><a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}">Yol tarifi</a><button type="button" class="btn sm ghost" data-move>Konumu taşı</button><button type="button" class="btn sm ghost" data-g>Google</button></div>`;
+    div.querySelector('.pp-act').insertAdjacentHTML('afterbegin', '<button type="button" class="btn sm primary" data-ziy>Ziyaret ekle</button>');
+    div.querySelector('[data-ziy]').onclick = () => { map.closePopup(); ziyaretForm({ proje_id: p.id, firma_id: p.emut_id || p.alici_id || p.bayi_id || null }); };
     div.querySelector('[data-move]').onclick = () => { map.closePopup(); setMode({ t: 'assign', table: 'projeler', rec: p }); };
     div.querySelector('[data-g]').onclick = () => { map.closePopup(); googleBul({ q: aramaMetni(p), near: [p.lat, p.lng], hedef: { table: 'projeler', rec: p }, sonra: () => draw() }); };
     photoBlock(p.fotolar).then(h => { div.querySelector('.pp-ph').innerHTML = h; });
@@ -308,6 +310,8 @@ export async function mapView(el) {
       <div class="pp-meta"><div><span>Proje</span> ${pc}</div>${x.telefon ? `<div><span>Tel</span> <a href="tel:${esc(x.telefon)}">${esc(x.telefon)}</a></div>` : ''}</div>
       ${x.notlar ? `<p class="pp-note">${esc(x.notlar.slice(0, 200))}</p>` : ''}
       <div class="pp-act"><a class="btn sm" href="#/firma/${x.id}">Detay</a><a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(x.lat, x.lng)}">Yol tarifi</a><button type="button" class="btn sm ghost" data-move>Konumu taşı</button><button type="button" class="btn sm ghost" data-g>Google</button></div>`;
+    div.querySelector('.pp-act').insertAdjacentHTML('afterbegin', '<button type="button" class="btn sm primary" data-ziy>Ziyaret ekle</button>');
+    div.querySelector('[data-ziy]').onclick = () => { map.closePopup(); ziyaretForm({ firma_id: x.id }); };
     div.querySelector('[data-move]').onclick = () => { map.closePopup(); setMode({ t: 'assign', table: 'firmalar', rec: x }); };
     div.querySelector('[data-g]').onclick = () => { map.closePopup(); googleBul({ q: aramaMetni(x), near: [x.lat, x.lng], hedef: { table: 'firmalar', rec: x }, sonra: () => draw() }); };
     photoBlock(x.fotolar).then(h => { div.querySelector('.pp-ph').innerHTML = h; });

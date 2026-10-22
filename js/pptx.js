@@ -176,3 +176,31 @@ export function ceyrekSunumu(Y) {
     } catch (e) { console.error(e); toast('Sunum oluşturulamadı: ' + e.message, 'err'); }
   };
 }
+
+// Enerji tasarrufu önerisi (Aydınlatma araçları → Enerji tasarrufu): 3 slaytlık, müşteriye gönderilecek sunum
+export function tasarrufSunumu(v) {
+  sid = 2;
+  const sayi = n => new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(n || 0);
+  const kartlar = (liste, Y) => { const w = (W - 1.8 * CM - 3 * 0.5 * CM) / 4; return liste.map(([b, d, a], i) => kutu({ x: 0.9 * CM + i * (w + 0.5 * CM), y: Y, w, h: 4.2 * CM, dolgu: i === 0 ? RENK.ink : RENK.acik, satirlar: [{ t: b, sz: 1200, renk: i === 0 ? 'B6C2CA' : RENK.gri }, { t: d, sz: 2600, b: true, renk: i === 0 ? 'FFFFFF' : RENK.ink }, { t: a, sz: 1000, renk: i === 0 ? 'B6C2CA' : RENK.gri }] })).join(''); };
+  const s1 = kutu({ x: 0, y: 0, w: W, h: H, dolgu: RENK.ink })
+    + kutu({ x: 1.5 * CM, y: 4.2 * CM, w: W - 3 * CM, h: 2.6 * CM, satirlar: [{ t: 'ENERJİ TASARRUFU ÖNERİSİ', sz: 4000, b: true, renk: 'FFFFFF' }] })
+    + kutu({ x: 1.5 * CM, y: 7.0 * CM, w: 5 * CM, h: 0.2 * CM, dolgu: RENK.lumen })
+    + kutu({ x: 1.5 * CM, y: 7.6 * CM, w: W - 3 * CM, h: 4 * CM, satirlar: [{ t: v.musteri || 'LED dönüşüm değerlendirmesi', sz: 2200, renk: 'FFFFFF' }, { t: `${sayi(v.adet)} adet ${sayi(v.eskiW)} W → ${v.yeniAd || sayi(v.yeniW) + ' W LED'}`, sz: 1600, renk: 'B6C2CA' }, { t: [benimAdim(), new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })].filter(Boolean).join(' · '), sz: 1400, renk: 'B6C2CA' }] });
+  const s2 = baslik('MEVCUT SİSTEM VE ÖNERİLEN SİSTEM')
+    + tablo({ x: 0.9 * CM, y: 2.6 * CM, w: W - 1.8 * CM, basliklar: ['', 'Mevcut sistem', 'Önerilen LED sistem', 'Fark'], oranlar: [2.4, 2, 2, 2], sz: 1300, satirH: 1.0 * CM, sag: [1, 2, 3], satirlar: [
+      ['Armatür', `${sayi(v.adet)} × ${sayi(v.eskiW)} W`, `${sayi(v.adet)} × ${v.yeniAd ? v.yeniAd + ' (' + sayi(v.yeniW) + ' W)' : sayi(v.yeniW) + ' W'}`, `%${sayi(v.eskiW ? (v.eskiW - v.yeniW) / v.eskiW * 100 : 0)} daha az güç`],
+      ['Kurulu güç', `${sayi(v.adet * v.eskiW / 1000)} kW`, `${sayi(v.adet * v.yeniW / 1000)} kW`, `${sayi(v.adet * (v.eskiW - v.yeniW) / 1000)} kW`],
+      ['Çalışma', `${sayi(v.saat)} saat/gün · ${sayi(v.gun)} gün/yıl`, 'Aynı', ''],
+      ['Yıllık tüketim', `${sayi(v.eskiKwh)} kWh`, `${sayi(v.yeniKwh)} kWh`, `${sayi(v.eskiKwh - v.yeniKwh)} kWh`],
+      ['Yıllık elektrik gideri', v.kwh ? `${sayi(v.eskiKwh * v.kwh)} TL` : '—', v.kwh ? `${sayi(v.yeniKwh * v.kwh)} TL` : '—', v.kwh ? `${sayi((v.eskiKwh - v.yeniKwh) * v.kwh)} TL` : '—'],
+    ] })
+    + kutu({ x: 0.9 * CM, y: 10.6 * CM, w: W - 1.8 * CM, h: 1.4 * CM, satirlar: [{ t: `Elektrik birim fiyatı ${v.kwh ? v.kwh.toLocaleString('tr-TR') + ' TL/kWh' : 'girilmedi'}${v.kur ? ' · dolar kuru ' + v.kur.toLocaleString('tr-TR') + ' TL' : ''}. Hesaplar yaklaşıktır; sahadaki ölçüme göre değişebilir.`, sz: 1000, renk: RENK.gri }] });
+  const s3 = baslik('KAZANIM')
+    + kartlar([['Yıllık para tasarrufu', v.kwh ? `${sayi(v.tl)} TL` : '—', v.usd ? `≈ ${sayi(v.usd)} $` : ''], ['Yıllık enerji tasarrufu', `${sayi(v.eskiKwh - v.yeniKwh)} kWh`, `%${sayi(v.eskiKwh ? (v.eskiKwh - v.yeniKwh) / v.eskiKwh * 100 : 0)} daha az`], ['Geri dönüş süresi', v.ay ? `${(Math.round(v.ay * 10) / 10).toLocaleString('tr-TR')} ay` : '—', v.yatirim ? `Yatırım ≈ ${sayi(v.yatirim)} $` : 'Birim fiyat girilmedi'], ['Karbon azaltımı', `${(Math.round(v.co2 * 10) / 10).toLocaleString('tr-TR')} ton/yıl`, '0,44 kg CO₂/kWh ile']], 2.8 * CM)
+    + kutu({ x: 0.9 * CM, y: 7.8 * CM, w: W - 1.8 * CM, h: 3.5 * CM, satirlar: [{ t: 'Ek kazanımlar', sz: 1500, b: true }, { t: '• Daha uzun ömür, daha az bakım ve lamba değişimi', sz: 1300 }, { t: '• Anında tam ışık, titreşimsiz ve daha iyi renk', sz: 1300 }, { t: '• Ayrıntılı teklif ve fotometrik çalışma için iletişime geçin', sz: 1300 }] });
+  const sl = [s1, s2 + altbilgi('2 / 3', 'Enerji tasarrufu önerisi'), s3 + altbilgi('3 / 3', 'Enerji tasarrufu önerisi')];
+  const bl = pptxPaketle(sl), ad = `enerji-tasarrufu-${today()}.pptx`;
+  download(ad, bl);
+  import('./belgeler.js').then(m => m.ciktiKaydet(bl, ad, 'PowerPoint', 'Enerji tasarrufu önerisi'));
+  return sl.length;
+}

@@ -138,6 +138,7 @@ export function projelerView(el) {
   </div>
   <div class="ptable-wrap" data-rows></div>`;
 
+  let goster = 80;   // uzun listede ilk 80 satır, sonra “daha fazla”
   const draw = () => {
     const base = S.projeler.filter(p => f.yil === 'Tümü' || String(p.takip_yili) === String(f.yil));
     DURUMLAR.forEach(d => { const c = el.querySelector(`[data-cnt="${d.k}"]`); if (c) c.textContent = base.filter(p => p.durum === d.k).length || ''; });
@@ -148,7 +149,7 @@ export function projelerView(el) {
     if (f.gor === 'huni') return huni(el.querySelector('[data-rows]'), list, draw);
     el.querySelector('[data-rows]').innerHTML = list.length ? `<table class="ptable">
       <thead><tr><th class="c-dur">Durum</th><th class="c-sip r">Sipariş</th><th class="c-ad">Proje</th><th>Yer</th><th>Bölge / OSB</th><th>Yatırımcı</th><th>Projeci</th><th>Danışman</th><th>Gemüt</th><th>Emüt</th><th>Malzeme alıcısı</th><th>Kanal</th><th class="r">Tutar</th><th>Yıl</th><th>Kayıp / rakip</th></tr></thead>
-      <tbody>${list.map(p => { const st = siparisToplam(p); return `<tr data-pid="${p.id}" style="--c:${durumRenk(p.durum)}" tabindex="0">
+      <tbody>${list.slice(0, goster).map(p => { const st = siparisToplam(p); return `<tr data-pid="${p.id}" style="--c:${durumRenk(p.durum)}" tabindex="0">
         <td class="c-dur" data-l="Durum"><select class="dsel" data-dsel="${p.id}" aria-label="${esc(p.ad)} durumu" style="--c:${durumRenk(p.durum)}">${DURUMLAR.map(d => `<option ${d.k === p.durum ? 'selected' : ''}>${d.k}</option>`).join('')}</select></td>
         <td class="c-sip r num" data-l="Sipariş">${st ? usd(st) : '<span class="muted">—</span>'}</td>
         <td class="c-ad" data-l="Proje"><b>${esc(p.ad)}</b>${p.kritik ? ' <em class="flag">Kritik</em>' : ''}${p.hedef_listesi ? ' <em class="flag soft">Hedef</em>' : ''}${p.lat == null || p.konum_yaklasik ? ' <em class="flag gray">Konum bekliyor</em>' : ''}${p.notlar ? `<small>${esc(p.notlar.slice(0, 80))}</small>` : ''}</td>
@@ -158,9 +159,10 @@ export function projelerView(el) {
         <td data-l="Gemüt">${fa(p.gemut_id)}</td><td data-l="Emüt">${fa(p.emut_id)}</td><td data-l="Malzeme alıcısı">${fa(p.alici_id)}</td>
         <td data-l="Kanal">${p.kanal === 'Direkt' ? 'Direkt' : fa(p.bayi_id)}</td>
         <td class="r num" data-l="Tutar">${usd(p.tutar_usd)}</td><td data-l="Yıl">${p.takip_yili || '—'}</td>
-        <td data-l="Kayıp / rakip">${p.durum === 'Kayıp' ? esc([p.rakip_marka, p.kayip_nedeni].filter(Boolean).join(' · ') || '—') : '<span class="muted">—</span>'}</td></tr>`; }).join('')}</tbody></table>`
+        <td data-l="Kayıp / rakip">${p.durum === 'Kayıp' ? esc([p.rakip_marka, p.kayip_nedeni].filter(Boolean).join(' · ') || '—') : '<span class="muted">—</span>'}</td></tr>`; }).join('')}</tbody></table>${list.length > goster ? `<div class="daha"><button type="button" class="btn" data-daha>${Math.min(80, list.length - goster)} proje daha göster</button><span class="muted">${goster} / ${list.length} gösteriliyor</span></div>` : ''}`
       : `<div class="empty"><p>Bu filtrelerle eşleşen proje yok.</p><button class="btn" data-reset2>Filtreleri temizle</button></div>`;
     const r2 = el.querySelector('[data-reset2]'); if (r2) r2.onclick = reset;
+    el.querySelector('[data-daha]')?.addEventListener('click', () => { const y = window.scrollY; goster += 80; draw(); window.scrollTo(0, y); });
     const open = id => { location.hash = '#/proje/' + id; };
     el.querySelectorAll('tr[data-pid]').forEach(tr => {
       tr.onclick = e => { if (e.target.closest('select, a')) return; open(tr.dataset.pid); };
