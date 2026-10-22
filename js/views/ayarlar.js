@@ -13,6 +13,9 @@ import { kmlIndir } from '../paylas.js';
 import { kurAyarlari } from '../kur.js';
 import { bildirimAyarlari } from '../bildirim.js';
 import { yuklemeKaydet } from '../belgeler.js';
+import { ayar, ayarYaz } from '../ayar.js';
+import { sahipMi } from '../yetki.js';
+import { kullaniciAyarlari } from './kullanicilar.js';
 
 const ORDER = SIRA;
 const ETIKET = { bolgeler: 'sanayi bölgesi', firmalar: 'firma', kisiler: 'kişi', projeler: 'proje', proje_gecmis: 'durum geçmişi', ziyaretler: 'ziyaret', gorevler: 'görev', urunler: 'ürün', stok_gecmis: 'stok geçmişi', rakip_fiyatlar: 'rakip fiyatı', siparisler: 'sipariş', hedefler: 'hedef', teklifler: 'teklif', numuneler: 'numune', servis_kayitlari: 'servis kaydı', masraflar: 'masraf', urun_aileleri: 'ürün ailesi', ayarlar: 'ayar', tahsilatlar: 'tahsilat kaydı', belgeler: 'belge' };
@@ -39,7 +42,8 @@ export function loginView(el, done) {
   const cfg = getConfig();
   el.innerHTML = `<div class="login"><div class="login-card"><div class="brand"><span class="bulb big" aria-hidden="true"></span><h1>Saha Takip</h1></div>
     <p class="muted">${esc(cfg.url.replace('https://', ''))}</p>
-    <form class="form" data-login><div class="fld"><label for="l-e">E-posta</label><input id="l-e" type="email" autocomplete="username" required autofocus></div>
+    ${sessionStorage.getItem('saha-davet') ? '<p class="davet">Saha Takip\'e davet edildin. <b>İlk girişte</b> bu e-postayla bir şifre belirleyip “Hesap oluştur”a dokun; sonra giriş yap.</p>' : ''}
+    <form class="form" data-login><div class="fld"><label for="l-e">E-posta</label><input id="l-e" type="email" autocomplete="username" required autofocus value="${esc(sessionStorage.getItem('saha-davet') || '')}"></div>
     <div class="fld"><label for="l-p">Şifre</label><input id="l-p" type="password" autocomplete="current-password" minlength="6" required></div>
     <div class="btnrow"><button class="btn primary" type="submit">Giriş yap</button><button class="btn ghost" type="button" data-up>Hesap oluştur</button></div></form>
     <details><summary>Bağlantı ayarları</summary>${connForm(cfg)}</details></div></div>`;
@@ -67,7 +71,8 @@ export async function ayarlarView(el) {
   const pend = sup ? await app.db.pending() : 0;
   const f = F('ayarlar', { sekme: 'genel' });
   if (!S.projeler.length && !S.firmalar.length && f.sekme === 'genel' && !f._ilk) { f.sekme = 'veri'; f._ilk = 1; }
-  const SEKME = [['genel', 'Genel'], ['veri', 'Veri ve yedek'], ['google', 'Google ve harita'], ['mesaj', 'Mesaj ve teklif']];
+  const SEKME = sahipMi() ? [['genel', 'Genel'], ['kullanici', 'Kullanıcılar'], ['veri', 'Veri ve yedek'], ['google', 'Google ve harita'], ['mesaj', 'Mesaj ve teklif']] : [['genel', 'Genel']];
+  if (!SEKME.some(([k]) => k === f.sekme)) f.sekme = 'genel';
   const toplam = counts.reduce((a, [, n]) => a + n, 0);
   el.innerHTML = `<header class="vh"><div><h1>Ayarlar</h1><p class="sum">${sup ? `Hesap: ${esc(app.db.user()?.email || '')}` : 'Deneme modu: veriler yalnızca bu cihazda'}${pend ? ` · <b>${pend} değişiklik internet bekliyor</b>` : ''}</p></div></header>
   <div class="seg ayar-sekme" role="tablist">${SEKME.map(([k, t]) => `<button type="button" role="tab" data-sekme="${k}" aria-selected="${f.sekme === k}" class="${f.sekme === k ? 'on' : ''}">${t}</button>`).join('')}</div>
@@ -76,6 +81,8 @@ export async function ayarlarView(el) {
       ${sup ? `<p>Bulut hesabına bağlısın; telefonda ve bilgisayarda aynı verileri görürsün.</p><div class="btnrow"><button class="btn ghost" data-out>Çıkış yap</button></div><details class="gelismis"><summary>Bağlantı bilgileri (Supabase)</summary>${connForm(cfg)}</details>`
       : `<p>Şu an <b>deneme modundasın</b>: veriler yalnızca bu tarayıcıda durur. Telefon ve bilgisayarda ortak kullanmak için Supabase bilgilerini gir.</p>${connForm(cfg)}`}
     </section>
+    ${sahipMi() ? '' : `<section class="card" data-tab="genel"><h2>Ekip üyesi</h2><p>Bu hesapla veri sahibinin sana açtığı bölümleri görüyorsun. Yeni bölüm için veri sahibinden yetki iste.</p></section>`}
+    <section class="card wide-card" data-tab="kullanici"><h2>Kullanıcılar ve yetkiler</h2><div data-kullanici></div></section>
     <section class="card" data-tab="genel"><h2>Telefona yükle</h2>
       ${INST.standalone ? '<p><b>Uygulama yüklü.</b> Simgeye uzun basınca Ziyaret kaydet, Harita, Takvim ve Projeler kısayolları çıkar.</p>' : `<p>Ana ekrana Saha Takip simgesi eklenir, tam ekran açılır ve internet yokken de çalışır.</p><div class="btnrow"><button class="btn primary" data-install>Uygulamayı yükle</button></div>
       <p class="hint">${INST.evt ? 'Düğmeye basınca telefon onay ister.' : isIOS ? 'iPhone: Safari Paylaş düğmesi → “Ana Ekrana Ekle”.' : 'Düğme çalışmazsa Chrome menüsü (⋮) → “Uygulamayı yükle”.'}</p>`}
@@ -87,9 +94,11 @@ export async function ayarlarView(el) {
       ${counts.length ? `<p><b>${toplam}</b> kayıt</p><ul class="counts">${counts.map(([t, n]) => `<li><b>${n}</b> ${ETIKET[t]}</li>`).join('')}</ul>` : '<p class="hint">Henüz kayıt yok. Aşağıdan başlangıç verisini yükleyebilirsin.</p>'}
       <div class="btnrow"><a class="btn" href="#/dosyalar">Yüklediğin dosyalar</a><a class="btn ghost" href="#/kontrol">Veri kontrolü</a></div>
     </section>
-    <section class="card" data-tab="veri"><h2>Yedek ve dışa aktarma</h2>
-      <div class="btnrow"><button class="btn" data-xlsx>Tümünü Excel'e aktar</button><button class="btn ghost" data-json>Yedek indir</button><button class="btn ghost" data-restore>Yedekten geri yükle</button></div>
-      <p class="hint">Yedek dosyası (JSON) tüm kayıtları içerir; telefon değiştirirken ya da büyük bir değişiklikten önce indir.</p>
+    <section class="card" data-tab="veri"><h2>Tüm verilerini al ve taşı</h2>
+      <p><b>Tam yedek (ZIP):</b> bütün kayıtlar (JSON ve her tablo ayrı CSV), bütün fotoğraf ve belgeler, veritabanı şeması ve taşıma talimatı tek dosyada. Başka bir Supabase hesabına ya da başka bir sunucuya taşımak için bunu kullan.</p>
+      <div class="btnrow"><button class="btn primary" data-zip>Tam yedek indir (ZIP)</button><button class="btn ghost" data-zipyukle>Tam yedekten geri yükle</button></div><div class="progress" data-zprog hidden></div>
+      <hr><div class="btnrow"><button class="btn" data-xlsx>Tümünü Excel'e aktar</button><button class="btn ghost" data-json>Kayıt yedeği (JSON)</button><button class="btn ghost" data-restore>JSON yedekten geri yükle</button></div>
+      <label class="chk"><input type="checkbox" data-cikti ${ayar('cikti_sakla', true) !== false ? 'checked' : ''}> <span>Aldığım Excel ve PowerPoint çıktılarının bir kopyasını Dosyalar'da sakla</span></label>
     </section>
     <section class="card" data-tab="veri"><h2>Başlangıç verisi</h2>
       <p>Proje takip Excel'inden hazırlanan <b>baslangic-verisi.json</b> dosyası: projeler, firmalar, kişiler, siparişler, stok, rakip fiyatları ve hedefler.</p>
@@ -117,7 +126,9 @@ export async function ayarlarView(el) {
     <section class="card" data-tab="mesaj"><h2>WhatsApp mesaj şablonları</h2><p class="hint">Kişi ve firma kartındaki WhatsApp düğmesi bu şablonları kullanır.</p><div data-sablon></div></section>
     <section class="card" data-tab="mesaj"><h2>Teklif bilgileri</h2><p class="hint">PDF teklifin üst bilgisi ve alt koşulları.</p><div data-teklifb></div></section>
   </div>`;
-  const sekmeGoster = k => { el.querySelectorAll('[data-tab]').forEach(x => x.hidden = x.dataset.tab !== k); el.querySelectorAll('[data-sekme]').forEach(b => { b.classList.toggle('on', b.dataset.sekme === k); b.setAttribute('aria-selected', b.dataset.sekme === k); }); };
+  let kulYuklendi = false;
+  const sekmeGoster = k => {
+    if (k === 'kullanici' && !kulYuklendi) { kulYuklendi = true; kullaniciAyarlari(el.querySelector('[data-kullanici]')); } el.querySelectorAll('[data-tab]').forEach(x => x.hidden = x.dataset.tab !== k); el.querySelectorAll('[data-sekme]').forEach(b => { b.classList.toggle('on', b.dataset.sekme === k); b.setAttribute('aria-selected', b.dataset.sekme === k); }); };
   el.querySelectorAll('[data-sekme]').forEach(b => b.onclick = () => { f.sekme = b.dataset.sekme; saveFilters(); sekmeGoster(f.sekme); });
   sekmeGoster(f.sekme);
   bindConn(el);
@@ -148,7 +159,21 @@ export async function ayarlarView(el) {
       'Masraflar': S.masraflar.map(m => ({ Tarih: m.tarih, Tür: m.tip, Tutar: m.tutar, Km: m.km, Açıklama: m.aciklama })),
     });
   };
-  el.querySelector('[data-json]').onclick = () => download(`saha-takip-yedek-${today()}.json`, JSON.stringify({ version: 1, tarih: new Date().toISOString(), ...Object.fromEntries(ORDER.map(t => [t, S[t]])) }));
+  el.querySelector('[data-cikti]').onchange = e => ayarYaz('cikti_sakla', e.target.checked);
+  const zprog = el.querySelector('[data-zprog]'), zil = (t, o) => { zprog.hidden = false; zprog.innerHTML = `<span style="width:${Math.round((o || 0) * 100)}%"></span><b>${t}</b>`; };
+  el.querySelector('[data-zip]').onclick = async e => {
+    e.target.disabled = true; zil('Hazırlanıyor…', 0.02);
+    try { const { tamYedekIndir } = await import('../tasima.js'); const r = await tamYedekIndir(zil); zprog.hidden = true; toast(`Tam yedek indirildi: ${r.kayit} kayıt, ${r.dosya} dosya, ${(r.boyut / 1048576).toFixed(1).replace('.', ',')} MB${r.eksik ? ` (${r.eksik} dosya alınamadı)` : ''}.`); }
+    catch (err) { zprog.hidden = true; toast('Yedek alınamadı: ' + err.message, 'err'); }
+    e.target.disabled = false;
+  };
+  el.querySelector('[data-zipyukle]').onclick = async () => {
+    const [f] = await pickFiles({ accept: '.zip,application/zip', multiple: false }); if (!f) return;
+    if (!confirmBox('Yedekteki kayıtlar bu hesaba yüklenecek: aynı kimlikli kayıtlar yedekteki haliyle güncellenir, diğerleri eklenir, hiçbir şey silinmez. Devam edilsin mi?')) return;
+    try { const { tamYedekHazirla } = await import('../tasima.js'); const r = await tamYedekHazirla(f, zil); zprog.hidden = true; await importAll(r.d, el, 'yedek', null); toast(`Geri yüklendi: ${r.dosya} dosya aktarıldı${r.hata ? `, ${r.hata} dosya yüklenemedi` : ''}.`); }
+    catch (err) { zprog.hidden = true; toast('Geri yüklenemedi: ' + err.message, 'err'); }
+  };
+  el.querySelector('[data-json]').onclick = () => { const ad = `saha-takip-yedek-${today()}.json`, bl = new Blob([JSON.stringify({ version: 1, tarih: new Date().toISOString(), ...Object.fromEntries(ORDER.map(t => [t, S[t]])) })], { type: 'application/json' }); download(ad, bl); import('../belgeler.js').then(m => m.ciktiKaydet(bl, ad, 'Yedek')); };
   el.querySelector('[data-restore]').onclick = async () => {
     const [f] = await pickFiles({ accept: '.json,application/json', multiple: false }); if (!f) return;
     try { const d = JSON.parse(await f.text()); await importAll(d, el, 'yedek', f); } catch (e) { toast('Yedek okunamadı: ' + e.message, 'err'); }

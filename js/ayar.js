@@ -12,6 +12,7 @@ export function ayar(k, varsayilan = null) {
 }
 export async function ayarYaz(k, deger) {
   try { if (deger === null || deger === undefined) localStorage.removeItem(LS + k); else localStorage.setItem(LS + k, JSON.stringify(deger)); } catch {}
-  const r = satir(k);
+  const r0 = satir(k), ben = app.db?.user?.()?.id;
+  const r = r0 && (!r0.owner || !ben || r0.owner === ben) ? r0 : null; // ekip üyesi sahibin ayarını değiştirmez, kendi ayarını yazar
   try { await app.db.save('ayarlar', { ...(r || {}), anahtar: k, deger }); } catch (e) { console.warn('ayar buluta yazılamadı', e); }
 }

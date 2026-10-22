@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 7)
+--  Saha Satış Takip — Supabase şeması (sürüm 8)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -264,17 +264,104 @@ create table if not exists public.ayarlar (               -- cihazlar arasında 
   created_at timestamptz default now(), updated_at timestamptz default now()
 );
 
--- ---------- RLS + tetikleyiciler ----------
+-- ---------- Sürüm 8: kullanıcılar ve yetkiler ----------
+-- Veri sahibi (sen) ekip_uyeleri tablosuna bir e-posta ve yetkiler ekler. O e-postayla giriş yapan kişi
+-- yalnızca yetki verilen bölümleri görür ("oku") ya da düzenler ("yaz"). Yetkiler tablo adlarıyla tutulur.
+create table if not exists public.ekip_uyeleri (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  eposta text not null, ad text, aktif boolean not null default true,
+  yetkiler jsonb not null default '{}'::jsonb,
+  created_at timestamptz default now(), updated_at timestamptz default now(),
+  unique (owner, eposta)
+);
+create or replace function public.benim_epostam() returns text language sql stable as $f$
+  select lower(coalesce(auth.jwt() ->> 'email', ''))
+$f$;
+-- Giriş yapan kişinin çalıştığı verinin sahibi: ekip üyesiyse ekibin sahibi, değilse kendisi
+create or replace function public.veri_sahibi() returns uuid language sql stable security definer set search_path = public as $f$
+  select coalesce((select u.owner from public.ekip_uyeleri u where u.aktif and lower(u.eposta) = public.benim_epostam() and u.owner <> auth.uid() order by u.created_at limit 1), auth.uid())
+$f$;
+create or replace function public.yetki(sahip uuid, tablo text, islem text) returns boolean language sql stable security definer set search_path = public as $f$
+  select sahip = auth.uid() or exists (
+    select 1 from public.ekip_uyeleri u
+    where u.owner = sahip and u.aktif and lower(u.eposta) = public.benim_epostam()
+      and (u.yetkiler ->> tablo = 'yaz' or (islem = 'oku' and u.yetkiler ->> tablo = 'oku')))
+$f$;
+create or replace function public.ekipte(sahip_metin text) returns boolean language sql stable security definer set search_path = public as $f$
+  select sahip_metin = auth.uid()::text or exists (
+    select 1 from public.ekip_uyeleri u where u.owner::text = sahip_metin and u.aktif and lower(u.eposta) = public.benim_epostam())
+$f$;
+create or replace function public.benim_yetkilerim() returns jsonb language sql stable security definer set search_path = public as $f$
+  select case when public.veri_sahibi() = auth.uid()
+    then jsonb_build_object('sahip', auth.uid(), 'ben_sahip', true)
+    else (select jsonb_build_object('sahip', u.owner, 'ben_sahip', false, 'yetkiler', u.yetkiler, 'ad', u.ad)
+          from public.ekip_uyeleri u where u.owner = public.veri_sahibi() and lower(u.eposta) = public.benim_epostam() limit 1)
+  end
+$f$;
+alter table public.ekip_uyeleri enable row level security;
+drop policy if exists "ekip_sahip" on public.ekip_uyeleri;
+drop policy if exists "ekip_kendim" on public.ekip_uyeleri;
+create policy "ekip_sahip" on public.ekip_uyeleri for all to authenticated using (owner = auth.uid()) with check (owner = auth.uid());
+create policy "ekip_kendim" on public.ekip_uyeleri for select to authenticated using (lower(eposta) = public.benim_epostam());
+drop trigger if exists touch on public.ekip_uyeleri;
+create trigger touch before update on public.ekip_uyeleri for each row execute function public.touch_updated_at();
+
+-- ---------- Sürüm 8: TCMB döviz kuru (Supabase içinden, ayrı fonksiyon kurmadan) ----------
+do $x$ begin
+  create extension if not exists http with schema extensions;
+exception when others then raise notice 'http eklentisi kurulamadı: %', sqlerrm;
+end $x$;
+create table if not exists public.kur_onbellek (id int primary key default 1, veri jsonb, zaman timestamptz);
+alter table public.kur_onbellek enable row level security;
+create or replace function public.tcmb_ayristir(x text) returns jsonb language sql immutable as $f$
+  with d as (select xmlparse(document regexp_replace(x, '^\s*<\?xml[^>]*\?>', '')) as doc)
+  select jsonb_build_object(
+    'USD', ((xpath('/Tarih_Date/Currency[@CurrencyCode="USD"]/ForexSelling/text()', doc))[1])::text::numeric,
+    'USD_alis', ((xpath('/Tarih_Date/Currency[@CurrencyCode="USD"]/ForexBuying/text()', doc))[1])::text::numeric,
+    'EUR', ((xpath('/Tarih_Date/Currency[@CurrencyCode="EUR"]/ForexSelling/text()', doc))[1])::text::numeric,
+    'EUR_alis', ((xpath('/Tarih_Date/Currency[@CurrencyCode="EUR"]/ForexBuying/text()', doc))[1])::text::numeric,
+    'tarih', to_char(to_date(((xpath('/Tarih_Date/@Tarih', doc))[1])::text, 'DD.MM.YYYY'), 'YYYY-MM-DD'),
+    'kaynak', 'TCMB')
+  from d
+$f$;
+create or replace function public.tcmb_kur() returns jsonb language plpgsql security definer set search_path = public, extensions as $f$
+declare c record; r jsonb; icerik text;
+begin
+  select * into c from public.kur_onbellek where id = 1;
+  if c.zaman is not null and c.zaman > now() - interval '1 hour' then return c.veri; end if;
+  begin
+    execute 'select content from extensions.http_get($1)' into icerik using 'https://www.tcmb.gov.tr/kurlar/today.xml';
+    r := public.tcmb_ayristir(icerik);
+    if (r ->> 'USD') is null then raise exception 'kur okunamadı'; end if;
+    insert into public.kur_onbellek (id, veri, zaman) values (1, r, now()) on conflict (id) do update set veri = excluded.veri, zaman = excluded.zaman;
+    return r;
+  exception when others then
+    return coalesce(c.veri, jsonb_build_object('hata', sqlerrm));
+  end;
+end $f$;
+revoke all on function public.tcmb_kur() from public;
+grant execute on function public.tcmb_kur() to authenticated;
+
+-- ---------- RLS + tetikleyiciler (sahip ve yetkili ekip üyeleri) ----------
 do $$
 declare t text;
 begin
   foreach t in array array['firmalar','kisiler','projeler','proje_gecmis','ziyaretler','gorevler',
                            'urunler','stok_gecmis','rakip_fiyatlar','siparisler','hedefler','bolgeler',
-                           'teklifler','numuneler','servis_kayitlari','masraflar','urun_aileleri','ayarlar',
+                           'teklifler','numuneler','servis_kayitlari','masraflar','urun_aileleri',
                            'tahsilatlar','belgeler'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('drop policy if exists "sahibi" on public.%I', t);
-    execute format('create policy "sahibi" on public.%I for all to authenticated using (owner = auth.uid()) with check (owner = auth.uid())', t);
+    execute format('drop policy if exists "oku" on public.%I', t);
+    execute format('drop policy if exists "ekle" on public.%I', t);
+    execute format('drop policy if exists "degistir" on public.%I', t);
+    execute format('drop policy if exists "sil" on public.%I', t);
+    execute format('create policy "oku" on public.%I for select to authenticated using (public.yetki(owner, %L, %L))', t, t, 'oku');
+    execute format('create policy "ekle" on public.%I for insert to authenticated with check (public.yetki(owner, %L, %L))', t, t, 'yaz');
+    execute format('create policy "degistir" on public.%I for update to authenticated using (public.yetki(owner, %L, %L)) with check (public.yetki(owner, %L, %L))', t, t, 'yaz', t, 'yaz');
+    execute format('create policy "sil" on public.%I for delete to authenticated using (public.yetki(owner, %L, %L))', t, t, 'yaz');
+    execute format('alter table public.%I alter column owner set default public.veri_sahibi()', t);
     execute format('create index if not exists %I on public.%I (owner)', t || '_owner_idx', t);
     if exists (select 1 from information_schema.columns where table_schema='public' and table_name=t and column_name='updated_at') then
       execute format('drop trigger if exists touch on public.%I', t);
@@ -282,8 +369,18 @@ begin
     end if;
   end loop;
 end $$;
+-- Ayarlar kişiseldir: herkes kendi ayarını yazar; ekip üyesi sahibin ayarlarını (Google anahtarı, şablonlar) okuyabilir
+alter table public.ayarlar enable row level security;
+drop policy if exists "sahibi" on public.ayarlar;
+drop policy if exists "ayar_oku" on public.ayarlar;
+drop policy if exists "ayar_yaz" on public.ayarlar;
+create policy "ayar_oku" on public.ayarlar for select to authenticated using (owner = auth.uid() or public.ekipte(owner::text));
+create policy "ayar_yaz" on public.ayarlar for all to authenticated using (owner = auth.uid()) with check (owner = auth.uid());
+create index if not exists ayarlar_owner_idx on public.ayarlar (owner);
+drop trigger if exists touch on public.ayarlar;
+create trigger touch before update on public.ayarlar for each row execute function public.touch_updated_at();
 
--- ---------- Fotoğraf deposu (özel) ----------
+-- ---------- Fotoğraf ve belge deposu (özel) ----------
 insert into storage.buckets (id, name, public) values ('fotograflar', 'fotograflar', false)
 on conflict (id) do nothing;
 
@@ -291,8 +388,8 @@ drop policy if exists "foto_oku" on storage.objects;
 drop policy if exists "foto_yaz" on storage.objects;
 drop policy if exists "foto_sil" on storage.objects;
 create policy "foto_oku" on storage.objects for select to authenticated
-  using (bucket_id = 'fotograflar' and (storage.foldername(name))[1] = auth.uid()::text);
+  using (bucket_id = 'fotograflar' and public.ekipte((storage.foldername(name))[1]));
 create policy "foto_yaz" on storage.objects for insert to authenticated
-  with check (bucket_id = 'fotograflar' and (storage.foldername(name))[1] = auth.uid()::text);
+  with check (bucket_id = 'fotograflar' and (storage.foldername(name))[1] = public.veri_sahibi()::text);
 create policy "foto_sil" on storage.objects for delete to authenticated
-  using (bucket_id = 'fotograflar' and (storage.foldername(name))[1] = auth.uid()::text);
+  using (bucket_id = 'fotograflar' and (storage.foldername(name))[1] = public.veri_sahibi()::text);

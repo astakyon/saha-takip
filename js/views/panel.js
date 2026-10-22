@@ -40,7 +40,7 @@ export function panelView(el) {
   const karne = bayiKarnesi(Y, ROL);
 
   el.innerHTML = `<header class="vh"><div><h1>Panel</h1><p class="sum">${Y} yılı, bugün ${tarih(t)}</p></div>
-    <div class="vh-act"><label>Yıl <select data-yil>${[2025, 2026, 2027].map(y => `<option ${y === Y ? 'selected' : ''}>${y}</option>`).join('')}</select></label></div></header>
+    <div class="vh-act"><button class="btn ghost" data-xls>Excel</button><label>Yıl <select data-yil>${[2025, 2026, 2027].map(y => `<option ${y === Y ? 'selected' : ''}>${y}</option>`).join('')}</select></label></div></header>
   <section class="ledger">
     <div><span>Sipariş / hedef</span><b>${usd(toplamG)}</b><small>${toplamHedef ? `hedefin %${num(toplamG / toplamHedef * 100)}'i · hedef ${usd(toplamHedef)}` : 'Hedef girilmemiş'}</small></div>
     <div><span>Açık potansiyel (${Y})</span><b>${usd(sum(acik, p => p.tutar_usd))}</b><small>${acik.length} açık proje</small></div>
@@ -85,6 +85,11 @@ export function panelView(el) {
   </div>`;
   el.querySelector('[data-yil]').onchange = e => { f.yil = +e.target.value; saveFilters(); panelView(el); };
   el.querySelector('[data-ozet]').onclick = () => { const fs = F('siparisler', {}); fs.gor = 'ceyrek'; fs.yil = Y; saveFilters(); };
+  el.querySelector('[data-xls]').onclick = () => exportXlsx(`panel-${Y}-${today()}.xlsx`, {
+    'Çeyrekler': G.map((g, i) => ({ 'Çeyrek': i + 1, 'Hedef (USD)': g.hedef, 'Siparişlerden (USD)': Math.round(g.siparis), 'Resmi rakam (USD)': g.resmi != null ? Math.round(g.resmi) : '', 'Raporlarda kullanılan (USD)': Math.round(g.gercek), 'Hedefe oran %': g.hedef ? Math.round(g.gercek / g.hedef * 100) : '', 'Ağırlıklı açık potansiyel (USD)': Math.round(tah.ag[i]) })),
+    'Firma karnesi': karne.map(k => ({ [KARNE_ROL[ROL]]: k.f.ad, 'Proje': k.n, 'Açık potansiyel (USD)': k.acik, 'Kazanılan': k.w, 'Kazanılan tutar': k.wT, 'Kaybedilen': k.l, 'Kaybedilen tutar': k.lT, 'Kazanma oranı %': k.oran, 'Kaybettiğimiz marka': k.rakip, 'Sipariş (USD)': Math.round(k.sip), 'Son ziyaret': k.son })),
+    'Durumlar': DURUMLAR.map(d => { const ps = yP.filter(p => p.durum === d.k); return { 'Durum': d.k, 'Proje': ps.length, 'Tutar (USD)': sum(ps, p => p.tutar_usd) }; }),
+  });
   el.querySelectorAll('[data-karne]').forEach(b => b.onclick = () => { f.karne = b.dataset.karne; saveFilters(); const y = window.scrollY; panelView(el); window.scrollTo(0, y); });
   el.querySelectorAll('[data-g]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.g }));
   el.querySelectorAll('[data-s]').forEach(b => b.onclick = () => sunum(b.dataset.s, Y));

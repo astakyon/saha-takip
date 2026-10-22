@@ -56,3 +56,13 @@ export async function yuklemeKaydet(file, tur, ozet) {
     await app.db.save('belgeler', { ad: file.name, yol, tur: file.type || null, boyut: file.size, kategori: 'Yükleme: ' + tur, notlar: ozet || null });
   } catch (e) { console.warn('yükleme kaydı', e); }
 }
+
+// İndirdiğin her Excel ve PowerPoint çıktısının bir kopyası (Ayarlar'dan kapatılabilir)
+export async function ciktiKaydet(blob, ad, tur, ozet) {
+  try {
+    const { ayar } = await import('./ayar.js');
+    if (ayar('cikti_sakla', true) === false || !blob || blob.size > 40 * 1024 * 1024) return;
+    const yol = await app.db.uploadFile(new File([blob], ad, { type: blob.type }));
+    await app.db.save('belgeler', { ad, yol, tur: blob.type || null, boyut: blob.size, kategori: 'Çıktı: ' + tur, notlar: ozet || null });
+  } catch (e) { console.warn('çıktı kaydı', e); }
+}

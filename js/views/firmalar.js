@@ -207,7 +207,7 @@ async function kartvizittenKisi() {
 export function kisilerView(el) {
   const f = F('kisiler', { q: '' });
   el.innerHTML = `<header class="vh"><div><h1>Kişiler</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><button class="btn" data-kv>Kartvizitten ekle</button><button class="btn primary" data-new>Yeni kişi</button></div></header>
+    <div class="vh-act"><button class="btn ghost" data-xls>Excel</button><button class="btn" data-kv>Kartvizitten ekle</button><button class="btn primary" data-new>Yeni kişi</button></div></header>
     <div class="filters"><input type="search" data-q placeholder="Ad, firma, telefon ara" value="${esc(f.q)}" aria-label="Kişilerde ara"></div>
     <ul class="cards grid-cards" data-rows></ul>`;
   const draw = () => {
@@ -220,6 +220,7 @@ export function kisilerView(el) {
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelector('[data-new]').onclick = () => kisiDetay(null, {});
+  el.querySelector('[data-xls]').onclick = () => exportXlsx(`kisiler-${today()}.xlsx`, { 'Kişiler': S.kisiler.slice().sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr')).map(k => ({ 'Ad soyad': k.ad_soyad, 'Firma': firmaAd(k.firma_id), 'Unvan': k.unvan, 'Rol': k.rol, 'Telefon': k.telefon, 'E-posta': k.eposta, 'Doğum günü': k.dogum_gunu, 'Notlar': k.notlar })) });
   el.querySelector('[data-kv]').onclick = kartvizittenKisi;
   draw();
 }

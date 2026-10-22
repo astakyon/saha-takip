@@ -1,3 +1,4 @@
+import { ALTLIKLAR, varsayilanAltlik, altlikKatmani, uyduMu } from '../altlik.js';
 import { S } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, usd, pill, durumRenk, DURUMLAR, ACIK, ILLER, IL_MERKEZ, BOLGE_RENKLERI, byId, firmaAd, match, tarih, myLocation, toast, directionsUrl, openDrawer, closeDrawer, fold } from '../ui.js';
@@ -33,7 +34,7 @@ export async function mapView(el) {
       <div class="seg" role="group" aria-label="İl seç">${['Tümü', ...ILLER].map(i => `<button type="button" data-il="${i}" class="${f.il === i ? 'on' : ''}">${i}</button>`).join('')}</div>
       <div class="map-search"><input type="search" placeholder="Raptiyelerde ara" value="${esc(f.q)}" aria-label="Haritada ara"></div>
       <div class="map-tools">
-        <button type="button" class="btn sm ghost tbtn ${f.uydu ? 'on' : ''}" data-tool="uydu" aria-pressed="${f.uydu}">Uydu</button>
+        <label class="altlik-sec"><span class="sr-only">Harita görüntüsü</span><select data-altlik aria-label="Harita görüntüsü">${ALTLIKLAR.map(a => `<option value="${a.k}" ${varsayilanAltlik(f) === a.k ? 'selected' : ''}>${a.ad}</option>`).join('')}</select></label>
         <button type="button" class="btn sm ghost tbtn" data-tool="google">Google'da ara</button>
         <button type="button" class="btn sm ghost tbtn" data-tool="assign">Konum ata <b data-need></b></button>
         <button type="button" class="btn sm ghost tbtn" data-tool="move" aria-pressed="false">Raptiye taşı</button>
@@ -70,15 +71,17 @@ export async function mapView(el) {
   if (map) { try { map.remove(); } catch {} map = null; meMarker = null; }
   map = L.map('map', { zoomControl: false, maxBounds: [[33, 29], [41, 40]], doubleClickZoom: true });
   L.control.zoom({ position: 'bottomright' }).addTo(map);
-  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
-  // Uydu: Esri uydu görüntüsü + yer adı ve yol etiketleri (hibrit)
-  const sat = L.layerGroup([
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 19, attribution: 'Uydu: Esri, Maxar, Earthstar Geographics' }),
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 0.85 }),
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
-  ]);
-  const altlik = () => { if (f.uydu) { map.removeLayer(osm); sat.addTo(map); } else { map.removeLayer(sat); osm.addTo(map); } map.getContainer().classList.toggle('sat', !!f.uydu); };
-  altlik();
+  // Altlık: Google uydu (güncel, anahtar gerekir), Esri uydu ya da sokak haritası
+  let altKatman = null, altSira = 0;
+  const altlik = async k => {
+    const sira = ++altSira; const { k: gercek, katman } = await altlikKatmani(k);
+    if (sira !== altSira || !map) return;
+    if (altKatman) map.removeLayer(altKatman); altKatman = katman; katman.addTo(map); katman.bringToBack?.();
+    f.altlik = gercek; f.uydu = uyduMu(gercek); saveFilters();
+    map.getContainer().classList.toggle('sat', uyduMu(gercek));
+    const s = el.querySelector('[data-altlik]'); if (s) s.value = gercek;
+  };
+  altlik(varsayilanAltlik(f));
   borderLayer = L.layerGroup().addTo(map);
   regionLayer = L.layerGroup().addTo(map);
   drawLayer = L.layerGroup().addTo(map);
@@ -96,13 +99,13 @@ export async function mapView(el) {
   // ---------- Üst çubuk ----------
   const top = el.querySelector('.map-top');
   top.querySelectorAll('[data-il]').forEach(b => b.onclick = () => { f.il = b.dataset.il; saveFilters(); top.querySelectorAll('[data-il]').forEach(x => x.classList.toggle('on', x === b)); fly(f.il); drawBorders(); draw(); });
+  el.querySelector('[data-altlik]').onchange = e => altlik(e.target.value);
   const lp = el.querySelector('[data-layers]'), ap = el.querySelector('[data-assign]');
   top.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => {
     const t = b.dataset.tool;
     if (t === 'layers') { lp.hidden = !lp.hidden; ap.hidden = true; b.setAttribute('aria-expanded', String(!lp.hidden)); }
     if (t === 'assign') { ap.hidden = !ap.hidden; lp.hidden = true; if (!ap.hidden) drawAssignList(); }
     if (t === 'draw') startDraw(null);
-    if (t === 'uydu') { f.uydu = !f.uydu; saveFilters(); b.classList.toggle('on', f.uydu); b.setAttribute('aria-pressed', String(f.uydu)); altlik(); }
     if (t === 'google') { lp.hidden = true; ap.hidden = true; googleBul({ near: [map.getCenter().lat, map.getCenter().lng], zoom: Math.max(map.getZoom(), 12), sonra: () => { draw(); drawRegions(); } }); }
     if (t === 'import') { lp.hidden = true; ap.hidden = true; iceAktarPaneli(() => { draw(); drawRegions(); }); }
     if (t === 'move') {

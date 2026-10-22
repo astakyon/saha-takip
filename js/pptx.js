@@ -170,7 +170,8 @@ export function ceyrekSunumu(Y) {
     try {
       const C = +p.querySelector('#pp-c').value;
       const s = sunumOlustur(+Y, C);
-      download(`${Y}-${C}-ceyrek-sunumu.pptx`, pptxPaketle(s));
+      const bl = pptxPaketle(s), ad = `${Y}-${C}-ceyrek-sunumu.pptx`; download(ad, bl);
+      import('./belgeler.js').then(m => m.ciktiKaydet(bl, ad, 'PowerPoint', `${Y} ${C}. çeyrek, ${s.length} slayt`));
       toast(`${s.length} slaytlık sunum indirildi.`); closeDrawer();
     } catch (e) { console.error(e); toast('Sunum oluşturulamadı: ' + e.message, 'err'); }
   };

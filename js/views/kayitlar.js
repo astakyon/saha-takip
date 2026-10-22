@@ -50,7 +50,7 @@ export function numuneForm(init = {}) {
 }
 export function numunelerView(el) {
   const f = F('numuneler', { durum: 'Müşteride', q: '' });
-  el.innerHTML = `<header class="vh"><div><h1>Numuneler</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn primary" data-new>Numune ver</button></div></header>
+  el.innerHTML = `<header class="vh"><div><h1>Numuneler</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn ghost" data-xls>Excel</button><button class="btn primary" data-new>Numune ver</button></div></header>
     <div class="filters"><input type="search" data-q placeholder="Ürün, firma, proje ara" value="${esc(f.q)}" aria-label="Numunelerde ara">
     <div class="seg" role="group" aria-label="Durum">${['Tümü', ...Object.keys(NUMUNE_DURUM)].map(d => `<button type="button" data-d="${d}" class="${f.durum === d ? 'on' : ''}">${d}</button>`).join('')}</div></div><div data-rows></div>`;
   const draw = () => {
@@ -66,6 +66,7 @@ export function numunelerView(el) {
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { f.durum = b.dataset.d; saveFilters(); el.querySelectorAll('[data-d]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
   el.querySelector('[data-new]').onclick = () => numuneForm({});
+  el.querySelector('[data-xls]').onclick = () => exportXlsx(`numuneler-${today()}.xlsx`, { 'Numuneler': S.numuneler.map(n => ({ 'Ürün kodu': n.urun_kod, 'Ürün': n.urun_ad, 'Adet': n.adet, 'Firma': firmaAd(n.firma_id), 'Teslim alan': byId('kisiler', n.kisi_id)?.ad_soyad, 'Proje': byId('projeler', n.proje_id)?.ad, 'Veriliş': n.verilis, 'Geri alınacak': n.iade_tarihi, 'Durum': n.durum, 'Not': n.notlar })) });
   draw();
 }
 

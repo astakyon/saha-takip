@@ -212,7 +212,7 @@ export function gorevForm(init = {}, after) {
 export function gorevlerView(el) {
   const f = F('gorevler', { goster: 'Açık', gor: 'takvim', ay: today().slice(0, 7), gun: today(), ziyaret: true });
   const t = today();
-  el.innerHTML = `<header class="vh"><div><h1>Görevler</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn primary" data-new>Yeni görev</button></div></header>
+  el.innerHTML = `<header class="vh"><div><h1>Görevler</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn ghost" data-xls>Excel</button><button class="btn primary" data-new>Yeni görev</button></div></header>
     <div class="filters">
       <div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="takvim" class="${f.gor === 'takvim' ? 'on' : ''}">Takvim</button><button type="button" data-gor="liste" class="${f.gor === 'liste' ? 'on' : ''}">Liste</button></div>
       <div class="frow"><div class="seg" role="group" aria-label="Durum">${['Açık', 'Tamam', 'Tümü'].map(x => `<button type="button" data-g="${x}" class="${f.goster === x ? 'on' : ''}">${x === 'Tamam' ? 'Tamamlanan' : x}</button>`).join('')}</div>
@@ -271,5 +271,6 @@ export function gorevlerView(el) {
   el.querySelectorAll('[data-gor]').forEach(b => b.onclick = () => { f.gor = b.dataset.gor; saveFilters(); el.querySelectorAll('[data-gor]').forEach(x => x.classList.toggle('on', x === b)); el.querySelector('[data-zv]').hidden = f.gor !== 'takvim'; draw(); });
   el.querySelector('[data-z]').onchange = e => { f.ziyaret = e.target.checked; saveFilters(); draw(); };
   el.querySelector('[data-new]').onclick = () => gorevForm({ son_tarih: f.gor === 'takvim' ? f.gun : today() });
+  el.querySelector('[data-xls]').onclick = () => exportXlsx(`gorevler-${today()}.xlsx`, { 'Görevler': S.gorevler.slice().sort((a, b) => (a.son_tarih || '9').localeCompare(b.son_tarih || '9')).map(g => ({ 'Görev': g.baslik, 'Son tarih': g.son_tarih, 'Öncelik': g.oncelik, 'Durum': g.durum, 'Firma': firmaAd(g.firma_id), 'Proje': byId('projeler', g.proje_id)?.ad, 'Kişi': byId('kisiler', g.kisi_id)?.ad_soyad, 'Not': g.notlar })) });
   draw();
 }

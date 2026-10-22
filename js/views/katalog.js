@@ -1,7 +1,7 @@
 // Ürün kataloğu (aileler) ve referans proje galerisi
 import { S } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, num, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, urunBilgi, fold, URUN_AILELERI, SEKTORLER, waLink } from '../ui.js';
+import { esc, num, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, urunBilgi, fold, URUN_AILELERI, SEKTORLER, waLink, exportXlsx, today } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { sunumAc } from '../sunum.js';
 import { teklifForm } from './teklif.js';
@@ -54,7 +54,7 @@ function aileDetay(a, urunler) {
 export function katalogView(el) {
   const f = F('katalog', { q: '', kat: 'Tümü' });
   const KAT = ['Tümü', 'Endüstriyel', 'Dış', 'Mimari', 'Acil durum'];
-  el.innerHTML = `<header class="vh"><div><h1>Ürün kataloğu</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn ghost" data-eae>EAE sitesinden aileleri aktar</button><button class="btn primary" data-new>Aile ekle</button></div></header>
+  el.innerHTML = `<header class="vh"><div><h1>Ürün kataloğu</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn ghost" data-xls>Excel</button><button class="btn ghost" data-eae>EAE sitesinden aileleri aktar</button><button class="btn primary" data-new>Aile ekle</button></div></header>
     <section class="card kataloglar"><div class="card-h"><h2>Kataloglar</h2><button type="button" class="btn sm ghost" data-kekle>Katalog ekle</button></div><div data-kat></div></section>
     <div class="filters"><input type="search" data-q placeholder="Aile, ürün, özellik ara (örn. IP65, highbay)" value="${esc(f.q)}" aria-label="Katalogda ara">
       <div class="chips">${KAT.map(k => `<button type="button" class="chip ${f.kat === k ? 'on' : ''}" data-kt="${k}">${k}</button>`).join('')}</div></div>
@@ -83,6 +83,11 @@ export function katalogView(el) {
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelector('[data-new]').onclick = () => aileForm({});
+  el.querySelector('[data-xls]').onclick = () => exportXlsx(`urun-katalogu-${today()}.xlsx`, {
+    'Aileler': S.urun_aileleri.map(a => ({ 'Aile kodu': a.aile, 'Ad': a.ad, 'Açıklama': a.aciklama, 'Özellikler ve modeller': a.ozellikler, 'Ürün sayfası': a.datasheet_url })),
+    'Armatürler': S.urunler.map(u => ({ u, ...urunBilgi(u.aciklama) })).filter(x => x.w).map(x => ({ 'Aile': x.u.aile, 'Kod': x.u.kod, 'Açıklama': x.u.aciklama, 'Güç (W)': x.w, 'Işık akısı (lm)': x.lm, 'Verim (lm/W)': x.verim, 'Renk sıcaklığı (K)': x.k, 'Stok': x.u.stok, 'Birim fiyat (USD)': x.u.birim_fiyat_usd })),
+    'Kataloglar': katalogTum().map(k => ({ 'Katalog': k.ad, 'Bağlantı': k.url })),
+  });
   draw();
 }
 

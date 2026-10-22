@@ -1,4 +1,4 @@
-import { S, makeAdapter, getConfig } from './db.js';
+import { S, makeAdapter, getConfig, setConfig } from './db.js';
 import { app, loadFilters } from './state.js';
 import { esc, toast, closeDrawer } from './ui.js';
 import { mapView } from './views/map.js';
@@ -20,6 +20,7 @@ import { tahsilatView } from './views/tahsilat.js';
 import { raporView } from './views/rapor.js';
 import { kontrolView } from './views/kontrol.js';
 import { dosyalarView } from './views/dosyalar.js';
+import { rotaIzinli, sahipMi } from './yetki.js';
 import { kurGuncelle } from './kur.js';
 import { bildirimHazirla } from './bildirim.js';
 
@@ -84,12 +85,12 @@ export const icon = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0
 function renderNav(cur) {
   const nav = document.getElementById('nav');
   const item = (k, r) => `<a href="#/${k}" class="${k === cur ? 'on' : ''}" ${k === cur ? 'aria-current="page"' : ''}>${icon(r.ico)}<span>${r.t}</span></a>`;
-  const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : '';
+  const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : !sahipMi() ? `<span class="mode-badge">Ekip üyesi${app.yetki?.ad ? ' · ' + esc(app.yetki.ad) : ''}</span>` : '';
   nav.innerHTML = `
     <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b>${mode}</div>
-    <div class="nav-main">${Object.entries(ROUTES).filter(([, r]) => r.main).map(([k, r]) => item(k, r)).join('')}
+    <div class="nav-main">${Object.entries(ROUTES).filter(([k, r]) => r.main && rotaIzinli(k)).map(([k, r]) => item(k, r)).join('')}
       <button class="nav-more ${!ROUTES[cur]?.main ? 'on' : ''}" type="button" aria-haspopup="true">${icon('more')}<span>Diğer</span></button></div>
-    <div class="nav-rest">${['Saha', 'Satış', 'Rapor'].map(g => `<p class="nav-g">${g}</p>` + Object.entries(ROUTES).filter(([, r]) => r.g === g).map(([k, r]) => item(k, r)).join('')).join('')}
+    <div class="nav-rest">${['Saha', 'Satış', 'Rapor'].map(g => `<p class="nav-g">${g}</p>` + Object.entries(ROUTES).filter(([k, r]) => r.g === g && rotaIzinli(k)).map(([k, r]) => item(k, r)).join('')).join('')}
       <button type="button" class="nav-inst" data-inst ${canInstall() ? '' : 'hidden'}>${icon('down')}<span>Telefona yükle</span></button></div>`;
   nav.querySelector('[data-inst]').onclick = () => { nav.classList.remove('more-open'); install(); };
   nav.querySelector('.nav-more').onclick = () => nav.classList.toggle('more-open');
@@ -100,13 +101,15 @@ let lastView = null, lastShown = null;
 async function route() {
   const parts = (location.hash.replace(/^#\/?/, '') || 'bugun').split('/');
   const [k, id] = parts;
+  if (DETAIL[k] && !rotaIzinli({ proje: 'projeler', firma: 'firmalar', kisi: 'kisiler' }[k])) { location.hash = '#/bugun'; return; }
   if (DETAIL[k]) {
     if (!lastView) await show('bugun');
     DETAIL[k](id);
     return;
   }
   closeDrawer();
-  await show(ROUTES[k] ? k : 'bugun');
+  if (ROUTES[k] && !rotaIzinli(k)) { location.hash = '#/bugun'; return; }
+  await show(ROUTES[k] && rotaIzinli(k) ? k : 'bugun');
 }
 async function show(k) {
   lastView = k;
@@ -126,8 +129,19 @@ export function backToList(redraw = false) {
 export function go(hash) { if (location.hash === hash) route(); else location.hash = hash; }
 window.addEventListener('hashchange', route);
 
+// Davet bağlantısı: ?davet=… (Supabase adresi ve herkese açık anahtar) → bu cihazı aynı veritabanına bağlar
+function davetAl() {
+  let q; try { q = new URLSearchParams(location.search); } catch { return; }
+  const d = q.get('davet'); if (!d) return;
+  try {
+    const j = JSON.parse(decodeURIComponent(escape(atob(d.replace(/-/g, '+').replace(/_/g, '/')))));
+    if (/^https:\/\//.test(j.u) && j.k) { setConfig({ mode: 'supabase', url: j.u, key: j.k }); if (j.e) sessionStorage.setItem('saha-davet', j.e); }
+  } catch {}
+  history.replaceState(null, '', location.pathname + location.hash);
+}
 async function boot() {
   loadFilters();
+  davetAl();
   app.db = makeAdapter();
   const view = document.getElementById('view');
   view.innerHTML = '<div class="boot"><span class="bulb big"></span><p>Veriler yükleniyor…</p></div>';
@@ -135,6 +149,7 @@ async function boot() {
     const ok = await app.db.init();
     if (app.db.mode === 'supabase' && !ok) { document.getElementById('nav').innerHTML = ''; return loginView(view, boot); }
     await app.db.loadAll();
+    app.yetki = app.db.yetki || null;
     if (app.db.offline) toast('Çevrimdışısın: son kaydedilen veriler gösteriliyor.');
   } catch (e) {
     view.innerHTML = `<div class="empty"><h2>Veriler yüklenemedi</h2><p>${esc(e.message)}</p><p><a class="btn" href="#/ayarlar">Bağlantı ayarlarını aç</a></p></div>`;

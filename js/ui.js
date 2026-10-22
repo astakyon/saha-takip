@@ -127,8 +127,19 @@ export function download(name, content, type = 'application/json') {
   const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
+// Excel çıktısı: sütun genişlikleri ve filtre düğmeleriyle; bir kopyası “Dosyalar → Çıktılar”a kaydedilir
 export function exportXlsx(name, sheets) {
   const wb = XLSX.utils.book_new();
-  for (const [sn, rows] of Object.entries(sheets)) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), sn.slice(0, 31));
-  XLSX.writeFile(wb, name);
+  for (const [sn, rows0] of Object.entries(sheets)) {
+    const rows = rows0.length ? rows0 : [{ 'Kayıt yok': '' }];
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const basliklar = Object.keys(rows.reduce((o, r) => Object.assign(o, r), {}));
+    ws['!cols'] = basliklar.map(h => ({ wch: Math.min(60, Math.max(String(h).length + 2, ...rows.slice(0, 300).map(r => String(r[h] ?? '').length + 1))) }));
+    if (ws['!ref']) ws['!autofilter'] = { ref: ws['!ref'] };
+    XLSX.utils.book_append_sheet(wb, ws, sn.replace(/[\\/?*\[\]:]/g, ' ').slice(0, 31));
+  }
+  if (!XLSX.write) return XLSX.writeFile(wb, name);
+  const blob = new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  download(name, blob);
+  import('./belgeler.js').then(m => m.ciktiKaydet(blob, name, 'Excel', Object.entries(sheets).map(([k, v]) => `${k}: ${v.length} satır`).join(', '))).catch(() => {});
 }

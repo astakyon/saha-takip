@@ -4,6 +4,7 @@ import { esc, byId, fold, pickFiles, myLocation, toast, IL_MERKEZ } from './ui.j
 import { app } from './state.js';
 import { konumAlgila, konumMetni } from './geo.js';
 import { mikDugme, mikBagla } from './ses.js';
+import { altlikKatmani, varsayilanAltlik } from './altlik.js';
 
 let fseq = 0;
 function datalistFor(t) {
@@ -130,11 +131,7 @@ export function bindForm(root, sections, obj, { onChange } = {}) {
     const lat = parseFloat(box.dataset.lat), lng = parseFloat(box.dataset.lng);
     const il = obj.il && IL_MERKEZ[obj.il];
     const m = box._map = L.map(el, { zoomControl: true, attributionControl: false }).setView(!isNaN(lat) ? [lat, lng] : il ? [il[0], il[1]] : [36.9, 35.3], !isNaN(lat) ? 14 : il ? 10 : 8);
-    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
-    const sat = L.layerGroup([L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 })]);
-    (app.filters.harita?.uydu === false ? osm : sat).addTo(m);
-    L.control.layers({ 'Harita': osm, 'Uydu': sat }, null, { position: 'topright' }).addTo(m);
+    altlikKatmani(varsayilanAltlik(app.filters.harita || {})).then(({ katman }) => katman.addTo(m));
     let mk = null, seq = 0;
     const txt = box.querySelector('.loc-txt'), det = box.querySelector('.loc-det');
     const algila = async ll => {

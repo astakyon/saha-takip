@@ -1,7 +1,7 @@
 // Dosyalar: eklediğin her dosya ve fotoğraf tek tek — belgeler, yüklenen Excel/JSON dosyaları, proje/firma/ziyaret fotoğrafları, kartvizitler, fişler
 import { S } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, tarih, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox } from '../ui.js';
+import { esc, tarih, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, pickFiles, fold } from '../ui.js';
 import { turAd, boyutYaz, belgeAc } from '../belgeler.js';
 
 const gorselMi = (yol, tur) => /^image\//.test(tur || '') || /\.(jpe?g|png|webp|gif)$/i.test(yol || '');
@@ -11,8 +11,8 @@ export function tumDosyalar() {
   const l = [];
   const ekle = (o) => l.push({ ...o, gorsel: gorselMi(o.yol, o.tur) });
   for (const b of S.belgeler) {
-    const yk = /^Yükleme/.test(b.kategori || '');
-    ekle({ id: 'b:' + b.id, yol: b.yol, ad: b.ad, tur: b.tur, boyut: b.boyut, tarih: b.created_at, grup: yk ? 'Yüklemeler' : 'Belgeler', alt: yk ? b.kategori.replace(/^Yükleme:\s*/, '') + (b.notlar ? ' · ' + b.notlar : '') : b.notlar,
+    const yk = /^Yükleme/.test(b.kategori || ''), ck = /^Çıktı/.test(b.kategori || '');
+    ekle({ id: 'b:' + b.id, b, yol: b.yol, ad: b.ad, tur: b.tur, boyut: b.boyut, tarih: b.created_at, grup: yk ? 'Yüklemeler' : ck ? 'Çıktılar' : 'Belgeler', alt: yk || ck ? b.kategori.replace(/^(Yükleme|Çıktı):\s*/, '') + (b.notlar ? ' · ' + b.notlar : '') : b.notlar,
       kayit: b.proje_id ? { t: 'proje', id: b.proje_id, ad: byId('projeler', b.proje_id)?.ad } : b.firma_id ? { t: 'firma', id: b.firma_id, ad: firmaAd(b.firma_id) } : null, sil: { t: 'belgeler', id: b.id } });
   }
   const foto = (t, grup, kt, adf) => { for (const r of S[t]) (r.fotolar || []).forEach((yol, i) => { if (yerel(yol)) ekle({ id: `${t}:${r.id}:${i}`, yol, ad: `${adf(r)} · fotoğraf ${i + 1}`, tarih: r.updated_at || r.created_at, grup, kayit: kt(r), cikar: { t, id: r.id, alan: 'fotolar', yol } }); }); };
@@ -25,18 +25,22 @@ export function tumDosyalar() {
   for (const m of S.masraflar) if (yerel(m.fis)) ekle({ id: 'fis:' + m.id, yol: m.fis, ad: `Fiş · ${m.tip} ${tarih(m.tarih)}`, tarih: m.tarih, grup: 'Fişler', alt: m.tutar ? m.tutar + ' TL' : '', kayit: null, cikar: { t: 'masraflar', id: m.id, alan: 'fis' } });
   return l.sort((a, b) => String(b.tarih || '').localeCompare(String(a.tarih || '')));
 }
-const GRUPLAR = ['Tümü', 'Belgeler', 'Yüklemeler', 'Fotoğraflar', 'Kartvizitler', 'Fişler'];
+const GRUPLAR = ['Tümü', 'Belgeler', 'Yüklemeler', 'Çıktılar', 'Fotoğraflar', 'Kartvizitler', 'Fişler'];
+const TURLER = ['Tüm türler', 'Excel', 'PowerPoint', 'PDF', 'Word', 'Görsel', 'Diğer'];
+const turGrubu = x => { const t = x.gorsel ? 'Görsel' : turAd(x.tur, x.ad); return t === 'Sunum' ? 'PowerPoint' : ['Excel', 'PDF', 'Word', 'Görsel'].includes(t) ? t : (t === 'PPTX' || t === 'PPT' ? 'PowerPoint' : 'Diğer'); };
 const IKON = { PDF: '#B91C1C', Excel: '#15803D', Word: '#2563EB', Sunum: '#EA580C', JSON: '#7C3AED', KML: '#0E7490', KMZ: '#0E7490' };
 
 export function dosyalarView(el) {
-  const f = F('dosyalar', { grup: 'Tümü', q: '' });
+  const f = F('dosyalar', { grup: 'Tümü', q: '', tur: 'Tüm türler' });
+  if (!f.tur) f.tur = 'Tüm türler';
   const tum = tumDosyalar();
-  el.innerHTML = `<header class="vh"><div><h1>Dosyalar</h1><p class="sum">${tum.length} dosya · eklediğin her belge, fotoğraf ve yüklediğin her Excel dosyası</p></div></header>
+  el.innerHTML = `<header class="vh"><div><h1>Dosyalar</h1><p class="sum">${tum.length} dosya · eklediğin belgeler, yüklediğin listeler, aldığın çıktılar ve fotoğraflar</p></div><div class="vh-act"><button class="btn primary" data-yukle>Dosya ekle</button></div></header>
     <div class="filters"><input type="search" data-q placeholder="Dosya adı, proje, firma ara" value="${esc(f.q)}" aria-label="Dosyalarda ara">
-      <div class="chips">${GRUPLAR.map(g => `<button type="button" class="chip ${f.grup === g ? 'on' : ''}" data-g="${g}">${g} <i>${g === 'Tümü' ? tum.length : tum.filter(x => x.grup === g).length || ''}</i></button>`).join('')}</div></div>
+      <div class="chips">${GRUPLAR.map(g => `<button type="button" class="chip ${f.grup === g ? 'on' : ''}" data-g="${g}">${g} <i>${g === 'Tümü' ? tum.length : tum.filter(x => x.grup === g).length || ''}</i></button>`).join('')}</div>
+      <div class="seg sm" role="group" aria-label="Dosya türü">${TURLER.map(t => `<button type="button" data-t="${t}" class="${f.tur === t ? 'on' : ''}">${t}</button>`).join('')}</div></div>
     <ul class="dosya-grid" data-rows></ul>`;
   const draw = () => {
-    const l = tum.filter(x => (f.grup === 'Tümü' || x.grup === f.grup) && match(f.q, x.ad, x.alt, x.kayit?.ad));
+    const l = tum.filter(x => (f.grup === 'Tümü' || x.grup === f.grup) && (f.tur === 'Tüm türler' || turGrubu(x) === f.tur) && match(f.q, x.ad, x.alt, x.kayit?.ad));
     const box = el.querySelector('[data-rows]');
     box.innerHTML = l.length ? l.slice(0, 300).map((x, i) => { const ta = turAd(x.tur, x.ad);
       return `<li><button type="button" class="dosya" data-i="${i}">${x.gorsel ? `<img alt="" loading="lazy" data-yol="${esc(x.yol)}">` : `<span class="dosya-ikon" style="--c:${IKON[ta] || '#64748B'}">${esc(ta)}</span>`}
@@ -47,6 +51,13 @@ export function dosyalarView(el) {
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { f.grup = b.dataset.g; saveFilters(); el.querySelectorAll('[data-g]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
+  el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { f.tur = b.dataset.t; saveFilters(); el.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
+  el.querySelector('[data-yukle]').onclick = async () => {
+    const files = await pickFiles({ accept: '*/*', multiple: true }); if (!files.length) return;
+    try { for (const fl of files) { toast(`${fl.name} yükleniyor…`); const yol = await app.db.uploadFile(fl); await app.db.save('belgeler', { ad: fl.name, yol, tur: fl.type || null, boyut: fl.size, kategori: 'Belge' }); }
+      toast(files.length > 1 ? `${files.length} dosya eklendi.` : 'Dosya eklendi. Önizlemeden bir projeye ya da firmaya bağlayabilirsin.'); dosyalarView(el); }
+    catch (e) { toast('Yüklenemedi: ' + e.message, 'err'); }
+  };
   draw();
 }
 
@@ -54,10 +65,17 @@ async function onizle(x, yenile) {
   const kayitLink = x.kayit ? `<a class="btn sm ghost" href="#/${x.kayit.t}/${x.kayit.id}">${x.kayit.t === 'proje' ? 'Projeye' : x.kayit.t === 'firma' ? 'Firmaya' : 'Kişiye'} git: ${esc(x.kayit.ad || '')}</a>` : '';
   const p = openDrawer(`<header class="dh"><div><p class="muted">${esc(x.grup)}${x.alt ? ' · ' + esc(x.alt) : ''}</p><h2 id="drawer-title">${esc(x.ad)}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <div class="dh-actions"><button class="btn sm primary" data-ac>Aç</button><button class="btn sm" data-indir>İndir</button>${kayitLink}${x.sil || x.cikar ? '<button class="btn sm ghost danger" data-sil>Sil</button>' : ''}</div>
-    <div class="dbody">${x.gorsel ? '<img class="onizleme" alt="" data-img>' : `<p class="hint">${esc(turAd(x.tur, x.ad))}${x.boyut ? ' · ' + boyutYaz(x.boyut) : ''}${x.tarih ? ' · ' + tarih(String(x.tarih).slice(0, 10)) : ''}</p><p>Dosyayı görmek için <b>Aç</b>'a dokun.</p>`}</div>`, { wide: x.gorsel });
+    <div class="dbody">${x.b && x.grup === 'Belgeler' ? `<div class="fld bagla"><label for="dz-k">Bağlı olduğu kayıt</label><input id="dz-k" list="dz-kl" value="${esc(x.kayit ? (x.kayit.t === 'proje' ? 'Proje: ' : 'Firma: ') + (x.kayit.ad || '') : '')}" placeholder="Proje ya da firma adı yaz" autocomplete="off"><datalist id="dz-kl">${S.projeler.map(p => `<option value="Proje: ${esc(p.ad)}">`).join('')}${S.firmalar.map(f => `<option value="Firma: ${esc(f.ad)}">`).join('')}</datalist><button type="button" class="btn sm" data-bagla>Kaydet</button></div>` : ''}
+      ${x.gorsel ? '<img class="onizleme" alt="" data-img>' : `<p class="hint">${esc(turAd(x.tur, x.ad))}${x.boyut ? ' · ' + boyutYaz(x.boyut) : ''}${x.tarih ? ' · ' + tarih(String(x.tarih).slice(0, 10)) : ''}</p><p>Dosyayı görmek için <b>Aç</b>'a dokun.</p>`}</div>`, { wide: x.gorsel });
   const u = await app.db.url(x.yol);
   if (x.gorsel && u) p.querySelector('[data-img]').src = u;
   p.querySelector('[data-ac]').onclick = () => belgeAc({ yol: x.yol, ad: x.ad, tur: x.tur });
+  p.querySelector('[data-bagla]')?.addEventListener('click', async () => {
+    const v = p.querySelector('#dz-k').value.trim(), m = /^(Proje|Firma):\s*(.+)$/.exec(v);
+    const o = { ...x.b, proje_id: null, firma_id: null };
+    if (m) { const t = m[1] === 'Proje' ? 'projeler' : 'firmalar', r = S[t].find(r => fold(r.ad) === fold(m[2])); if (!r) return toast('Kayıt bulunamadı; listeden seç.', 'err'); o[t === 'projeler' ? 'proje_id' : 'firma_id'] = r.id; }
+    await app.db.save('belgeler', o); toast(m ? 'Dosya bağlandı.' : 'Bağlantı kaldırıldı.'); closeDrawer(); yenile();
+  });
   p.querySelector('[data-indir]').onclick = async () => { const v = await app.db.url(x.yol); if (!v) return toast('Dosya alınamadı.', 'err'); const a = document.createElement('a'); a.href = v; a.download = x.ad; a.target = '_blank'; a.click(); };
   p.querySelector('[data-sil]')?.addEventListener('click', async () => {
     if (!confirmBox(`“${x.ad}” silinsin mi?`)) return;

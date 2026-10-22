@@ -792,3 +792,16 @@ details.fs-d > .kv-pair, details.fs-d > .btnrow { margin-bottom: 14px; }
 @media (max-width: 640px) { .dosya-grid { grid-template-columns: 1fr 1fr; } }
 .ayar-sekme { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
 .ayar-sekme button { white-space: nowrap; }
+.kur-tbl { max-width: 360px; margin-bottom: 4px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.altlik-sec select { font: 600 13.5px var(--f); padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); box-shadow: 0 2px 10px rgba(29, 43, 54, .15); }
+.bagla { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; } .bagla label { width: 100%; } .bagla input { flex: 1; min-width: 200px; }
+.uye { border: 1px solid var(--line); border-radius: var(--r-sm); margin: 8px 0; padding: 0 12px; }
+.uye > summary { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; cursor: pointer; }
+.uye-ad { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.uye[open] { padding-bottom: 12px; }
+.yetki-tbl select { font: inherit; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); }
+.davet-kutu input { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px; margin-top: 8px; }
+.card-ic { margin-top: 10px; } .card-ic > summary { cursor: pointer; padding: 6px 0; }
+.davet { background: var(--lumen-soft); padding: 10px 12px; border-radius: var(--r-sm); font-size: 14px; }
+.wide-card { grid-column: 1 / -1; max-width: 860px; }

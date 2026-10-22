@@ -1,7 +1,7 @@
 // Sanayi bölgeleri: haritada çizilen sınırlar, gruplar, bölgedeki projeler
 import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, usd, pill, ILLER, BOLGE_TIPLERI, BOLGE_RENKLERI, ACIK, toast, openDrawer, closeDrawer, confirmBox, fold, match } from '../ui.js';
+import { esc, usd, pill, ILLER, BOLGE_TIPLERI, BOLGE_RENKLERI, ACIK, toast, openDrawer, closeDrawer, confirmBox, fold, match, exportXlsx, today } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { toMulti, inMulti, OSB_MERKEZ } from '../geo.js';
 import { go } from '../main.js';
@@ -69,7 +69,7 @@ export function bolgeForm(init = {}, after) {
 export function bolgelerView(el) {
   const f = F('bolgeler', { q: '', il: 'Tümü' });
   el.innerHTML = `<header class="vh"><div><h1>Sanayi bölgeleri</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><button class="btn ghost" data-osb>Bilinen OSB'leri listeye ekle</button><button class="btn primary" data-new>Haritada bölge çiz</button></div></header>
+    <div class="vh-act"><button class="btn primary" data-otomatik>OSB'leri otomatik getir</button><button class="btn ghost" data-osb>Bilinen OSB'leri listeye ekle</button><button class="btn ghost" data-new>Haritada bölge çiz</button><button class="btn ghost" data-xls>Excel</button></div></header>
     <div class="filters"><input type="search" data-q placeholder="Bölge, grup ara" value="${esc(f.q)}" aria-label="Bölgelerde ara">
       <div class="frow"><label>İl <select data-il>${['Tümü', ...ILLER].map(x => `<option ${f.il === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label></div></div>
     <div data-rows></div>`;
@@ -99,6 +99,8 @@ export function bolgelerView(el) {
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelector('[data-il]').onchange = e => { f.il = e.target.value; saveFilters(); draw(); };
   el.querySelector('[data-new]').onclick = () => { app.pendingDraw = {}; go('#/harita'); };
+  el.querySelector('[data-xls]').onclick = () => exportXlsx(`sanayi-bolgeleri-${today()}.xlsx`, { 'Bölgeler': S.bolgeler.map(b => { const ps = bolgeProjeleri(b); return { 'Bölge': b.ad, 'Tip': b.tip, 'Grup': b.grup, 'İl': b.il, 'İlçe': b.ilce, 'Proje': ps.length, 'Açık potansiyel (USD)': ps.filter(p => ACIK.includes(p.durum)).reduce((s, p) => s + (+p.tutar_usd || 0), 0), 'Sipariş alınan proje': ps.filter(p => p.durum === 'Sipariş').length, 'Sınır çizili': b.geojson ? 'Evet' : 'Hayır', 'Not': b.notlar }; }) });
+  el.querySelector('[data-otomatik]').onclick = async () => { const { osbPaneli } = await import('../osm-bolge.js'); osbPaneli(draw); };
   el.querySelector('[data-osb]').onclick = async () => {
     const yeni = OSB_MERKEZ.filter(o => !S.bolgeler.some(b => fold(b.ad) === fold(o[0])));
     if (!yeni.length) return toast('Bilinen OSB\'lerin hepsi zaten listede.');

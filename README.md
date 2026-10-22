@@ -32,6 +32,17 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 8)
+
+1. **Önce SQL:** Supabase → SQL Editor → `supabase/schema.sql` dosyasının tamamını yapıştır → **Run**. Dosya önceki tüm sürümlerin değişikliklerini içerir; bir kez çalıştırman yeterli, tekrar çalıştırmak zarar vermez.
+2. **TCMB kuru (USD ve EUR):** SQL çalıştıktan sonra kur, veritabanı üzerinden TCMB'den saatlik alınır (alış/satış). Ulaşılamazsa Avrupa Merkez Bankası kuru kullanılır.
+3. **Harita altlığı:** Haritadaki seçiciden Google Uydu (güncel görüntü), Google Harita, Esri Uydu veya OpenStreetMap seçilebilir. Google katmanları için Ayarlar → Google'da API anahtarı gerekir.
+4. **OSB'ler otomatik:** Bölgeler → “OSB'leri otomatik getir”, OpenStreetMap'teki organize sanayi bölgesi sınırlarını önizleyip ekler.
+5. **Dosyalar:** Yüklemeler, Excel/PowerPoint çıktıları, belgeler ve fotoğraflar ayrı gruplarda, türe göre süzülebilir.
+6. **Excel çıktısı:** Listelerin çoğunda “Excel” düğmesi var. Çıktının bir kopyası Dosyalar → Çıktılar'a kaydedilir (Ayarlar → Veri'den kapatılabilir).
+7. **Tüm veriyi al ve taşı:** Ayarlar → Veri ve yedek → “Tam yedek (ZIP)”: tüm tablolar (JSON + CSV), tüm dosyalar ve veritabanı şeması tek dosyada. Başka bir Supabase hesabına ya da başka bir sunucuya aynı ekrandan geri yüklenir.
+8. **Kullanıcılar:** Ayarlar → Kullanıcılar'dan kişi ekle, bölüm bazında “Görür / Düzenler” yetkisi ver, davet bağlantısını gönder. Davetli kişi kendi şifresiyle hesap açar ve yalnızca izin verdiğin bölümleri görür.
+
 ## Güncelleme notu (sürüm 7)
 
 Belgelere tür alanı eklendi: [`supabase/schema.sql`](supabase/schema.sql) dosyasını bir kez yeniden çalıştır.

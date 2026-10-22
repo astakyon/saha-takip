@@ -126,6 +126,7 @@ let warned = false;
 const warnOld = () => { if (warned) return; warned = true; window.dispatchEvent(new CustomEvent('schema-old')); };
 function schemaErr(e, t) {
   const m = e?.message || String(e);
+  if (/row-level security|permission denied/i.test(m)) return new Error('Bu bölümde düzenleme yetkin yok. Veri sahibinden yetki iste.');
   if (/column|schema cache|does not exist|Could not find/i.test(m)) return new Error('Veritabanı eski sürümde. Supabase SQL Editor\'de supabase/schema.sql dosyasını yeniden çalıştır. (' + m + ')');
   return new Error((t ? t + ': ' : '') + m);
 }
@@ -153,8 +154,16 @@ class SupaAdapter {
   async signIn(email, password) { const { data, error } = await this.c.auth.signInWithPassword({ email, password }); if (error) throw error; this.session = data.session; }
   async signUp(email, password) { const { data, error } = await this.c.auth.signUp({ email, password }); if (error) throw error; this.session = data.session; return data; }
   async signOut() { await this.c.auth.signOut(); this.session = null; }
+  // Ekip yetkileri: veri sahibi mi, ekip üyesiyse hangi tablolar (schema.sql sürüm 8 gerekir; yoksa sahip sayılır)
+  async yetkiYukle() {
+    try { const { data, error } = await this.c.rpc('benim_yetkilerim'); if (error) throw error; this.yetki = data || { ben_sahip: true }; }
+    catch { this.yetki = { ben_sahip: true }; }
+    this.sahip = this.yetki?.sahip || this.user()?.id;
+    return this.yetki;
+  }
   async loadAll() {
     try {
+      await this.yetkiYukle();
       for (const t of Object.keys(TABLES)) {
         let all = [], from = 0;
         for (;;) {
@@ -188,6 +197,7 @@ class SupaAdapter {
   }
   async pending() { return ((await idbGet('outbox')) || []).length; }
   async save(t, obj) {
+    if (this.yazamaz(t)) throw new Error('Bu bölümde düzenleme yetkin yok. Veri sahibinden yetki iste.');
     const row = pick(t, obj); if (!row.id) row.id = uuid();
     const i = S[t].findIndex(x => x.id === row.id);
     const full = { ...(i >= 0 ? S[t][i] : {}), ...row, updated_at: new Date().toISOString() };
@@ -202,12 +212,15 @@ class SupaAdapter {
     }
     return full;
   }
+  yazamaz(t) { return this.yetki?.ben_sahip === false && this.yetki.yetkiler?.[t] !== 'yaz' && t !== 'ayarlar'; }
   async del(t, id) {
+    if (this.yazamaz(t)) throw new Error('Bu bölümde silme yetkin yok.');
     S[t] = S[t].filter(x => x.id !== id); this.cache();
     const { error } = await this.c.from(t).delete().eq('id', id);
     if (error) { if (/fetch|network/i.test(error.message)) await this.queue({ op: 'del', t, id }); else throw error; }
   }
   async bulk(t, rows, onProgress) {
+    if (this.yazamaz(t)) throw new Error('Bu bölümde düzenleme yetkin yok.');
     for (let i = 0; i < rows.length; i += 400) {
       const chunk = rows.slice(i, i + 400).map(r => pick(t, r));
       try { await upsertSafe(this.c, t, chunk); } catch (error) { throw schemaErr(error, t); }
@@ -220,14 +233,14 @@ class SupaAdapter {
   async upload(file) {
     if (!navigator.onLine) throw new Error('Fotoğraf yüklemek için internet bağlantısı gerekiyor.');
     const blob = await shrink(file);
-    const path = `${this.user().id}/${uuid()}.jpg`;
+    const path = `${this.sahip || this.user().id}/${uuid()}.jpg`;
     const { error } = await this.c.storage.from('fotograflar').upload(path, blob, { contentType: 'image/jpeg' });
     if (error) throw error; return path;
   }
   async uploadFile(file) {
     if (!navigator.onLine) throw new Error('Belge yüklemek için internet bağlantısı gerekiyor.');
     if (file.size > 45 * 1024 * 1024) throw new Error('Dosya 45 MB\'tan büyük.');
-    const path = `${this.user().id}/belge/${uuid()}-${guvenliAd(file.name)}`;
+    const path = `${this.sahip || this.user().id}/belge/${uuid()}-${guvenliAd(file.name)}`;
     const { error } = await this.c.storage.from('fotograflar').upload(path, file, { contentType: file.type || 'application/octet-stream' });
     if (error) throw error; return path;
   }

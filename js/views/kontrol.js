@@ -1,7 +1,7 @@
 // Veri kontrolü: eksik, çelişkili ya da mükerrer kayıtları bulur; tek dokunuşla düzeltme
 import { S } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, usd, num, tarih, today, gunEkle, byId, firmaAd, toast, confirmBox, ACIK, fold, pill } from '../ui.js';
+import { esc, usd, num, tarih, today, gunEkle, byId, firmaAd, toast, confirmBox, ACIK, fold, pill, exportXlsx } from '../ui.js';
 import { siparisForm, projeBul } from './panel.js';
 import { durumDegistir } from './projeler.js';
 import { ceyrekGercek } from '../ceyrek.js';
@@ -81,10 +81,11 @@ export async function firmaBirlestir(kalanId, gidenIds) {
 export function kontrolView(el) {
   const f = F('kontrol', { acik: null });
   const K = kontroller(), sorun = K.filter(x => x.kayitlar.length);
-  el.innerHTML = `<header class="vh"><div><h1>Veri kontrolü</h1><p class="sum">${sorun.length ? `${sorun.length} başlıkta ${sorun.reduce((a, x) => a + x.kayitlar.length, 0)} kayıt gözden geçirilmeli` : 'Sorun bulunmadı'}</p></div></header>
+  el.innerHTML = `<header class="vh"><div><h1>Veri kontrolü</h1><p class="sum">${sorun.length ? `${sorun.length} başlıkta ${sorun.reduce((a, x) => a + x.kayitlar.length, 0)} kayıt gözden geçirilmeli` : 'Sorun bulunmadı'}</p></div><div class="vh-act"><button class="btn ghost" data-xls>Excel</button></div></header>
     ${['Projeler', 'Siparişler', 'Çeyrekler', 'Firmalar'].map(g => `<section class="kontrol-grup"><h2>${g}</h2>${K.filter(x => x.grup === g).map(x => `<details class="card kontrol" data-k="${x.id}" ${f.acik === x.id ? 'open' : ''}>
       <summary><span class="kb ${x.kayitlar.length ? 'var' : 'yok'}">${x.kayitlar.length || '✓'}</span><b>${esc(x.baslik)}</b></summary>
       ${x.kayitlar.length ? `<p class="hint">${esc(x.aciklama)}</p><ul class="list">${x.kayitlar.slice(0, 40).map(r => `<li>${x.satir(r)}</li>`).join('')}</ul>${x.kayitlar.length > 40 ? `<p class="hint">+${x.kayitlar.length - 40} kayıt daha</p>` : ''}` : '<p class="hint">Sorun yok.</p>'}</details>`).join('')}</section>`).join('')}`;
+  el.querySelector('[data-xls]').onclick = () => exportXlsx(`veri-kontrolu-${today()}.xlsx`, { 'Kontrol': sorun.flatMap(x => x.kayitlar.map(r => ({ 'Grup': x.grup, 'Sorun': x.baslik, 'Kayıt': Array.isArray(r) ? r.map(f => f.ad).join(' / ') : r.ad || [r.siparis_no, r.referans || r.musteri_adi].filter(Boolean).join(' · ') || (r.c ? r.c + '. çeyrek' : ''), 'Durum / tarih': r.durum || r.tarih || r.beklenen_tarih || '', 'Tutar': r.tutar_usd || r.net_deger || '' }))) });
   el.querySelectorAll('details[data-k]').forEach(d => d.ontoggle = () => { if (d.open) { f.acik = d.dataset.k; saveFilters(); } });
   el.querySelectorAll('[data-sp]').forEach(b => b.onclick = () => siparisForm({ id: b.dataset.sp }));
   el.querySelectorAll('[data-sipyap]').forEach(b => b.onclick = async () => { if (await durumDegistir(byId('projeler', b.dataset.sipyap), 'Sipariş')) kontrolView(el); });
