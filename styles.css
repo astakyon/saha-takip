@@ -1109,3 +1109,53 @@ button.bekleyen{border:0;cursor:pointer}
 .menu-d summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
 .menu-tbl td.alt { padding-left: 24px; color: var(--ink-2, var(--muted)); }
 .menu-tbl tr.grp td { background: var(--zemin-2); }
+
+/* ===== Sürüm 28: harita ===== */
+.map-top { flex-wrap: nowrap; align-items: stretch; }
+.map-top .map-search { position: relative; flex: 1 1 auto; max-width: 420px; min-width: 0; order: 0; }
+.map-top .map-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.map-top .map-search input { width: 100%; padding-left: 36px; min-height: 44px; border-radius: 12px; background: var(--card); color: var(--ink); }
+.mbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--card); color: var(--ink); font: 600 14px var(--f); box-shadow: 0 2px 10px rgba(29, 43, 54, .15); cursor: pointer; white-space: nowrap; position: relative; }
+.mbtn:hover { background: var(--zemin-2); }
+.mbtn[aria-expanded="true"] { background: var(--koyu); color: #fff; }
+.mbtn[data-ilchip] { background: var(--lumen); color: #10181D; }
+.need-n:empty { display: none; }
+.need-n { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--lumen); color: #10181D; font: 700 11.5px/20px var(--f); text-align: center; }
+.map-arac { position: relative; }
+.arac-menu { position: absolute; right: 0; top: calc(100% + 8px); width: min(320px, calc(100vw - 24px)); background: var(--card); border-radius: 14px; box-shadow: 0 14px 40px rgba(29, 43, 54, .25); padding: 6px; display: grid; gap: 2px; }
+.arac-menu > * { display: block; text-align: left; border: 0; background: none; padding: 10px 12px; border-radius: 10px; color: var(--ink); text-decoration: none; cursor: pointer; font: inherit; }
+.arac-menu > *:hover { background: var(--zemin-2); }
+.arac-menu b { display: block; font: 600 14.5px var(--f); }
+.arac-menu b i { font-style: normal; background: var(--lumen); color: #10181D; border-radius: 9px; padding: 0 7px; font-size: 12px; margin-left: 4px; }
+.arac-menu b i:empty { display: none; }
+.arac-menu small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.arac-menu [aria-pressed="true"] { background: var(--lumen-soft); }
+.map-panel { top: 66px; max-height: calc(100% - 140px); overflow-y: auto; }
+.map-panel h4 { margin: 14px 0 6px; font: 600 12px var(--f); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.mp-bas { display: flex; justify-content: space-between; align-items: center; }
+.mp-bas h3 { margin: 0; font-size: 17px; }
+.mp-il { display: flex; flex-wrap: wrap; }
+.mp-altlik { display: grid; gap: 6px; }
+@media (max-width: 899px) {
+  .map-top { top: 10px; left: 10px; right: 10px; gap: 6px; }
+  .map-top .map-search { max-width: none; flex-basis: auto; }
+  .mbtn { padding: 0 12px; }
+  .mbtn:not([data-ilchip]) span { display: none; }
+  /* Katmanlar: alttan açılan pencere */
+  .map-panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 72%; border-radius: 18px 18px 0 0; padding: 8px 18px 22px; box-shadow: 0 -10px 40px rgba(29, 43, 54, .3); z-index: 700; }
+  .map-panel .mp-bas { position: sticky; top: -8px; background: var(--card); padding: 10px 0 6px; z-index: 1; }
+  .map-panel .mp-bas::before { content: ''; position: absolute; left: 50%; top: 0; width: 40px; height: 4px; border-radius: 2px; background: var(--line); transform: translateX(-50%); }
+  .map-panel .legend { grid-template-columns: 1fr 1fr; }
+  .assign-panel { z-index: 700; }
+}
+/* Raptiye balonu: üç ana düğme eşit, diğerleri küçük bağlantı */
+.pp-act { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 12px; }
+.pp-act .btn { min-height: 40px; justify-content: center; text-align: center; padding: 6px 4px; font-size: 13.5px; }
+.pp-act .btn:first-child { background: var(--card); color: var(--ink); border-color: var(--line); }
+.pp-act .btn.primary { background: var(--koyu); color: #fff; border-color: var(--koyu); }
+.pp-alt { display: flex; gap: 14px; justify-content: center; margin-top: 8px; font-size: 13px; }
+.pp-alt .linkbtn { font-size: 13px; }
+@media (max-width: 899px) { .pin-banner { top: 64px; } }
+.map-panel { z-index: 650; }
+.mp-altlik label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.mp-altlik input[type=radio] { width: 18px; height: 18px; min-height: 0; flex: none; margin: 0; padding: 0; accent-color: var(--koyu); }

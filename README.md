@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 28) — harita
+
+- **Üst çubuk tek satır:** arama, Katmanlar ve Araçlar. Seçili il, aramanın yanında sarı bir etiket olarak görünür; dokununca kaldırılır.
+- **Araçlar menüsü:** Konum ata (bekleyen sayısıyla), Raptiye taşı, Bölge çiz, Google'da ara, İçe aktar, Sanayi bölgeleri listesi — her birinin ne yaptığı altında yazar.
+- **Katmanlar:** il, haritada gösterilecekler, aşamalar ve takip yılı, harita görüntüsü (Google uydu / Google harita / Esri uydu / sokak haritası) ve çevrimdışı bilgisi tek pencerede. Telefonda alttan açılır.
+- **Raptiye balonu:** üç eşit düğme (Aç, Ziyaret ekle, Yol tarifi); Konumu taşı, Google'da bul ve firmada Ara küçük bağlantı olarak altta.
+
 ## Güncelleme notu (sürüm 27) — menü ve ortak ekran düzeni
 
 - **Menü 11 başlıkta:** Bugün · Harita (+ Sanayi bölgeleri) · Projeler (+ Referanslar) · Firmalar (+ Kişiler) · Takvim (+ Ziyaretler, Görevler) · Satış (Teklifler, Siparişler, Tahsilat, Numuneler, Servis) · Ürünler (Stok ve fiyat, Bayi paneli, Katalog, Rakip fiyatları, Hesap araçları) · Raporlar (Panel, Haftalık rapor, Veri kontrolü) · Masraf ve km · Dosyalar · Ayarlar. Başlığın içindeki ekranlar üstte sekme olarak durur; başlık en son açtığın sekmeyi hatırlar.
