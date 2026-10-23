@@ -72,7 +72,8 @@ export async function mapView(el) {
   </div>`;
 
   if (map) { try { map.remove(); } catch {} map = null; meMarker = null; }
-  map = L.map('map', { zoomControl: false, maxBounds: [[33, 29], [41, 40]], doubleClickZoom: true });
+  // maxZoom haritada sabit: raptiye kümeleme (markercluster) altlık yüklenmeden önce de en büyük yakınlaştırmayı bilmeli
+  map = L.map('map', { zoomControl: false, maxBounds: [[33, 29], [41, 40]], doubleClickZoom: true, maxZoom: 20 });
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   // Altlık: Google uydu (güncel, anahtar gerekir), Esri uydu ya da sokak haritası
   let altKatman = null, altSira = 0;

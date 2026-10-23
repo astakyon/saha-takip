@@ -17,12 +17,12 @@ export const uyduMu = k => k === 'esri' || k === 'google-uydu';
 
 function esri() {
   return L.layerGroup([
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 19, attribution: 'Uydu: Esri, Maxar, Earthstar Geographics' }),
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 0.85 }),
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, maxNativeZoom: 19, attribution: 'Uydu: Esri, Maxar, Earthstar Geographics' }),
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, maxNativeZoom: 19, opacity: 0.85 }),
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, maxNativeZoom: 19 }),
   ]);
 }
-const osm = () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
+const osm = () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 20, maxNativeZoom: 19, attribution: '© OpenStreetMap' });
 
 // İstenen altlığı döndürür; Google yüklenemezse Esri'ye düşer
 export async function altlikKatmani(k) {
@@ -33,6 +33,6 @@ export async function altlikKatmani(k) {
     await loadGoogle();
     if (!L.gridLayer?.googleMutant) await (mutantYuk ||= betik(MUTANT));
     if (!L.gridLayer?.googleMutant) throw new Error('Google katmanı yüklenemedi.');
-    return { k, katman: L.gridLayer.googleMutant({ type: k === 'google-uydu' ? 'hybrid' : 'roadmap', maxZoom: 21 }) };
+    return { k, katman: L.gridLayer.googleMutant({ type: k === 'google-uydu' ? 'hybrid' : 'roadmap', maxZoom: 20 }) };
   } catch (e) { mutantYuk = null; toast(e.message + ' Esri uydu gösteriliyor.', 'err'); return { k: 'esri', katman: esri() }; }
 }
