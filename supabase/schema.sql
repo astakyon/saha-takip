@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 14)
+--  Saha Satış Takip — Supabase şeması (sürüm 15)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -542,3 +542,45 @@ grant execute on function public.yedek_guvenli() to authenticated;
 -- ---------- Sürüm 14: cihaz başına bildirim tercihleri ----------
 -- { "atandi": false } gibi: kişi o türü kapattıysa bildir fonksiyonu o cihaza göndermez.
 alter table public.push_abonelikleri add column if not exists tercihler jsonb not null default '{}'::jsonb;
+
+-- ---------- Sürüm 15: ayrıntılı yetkiler — kapalı bölümün dosyası ve ayarı da ekip üyesine gitmez ----------
+-- 1) Ekip üyesi, veri sahibinin ayarlarından yalnızca ortak kullanılanları okur (Google anahtarı, şablonlar, listeler, kur…).
+--    Proje bazlı ayarlar (ör. sartname:<proje>) yalnızca projeleri görebilen üyeye açıktır.
+create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) returns boolean language sql stable security definer set search_path = public as $f$
+  select sahip = auth.uid() or (public.ekipte(sahip::text) and (
+    anahtar in ('google_key', 'wa_sablonlar', 'teklif_firma', 'listeler', 'kataloglar_ek', 'ziyaret_siklik', 'usd_kur', 'kur_elle', 'elektrik_tl_kwh')
+    or (anahtar like 'sartname:%' and public.yetki(sahip, 'projeler', 'oku'))))
+$f$;
+drop policy if exists "ayar_oku" on public.ayarlar;
+create policy "ayar_oku" on public.ayarlar for select to authenticated using (public.ayar_paylasilir(owner, anahtar));
+
+-- 2) Fotoğraf ve belgeler: ekip üyesi bir dosyayı ancak o dosyanın bağlı olduğu kaydı görebiliyorsa açar
+--    (ör. firmalar kapalıysa firma fotoğrafları, dosyalar kapalıysa belgeler açılmaz). Yedek klasörü yalnızca veri sahibinde.
+create or replace function public.foto_izinli(yol text) returns boolean language plpgsql stable security definer set search_path = public as $f$
+declare s text := split_part(yol, '/', 1); o uuid; y text;
+begin
+  if s = auth.uid()::text then return true; end if;
+  if not public.ekipte(s) then return false; end if;
+  if split_part(yol, '/', 2) = 'yedek' then return false; end if;
+  o := s::uuid;
+  y := regexp_replace(yol, '_k\.jpg$', '.jpg');   -- küçük önizleme, asıl fotoğrafla aynı izni alır
+  if public.yetki(o, 'belgeler', 'oku') and exists (select 1 from public.belgeler b where b.owner = o and b.yol = y) then return true; end if;
+  if split_part(yol, '/', 2) = 'belge' then return false; end if;
+  if public.yetki(o, 'projeler', 'oku') and exists (select 1 from public.projeler t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'firmalar', 'oku') and exists (select 1 from public.firmalar t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'kisiler', 'oku') and exists (select 1 from public.kisiler t where t.owner = o and (t.kartvizit_on = y or t.kartvizit_arka = y)) then return true; end if;
+  if public.yetki(o, 'ziyaretler', 'oku') and exists (select 1 from public.ziyaretler t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'servis_kayitlari', 'oku') and exists (select 1 from public.servis_kayitlari t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'urun_aileleri', 'oku') and exists (select 1 from public.urun_aileleri t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'masraflar', 'oku') and exists (select 1 from public.masraflar t where t.owner = o and t.fis = y) then return true; end if;
+  return false;
+exception when others then return false;
+end $f$;
+revoke all on function public.foto_izinli(text) from public, anon;
+grant execute on function public.foto_izinli(text) to authenticated;
+drop policy if exists "foto_oku" on storage.objects;
+create policy "foto_oku" on storage.objects for select to authenticated
+  using (bucket_id = 'fotograflar' and public.foto_izinli(name));
+-- Uygulama bu fonksiyonla sunucu kurallarının güncel olduğunu anlar
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 15 $f$;
+grant execute on function public.yetki_surum() to authenticated;

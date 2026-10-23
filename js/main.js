@@ -4,7 +4,7 @@ import { esc, toast, closeDrawer } from './ui.js';
 import { listeleriUygula } from './listeler.js';
 import { kisayolAl, canInstall, install, onInstallChange } from './kurulum.js';
 import { paylasimAl, paylasimPaneli } from './paylas.js';
-import { rotaIzinli, sahipMi, rotaYazilabilir } from './yetki.js';
+import { rotaIzinli, sahipMi, rotaYazilabilir, izin, yetkiUygula, gerekUygula, onizlemede, onizlemeBitir } from './yetki.js';
 import { menuDuzeni } from './menu.js';
 import { BASLIKLAR, SEKME_AD, baslikOf } from './basliklar.js';
 import { hizliKur, aramaAc } from './hizli.js';
@@ -111,10 +111,11 @@ const saltOku = k => document.body.classList.toggle('salt-oku', !sahipMi() && !r
 async function route() {
   const parts = (location.hash.replace(/^#\/?/, '') || 'bugun').split('/');
   const [k, id] = parts;
-  if (DETAIL[k] && !rotaIzinli({ proje: 'projeler', firma: 'firmalar', kisi: 'kisiler' }[k])) { location.hash = '#/bugun'; return; }
+  const dt = { proje: 'projeler', firma: 'firmalar', kisi: 'kisiler' }[k];
+  if (DETAIL[k] && !izin(dt)) { location.hash = '#/bugun'; return; }
   if (DETAIL[k]) {
     if (!lastView) await show('bugun');
-    saltOku({ proje: 'projeler', firma: 'firmalar', kisi: 'kisiler' }[k]);
+    document.body.classList.toggle('salt-oku', !sahipMi() && (onizlemede() || izin(dt) !== 'yaz'));
     DETAIL[k](id);
     return;
   }
@@ -143,6 +144,7 @@ async function show(k) {
   // Ekranlar arası geçişte her ekranın kaydırma konumu hatırlanır
   if (lastShown !== k) { window.scrollTo(0, 0); el.scrollTop = 0; } lastShown = k;
   await ROUTES[k].v(el);
+  gerekUygula(el);
   if (donus > 0) {
     for (let i = 0; i < 30 && document.documentElement.scrollHeight < donus + innerHeight; i++) { const p = kok.querySelector('.parcali-kok')?._parcali; if (!p || !p.ekle(200)) break; }
     window.scrollTo(0, donus);
@@ -167,6 +169,22 @@ function davetAl() {
   history.replaceState(null, '', location.pathname + location.hash);
 }
 let otoKuruldu = false;
+// Kapalı bölümler: ekip üyesinde (ve önizlemede) data-gerek işaretli parçalar, yetki yoksa eklendiği anda kaldırılır
+let gerekGozcu = null;
+function gerekIzle() {
+  document.getElementById('onizleme-bar')?.remove();
+  if (sahipMi()) { gerekGozcu?.disconnect(); gerekGozcu = null; return; }
+  if (!gerekGozcu) {
+    gerekGozcu = new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) gerekUygula(n); });
+    gerekGozcu.observe(document.body, { childList: true, subtree: true });
+  }
+  gerekUygula(document.body);
+  if (onizlemede()) {
+    const b = document.createElement('div'); b.id = 'onizleme-bar'; b.setAttribute('role', 'status');
+    b.innerHTML = `<span><b>Önizleme:</b> ${esc(app.yetki.ad || app.yetki.eposta)} olarak görüyorsun. Değişiklik kaydedilmez.</span><button type="button" class="btn sm">Önizlemeden çık</button>`;
+    b.querySelector('button').onclick = onizlemeBitir; document.body.appendChild(b); document.body.classList.add('onizlemede');
+  }
+}
 async function boot() {
   loadFilters();
   davetAl();
@@ -183,7 +201,7 @@ async function boot() {
       if (!otoKuruldu) { otoKuruldu = true; g.otoCikisKur(); }
     }
     await app.db.loadAll({ hizli: true });
-    app.yetki = app.db.yetki || null;
+    yetkiUygula(); gerekIzle();
     listeleriUygula();
     if (app.db.mode === 'supabase') import('./guvenlik.js').then(g => g.gorundum());
     temaUygula(); yaziUygula();
@@ -219,9 +237,9 @@ async function boot() {
 }
 // Açılışta telefondaki kopya gösterildi; buluttaki yeni veri gelince ekranı sessizce yenile
 window.addEventListener('veri-tazelendi', () => {
-  const yetkiDegisti = JSON.stringify(app.yetki) !== JSON.stringify(app.db.yetki);
-  app.yetki = app.db.yetki || app.yetki; listeleriUygula(); sonTazele = Date.now();
-  if (yetkiDegisti) renderNav(navSon);
+  const once = JSON.stringify(app.yetki);
+  yetkiUygula(); const yetkiDegisti = once !== JSON.stringify(app.yetki); listeleriUygula(); sonTazele = Date.now();
+  if (yetkiDegisti) { renderNav(navSon); gerekIzle(); if (lastView && !rotaIzinli(lastView)) { location.hash = '#/bugun'; return; } }
   if (!document.querySelector('.drawer.open') && !document.activeElement?.matches?.('input, textarea, select') && app.refresh) { const y = window.scrollY; Promise.resolve(app.refresh()).then(() => window.scrollTo(0, y)); }
   bekleyenGuncelle();
 });
@@ -247,7 +265,7 @@ async function tazele(zorla) {
   if (tazeleniyor || !app.db || app.db.mode !== 'supabase' || !navigator.onLine || document.hidden) return;
   if (!zorla && Date.now() - sonTazele < 120000) return;
   tazeleniyor = true;
-  try { await (app.db.tazeYukle ? app.db.tazeYukle() : app.db.loadAll()); app.yetki = app.db.yetki || app.yetki; listeleriUygula(); sonTazele = Date.now(); if (!document.querySelector('.drawer.open') && !document.activeElement?.matches?.('input, textarea, select')) { const y = window.scrollY; app.refresh(); window.scrollTo(0, y); } }
+  try { await (app.db.tazeYukle ? app.db.tazeYukle() : app.db.loadAll()); yetkiUygula(); listeleriUygula(); sonTazele = Date.now(); if (!document.querySelector('.drawer.open') && !document.activeElement?.matches?.('input, textarea, select')) { const y = window.scrollY; app.refresh(); window.scrollTo(0, y); } }
   catch {} finally { tazeleniyor = false; }
 }
 // Aşağı çekerek yenileme: buluttan değişenleri çek ve ekranı yenile

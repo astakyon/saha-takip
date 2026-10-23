@@ -74,10 +74,10 @@ export function panelView(el) {
     ${kayipKarti(Y)}
     <section class="card"><h2>Yaklaşan beklenen siparişler</h2>
       ${beklenen.length ? `<ul class="list">${beklenen.map(p => `<li><a href="#/proje/${p.id}"><b>${esc(p.ad)}</b><span class="muted">${tarih(p.beklenen_tarih)} · ${usd(p.tutar_usd)}</span></a>${pill(p.durum)}</li>`).join('')}</ul>` : '<p class="hint">Beklenen sipariş tarihi girilmiş açık proje yok.</p>'}</section>
-    <section class="card"><h2>Açık görevler</h2>
+    <section class="card" data-gerek="gorevler"><h2>Açık görevler</h2>
       ${gorev.length ? `<ul class="list">${gorev.map(g => `<li class="${g.son_tarih && g.son_tarih < t ? 'late' : ''}"><button type="button" class="linkbtn" data-g="${g.id}">${esc(g.baslik)}</button><span class="muted">${tarih(g.son_tarih)}</span></li>`).join('')}</ul>` : '<p class="hint">Açık görev yok.</p>'}
       <p><a href="#/gorevler">Tüm görevler</a></p></section>
-    <section class="card"><h2>En çok çalıştığın firmalar (${Y})</h2>
+    <section class="card" data-gerek="firmalar"><h2>En çok çalıştığın firmalar (${Y})</h2>
       ${topFirma.length ? `<table class="tbl"><thead><tr><th>Firma</th><th>Rol</th><th class="r">Proje</th><th class="r">Sipariş</th><th class="r">Kayıp</th></tr></thead><tbody>${topFirma.map(([id, v]) => `<tr><td><a href="#/firma/${id}">${esc(firmaAd(id))}</a></td><td>${v.rol}</td><td class="r">${v.n}</td><td class="r">${v.w}</td><td class="r">${v.l}</td></tr>`).join('')}</tbody></table>` : '<p class="hint">Veri yok.</p>'}</section>
     <section class="card wide"><h2>Toplantı sunumu tabloları</h2>
       <p class="hint">Çeyrek ve yarı dönem sunumlarındaki tablo düzeninde Excel dosyası indirir; satırları sunuma kopyalayabilirsin.</p>

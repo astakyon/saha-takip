@@ -2,22 +2,22 @@
 import { S } from './db.js';
 import { app } from './state.js';
 import { esc, fold, byId, firmaAd, tarih, today, gunEkle, openDrawer, closeDrawer, usd, toast, kelimeUyar } from './ui.js';
-import { izin } from './yetki.js';
+import { izin, rotaIzinli } from './yetki.js';
 import { menuDuzeni } from './menu.js';
 
 const yazabilir = t => izin(t) === 'yaz';
-const gorunur = k => !menuDuzeni().gizli.has(k);
+const gorunur = r => [].concat(r).some(k => k === 'bugun' || (!menuDuzeni().gizli.has(k) && rotaIzinli(k)));
 
 function ogeler() {
   const y = gunEkle(today(), 1);
   return [
-    { ad: 'Ziyaret kaydet', alt: 'yapılan görüşme', t: 'ziyaretler', r: 'ziyaretler', f: async () => (await import('./views/ziyaret.js')).ziyaretForm({}) },
-    { ad: 'Ziyaret planla', alt: 'yarın için', t: 'ziyaretler', r: 'ziyaretler', f: async () => (await import('./views/ziyaret.js')).ziyaretForm({ durum: 'Planlandı', tarih: y }) },
+    { ad: 'Ziyaret kaydet', alt: 'yapılan görüşme', t: 'ziyaretler', r: ['ziyaretler', 'takvim'], f: async () => (await import('./views/ziyaret.js')).ziyaretForm({}) },
+    { ad: 'Ziyaret planla', alt: 'yarın için', t: 'ziyaretler', r: ['ziyaretler', 'takvim'], f: async () => (await import('./views/ziyaret.js')).ziyaretForm({ durum: 'Planlandı', tarih: y }) },
     { ad: 'Sesli not', alt: 'konuş, sonra firmaya bağla', t: 'gorevler', r: 'bugun', f: () => sesliNot() },
-    { ad: 'Görev', alt: 'yapılacak iş, hatırlatma', t: 'gorevler', r: 'gorevler', f: async () => (await import('./views/ziyaret.js')).gorevForm({}) },
-    { ad: 'Kartvizit', alt: 'fotoğrafla kişi ekle', t: 'kisiler', r: 'kisiler', f: async () => (await import('./views/firmalar.js')).kartvizittenKisi() },
-    { ad: 'Ürün kodu oku', alt: 'etiket, barkod → stok ve fiyat', t: 'urunler', oku: true, r: 'urunler', f: async () => (await import('./barkod.js')).kodOku() },
-    { ad: 'Kişi', alt: 'elle', t: 'kisiler', r: 'kisiler', f: async () => (await import('./views/firmalar.js')).kisiDetay(null, {}) },
+    { ad: 'Görev', alt: 'yapılacak iş, hatırlatma', t: 'gorevler', r: ['gorevler', 'takvim'], f: async () => (await import('./views/ziyaret.js')).gorevForm({}) },
+    { ad: 'Kartvizit', alt: 'fotoğrafla kişi ekle', t: 'kisiler', r: ['kisiler', 'firmalar'], f: async () => (await import('./views/firmalar.js')).kartvizittenKisi() },
+    { ad: 'Ürün kodu oku', alt: 'etiket, barkod → stok ve fiyat', t: 'urunler', oku: true, r: ['urunler', 'bayi'], f: async () => (await import('./barkod.js')).kodOku() },
+    { ad: 'Kişi', alt: 'elle', t: 'kisiler', r: ['kisiler', 'firmalar'], f: async () => (await import('./views/firmalar.js')).kisiDetay(null, {}) },
     { ad: 'Proje', alt: 'yeni proje', t: 'projeler', r: 'projeler', f: async () => (await import('./views/projeler.js')).yeniProje({}) },
     { ad: 'Firma', alt: 'yeni firma', t: 'firmalar', r: 'firmalar', f: async () => (await import('./views/firmalar.js')).yeniFirma({}) },
     { ad: 'Teklif', alt: 'yeni teklif', t: 'teklifler', r: 'teklifler', f: async () => (await import('./views/teklif.js')).teklifForm({}) },

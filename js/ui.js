@@ -1,5 +1,5 @@
 import { S } from './db.js';
-import { disaAktarabilir } from './yetki.js';
+import { disaAktarabilir, gizliBolum, gerekUygula } from './yetki.js';
 
 // ---------- Sabit listeler ----------
 export const DURUMLAR = [
@@ -56,7 +56,7 @@ export const ZIYARET_AMAC = ['Sipariş', 'Pazarlık', 'Teklif', 'Fiyat görüşm
 
 // ---------- Biçimlendirme ----------
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-export const usd = n => n == null || n === '' || isNaN(n) ? '—' : new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(n) + ' $';
+export const usd = n => gizliBolum('tutar') ? '•••' : n == null || n === '' || isNaN(n) ? '—' : new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(n) + ' $';
 export const num = n => n == null || n === '' ? '—' : new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(n);
 export const tarih = d => d ? new Date(d.length === 10 ? d + 'T00:00' : d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 export const isoLocal = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
@@ -90,6 +90,7 @@ export function openDrawer(html, { wide = false, onClose } = {}) {
   d.classList.add('open'); d.setAttribute('aria-hidden', 'false');
   onCloseCb = onClose || null;
   p.scrollTop = 0;
+  gerekUygula(p);
   aksiyonlariDuzenle(p);
   // Kaydedilmemiş değişiklik izi: formda yazılınca işaretlenir, kaydedilince temizlenir
   kirli = false;

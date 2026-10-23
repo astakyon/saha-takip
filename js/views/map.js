@@ -47,11 +47,11 @@ export async function mapView(el) {
       <button type="button" class="mbtn" data-tool="layers" aria-expanded="false" title="Katmanlar, il, aşamalar, harita görüntüsü"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg><span>Katmanlar</span></button>
       <div class="map-arac"><button type="button" class="mbtn" data-arac aria-haspopup="menu" aria-expanded="false" title="Araçlar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.3-1.3a4 4 0 0 0-5-5l2.6 2.6-2.1 2.1L9.6 5.8a4 4 0 0 0 5.1.5Z"/><path d="M3 21l6-6"/></svg><span>Araçlar</span><b class="need-n" data-need2></b></button>
         <div class="arac-menu" role="menu" hidden>
-          <button type="button" role="menuitem" data-tool="assign"><b>Konum ata <i data-need></i></b><small>Konumu olmayan proje ve firmaları haritada yerleştir</small></button>
-          <button type="button" role="menuitem" data-tool="move" aria-pressed="false"><b>Raptiye taşı</b><small>Raptiyeyi basılı tutup doğru yere sürükle</small></button>
-          <button type="button" role="menuitem" data-tool="draw"><b>Bölge çiz</b><small>Sanayi bölgesinin sınırını haritada çiz</small></button>
-          <button type="button" role="menuitem" data-tool="google"><b>Google'da ara</b><small>Bu bölgedeki işletmeleri bul, firma olarak ekle</small></button>
-          <button type="button" role="menuitem" data-tool="import"><b>İçe aktar</b><small>KML, KMZ, CSV ya da Google Haritalar bağlantısı</small></button>
+          <button type="button" role="menuitem" data-gerek="yaz:projeler,yaz:firmalar" data-tool="assign"><b>Konum ata <i data-need></i></b><small>Konumu olmayan proje ve firmaları haritada yerleştir</small></button>
+          <button type="button" role="menuitem" data-gerek="yaz:projeler,yaz:firmalar" data-tool="move" aria-pressed="false"><b>Raptiye taşı</b><small>Raptiyeyi basılı tutup doğru yere sürükle</small></button>
+          <button type="button" role="menuitem" data-gerek="yaz:bolgeler" data-tool="draw"><b>Bölge çiz</b><small>Sanayi bölgesinin sınırını haritada çiz</small></button>
+          <button type="button" role="menuitem" data-gerek="yaz:firmalar" data-tool="google"><b>Google'da ara</b><small>Bu bölgedeki işletmeleri bul, firma olarak ekle</small></button>
+          <button type="button" role="menuitem" data-gerek="yaz:projeler,yaz:firmalar" data-tool="import"><b>İçe aktar</b><small>KML, KMZ, CSV ya da Google Haritalar bağlantısı</small></button>
           <a role="menuitem" href="#/bolgeler"><b>Sanayi bölgeleri listesi</b><small>Bölgeleri tablo olarak gör, düzenle</small></a>
         </div></div>
     </div>
@@ -60,12 +60,12 @@ export async function mapView(el) {
       <h4>İl</h4>
       <div class="seg mp-il" role="group" aria-label="İl seç">${['Tümü', ...ILLER].map(i => `<button type="button" data-il="${i}" class="${f.il === i ? 'on' : ''}">${i}</button>`).join('')}</div>
       <h4>Haritada göster</h4>
-      <div class="lrow"><label class="chk"><input type="checkbox" data-layer="proje" ${f.proje ? 'checked' : ''}> <span>Projeler</span></label>
-      <label class="chk"><input type="checkbox" data-layer="yaklasik" ${f.yaklasik ? 'checked' : ''}> <span>Yaklaşık konumlu projeler</span></label>
-      <label class="chk"><input type="checkbox" data-layer="firma" ${f.firma ? 'checked' : ''}> <span>Firmalar</span></label>
-      <label class="chk"><input type="checkbox" data-layer="ziyaret" ${f.ziyaret ? 'checked' : ''}> <span>Ziyaretler</span></label>
-      <label class="chk"><input type="checkbox" data-layer="bolge" ${f.bolge ? 'checked' : ''}> <span>Sanayi bölgeleri</span></label>
-      <label class="chk"><input type="checkbox" data-layer="isi" ${f.isi ? 'checked' : ''}> <span>Ziyaret yoğunluğu (son 90 gün)</span></label></div>
+      <div class="lrow"><label class="chk" data-gerek="projeler"><input type="checkbox" data-layer="proje" ${f.proje ? 'checked' : ''}> <span>Projeler</span></label>
+      <label class="chk" data-gerek="projeler"><input type="checkbox" data-layer="yaklasik" ${f.yaklasik ? 'checked' : ''}> <span>Yaklaşık konumlu projeler</span></label>
+      <label class="chk" data-gerek="firmalar"><input type="checkbox" data-layer="firma" ${f.firma ? 'checked' : ''}> <span>Firmalar</span></label>
+      <label class="chk" data-gerek="ziyaretler"><input type="checkbox" data-layer="ziyaret" ${f.ziyaret ? 'checked' : ''}> <span>Ziyaretler</span></label>
+      <label class="chk" data-gerek="bolgeler"><input type="checkbox" data-layer="bolge" ${f.bolge ? 'checked' : ''}> <span>Sanayi bölgeleri</span></label>
+      <label class="chk" data-gerek="ziyaretler"><input type="checkbox" data-layer="isi" ${f.isi ? 'checked' : ''}> <span>Ziyaret yoğunluğu (son 90 gün)</span></label></div>
       <div class="isi-lejant" data-isilej ${f.isi ? '' : 'hidden'}><span style="--c:#B91C1C">hiç</span><span style="--c:#EA580C">1–2</span><span style="--c:#CA8A04">3–5</span><span style="--c:#15803D">6+</span> ziyaret (bölge) · firmalar: son ziyaret 20 / 45 / 90 gün</div>
       <h4>Aşamalar ve takip yılı</h4>
       <div class="lrow"><label>Takip yılı <select data-yil>${['Tümü', 2026, 2027].map(y => `<option ${f.yil == y ? 'selected' : ''}>${y}</option>`).join('')}</select></label></div>
@@ -355,8 +355,8 @@ export async function mapView(el) {
       <div class="pp-meta"><div><span>Tutar</span> ${usd(p.tutar_usd)}</div>${roles}</div>
       ${p.notlar ? `<p class="pp-note">${esc(p.notlar.slice(0, 200))}${p.notlar.length > 200 ? '…' : ''}</p>` : ''}
       ${p.konum_yaklasik ? '<p class="hint">Yaklaşık konum. “Konumu taşı” ile gerçek yerine koy.</p>' : ''}
-      <div class="pp-act"><a class="btn" href="#/proje/${p.id}">Aç</a><button type="button" class="btn primary" data-ziy>Ziyaret ekle</button><a class="btn" target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}">Yol tarifi</a></div>
-      <div class="pp-alt"><button type="button" class="linkbtn" data-move>Konumu taşı</button><button type="button" class="linkbtn" data-g>Google'da bul</button></div>`;
+      <div class="pp-act"><a class="btn" href="#/proje/${p.id}">Aç</a><button type="button" class="btn primary" data-ziy data-gerek="yaz:ziyaretler">Ziyaret ekle</button><a class="btn" target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}">Yol tarifi</a></div>
+      <div class="pp-alt"><button type="button" class="linkbtn" data-move data-gerek="yaz:projeler">Konumu taşı</button><button type="button" class="linkbtn" data-g data-gerek="yaz:projeler">Google'da bul</button></div>`;
     div.querySelector('[data-ziy]').onclick = () => { map.closePopup(); ziyaretForm({ proje_id: p.id, firma_id: p.emut_id || p.alici_id || p.bayi_id || null }); };
     div.querySelector('[data-move]').onclick = () => { map.closePopup(); setMode({ t: 'assign', table: 'projeler', rec: p }); };
     div.querySelector('[data-g]').onclick = () => { map.closePopup(); googleBul({ q: aramaMetni(p), near: [p.lat, p.lng], hedef: { table: 'projeler', rec: p }, sonra: () => draw() }); };
@@ -370,8 +370,8 @@ export async function mapView(el) {
       <h3>${esc(x.ad)}</h3><p class="muted">${esc(konumMetni(x))}</p>
       <div class="pp-meta"><div><span>Proje</span> ${pc}</div>${x.telefon ? `<div><span>Tel</span> <a href="tel:${esc(x.telefon)}">${esc(x.telefon)}</a></div>` : ''}</div>
       ${x.notlar ? `<p class="pp-note">${esc(x.notlar.slice(0, 200))}</p>` : ''}
-      <div class="pp-act"><a class="btn" href="#/firma/${x.id}">Aç</a><button type="button" class="btn primary" data-ziy>Ziyaret ekle</button><a class="btn" target="_blank" rel="noopener" href="${directionsUrl(x.lat, x.lng)}">Yol tarifi</a></div>
-      <div class="pp-alt">${x.telefon ? `<a class="linkbtn" href="tel:${esc(x.telefon)}">Ara</a>` : ''}<button type="button" class="linkbtn" data-move>Konumu taşı</button><button type="button" class="linkbtn" data-g>Google'da bul</button></div>`;
+      <div class="pp-act"><a class="btn" href="#/firma/${x.id}">Aç</a><button type="button" class="btn primary" data-ziy data-gerek="yaz:ziyaretler">Ziyaret ekle</button><a class="btn" target="_blank" rel="noopener" href="${directionsUrl(x.lat, x.lng)}">Yol tarifi</a></div>
+      <div class="pp-alt">${x.telefon ? `<a class="linkbtn" href="tel:${esc(x.telefon)}">Ara</a>` : ''}<button type="button" class="linkbtn" data-move data-gerek="yaz:firmalar">Konumu taşı</button><button type="button" class="linkbtn" data-g data-gerek="yaz:firmalar">Google'da bul</button></div>`;
     div.querySelector('[data-ziy]').onclick = () => { map.closePopup(); ziyaretForm({ firma_id: x.id }); };
     div.querySelector('[data-move]').onclick = () => { map.closePopup(); setMode({ t: 'assign', table: 'firmalar', rec: x }); };
     div.querySelector('[data-g]').onclick = () => { map.closePopup(); googleBul({ q: aramaMetni(x), near: [x.lat, x.lng], hedef: { table: 'firmalar', rec: x }, sonra: () => draw() }); };

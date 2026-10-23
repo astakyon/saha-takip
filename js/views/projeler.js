@@ -383,7 +383,8 @@ function santiyeBolumu(kutu, p) {
   };
   ciz();
 }
-const projeSekme = { id: null, k: 'bilgi' };   // aynı proje yeniden açılınca son sekme
+const projeSekme = { id: null, k: 'bilgi' };
+const PS_GEREK = { ziyaret: 'ziyaretler,gorevler', satis: 'teklifler,siparisler', yorum: 'yorumlar' };   // aynı proje yeniden açılınca son sekme
 export function projeDetay(id, init) {
   const p0 = id ? byId('projeler', id) : { id: uuid(), ...init, _new: true };
   if (!p0) { toast('Proje bulunamadı.', 'err'); return backToList(); }
@@ -399,15 +400,15 @@ export function projeDetay(id, init) {
       ${p._new ? '' : `<div class="dh-meta">${pill(p.durum)}<span>${usd(p.tutar_usd)}</span><span>${esc([p.ilce, p.il].filter(Boolean).join(', '))}</span></div>`}</div>
       <button class="x" data-close aria-label="Kapat">×</button></header>
     ${p._new ? '' : `<div class="dh-actions">
-      <button class="btn sm" data-a="ziyaret">Ziyaret ekle</button><button class="btn sm" data-a="gorev">Görev ekle</button><button class="btn sm" data-a="teklif">Teklif hazırla</button><button class="btn sm ghost" data-a="numune">Numune ver</button><button class="btn sm ghost" data-a="google">Google'dan konum al</button>${p.google_url ? `<a class="btn sm ghost" href="${esc(p.google_url)}" target="_blank" rel="noopener">Google Haritalar</a>` : ''}
+      <button class="btn sm" data-a="ziyaret" data-gerek="yaz:ziyaretler">Ziyaret ekle</button><button class="btn sm" data-a="gorev" data-gerek="yaz:gorevler">Görev ekle</button><button class="btn sm" data-a="teklif" data-gerek="yaz:teklifler">Teklif hazırla</button><button class="btn sm ghost" data-a="numune" data-gerek="yaz:numuneler">Numune ver</button><button class="btn sm ghost" data-a="google" data-gerek="yaz:projeler">Google'dan konum al</button>${p.google_url ? `<a class="btn sm ghost" href="${esc(p.google_url)}" target="_blank" rel="noopener">Google Haritalar</a>` : ''}
       ${p.lat != null ? `<a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}">Yol tarifi</a>` : ''}
-      <button class="btn sm ghost danger" data-a="sil">Sil</button></div>
-      <div class="quick-durum" role="group" aria-label="Durumu hızlı değiştir">${DURUMLAR.map(d => `<button type="button" data-qd="${d.k}" class="${p.durum === d.k ? 'on' : ''}" style="--c:${d.c}">${d.k}</button>`).join('')}</div>
-      <div class="p-sekme" role="tablist" aria-label="Proje bölümleri">${[['bilgi', 'Bilgiler', ''], ['ziyaret', 'Ziyaret ve görev', ziy.length + gor.length], ['satis', 'Teklif ve sipariş', tek.length + sip.length], ['belge', 'Belgeler', belgeleri({ proje_id: p.id }).length], ['yorum', 'Yorumlar', (S.yorumlar || []).filter(y => y.kayit_id === p.id).length], ['gecmis', 'Geçmiş', gec.length]].map(([k, t, n]) => `<button type="button" role="tab" data-psk="${k}" aria-selected="${k === sekme}" class="${k === sekme ? 'on' : ''}">${t}${n ? ` <i>${n}</i>` : ''}</button>`).join('')}</div>`}
+      <button class="btn sm ghost danger" data-a="sil" data-gerek="yaz:projeler">Sil</button></div>
+      <div class="quick-durum" data-gerek="yaz:projeler" role="group" aria-label="Durumu hızlı değiştir">${DURUMLAR.map(d => `<button type="button" data-qd="${d.k}" class="${p.durum === d.k ? 'on' : ''}" style="--c:${d.c}">${d.k}</button>`).join('')}</div>
+      <div class="p-sekme" role="tablist" aria-label="Proje bölümleri">${[['bilgi', 'Bilgiler', ''], ['ziyaret', 'Ziyaret ve görev', ziy.length + gor.length], ['satis', 'Teklif ve sipariş', tek.length + sip.length], ['belge', 'Belgeler', belgeleri({ proje_id: p.id }).length], ['yorum', 'Yorumlar', (S.yorumlar || []).filter(y => y.kayit_id === p.id).length], ['gecmis', 'Geçmiş', gec.length]].map(([k, t, n]) => `<button type="button" role="tab" data-psk="${k}" ${PS_GEREK[k] ? `data-gerek="${PS_GEREK[k]}"` : ''} aria-selected="${k === sekme}" class="${k === sekme ? 'on' : ''}">${t}${n ? ` <i>${n}</i>` : ''}</button>`).join('')}</div>`}
     <form class="dbody form" novalidate>
       <div data-ps="bilgi" ${p._new || sekme === 'bilgi' ? '' : 'hidden'}>${renderForm(PROJE_FORM, p)}
       <div class="calc" data-calc hidden></div></div>
-      ${p._new ? '' : (() => { const r = related(ziy, sip, gec, gor, tek); return `<div data-ps="ziyaret" ${sekme === 'ziyaret' ? '' : 'hidden'}>${r.ziyaret}</div><div data-ps="satis" ${sekme === 'satis' ? '' : 'hidden'}>${r.satis}<section class="rel" data-oneri></section><section class="rel" data-sartname></section></div><div data-ps="belge" ${sekme === 'belge' ? '' : 'hidden'}><section class="rel" data-santiye></section><section class="rel" data-belgeler></section></div><div data-ps="yorum" ${sekme === 'yorum' ? '' : 'hidden'}><section class="rel" data-yorumlar></section></div><div data-ps="gecmis" ${sekme === 'gecmis' ? '' : 'hidden'}>${r.gecmis}<section class="rel" data-gecmis></section></div>`; })()}
+      ${p._new ? '' : (() => { const r = related(ziy, sip, gec, gor, tek); return `<div data-ps="ziyaret" data-gerek="${PS_GEREK.ziyaret}" ${sekme === 'ziyaret' ? '' : 'hidden'}>${r.ziyaret}</div><div data-ps="satis" data-gerek="${PS_GEREK.satis}" ${sekme === 'satis' ? '' : 'hidden'}>${r.satis}<section class="rel" data-oneri data-gerek="teklifler"></section><section class="rel" data-sartname data-gerek="teklifler"></section></div><div data-ps="belge" ${sekme === 'belge' ? '' : 'hidden'}><section class="rel" data-santiye></section><section class="rel" data-belgeler data-gerek="belgeler"></section></div><div data-ps="yorum" data-gerek="yorumlar" ${sekme === 'yorum' ? '' : 'hidden'}><section class="rel" data-yorumlar></section></div><div data-ps="gecmis" ${sekme === 'gecmis' ? '' : 'hidden'}>${r.gecmis}<section class="rel" data-gecmis></section></div>`; })()}
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div>
     </form>`, { wide: true, onClose: () => backToList() });
   const form = panel.querySelector('form');

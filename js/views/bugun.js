@@ -168,14 +168,14 @@ export function bugunView(el) {
   const gun = new Date(t + 'T00:00').toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
   // Boş kartlar yerine tek özet: bugün yapılacak bir şey yoksa kısa satırlar ve tek dokunuşla eylem
   const bos = [
-    !planli.length && `<li><span>Bugün için planlı ziyaret yok</span><a class="btn sm ghost" href="#/takvim">Planla</a></li>`,
+    !planli.length && `<li data-gerek="ziyaretler"><span>Bugün için planlı ziyaret yok</span><a class="btn sm ghost" href="#/takvim" data-gerek="yaz:ziyaretler">Planla</a></li>`,
     !gorev.length && !ekipAcik.length && `<li><span>${uye ? 'Sana atanmış açık görev yok' : 'Bugün için açık görev yok'}</span></li>`,
-    !yapilan.length && `<li><span>Bugün henüz ziyaret kaydı yok</span><button type="button" class="btn sm ghost" data-yeni2>Ziyaret kaydet</button></li>`,
-    !yarinZ.length && !yarinG.length && `<li><span>Yarın için plan yok</span></li>`,
+    !yapilan.length && `<li data-gerek="ziyaretler"><span>Bugün henüz ziyaret kaydı yok</span><button type="button" class="btn sm ghost" data-yeni2 data-gerek="yaz:ziyaretler">Ziyaret kaydet</button></li>`,
+    !yarinZ.length && !yarinG.length && `<li data-gerek="ziyaretler,gorevler"><span>Yarın için plan yok</span></li>`,
   ].filter(Boolean);
   const ozetKarti = bos.length ? `<section class="card ozet-k"><h2>Bugün özeti</h2><ul class="list ozet-l">${bos.join('')}</ul>${!zg.length ? '<p class="hint">Zamanı gelen proje yok. Projelere şantiye aşaması ve tahmini aydınlatma alımı girdikçe burada hatırlatılır.</p>' : ''}</section>` : '';
-  el.innerHTML = `<header class="vh"><div><h1>Bugün</h1><p class="sum">${esc(gun)} · ${planli.length} planlı ziyaret · ${gorev.length} görev${kmBugun ? ` · yaklaşık ${kmBugun} km yol` : ''}${kurYazi() ? `<br><span class="kur">${kurYazi()}</span>` : ''}</p></div>
-    <div class="vh-act"><button class="btn ghost" data-kduzen title="Kartları sırala ve gizle">Düzenle</button><button class="btn ghost" data-yakin>Yakınımdakiler</button><button class="btn primary" data-yeni>Ziyaret kaydet</button></div></header>
+  el.innerHTML = `<header class="vh"><div><h1>Bugün</h1><p class="sum">${esc(gun)}<span data-gerek="ziyaretler"> · ${planli.length} planlı ziyaret</span> · ${gorev.length} görev${kmBugun ? ` · yaklaşık ${kmBugun} km yol` : ''}${kurYazi() ? `<br><span class="kur">${kurYazi()}</span>` : ''}</p></div>
+    <div class="vh-act"><button class="btn ghost" data-kduzen title="Kartları sırala ve gizle">Düzenle</button><button class="btn ghost" data-yakin data-gerek="firmalar,projeler">Yakınımdakiler</button><button class="btn primary" data-yeni data-gerek="yaz:ziyaretler">Ziyaret kaydet</button></div></header>
     <div class="dash today-grid">
       ${raporKarti()}
       ${etiketKarti()}
@@ -193,8 +193,8 @@ export function bugunView(el) {
       ${!zg.length ? '' : `<section class="card"><h2>Zamanı gelen projeler <span class="muted">${zg.length}</span></h2>
         ${zg.length ? kisa(zg.map(x => `<li><a href="#/proje/${x.p.id}"><b>${esc(x.p.ad)}</b><span class="muted">${esc(x.neden.join(', '))}${x.sz ? ` · son ziyaret ${tarih(x.sz)}` : ' · hiç ziyaret yok'}</span></a>${pill(x.p.durum)}</li>`), 5)
         : ''}</section>`}
-      <section class="card"><h2>Uzun süredir gidilmeyenler <span class="muted">${gid.length}</span></h2>
-        ${gid.length ? kisa(gid.map(x => `<li><a href="#/firma/${x.f.id}"><b>${esc(x.f.ad)}</b><span class="muted">${x.f.segment ? `<em class="seg-r">${esc(x.f.segment)}</em> ` : ''}${x.son ? `${x.gun} gündür gidilmedi` : 'hiç ziyaret kaydı yok'}${x.proje ? ` · ${x.proje} açık proje` : ''}</span></a><button type="button" class="btn sm ghost" data-planla="${x.f.id}">Planla</button></li>`), 5) : '<p class="hint">Ziyaret aralığı geçen aktif firma yok. Aralık firma segmentine göre: A 30, B 60, C 90 gün, segmentsiz 45 gün.</p>'}</section>
+      <section class="card" data-gerek="firmalar ziyaretler"><h2>Uzun süredir gidilmeyenler <span class="muted">${gid.length}</span></h2>
+        ${gid.length ? kisa(gid.map(x => `<li><a href="#/firma/${x.f.id}"><b>${esc(x.f.ad)}</b><span class="muted">${x.f.segment ? `<em class="seg-r">${esc(x.f.segment)}</em> ` : ''}${x.son ? `${x.gun} gündür gidilmedi` : 'hiç ziyaret kaydı yok'}${x.proje ? ` · ${x.proje} açık proje` : ''}</span></a><button type="button" class="btn sm ghost" data-gerek="yaz:ziyaretler" data-planla="${x.f.id}">Planla</button></li>`), 5) : '<p class="hint">Ziyaret aralığı geçen aktif firma yok. Aralık firma segmentine göre: A 30, B 60, C 90 gün, segmentsiz 45 gün.</p>'}</section>
       ${yarinZ.length || yarinG.length ? `<section class="card"><h2>Yarın</h2>${kisa([...yarinZ.map(z1), ...yarinG.map(g => `<li><button type="button" class="linkbtn" data-gid="${g.id}">○ ${esc(g.baslik)}</button></li>`)], 5)}</section>` : ''}
       ${dg.length ? `<section class="card"><h2>Doğum günleri</h2><ul class="list">${dg.map(x => `<li><span><b>${esc(x.k.ad_soyad)}</b><span class="muted"> · ${firmaAd(x.k.firma_id) ? esc(firmaAd(x.k.firma_id)) + ' · ' : ''}${x.kalan === 0 ? 'bugün' : x.kalan === 1 ? 'yarın' : x.gun.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}</span></span><button type="button" class="btn sm ghost" data-dg="${x.k.id}">Tebrik et</button></li>`).join('')}</ul></section>` : ''}
       ${kmDunEksik || ekipBitti.length || yedek || stok.yetersiz.length || stok.hareketsiz.length || numune.length || servis.length || teklif.length || gecT.length ? `<section class="card"><h2>Uyarılar</h2><ul class="list">
@@ -211,14 +211,14 @@ export function bugunView(el) {
     </div>`;
   kartDuzeniUygula(el);
   el.querySelector('[data-kduzen]').onclick = () => kartDuzeniPaneli(el);
-  el.querySelector('[data-yeni]').onclick = () => ziyaretForm({});
+  el.querySelector('[data-yeni]')?.addEventListener('click', () => ziyaretForm({}));
   el.querySelector('[data-yeni2]')?.addEventListener('click', () => ziyaretForm({}));
   el.querySelectorAll('[data-tumu]').forEach(b => b.onclick = () => { b.previousElementSibling.hidden = false; b.remove(); });
   el.querySelectorAll('[data-kmyaz]').forEach(b => b.onclick = () => kmMasrafa(b.dataset.kmyaz));
   el.querySelector('[data-raporac]')?.addEventListener('click', () => { const g = gunEkle(haftaBasi(today()), -7); try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} const fr = F('rapor', {}); fr.bas = g; saveFilters(); location.hash = '#/rapor'; });
   el.querySelector('[data-raporkapat]')?.addEventListener('click', e => { try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} e.target.closest('section').remove(); });
   el.querySelector('[data-yedekgit]')?.addEventListener('click', () => { try { sessionStorage.setItem('ayar-sekme', 'veri'); } catch {} });
-  el.querySelector('[data-yakin]').onclick = () => yakinimdakiler();
+  el.querySelector('[data-yakin]')?.addEventListener('click', () => yakinimdakiler());
   el.querySelectorAll('[data-zid]').forEach(b => b.onclick = () => ziyaretForm({ id: b.dataset.zid }));
   el.querySelectorAll('[data-yapildi]').forEach(b => b.onclick = () => { ziyaretForm({ id: b.dataset.yapildi }); setTimeout(() => document.querySelector('[data-done]')?.click(), 200); });
   el.querySelectorAll('[data-gid]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.gid }));

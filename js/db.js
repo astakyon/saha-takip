@@ -92,6 +92,7 @@ class LocalAdapter {
   async persist(t) { DB_DURUM.surum++; await idbSet('t:' + t, S[t]); }
   async save(t, obj) {
     const row = pick(t, obj); if (!row.id) row.id = uuid();
+    for (const k of this.gizliAlan?.[t] || []) if (S[t].some(x => x.id === row.id)) delete row[k];   // ekip üyesine gizlenen alanlar var olan kayıtta ezilmesin
     const i = S[t].findIndex(x => x.id === row.id);
     const full = { ...(i >= 0 ? S[t][i] : { created_at: new Date().toISOString() }), ...row, updated_at: new Date().toISOString() };
     if (i >= 0) S[t][i] = full; else S[t].push(full);
@@ -221,7 +222,7 @@ class SupaAdapter {
         }
       }));
       this.senk = senk; DB_DURUM.surum++;
-      await Promise.all([idbSet('cache:' + uid, S), idbSet('senk:' + uid, senk)]);
+      if (!this.onizleme) await Promise.all([idbSet('cache:' + uid, S), idbSet('senk:' + uid, senk)]);
       await this.flush();
     })();
     try { return await this._tazeleniyor; } finally { this._tazeleniyor = null; }
@@ -236,7 +237,7 @@ class SupaAdapter {
     }
     return all;
   }
-  async cache() { DB_DURUM.surum++; clearTimeout(this._ct); this._ct = setTimeout(() => idbSet('cache:' + this.user()?.id, S), 400); }
+  async cache() { DB_DURUM.surum++; if (this.onizleme) return; clearTimeout(this._ct); this._ct = setTimeout(() => idbSet('cache:' + this.user()?.id, S), 400); }
   async queue(op) { const q = (await idbGet('outbox')) || []; q.push(op); await idbSet('outbox', q); }
   async flush() {
     const q = (await idbGet('outbox')) || []; if (!q.length || !navigator.onLine) return;
@@ -255,7 +256,7 @@ class SupaAdapter {
   async bekleyenler() { return (await idbGet('outbox')) || []; }
   async bekleyenSil(i) { const q = (await idbGet('outbox')) || []; q.splice(i, 1); await idbSet('outbox', q); window.dispatchEvent(new CustomEvent('outbox', { detail: 0 })); }
   async save(t, obj) {
-    if (this.yazamaz(t, obj)) throw new Error('Bu bölümde düzenleme yetkin yok. Veri sahibinden yetki iste.');
+    if (this.yazamaz(t, obj)) throw new Error(this.onizleme ? 'Önizlemedesin: değişiklik kaydedilmez.' : 'Bu bölümde düzenleme yetkin yok. Veri sahibinden yetki iste.');
     const row = pick(t, obj); if (!row.id) row.id = uuid();
     const i = S[t].findIndex(x => x.id === row.id), onceki = i >= 0 ? S[t][i] : null;
     // Ekleme yetkisi olmayan ekip üyesi (ör. kendisine atanan görev) yalnızca var olan kaydı günceller; upsert ekleme izni de ister
@@ -302,19 +303,20 @@ class SupaAdapter {
     return full;
   }
   yazamaz(t, row) {
+    if (this.onizleme) return true;
     if (this.yetki?.ben_sahip !== false || t === 'ayarlar' || t === 'yorumlar' || this.yetki.yetkiler?.[t] === 'yaz') return false;
     // kendisine atanan görevi güncelleyebilir
     if (t === 'gorevler' && row?.atanan && row.atanan.toLowerCase() === (this.user()?.email || '').toLowerCase() && S.gorevler.some(g => g.id === row.id)) return false;
     return true;
   }
   async del(t, id) {
-    if (this.yazamaz(t)) throw new Error('Bu bölümde silme yetkin yok.');
+    if (this.yazamaz(t)) throw new Error(this.onizleme ? 'Önizlemedesin: değişiklik kaydedilmez.' : 'Bu bölümde silme yetkin yok.');
     S[t] = S[t].filter(x => x.id !== id); this.cache();
     const { error } = await this.c.from(t).delete().eq('id', id);
     if (error) { if (/fetch|network/i.test(error.message)) await this.queue({ op: 'del', t, id }); else throw error; }
   }
   async bulk(t, rows, onProgress) {
-    if (this.yazamaz(t)) throw new Error('Bu bölümde düzenleme yetkin yok.');
+    if (this.yazamaz(t)) throw new Error(this.onizleme ? 'Önizlemedesin: değişiklik kaydedilmez.' : 'Bu bölümde düzenleme yetkin yok.');
     for (let i = 0; i < rows.length; i += 400) {
       const chunk = rows.slice(i, i + 400).map(r => pick(t, r));
       try { await upsertSafe(this.c, t, chunk); } catch (error) { throw schemaErr(error, t); }
@@ -325,6 +327,7 @@ class SupaAdapter {
     S[t] = [...byId.values()]; this.cache();
   }
   async upload(file) {
+    if (this.onizleme) throw new Error('Önizlemedesin: dosya yüklenmez.');
     if (!navigator.onLine) throw new Error('Fotoğraf yüklemek için internet bağlantısı gerekiyor.');
     const blob = await shrink(file);
     const path = `${this.sahip || this.user().id}/${uuid()}.jpg`;
@@ -335,6 +338,7 @@ class SupaAdapter {
     return path;
   }
   async uploadFile(file) {
+    if (this.onizleme) throw new Error('Önizlemedesin: dosya yüklenmez.');
     if (!navigator.onLine) throw new Error('Belge yüklemek için internet bağlantısı gerekiyor.');
     if (file.size > 45 * 1024 * 1024) throw new Error('Dosya 45 MB\'tan büyük.');
     const path = `${this.sahip || this.user().id}/belge/${uuid()}-${guvenliAd(file.name)}`;

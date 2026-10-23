@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 33): ayrıntılı yetkiler
+**Bir kez:** Supabase SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (şema sürüm 15).
+- Ayarlar → Ekip ve yetkiler: her kişi için 23 ekranın her biri ayrı ayrı **Kapalı / Görür / Düzenler** olarak ayarlanır. Ekranlar menü başlıklarına göre gruplanmıştır. Bir başlığın tamamı tek dokunuşla açılıp kapatılabilir.
+- Hazır şablonlar: Bayi, Saha ekibi, Proje firması, Sadece görüntüleme, Tam yetki.
+- Açık ekranlarda da gizlenebilecekler: tutar ve fiyatlar, kişilerin telefon ve e-postası, yorumlar, firma ilişki ağı.
+- Kapalı ekran şu yerlerin hiçbirinde görünmez: menü, arama, + menüsü, Bugün kartları, proje ve firma kartındaki sekmeler, bölümler ve düğmeler, harita katmanları. Adres çubuğuna yazılsa da açılmaz.
+- Sunucu tarafı: kapalı ekranın kayıtları, fotoğrafları, belgeleri ve proje ayarları kişinin telefonuna hiç gönderilmez. Ayarlarından yalnızca ortak olanlar paylaşılır: Google anahtarı, şablonlar, listeler, kur.
+- **Bu kişi gibi gör:** kişinin ekranını kendi telefonunda önizlersin. Önizlemede değişiklik kaydedilmez.
+- Not: "Tutar gizli" ve "telefon gizli" yalnızca görüntüyü gizler; o ekranın verisi kişinin telefonuna yine gelir. Bayinin yalnızca kendi siparişlerini görmesi gibi kayıt bazında süzme şu an yok.
+
 ## Güncelleme notu (sürüm 32) — yardım, bildirim tercihleri, son kontrol
 
 **Supabase'de bir kez (bildirim tercihleri için):** SQL Editor'de güncel `schema.sql` (sürüm 14), sonra Edge Functions → bildir → Code'a güncel `supabase/functions/bildir/index.ts` → Deploy. Sıra önemli: önce SQL.
