@@ -344,12 +344,14 @@ async function siparisYukle() {
     const dt = v => v instanceof Date ? new Date(v.getTime() - v.getTimezoneOffset() * 6e4).toISOString().slice(0, 10) : (typeof v === 'string' && /\d{2}\.\d{2}\.\d{4}/.test(v) ? v.split('.').reverse().join('-') : null);
     const byBelge = new Map(S.siparisler.map(s => [s.belge_no + '|' + s.siparis_no, s]));
     const drv = S.firmalar.find(x => /^drv/i.test(x.ad));
+    // Daha önce bir firmaya bağlanmış cari adı: yeni siparişler de aynı firmaya bağlanır
+    const cariHafiza = new Map(S.siparisler.filter(s => s.firma_id && s.musteri_adi).map(s => [normName(s.musteri_adi), s.firma_id]));
     const out = [];
     for (const r of rows.slice(hi + 1)) {
       if (!r[C.belge] && !r[C.mad]) continue;
       const mad = r[C.mad] ? String(r[C.mad]).trim() : null;
       const isDrv = !!mad && /^drv/i.test(mad);
-      const fm = mad && (isDrv ? drv : S.firmalar.find(x => normName(x.ad) === normName(mad)));
+      const fm = mad && (isDrv ? drv : S.firmalar.find(x => normName(x.ad) === normName(mad)) || byId('firmalar', cariHafiza.get(normName(mad))));
       const pt = r[C.pt] ? String(r[C.pt]).trim() : null;
       const key = String(r[C.belge] ?? '') + '|' + String(r[C.no] ?? '');
       const ex = byBelge.get(key);

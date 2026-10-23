@@ -1,7 +1,7 @@
 import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, usd, num, pill, tarih, today, DURUMLAR, ACIK, ILLER, ILCELER, OSBLER, RAKIPLER, KAYIP_NEDENLERI, URUN_AILELERI, SEKTORLER,
-  byId, firmaAd, match, toast, openDrawer, closeDrawer, exportXlsx, directionsUrl, confirmBox, durumRenk, SANTIYE, olasilik, gunEkle } from '../ui.js';
+  byId, firmaAd, match, toast, openDrawer, closeDrawer, exportXlsx, directionsUrl, confirmBox, durumRenk, SANTIYE, olasilik, gunEkle, fold } from '../ui.js';
 import { teklifForm } from './teklif.js';
 import { numuneForm } from './kayitlar.js';
 import { belgeBolumu, belgeleri } from '../belgeler.js';
@@ -458,7 +458,12 @@ export function projeDetay(id, init) {
       o.durum = o.durum || 'Proje';
       if (o.durum === 'Kayıp' && o.rakip_birim_fiyat && o.rakip_miktar && !o.rakip_toplam_usd) o.rakip_toplam_usd = o.rakip_birim_fiyat * o.rakip_miktar;
       if (o.lat != null && p0.lat == null && init?.lat == null) o.konum_yaklasik = false;
+      if (p._new) {
+        const ad = fold(o.ad).replace(/[^a-z0-9]/g, ''), dup = ad.length >= 5 && S.projeler.find(x => fold(x.ad).replace(/[^a-z0-9]/g, '') === ad);
+        if (dup && !confirmBox(`“${dup.ad}” adında bir proje zaten var${dup.aday ? ' (aday listesinde)' : ''}. Yine de yeni proje açılsın mı?`)) return;
+      }
       const saved = await app.db.save('projeler', o);
+      if (p._new && o.lat == null) setTimeout(() => toast('Proje kaydedildi. Haritada görünmesi için Harita → Araçlar → Konum ata ile yerini işaretleyebilirsin.'), 1500);
       if (!p._new && p0.durum !== o.durum) await app.db.save('proje_gecmis', { proje_id: o.id, tarih: new Date().toISOString(), eski_durum: p0.durum, yeni_durum: o.durum });
       if (p._new) await app.db.save('proje_gecmis', { proje_id: o.id, tarih: new Date().toISOString(), eski_durum: null, yeni_durum: o.durum, notlar: 'Kayıt oluşturuldu' });
       if (o.durum === 'Kayıp' && o.rakip_marka && o.rakip_birim_fiyat) {

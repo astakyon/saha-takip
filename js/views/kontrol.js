@@ -44,7 +44,12 @@ export function kontroller() {
   ekle('sip-proje', 'Siparişler', 'Projeye bağlı olmayan siparişler', 'Proje bazında toplamlarda ve proje kartında görünmüyor. Önerilen proje varsa “Bağla” ile eşleştir.',
     sY.filter(s => !s.proje_id && !s.rapor_disi).map(s => ({ ...s, _oneri: oneriProje(s) })).sort((a, b) => !!b._oneri - !!a._oneri),
     s => `${sLink(s)}${s._oneri ? `<button type="button" class="btn sm" data-bagla="${s.id}:${s._oneri.id}">Bağla: ${esc(s._oneri.ad)}</button>` : `<span class="muted">${esc(s.proje_tanimi || '')}</span>`}`);
-  ekle('sip-cari', 'Siparişler', 'Carisi firma listesinde olmayan siparişler', 'Firma kartında ve karnede görünmüyor. Siparişi açıp cariyi seç.', sY.filter(s => !s.firma_id), s => `${sLink(s)}<span class="muted">${esc(s.musteri_adi || '')}</span>`);
+  // Cari adı firma adına benziyorsa öneri; “Bağla” aynı cari adlı bütün siparişleri o firmaya bağlar
+  const cariOneri = ad => { const c = cekirdek(ad); if (c.length < 3) return null; return S.firmalar.find(f => cekirdek(f.ad) === c) || S.firmalar.find(f => { const k = cekirdek(f.ad); return k.length >= 4 && (k.startsWith(c) || c.startsWith(k)); }) || null; };
+  const cariGrup = new Map(); for (const s of sY.filter(s => !s.firma_id)) { const k = (s.musteri_adi || '—').trim(); (cariGrup.get(k) || cariGrup.set(k, []).get(k)).push(s); }
+  ekle('sip-cari', 'Siparişler', 'Carisi firma listesinde olmayan siparişler', 'Firma kartında ve karnede görünmüyor. Önerilen firma doğruysa “Bağla” ile o carinin bütün siparişlerini bağla; değilse siparişi açıp cariyi seç.',
+    [...cariGrup.entries()].map(([ad, l]) => ({ ad, l, o: cariOneri(ad) })).sort((a, b) => !!b.o - !!a.o || b.l.length - a.l.length),
+    g => `<span class="grow"><b>${esc(g.ad)}</b> <span class="muted">${g.l.length} sipariş</span></span>${g.o ? `<button type="button" class="btn sm" data-caribagla="${esc(g.ad)}|${g.o.id}">Bağla: ${esc(g.o.ad)}</button>` : sLink(g.l[0])}`);
   const noSay = new Map(); for (const s of S.siparisler) if (s.siparis_no) noSay.set(s.siparis_no, (noSay.get(s.siparis_no) || 0) + 1);
   const imza = new Map(); for (const s of S.siparisler) { const i = [s.tarih, s.firma_id || s.musteri_adi, s.net_deger].join('|'); imza.set(i, (imza.get(i) || 0) + 1); }
   ekle('sip-mukerrer', 'Siparişler', 'Mükerrer olabilecek siparişler', 'Aynı sipariş numarası ya da aynı gün, aynı cari ve aynı tutar. Gerçekten mükerrerse “Rapor dışı” yap.',
@@ -114,6 +119,7 @@ export function kontrolView(el) {
   el.querySelectorAll('details[data-k]').forEach(d => d.ontoggle = () => { if (d.open) { f.acik = d.dataset.k; saveFilters(); } });
   el.querySelectorAll('[data-sp]').forEach(b => b.onclick = () => siparisForm({ id: b.dataset.sp }));
   el.querySelectorAll('[data-sipyap]').forEach(b => b.onclick = async () => { if (await durumDegistir(byId('projeler', b.dataset.sipyap), 'Sipariş')) kontrolView(el); });
+  el.querySelectorAll('[data-caribagla]').forEach(b => b.onclick = async () => { const i = b.dataset.caribagla.lastIndexOf('|'), ad = b.dataset.caribagla.slice(0, i), fid = b.dataset.caribagla.slice(i + 1); const l = S.siparisler.filter(s => !s.firma_id && (s.musteri_adi || '—').trim() === ad); await app.db.bulk('siparisler', l.map(s => ({ ...s, firma_id: fid }))); toast(`${l.length} sipariş ${firmaAd(fid)} firmasına bağlandı.`); kontrolView(el); });
   el.querySelectorAll('[data-bagla]').forEach(b => b.onclick = async () => { const [sid, pid] = b.dataset.bagla.split(':'); await app.db.save('siparisler', { ...byId('siparisler', sid), proje_id: pid }); toast('Sipariş projeye bağlandı.'); kontrolView(el); });
   el.querySelectorAll('[data-disi]').forEach(b => b.onclick = async () => { await app.db.save('siparisler', { ...byId('siparisler', b.dataset.disi), rapor_disi: true }); toast('Sipariş rapor dışı bırakıldı.'); kontrolView(el); });
   el.querySelectorAll('[data-cozet]').forEach(a => a.onclick = () => { const fs = F('siparisler', {}); fs.gor = 'ceyrek'; fs.yil = new Date().getFullYear(); saveFilters(); });

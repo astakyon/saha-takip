@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 31) — formlar, veri kalitesi, arama, çıktılar
+
+- **Kaydedilmemiş değişiklik uyarısı:** formda bir şey değiştirip kaydetmeden kapatınca (çarpı, Esc ya da telefonun geri tuşu) sorulur.
+- **Telefon biçimi:** numaralar tek biçime getirilir (5321112233 → 0532 111 22 33); hane sayısı tutmazsa altında uyarı çıkar.
+- **Kayıt anında mükerrer uyarısı:** aynı firmada aynı adlı ya da aynı telefonlu kişi, aynı adlı proje kaydedilirken sorulur. Konumsuz kaydedilen projede “Konum ata” hatırlatması.
+- **Sipariş–firma eşleştirme:** Veri kontrolü → “Carisi firma listesinde olmayan siparişler” artık cari adına göre firma önerir; “Bağla” o carinin bütün siparişlerini bağlar ve sonraki SAS yüklemelerinde aynı cari kendiliğinden bağlanır.
+- **Arama:** Türkçe karakter farkı ve tek harflik yazım hatası sorun değil (cukurva → Çukurova); genel aramada son açılan kayıtlar listelenir.
+- **Excel çıktıları:** tarihler Excel'de tarih, tutarlar sayı olarak açılır (sıralama ve toplam alınabilir).
+- **PDF teklif ve rapor:** tablo başlığı her sayfada tekrar eder, satırlar sayfa arasında bölünmez, renkler yazıcıda da çıkar.
+
 ## Güncelleme notu (sürüm 30) — Bugün, pencereler, telefon
 
 - **Bugün özeti:** boş kartlar (plan, görev, yapılanlar, yarın) tek “Bugün özeti” kartında; uyarılar üstte; uzun listeler ilk 5 satır + “Tümünü gör”.

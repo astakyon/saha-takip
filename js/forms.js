@@ -96,8 +96,20 @@ function renderFields(sec, obj) {
 }
 
 // Form alanlarını bağlar (fotoğraf, konum, koşullu gösterim, hesaplama)
+// Telefon: Türkiye numaralarını tek biçime getirir (0532 111 22 33); hane sayısı tutmazsa uyarır
+export function telBicim(v) {
+  const d = String(v || '').replace(/\D/g, '');
+  let n = d.startsWith('90') && d.length === 12 ? '0' + d.slice(2) : d.length === 10 && /^[2-5]/.test(d) ? '0' + d : d;
+  if (n.length === 11 && n.startsWith('0')) return { v: `${n.slice(0, 4)} ${n.slice(4, 7)} ${n.slice(7, 9)} ${n.slice(9)}`, ok: true };
+  return { v: String(v || '').trim(), ok: !d.length || d.length > 12 };   // yurt dışı / dahili numaralara dokunma
+}
 export function bindForm(root, sections, obj, { onChange } = {}) {
   mikBagla(root);
+  root.querySelectorAll('input[type=tel]').forEach(i => i.addEventListener('blur', () => {
+    const r = telBicim(i.value); if (r.v !== i.value) { i.value = r.v; i.dispatchEvent(new Event('change', { bubbles: true })); }
+    let u = i.parentElement.querySelector('.tel-uyari');
+    if (!r.ok) { if (!u) { u = document.createElement('small'); u.className = 'tel-uyari warn'; i.after(u); } u.textContent = 'Numara eksik ya da fazla haneli görünüyor (ör. 0532 111 22 33).'; } else u?.remove();
+  }));
   // Tutar alanlarının altında anlık karşılık: USD alanında TL; para birimi seçilen formda (tutar, net_deger, toplam) USD/TL
   import('./kur.js').then(({ kur }) => {
     const k = kur(); if (!k?.USD) return;

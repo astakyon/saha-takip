@@ -1,7 +1,7 @@
 import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, usd, num, pill, tarih, today, ILLER, ILCELER, OSBLER, FIRMA_TIPLERI, SEKTORLER, byId, firmaAd, match, toast, openDrawer, closeDrawer,
-  exportXlsx, directionsUrl, confirmBox, download, ACIK, parcali, gorununce } from '../ui.js';
+  exportXlsx, directionsUrl, confirmBox, download, ACIK, parcali, gorununce, fold } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { googleBul, aramaMetni } from '../google.js';
 import { backToList } from '../main.js';
@@ -285,6 +285,12 @@ export function kisiDetay(id, init) {
       const o = await readForm(form, KISI_FORM, k);
       if (!o.ad_soyad) return toast('Ad soyad yaz.', 'err');
       panel.querySelectorAll('[data-kvs]').forEach(b => o[b.dataset.kvs] = b.dataset.val || null);
+      // Kayıt anında mükerrer uyarısı: aynı firmada aynı ad ya da aynı telefon
+      if (k._new) {
+        const ad = fold(o.ad_soyad).replace(/\s+/g, ' ').trim(), tel = String(o.telefon || '').replace(/\D/g, '').slice(-10);
+        const dup = S.kisiler.find(x => (fold(x.ad_soyad).replace(/\s+/g, ' ').trim() === ad && (x.firma_id || null) === (o.firma_id || null)) || (tel.length >= 10 && String(x.telefon || '').replace(/\D/g, '').slice(-10) === tel));
+        if (dup && !confirmBox(`“${dup.ad_soyad}”${dup.firma_id ? ' (' + firmaAd(dup.firma_id) + ')' : ''} zaten kayıtlı görünüyor${tel.length >= 10 && String(dup.telefon || '').replace(/\D/g, '').slice(-10) === tel ? ', telefonu aynı' : ''}. Yine de yeni kişi olarak kaydedilsin mi?`)) return;
+      }
       await app.db.save('kisiler', o); toast(`${o.ad_soyad} kaydedildi.`); closeDrawer(); app.refresh();
     } catch (err) { toast('Kaydedilemedi: ' + err.message, 'err'); }
   };

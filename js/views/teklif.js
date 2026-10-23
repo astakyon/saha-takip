@@ -134,7 +134,7 @@ export function teklifHtml(t) {
   const h = hesapla(t), pb = t.para_birimi || 'USD', f = byId('firmalar', t.firma_id), k = byId('kisiler', t.kisi_id), p = byId('projeler', t.proje_id);
   const bilgi = ayar('teklif_firma') || {};
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>${esc(t.teklif_no)} ${esc(f?.ad || '')}</title><style>
-    @page { size: A4; margin: 16mm 14mm; } * { box-sizing: border-box; } body { font: 10.5pt/1.45 "Segoe UI", Roboto, Arial, sans-serif; color: #1D2B36; margin: 0; }
+    @page { size: A4; margin: 16mm 14mm; } html { -webkit-print-color-adjust: exact; print-color-adjust: exact; } thead { display: table-header-group; } tr, .tot, footer, .to, h2 + table tr:first-child { break-inside: avoid; page-break-inside: avoid; } h2 { break-after: avoid; } * { box-sizing: border-box; } body { font: 10.5pt/1.45 "Segoe UI", Roboto, Arial, sans-serif; color: #1D2B36; margin: 0; }
     header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #F5B700; padding-bottom: 10px; margin-bottom: 16px; }
     h1 { font-size: 20pt; margin: 0; letter-spacing: .5px; } .firm b { font-size: 13pt; } .firm, .meta { font-size: 9.5pt; color: #4A5A66; } .meta { text-align: right; }
     .to { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; } .to div { background: #F4F6F8; padding: 8px 10px; border-radius: 4px; } .to small { color: #66757F; display: block; text-transform: uppercase; font-size: 8pt; letter-spacing: .5px; }

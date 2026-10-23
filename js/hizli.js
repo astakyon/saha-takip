@@ -1,7 +1,7 @@
 // Hızlı ekle (+) düğmesi ve genel arama. Her ekranda sağ altta; bilgisayarda “/” ya da Ctrl+K ile arama açılır.
 import { S } from './db.js';
 import { app } from './state.js';
-import { esc, fold, byId, firmaAd, tarih, today, gunEkle, openDrawer, closeDrawer, usd, toast } from './ui.js';
+import { esc, fold, byId, firmaAd, tarih, today, gunEkle, openDrawer, closeDrawer, usd, toast, kelimeUyar } from './ui.js';
 import { izin } from './yetki.js';
 import { menuDuzeni } from './menu.js';
 
@@ -100,8 +100,8 @@ export function ara(q, enCok = 6) {
     const l = [];
     for (const r of S[k.t]) {
       const hay = fold(k.alan(r).filter(Boolean).join(' '));
-      if (!w.every(x => hay.includes(x))) continue;
-      const bas = fold(k.baslik(r) || ''); l.push({ r, p: bas.startsWith(w[0]) ? 0 : bas.includes(w[0]) ? 1 : 2 });
+      const tam = w.every(x => hay.includes(x)); if (!tam && !w.every(x => kelimeUyar(x, hay))) continue;
+      const bas = fold(k.baslik(r) || ''); l.push({ r, p: (bas.startsWith(w[0]) ? 0 : bas.includes(w[0]) ? 1 : 2) + (tam ? 0 : 3) });
     }
     l.sort((a, b) => a.p - b.p);
     return { k, n: l.length, l: l.slice(0, enCok).map(x => x.r) };
@@ -113,16 +113,26 @@ export function aramaAc(q0 = '') {
     <div data-sonuc class="ara-sonuc"><p class="hint">En az 2 harf yaz. Sipariş numarası (2000…), SAS notu, telefonun bir kısmı, ürün kodu ile de arayabilirsin.</p></div></div>`, { wide: true });
   const inp = p.querySelector('[data-q]'), out = p.querySelector('[data-sonuc]');
   let zam, son = [];
+  // Son açılanlar (bu cihazda): arama boşken listelenir
+  const SON = 'saha-son-acilan', sonOku = () => { try { return JSON.parse(localStorage.getItem(SON) || '[]'); } catch { return []; } };
+  const sonYaz = (k, r) => { try { const l = sonOku().filter(x => !(x.t === k.t && x.id === r.id)); l.unshift({ t: k.t, id: r.id }); localStorage.setItem(SON, JSON.stringify(l.slice(0, 8))); } catch {} };
+  const bosHal = () => {
+    const l = sonOku().map(x => { const k = KAYNAK.find(k => k.t === x.t), r = k && (S[x.t] || []).find(y => y.id === x.id); return k && r && izin(k.t) ? [k, r] : null; }).filter(Boolean);
+    son = l;
+    out.innerHTML = (l.length ? `<section><h3>Son açılanlar</h3><ul class="list">${l.map(([k, r], i) => `<li><button type="button" class="linkrow" data-s="${i}"><b>${esc(k.baslik(r) || '')}</b><span class="muted">${esc(k.g)}</span></button></li>`).join('')}</ul></section>` : '')
+      + '<p class="hint">En az 2 harf yaz. Sipariş numarası (2000…), SAS notu, telefonun bir kısmı, ürün kodu ile de arayabilirsin. Küçük yazım hataları ve Türkçe karakter farkı sorun değil.</p>';
+    out.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { const [k, r] = son[+b.dataset.s]; sonYaz(k, r); closeDrawer(); setTimeout(() => k.ac(r), 60); });
+  };
   const ciz = () => {
     const q = inp.value.trim();
-    if (q.length < 2) { out.innerHTML = '<p class="hint">En az 2 harf yaz. Sipariş numarası (2000…), SAS notu, telefonun bir kısmı, ürün kodu ile de arayabilirsin.</p>'; son = []; return; }
+    if (q.length < 2) return bosHal();
     const g = ara(q); son = [];
     out.innerHTML = g.length ? g.map(({ k, n, l }) => `<section><h3>${esc(k.g)} <span class="muted">${n}</span></h3><ul class="list">${l.map(r => { son.push([k, r]); return `<li><button type="button" class="linkrow" data-s="${son.length - 1}"><b>${esc(k.baslik(r) || '—')}</b><span class="muted">${esc(k.alt(r) || '')}</span></button></li>`; }).join('')}</ul>${n > l.length ? `<p class="hint">+${n - l.length} sonuç daha; aramayı daralt.</p>` : ''}</section>`).join('')
       : `<p class="hint">“${esc(q)}” için sonuç yok.</p>`;
-    out.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { const [k, r] = son[+b.dataset.s]; closeDrawer(); setTimeout(() => k.ac(r), 60); });
+    out.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { const [k, r] = son[+b.dataset.s]; sonYaz(k, r); closeDrawer(); setTimeout(() => k.ac(r), 60); });
   };
   inp.addEventListener('input', () => { clearTimeout(zam); zam = setTimeout(ciz, 120); });
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); out.querySelector('[data-s]')?.click(); } });
-  if (q0) ciz();
+  if (q0) ciz(); else bosHal();
   setTimeout(() => inp.focus(), 80);
 }

@@ -64,7 +64,10 @@ export const today = () => isoLocal(new Date());
 export const gunEkle = (s, n) => { const d = new Date(s + 'T00:00'); d.setDate(d.getDate() + n); return isoLocal(d); };
 export const trLower = s => String(s ?? '').replace(/I/g, 'ı').replace(/İ/g, 'i').toLocaleLowerCase('tr');
 export const fold = s => trLower(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ı/g, 'i');
-export const match = (q, ...fields) => { const f = fold(q).trim(); if (!f) return true; const hay = fold(fields.filter(Boolean).join(' ')); return f.split(/\s+/).every(w => hay.includes(w)); };
+// Arama: Türkçe karakterden bağımsız (cukurova = Çukurova); 4+ harfli kelimede bir harflik yazım hatasına tolerans
+const birHarf = (a, b) => { if (Math.abs(a.length - b.length) > 1) return false; let i = 0, j = 0, f = 0; while (i < a.length && j < b.length) { if (a[i] === b[j]) { i++; j++; continue; } if (++f > 1) return false; if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; } } return f + (a.length - i) + (b.length - j) <= 1; };
+export const kelimeUyar = (w, hay) => hay.includes(w) || (w.length >= 4 && hay.split(/[^a-z0-9]+/).some(t => t.length >= w.length - 1 && (birHarf(w, t.slice(0, w.length)) || birHarf(w, t.slice(0, w.length + 1)) || birHarf(w, t.slice(0, w.length - 1)))));
+export const match = (q, ...fields) => { const f = fold(q).trim(); if (!f) return true; const hay = fold(fields.filter(Boolean).join(' ')); return f.split(/\s+/).every(w => kelimeUyar(w, hay)); };
 export const byId = (t, id) => id ? S[t].find(x => x.id === id) : null;
 export const firmaAd = id => byId('firmalar', id)?.ad || '';
 
@@ -88,6 +91,13 @@ export function openDrawer(html, { wide = false, onClose } = {}) {
   onCloseCb = onClose || null;
   p.scrollTop = 0;
   aksiyonlariDuzenle(p);
+  // Kaydedilmemiş değişiklik izi: formda yazılınca işaretlenir, kaydedilince temizlenir
+  kirli = false;
+  p.querySelectorAll('form').forEach(f => {
+    const isaretle = e => { if (!e.target.matches('[type=search], [data-ymetin], .liste-ekle input, [data-s]') && !e.target.closest('[data-sartname], [data-oneri], [data-yorumlar], [data-iliski], .y-yaz')) kirli = true; };
+    f.addEventListener('input', isaretle); f.addEventListener('change', e => { if (e.isTrusted) isaretle(e); });
+    f.addEventListener('submit', () => { kirli = false; }, true);
+  });
   // Sekmeler başlığın altında yapışık kalsın
   requestAnimationFrame(() => { const dh = p.querySelector('.dh'), ps = p.querySelector('.p-sekme'); if (dh && ps) ps.style.top = dh.offsetHeight + 'px'; });
   // Telefonun geri tuşu pencereyi kapatsın: pencere için geçmişe bir adım eklenir
@@ -96,8 +106,12 @@ export function openDrawer(html, { wide = false, onClose } = {}) {
   return p;
 }
 let geriBekleniyor = false, geriSonra = null;
-export function closeDrawer() {
+let kirli = false;
+const birakilsinMi = () => !kirli || window.confirm('Kaydedilmemiş değişiklikler var. Kaydetmeden kapatılsın mı?');
+export function closeDrawer(zorla = false) {
   const d = drawer(); if (!d.classList.contains('open')) return;
+  if (!zorla && !birakilsinMi()) return;
+  kirli = false;
   d.classList.remove('open'); d.setAttribute('aria-hidden', 'true');
   const cb = onCloseCb; onCloseCb = null;
   // Pencerenin geçmiş adımını geri al; adres değişikliği (listeye dönüş) ondan sonra yapılır
@@ -106,7 +120,7 @@ export function closeDrawer() {
 }
 window.addEventListener('popstate', () => {
   if (geriBekleniyor) { geriBekleniyor = false; const c = geriSonra; geriSonra = null; c && c(); if (drawer().classList.contains('open') && !history.state?.cekmece) try { history.pushState({ cekmece: true }, '', location.href); } catch {} return; }
-  if (drawer().classList.contains('open')) { const d = drawer(); d.classList.remove('open'); d.setAttribute('aria-hidden', 'true'); const cb = onCloseCb; onCloseCb = null; cb && cb(); }
+  if (drawer().classList.contains('open')) { if (!birakilsinMi()) { try { history.pushState({ cekmece: true }, '', location.href); } catch {} return; } kirli = false; const d = drawer(); d.classList.remove('open'); d.setAttribute('aria-hidden', 'true'); const cb = onCloseCb; onCloseCb = null; cb && cb(); }
 });
 // Pencere başlığındaki düğmeler: ilk üçü görünür, kalanı (ve Sil) “⋯” menüsünde
 function aksiyonlariDuzenle(p) {
@@ -169,10 +183,13 @@ export async function exportXlsx(name, sheets) {
   try { await xlsxYukle(); } catch (e) { return toast(e.message, 'err'); }
   const wb = XLSX.utils.book_new();
   for (const [sn, rows0] of Object.entries(sheets)) {
-    const rows = rows0.length ? rows0 : [{ 'Kayıt yok': '' }];
-    const ws = XLSX.utils.json_to_sheet(rows);
+    // Tarihler Excel'de tarih, tutarlar sayı olarak açılsın (sıralama ve toplam alınabilsin)
+    const tarihMi = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/.test(v);
+    const rows = (rows0.length ? rows0 : [{ 'Kayıt yok': '' }]).map(r => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, tarihMi(v) ? new Date(v.length === 10 ? v + 'T00:00:00' : v) : v])));
+    const ws = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: 'dd.mm.yyyy' });
+    for (const [adr, c] of Object.entries(ws)) { if (adr[0] === '!' || !c) continue; if (c.t === 'd') c.z = 'dd.mm.yyyy'; else if (c.t === 'n' && !/^[A-Z]+1$/.test(adr)) c.z = Number.isInteger(c.v) ? (Math.abs(c.v) >= 10000 ? '#,##0' : '0') : '#,##0.00'; }
     const basliklar = Object.keys(rows.reduce((o, r) => Object.assign(o, r), {}));
-    ws['!cols'] = basliklar.map(h => ({ wch: Math.min(60, Math.max(String(h).length + 2, ...rows.slice(0, 300).map(r => String(r[h] ?? '').length + 1))) }));
+    ws['!cols'] = basliklar.map(h => ({ wch: Math.min(60, Math.max(String(h).length + 2, ...rows.slice(0, 300).map(r => r[h] instanceof Date ? 11 : String(r[h] ?? '').length + 1))) }));
     if (ws['!ref']) ws['!autofilter'] = { ref: ws['!ref'] };
     XLSX.utils.book_append_sheet(wb, ws, sn.replace(/[\\/?*\[\]:]/g, ' ').slice(0, 31));
   }
@@ -234,3 +251,4 @@ export function gorununce(ogeler, yukle) {
   const g = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { g.unobserve(e.target); yukle(e.target); } }), { rootMargin: '300px 0px' });
   ogeler.forEach(o => { if (!o._izleniyor) { o._izleniyor = true; g.observe(o); } });
 }
+export const pencereKirli = () => kirli;
