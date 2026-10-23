@@ -72,39 +72,56 @@ export async function ayarlarView(el) {
   let localCount = 0;
   if (sup) for (const t of ORDER) localCount += ((await idbGet('t:' + t)) || []).length;
   const pend = sup ? await app.db.pending() : 0;
-  const f = F('ayarlar', { sekme: 'genel' });
-  if (!S.projeler.length && !S.firmalar.length && f.sekme === 'genel' && !f._ilk) { f.sekme = 'veri'; f._ilk = 1; }
-  const SEKME = sahipMi() ? [['genel', 'Genel'], ['kullanici', 'Kullanıcılar'], ['listeler', 'Listeler'], ['veri', 'Veri ve yedek'], ['google', 'Google ve harita'], ['mesaj', 'Mesaj ve teklif']] : [['genel', 'Genel']];
+  const f = F('ayarlar', { sekme: 'hesap' });
+  const ESKI = { genel: 'hesap', kullanici: 'ekip', google: 'baglanti' };
+  if (ESKI[f.sekme]) f.sekme = ESKI[f.sekme];
+  if (!S.projeler.length && !S.firmalar.length && !f._ilk) { f.sekme = 'veri'; f._ilk = 1; }
+  const BOLUM = [
+    ['hesap', 'Hesap ve güvenlik', 'Bulut bağlantısı, iki adımlı doğrulama, otomatik çıkış', 'user'],
+    ['gorunum', 'Görünüm ve menü', 'Tema, yazı boyutu, menüdeki ekranlar', 'sun'],
+    ['ekip', 'Ekip ve yetkiler', 'Kullanıcılar, roller, son değişiklikler', 'building', true],
+    ['listeler', 'Listeler', 'Firma tipleri, rakip markaları, kayıp nedenleri, aşamalar', 'tag', true],
+    ['veri', 'Veri ve yedek', 'Yedek, geri yükleme, Excel, başlangıç verisi', 'down', true],
+    ['baglanti', 'Bağlantılar', 'Google, döviz kuru, bildirimler', 'map'],
+    ['mesaj', 'Mesaj ve teklif', 'WhatsApp şablonları, teklif bilgileri', 'doc', true],
+    ['uygulama', 'Uygulama', 'Sürüm, telefona yükle, araç bilgisi, gizli mod', 'gear'],
+    ['dikkat', 'Dikkat', 'Tüm verileri silme', 'wrench', true],
+  ].filter(b => !b[4] || sahipMi());
   let menuAc = false; try { menuAc = !!sessionStorage.getItem('menu-ac'); sessionStorage.removeItem('menu-ac'); } catch {}
-  if (menuAc) f.sekme = 'genel';
-  try { const s = sessionStorage.getItem('ayar-sekme'); if (s) { f.sekme = s; sessionStorage.removeItem('ayar-sekme'); } } catch {}
-  if (!SEKME.some(([k]) => k === f.sekme)) f.sekme = 'genel';
+  if (menuAc) f.sekme = 'gorunum';
+  let dogrudan = menuAc;   // telefonda liste yerine doğrudan bölümü aç
+  try { const s = sessionStorage.getItem('ayar-sekme'); if (s) { f.sekme = ESKI[s] || s; dogrudan = true; sessionStorage.removeItem('ayar-sekme'); } } catch {}
+  if (!BOLUM.some(([k]) => k === f.sekme)) f.sekme = 'hesap';
+  const { icon } = await import('../main.js');
   const toplam = counts.reduce((a, [, n]) => a + n, 0);
   el.innerHTML = `<header class="vh"><div><h1>Ayarlar</h1><p class="sum">${sup ? `Hesap: ${esc(app.db.user()?.email || '')}` : 'Deneme modu: veriler yalnızca bu cihazda'}${pend ? ` · <b>${pend} değişiklik internet bekliyor</b>` : ''}</p></div></header>
-  <div class="seg ayar-sekme" role="tablist">${SEKME.map(([k, t]) => `<button type="button" role="tab" data-sekme="${k}" aria-selected="${f.sekme === k}" class="${f.sekme === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+  <div class="ayar-duzen" data-duzen>
+  <nav class="ayar-liste" aria-label="Ayar bölümleri">${BOLUM.map(([k, t, d, ic]) => `<button type="button" data-sekme="${k}" class="${f.sekme === k ? 'on' : ''} ${k === 'dikkat' ? 'dikkat' : ''}" aria-current="${f.sekme === k}"><span class="al-ic">${icon(ic, 20)}</span><span class="al-m"><b>${t}</b><small>${d}</small></span><span class="al-ok" aria-hidden="true">›</span></button>`).join('')}</nav>
   <div class="settings">
-    <section class="card" data-tab="genel"><h2>Hesap</h2>
+    <button type="button" class="ayar-geri" data-geri>‹ Ayarlar</button>
+    <h2 class="ayar-bolum-bas" data-bolumbas></h2>
+    <section class="card" data-tab="hesap"><h2>Hesap</h2>
       ${sup ? `<p>Bulut hesabına bağlısın; telefonda ve bilgisayarda aynı verileri görürsün.</p><div class="btnrow"><button class="btn ghost" data-out>Çıkış yap</button></div><details class="gelismis"><summary>Bağlantı bilgileri (Supabase)</summary>${connForm(cfg)}</details>`
       : `<p>Şu an <b>deneme modundasın</b>: veriler yalnızca bu tarayıcıda durur. Telefon ve bilgisayarda ortak kullanmak için Supabase bilgilerini gir.</p>${connForm(cfg)}`}
     </section>
-    ${sahipMi() ? '' : `<section class="card" data-tab="genel"><h2>Ekip üyesi</h2><p>Bu hesapla veri sahibinin sana açtığı bölümleri görüyorsun. Yeni bölüm için veri sahibinden yetki iste.</p></section>`}
-    <section class="card wide-card" data-tab="kullanici"><h2>Kullanıcılar ve yetkiler</h2><div data-kullanici></div></section>
-    <section class="card wide-card" data-tab="kullanici" data-sondeg></section>
-    <section class="card" data-tab="genel"><h2>Güvenlik</h2><div data-guvenlik></div></section>
+    ${sahipMi() ? '' : `<section class="card" data-tab="hesap"><h2>Ekip üyesi</h2><p>Bu hesapla veri sahibinin sana açtığı bölümleri görüyorsun. Yeni bölüm için veri sahibinden yetki iste.</p></section>`}
+    <section class="card wide-card" data-tab="ekip"><h2>Kullanıcılar ve yetkiler</h2><div data-kullanici></div></section>
+    <section class="card wide-card" data-tab="ekip" data-sondeg></section>
+    <section class="card" data-tab="hesap"><h2>Güvenlik</h2><div data-guvenlik></div></section>
     <section class="card wide-card" data-tab="listeler"><h2>Seçim listeleri</h2><div data-listeler></div></section>
-    <section class="card" data-tab="genel" id="menu-karti"><h2>Menü</h2><div data-menu></div></section>
-    <section class="card" data-tab="genel"><h2>Görünüm</h2><div class="seg" role="group" aria-label="Tema" data-tema>${[['acik', 'Açık'], ['koyu', 'Koyu'], ['oto', 'Cihaza göre']].map(([k, t]) => `<button type="button" data-tm="${k}" class="${(ayar('tema', 'acik') || 'acik') === k ? 'on' : ''}">${t}</button>`).join('')}</div><p class="hint">Koyu tema akşam ve gece kullanımında gözü daha az yorar. “Cihaza göre” telefonun gece/gündüz ayarını izler.</p><h3>Yazı boyutu</h3><div class="seg" role="group" aria-label="Yazı boyutu">${[['normal', 'Normal'], ['buyuk', 'Büyük'], ['cokbuyuk', 'Çok büyük']].map(([k, t]) => `<button type="button" data-yz="${k}" class="${(ayar('yazi', 'normal') || 'normal') === k ? 'on' : ''}">${t}</button>`).join('')}</div></section>
-    <section class="card" data-tab="genel"><h2>Araç</h2><p class="hint">Günlük km'yi masrafa yazarken yakıt tutarı buna göre hesaplanır.</p><div class="grid"><div class="fld"><label for="a-l">Tüketim (litre / 100 km)</label><input id="a-l" type="number" step="0.1" inputmode="decimal" data-yakit="yakit_lt100" value="${ayar('yakit_lt100', '') || ''}" placeholder="örn. 6,5"></div><div class="fld"><label for="a-f">Yakıt litre fiyatı (TL)</label><input id="a-f" type="number" step="0.01" inputmode="decimal" data-yakit="yakit_tl" value="${ayar('yakit_tl', '') || ''}" placeholder="örn. 52,40"></div></div></section>
-    <section class="card" data-tab="genel"><h2>Gizlilik</h2>
+    <section class="card" data-tab="gorunum" id="menu-karti"><h2>Menü</h2><div data-menu></div></section>
+    <section class="card" data-tab="gorunum"><h2>Görünüm</h2><div class="seg" role="group" aria-label="Tema" data-tema>${[['acik', 'Açık'], ['koyu', 'Koyu'], ['oto', 'Cihaza göre']].map(([k, t]) => `<button type="button" data-tm="${k}" class="${(ayar('tema', 'acik') || 'acik') === k ? 'on' : ''}">${t}</button>`).join('')}</div><p class="hint">Koyu tema akşam ve gece kullanımında gözü daha az yorar. “Cihaza göre” telefonun gece/gündüz ayarını izler.</p><h3>Yazı boyutu</h3><div class="seg" role="group" aria-label="Yazı boyutu">${[['normal', 'Normal'], ['buyuk', 'Büyük'], ['cokbuyuk', 'Çok büyük']].map(([k, t]) => `<button type="button" data-yz="${k}" class="${(ayar('yazi', 'normal') || 'normal') === k ? 'on' : ''}">${t}</button>`).join('')}</div></section>
+    <section class="card" data-tab="uygulama"><h2>Araç</h2><p class="hint">Günlük km'yi masrafa yazarken yakıt tutarı buna göre hesaplanır.</p><div class="grid"><div class="fld"><label for="a-l">Tüketim (litre / 100 km)</label><input id="a-l" type="number" step="0.1" inputmode="decimal" data-yakit="yakit_lt100" value="${ayar('yakit_lt100', '') || ''}" placeholder="örn. 6,5"></div><div class="fld"><label for="a-f">Yakıt litre fiyatı (TL)</label><input id="a-f" type="number" step="0.01" inputmode="decimal" data-yakit="yakit_tl" value="${ayar('yakit_tl', '') || ''}" placeholder="örn. 52,40"></div></div></section>
+    <section class="card" data-tab="uygulama"><h2>Gizlilik</h2>
       <label class="chk"><input type="checkbox" data-gizli ${ayar('gizli_mod', false) === true ? 'checked' : ''}> <span><b>Gizli mod</b>: kayıtlarımı ve konumumu dış servislere gönderme</span></label>
       <p class="hint">Açıkken kapananlar: Google uydu/harita katmanı ve Google'da firma arama, OpenStreetMap ile adres ve il/ilçe bulma, sesle yazma (Google konuşma tanıma). Konum yine telefonda alınır, il ve sanayi bölgesi cihazda hesaplanır. Açık kalanlar: kendi Supabase veritabanın, harita görüntüsü (Esri ya da OpenStreetMap; yalnızca baktığın bölgenin görüntüsü istenir), döviz kuru.</p></section>
-    <section class="card" data-tab="genel"><h2>Uygulama sürümü</h2><p>Bu cihazda açık sürüm: <b data-surum></b></p><p class="hint">Yeni bir özellik görünmüyorsa “Şimdi güncelle”ye dokun; uygulama en son sürümü indirip yeniden açılır. Verilerin silinmez.</p><div class="btnrow"><button type="button" class="btn" data-guncelle>Şimdi güncelle</button></div></section>
-    <section class="card" data-tab="genel"><h2>Telefona yükle</h2>
+    <section class="card" data-tab="uygulama"><h2>Uygulama sürümü</h2><p>Bu cihazda açık sürüm: <b data-surum></b></p><p class="hint">Yeni bir özellik görünmüyorsa “Şimdi güncelle”ye dokun; uygulama en son sürümü indirip yeniden açılır. Verilerin silinmez.</p><div class="btnrow"><button type="button" class="btn" data-guncelle>Şimdi güncelle</button></div></section>
+    <section class="card" data-tab="uygulama"><h2>Telefona yükle</h2>
       ${INST.standalone ? '<p><b>Uygulama yüklü.</b> Simgeye uzun basınca Ziyaret kaydet, Harita, Takvim ve Projeler kısayolları çıkar.</p>' : `<p>Ana ekrana Saha Takip simgesi eklenir, tam ekran açılır ve internet yokken de çalışır.</p><div class="btnrow"><button class="btn primary" data-install>Uygulamayı yükle</button></div>
       <p class="hint">${INST.evt ? 'Düğmeye basınca telefon onay ister.' : isIOS ? 'iPhone: Safari Paylaş düğmesi → “Ana Ekrana Ekle”.' : 'Düğme çalışmazsa Chrome menüsü (⋮) → “Uygulamayı yükle”.'}</p>`}
     </section>
-    <section class="card" data-tab="genel"><h2>Bildirimler</h2><div data-bildirim></div></section>
-    <section class="card" data-tab="genel"><h2>Döviz kuru</h2><div data-kur></div></section>
+    <section class="card" data-tab="baglanti"><h2>Bildirimler</h2><div data-bildirim></div></section>
+    <section class="card" data-tab="baglanti"><h2>Döviz kuru</h2><div data-kur></div></section>
 
     <section class="card" data-tab="veri"><h2>Kayıtlar</h2>
       ${counts.length ? `<p><b>${toplam}</b> kayıt</p><ul class="counts">${counts.map(([t, n]) => `<li><b>${n}</b> ${ETIKET[t]}</li>`).join('')}</ul>` : '<p class="hint">Henüz kayıt yok. Aşağıdan başlangıç verisini yükleyebilirsin.</p>'}
@@ -124,18 +141,18 @@ export async function ayarlarView(el) {
       <p class="hint">Kayıtlar ada göre eşleşir: tekrar yüklemek kopya oluşturmaz, haritadaki konumların korunur.</p>
       ${sup && localCount ? `<hr><p>Bu tarayıcıda deneme modunda girilmiş <b>${localCount} kayıt</b> var.</p><div class="btnrow"><button class="btn" data-migrate>Deneme verisini buluta taşı</button></div>` : ''}
     </section>
-    <section class="card danger-card" data-tab="veri"><details class="danger-zone"><summary>Tüm verileri sil</summary><p>${sup ? 'Buluttaki' : 'Bu tarayıcıdaki'} tüm kayıtlar silinir ve geri alınamaz. Önce yedek indir.</p><button class="btn danger" data-wipe>Tüm verileri sil</button></details></section>
+    <section class="card danger-card" data-tab="dikkat"><details class="danger-zone"><summary>Tüm verileri sil</summary><p>${sup ? 'Buluttaki' : 'Bu tarayıcıdaki'} tüm kayıtlar silinir ve geri alınamaz. Önce yedek indir.</p><button class="btn danger" data-wipe>Tüm verileri sil</button></details></section>
 
-    <section class="card" data-tab="google"><h2>Google'da arama</h2>
+    <section class="card" data-tab="baglanti" data-sahip><h2>Google'da arama</h2>
       <p>${googleKey() ? '<b>Google anahtarı kayıtlı.</b> Haritada “Google\'da ara” ile işletmelerin adres, telefon ve konumunu kayıtlarına aktarabilirsin.' : 'Haritada Google\'daki işletmeleri aramak için bir API anahtarı gerekiyor.'}</p>
       <details ${googleKey() ? '' : 'open'}><summary>${googleKey() ? 'Anahtarı değiştir' : 'Anahtar nasıl alınır?'}</summary>${anahtarFormu()}</details>
     </section>
-    <section class="card" data-tab="google"><h2>Konum aktar ve dışa aktar</h2>
+    <section class="card" data-tab="baglanti" data-sahip><h2>Konum aktar ve dışa aktar</h2>
       <p>Google Benim Haritalarım (KML/KMZ), Takeout'taki kaydedilen yerler ya da Google Haritalar bağlantıları. Anahtar gerekmez.</p>
       <div class="btnrow"><button class="btn" data-gimport>Google'dan konum aktar</button><button class="btn ghost" data-kml>Haritayı KML olarak indir</button></div>
       <p class="hint">KML dosyasını mymaps.google.com'a yükleyince projelerin Google Haritalar'da da görünür.</p>
     </section>
-    <section class="card" data-tab="google"><h2>Google Haritalar'dan paylaş</h2>
+    <section class="card" data-tab="baglanti" data-sahip><h2>Google Haritalar'dan paylaş</h2>
       <p>Google Haritalar'da bir yere dokun → <b>Paylaş</b> → <b>Saha Takip</b>. Yer yeni firma ya da proje olarak kaydedilir veya mevcut kayda konum atanır. Uygulamanın telefona yüklü olması gerekir.</p>
       <details class="gelismis"><summary>Gelişmiş: kısa bağlantılardan tam konum</summary>
         <p class="hint">Google çoğu zaman <code>maps.app.goo.gl</code> kısa bağlantısı gönderir. Konumu tam okumak için Supabase'e bir kez küçük bir fonksiyon eklenir: Supabase paneli → <b>Edge Functions</b> → <b>Deploy a new function</b> → <b>Via Editor</b> → adı <code>kisa-link</code> → depodaki <code>supabase/functions/kisa-link/index.ts</code> içeriğini yapıştır → <b>Deploy</b>. Eklenmezse konum ad ve adresten bulunur.</p></details>
@@ -143,14 +160,22 @@ export async function ayarlarView(el) {
 
     <section class="card" data-tab="mesaj"><h2>WhatsApp mesaj şablonları</h2><p class="hint">Kişi ve firma kartındaki WhatsApp düğmesi bu şablonları kullanır.</p><div data-sablon></div></section>
     <section class="card" data-tab="mesaj"><h2>Teklif bilgileri</h2><p class="hint">PDF teklifin üst bilgisi ve alt koşulları.</p><div data-teklifb></div></section>
-  </div>`;
+  </div></div>`;
   let kulYuklendi = false, listeYuklendi = false;
   const sekmeGoster = k => {
     if (k === 'veri' && !el._otoYuklendi) { el._otoYuklendi = true; import('../otoyedek.js').then(m => m.otoYedekAyarlari(el.querySelector('[data-otoyedek]'))); }
     if (k === 'listeler' && !listeYuklendi) { listeYuklendi = true; import('../listeler.js').then(m => m.listeAyarlari(el.querySelector('[data-listeler]'))); }
-    if (k === 'kullanici' && !kulYuklendi) { kulYuklendi = true; kullaniciAyarlari(el.querySelector('[data-kullanici]')); import('../gecmis.js').then(m => m.sonDegisiklikler(el.querySelector('[data-sondeg]'))); } el.querySelectorAll('[data-tab]').forEach(x => x.hidden = x.dataset.tab !== k); el.querySelectorAll('[data-sekme]').forEach(b => { b.classList.toggle('on', b.dataset.sekme === k); b.setAttribute('aria-selected', b.dataset.sekme === k); }); };
-  el.querySelectorAll('[data-sekme]').forEach(b => b.onclick = () => { f.sekme = b.dataset.sekme; saveFilters(); sekmeGoster(f.sekme); });
+    if (k === 'ekip' && !kulYuklendi) { kulYuklendi = true; kullaniciAyarlari(el.querySelector('[data-kullanici]')); import('../gecmis.js').then(m => m.sonDegisiklikler(el.querySelector('[data-sondeg]'))); } el.querySelectorAll('[data-tab]').forEach(x => x.hidden = x.dataset.tab !== k || (x.hasAttribute('data-sahip') && !sahipMi()));
+    el.querySelectorAll('[data-sekme]').forEach(b => { b.classList.toggle('on', b.dataset.sekme === k); b.setAttribute('aria-current', b.dataset.sekme === k); });
+    el.querySelector('[data-bolumbas]').textContent = BOLUM.find(b => b[0] === k)?.[1] || '';
+  };
+  // Telefonda önce bölüm listesi, dokununca bölüm; bilgisayarda solda liste, sağda bölüm
+  const duzen = el.querySelector('[data-duzen]');
+  const ac = k => { f.sekme = k; saveFilters(); sekmeGoster(k); duzen.classList.add('icerik'); if (innerWidth < 900) window.scrollTo(0, 0); };
+  el.querySelectorAll('[data-sekme]').forEach(b => b.onclick = () => ac(b.dataset.sekme));
+  el.querySelector('[data-geri]').onclick = () => { duzen.classList.remove('icerik'); window.scrollTo(0, 0); };
   sekmeGoster(f.sekme);
+  duzen.classList.toggle('icerik', innerWidth >= 900 || dogrudan);
   bindConn(el);
   anahtarBagla(el, () => ayarlarView(el));
   sablonDuzenleyici(el.querySelector('[data-sablon]'));

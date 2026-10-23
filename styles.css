@@ -1159,3 +1159,32 @@ button.bekleyen{border:0;cursor:pointer}
 .map-panel { z-index: 650; }
 .mp-altlik label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .mp-altlik input[type=radio] { width: 18px; height: 18px; min-height: 0; flex: none; margin: 0; padding: 0; accent-color: var(--koyu); }
+
+/* ===== Sürüm 29: Ayarlar bölüm listesi ===== */
+.ayar-duzen { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 20px; align-items: start; }
+.ayar-liste { position: sticky; top: 16px; display: grid; gap: 4px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 6px; }
+.ayar-liste button { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; border: 0; background: none; padding: 10px 10px; border-radius: 10px; cursor: pointer; color: var(--ink); font: inherit; }
+.ayar-liste button:hover { background: var(--zemin-2); }
+.ayar-liste button.on { background: var(--lumen-soft); }
+.ayar-liste .al-ic { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--zemin-2); color: var(--ink); }
+.ayar-liste button.on .al-ic { background: var(--lumen); color: #10181D; }
+.ayar-liste .al-m { flex: 1; min-width: 0; }
+.ayar-liste .al-m b { display: block; font: 600 14.5px var(--f); }
+.ayar-liste .al-m small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.35; margin-top: 1px; }
+.ayar-liste .al-ok { color: var(--muted); font-size: 20px; display: none; }
+.ayar-liste button.dikkat .al-ic { background: var(--kirmizi-soft); color: var(--red); }
+.ayar-liste button.dikkat b { color: var(--red); }
+.ayar-duzen .settings { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); max-width: none; }
+.ayar-geri { display: none; }
+.ayar-bolum-bas { grid-column: 1 / -1; margin: 0 0 2px; font-size: 20px; }
+@media (max-width: 899px) {
+  .ayar-duzen { grid-template-columns: 1fr; gap: 12px; }
+  .ayar-liste { position: static; padding: 4px; }
+  .ayar-liste button { padding: 12px 10px; }
+  .ayar-liste .al-ok { display: block; }
+  .ayar-liste button.on { background: none; }
+  .ayar-liste button.on .al-ic { background: var(--zemin-2); color: var(--ink); }
+  .ayar-duzen:not(.icerik) .settings { display: none; }
+  .ayar-duzen.icerik .ayar-liste { display: none; }
+  .ayar-geri { display: inline-flex; grid-column: 1 / -1; justify-self: start; border: 0; background: none; color: var(--blue); font: 600 15px var(--f); padding: 4px 0; cursor: pointer; }
+}

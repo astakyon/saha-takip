@@ -32,6 +32,11 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 29) — Ayarlar
+
+- **Bölüm listesi:** Hesap ve güvenlik · Görünüm ve menü · Ekip ve yetkiler · Listeler · Veri ve yedek · Bağlantılar (Google, döviz kuru, bildirimler) · Mesaj ve teklif · Uygulama (sürüm, telefona yükle, araç, gizli mod) · Dikkat (tüm verileri silme). Bilgisayarda solda liste, sağda bölüm; telefonda önce liste, dokununca bölüm (‹ Ayarlar ile geri).
+- Menü düzeni tablosu katlanır; tüm verileri silme ayrı “Dikkat” bölümünde.
+
 ## Güncelleme notu (sürüm 28) — harita
 
 - **Üst çubuk tek satır:** arama, Katmanlar ve Araçlar. Seçili il, aramanın yanında sarı bir etiket olarak görünür; dokununca kaldırılır.
