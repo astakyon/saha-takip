@@ -127,7 +127,7 @@ export function firmaDetay(id, init) {
         <h3>Projeler <span class="muted">${projeler.length}</span></h3>
         ${projeler.length ? `<ul class="list">${projeler.map(p => `<li><a href="#/proje/${p.id}"><b>${esc(p.ad)}</b><span class="muted">${projeRolleri(p, x.id).join(', ')} · ${usd(p.tutar_usd)}</span></a>${pill(p.durum)}</li>`).join('')}</ul>` : '<p class="hint">Bu firmanın yer aldığı proje yok.</p>'}
         ${stok.length ? `<h3>Depo stoğu</h3><p class="hint">${stok.filter(u => u.stok > 0).length} kalem stokta. <a href="#/urunler">Stok ve fiyat ekranında aç</a></p>` : ''}
-        <div data-tahsilat></div><div data-belgeler></div><div data-gecmis></div>
+        <div data-tahsilat></div><div data-iliski></div><div data-yorumlar></div><div data-belgeler></div><div data-gecmis></div>
         <h3>Ziyaretler <span class="muted">${ziy.length}</span></h3>
         ${ziy.length ? `<ul class="list">${ziy.slice(0, 12).map(z => `<li><span class="muted">${tarih(z.tarih)}</span><span>${esc(byId('kisiler', z.kisi_id)?.ad_soyad || '')} ${esc((z.notlar || '').slice(0, 140))}</span></li>`).join('')}</ul>` : '<p class="hint">Ziyaret kaydı yok.</p>'}
       </section>`}
@@ -136,7 +136,7 @@ export function firmaDetay(id, init) {
     </form>`, { wide: true, onClose: () => backToList() });
   const form = panel.querySelector('form');
   bindForm(form, FIRMA_FORM, x);
-  if (!x._new) { belgeBolumu(panel.querySelector('[data-belgeler]'), { firma_id: x.id }); tahsilatOzeti(panel.querySelector('[data-tahsilat]'), x); kayitGecmisi(panel.querySelector('[data-gecmis]'), 'firmalar', x.id); }
+  if (!x._new) { belgeBolumu(panel.querySelector('[data-belgeler]'), { firma_id: x.id }); tahsilatOzeti(panel.querySelector('[data-tahsilat]'), x); kayitGecmisi(panel.querySelector('[data-gecmis]'), 'firmalar', x.id); import('../yorum.js').then(m => m.yorumBolumu(panel.querySelector('[data-yorumlar]'), 'firmalar', x)); import('../iliski.js').then(m => m.iliskiBolumu(panel.querySelector('[data-iliski]'), x)); }
   panel.querySelectorAll('.avatar[data-kv]').forEach(async a => { if (a.dataset.kv) { const u = await app.db.url(a.dataset.kv); if (u) { a.style.backgroundImage = `url("${u}")`; a.textContent = ''; } } });
   panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     const a = b.dataset.a;

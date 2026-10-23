@@ -53,6 +53,7 @@ export function panelView(el) {
       <div class="qbars">${[0, 1, 2, 3].map(i => `<div class="qb"><div class="qb-cols"><span class="bar target" style="height:${hed[i] / maxQ * 100}%" title="Hedef ${usd(hed[i])}"></span><span class="bar real ${gercek[i] >= hed[i] && hed[i] ? 'ok' : ''}" style="height:${gercek[i] / maxQ * 100}%" title="Gerçekleşen ${usd(gercek[i])}"></span></div>
         <b>${i + 1}. çeyrek</b><small>${usd(gercek[i])}${hed[i] ? ` · %${num(gercek[i] / hed[i] * 100)}` : ''}</small></div>`).join('')}</div>
       <p class="legend-line"><span class="sw target"></span>Hedef <span class="sw real"></span>Gerçekleşen${G.some(g => g.kaynak === 'resmi') ? ` (${G.map((g, i) => g.kaynak === 'resmi' ? i + 1 + '. çeyrek resmi rakam' : null).filter(Boolean).join(', ')}; diğerleri siparişlerden)` : ' (siparişlerden)'} · <a href="#/siparisler" data-ozet>Çeyrek rakamlarını düzenle</a></p></section>
+    ${gecenYilKarti(Y)}
     <section class="card wide"><h2>Olasılıklı tahmin (${Y})</h2>
       <p class="hint">Açık projelerin tutarı kazanma olasılığıyla çarpılır (olasılık girilmemişse aşamaya göre: Proje %10, İhale %25, Teklif %40, Sıcak %70, Beklemede %15). Çeyrek, beklenen sipariş ya da aydınlatma alım tarihinden; tarihsiz projeler “Tarihsiz” sütununda.</p>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th></th>${[1, 2, 3, 4].map(c => `<th class="r">${c}. çeyrek</th>`).join('')}<th class="r">Tarihsiz</th><th class="r">Yıl</th></tr></thead><tbody>
@@ -94,6 +95,31 @@ export function panelView(el) {
   el.querySelectorAll('[data-s]').forEach(b => b.onclick = () => sunum(b.dataset.s, Y));
   el.querySelector('[data-kayiptamam]')?.addEventListener('click', () => kayipTamamla(Y, () => { const y = window.scrollY; panelView(el); window.scrollTo(0, y); }));
   el.querySelector('[data-pptx]').onclick = async () => { const { disaAktarabilir } = await import('../yetki.js'); if (!disaAktarabilir()) return toast('Sunum çıktısı alma yetkin yok.', 'err'); const { ceyrekSunumu } = await import('../pptx.js'); ceyrekSunumu(Y); };
+}
+
+// Geçen yılla karşılaştırma: çeyrek ve firma bazında bu yıl / geçen yıl (resmi rakam girilmişse o kullanılır)
+function gecenYilKarti(Y) {
+  const O = Y - 1, varmi = S.siparisler.some(s => s.tarih?.startsWith(String(O))) || S.hedefler.some(h => +h.yil === O && (h.resmi_usd || h.resmi_tl));
+  if (!varmi) return `<section class="card wide"><h2>Geçen yılla karşılaştırma</h2><p class="hint">${O} yılına ait sipariş yok. Siparişler ekranından ${O} yılının SAS sipariş raporunu yüklersen (ya da Hedefler'e ${O} çeyreklerinin resmi rakamlarını girersen) burada çeyrek ve firma bazında ${Y} / ${O} karşılaştırması görünür.</p></section>`;
+  const b = yilGercek(Y).map(g => g.gercek), o = yilGercek(O).map(g => g.gercek);
+  const yuzde = (x, y) => y ? Math.round((x - y) / y * 100) : null;
+  const fark = (x, y) => { const d = yuzde(x, y); return d == null ? '<span class="muted">—</span>' : `<b class="${d >= 0 ? 'pos' : 'neg'}">${d >= 0 ? '↑ +' : '↓ '}%${num(d)}</b>`; };
+  // Bugüne kadar: geçen yılın aynı gününe kadar olan siparişlerle
+  const g = today().slice(5), sY = String(Y), sO = String(O);
+  const ytd = yil => S.siparisler.filter(s => s.tarih?.startsWith(yil) && s.tarih.slice(5) <= g).reduce((a, s) => a + siparisUsd(s, donemKuru(+yil, ceyrekOf(s.tarih))), 0);
+  const yB = ytd(sY), yO = ytd(sO);
+  const firma = new Map();
+  for (const s of S.siparisler) { const yl = s.tarih?.slice(0, 4); if (yl !== sY && yl !== sO) continue; const k = s.firma_id || 'ad:' + (s.musteri_adi || '—'); const r = firma.get(k) || { ad: s.firma_id ? firmaAd(s.firma_id) : s.musteri_adi || '—', id: s.firma_id, b: 0, o: 0 }; r[yl === sY ? 'b' : 'o'] += siparisUsd(s, donemKuru(+yl, ceyrekOf(s.tarih))); firma.set(k, r); }
+  const fl = [...firma.values()].sort((a, b) => Math.max(b.b, b.o) - Math.max(a.b, a.o)).slice(0, 12);
+  const kaybolan = [...firma.values()].filter(x => x.o > 0 && x.b === 0).sort((a, b) => b.o - a.o).slice(0, 5);
+  return `<section class="card wide"><h2>Geçen yılla karşılaştırma (${Y} / ${O})</h2>
+    <p class="muted">Bugüne kadar: <b>${usd(yB)}</b> · geçen yıl aynı tarihe kadar ${usd(yO)} ${fark(yB, yO)}</p>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Çeyrek</th><th class="r">${Y}</th><th class="r">${O}</th><th class="r">Değişim</th></tr></thead><tbody>
+      ${[0, 1, 2, 3].map(i => `<tr><td>${i + 1}. çeyrek</td><td class="r num">${usd(b[i])}</td><td class="r num">${usd(o[i])}</td><td class="r">${fark(b[i], o[i])}</td></tr>`).join('')}
+      <tr class="top"><td><b>Yıl</b></td><td class="r num"><b>${usd(b.reduce((a, x) => a + x, 0))}</b></td><td class="r num"><b>${usd(o.reduce((a, x) => a + x, 0))}</b></td><td class="r">${fark(b.reduce((a, x) => a + x, 0), o.reduce((a, x) => a + x, 0))}</td></tr></tbody></table></div>
+    <h3>Firma bazında</h3><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Firma</th><th class="r">${Y}</th><th class="r">${O}</th><th class="r">Değişim</th></tr></thead><tbody>
+      ${fl.map(x => `<tr><td>${x.id ? `<a href="#/firma/${x.id}">${esc(x.ad)}</a>` : esc(x.ad)}</td><td class="r num">${usd(x.b)}</td><td class="r num">${usd(x.o)}</td><td class="r">${x.o ? fark(x.b, x.o) : '<em class="flag soft">yeni</em>'}</td></tr>`).join('')}</tbody></table></div>
+    ${kaybolan.length ? `<p class="hint">Geçen yıl alıp bu yıl henüz sipariş vermeyenler: ${kaybolan.map(x => `<b>${esc(x.ad)}</b> (${usd(x.o)})`).join(', ')}</p>` : ''}</section>`;
 }
 
 // Olasılıklı tahmin: açık projeler × olasılık, beklenen tarihin çeyreğine

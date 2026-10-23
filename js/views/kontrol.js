@@ -23,7 +23,7 @@ export function oneriProje(s) {
 
 export function kontroller() {
   const t = today(), Y = new Date().getFullYear();
-  const P = S.projeler, acik = P.filter(p => ACIK.includes(p.durum));
+  const P = S.projeler.filter(p => !p.aday), acik = P.filter(p => ACIK.includes(p.durum));
   const k = [];
   const ekle = (id, grup, baslik, aciklama, kayitlar, satir) => k.push({ id, grup, baslik, aciklama, kayitlar, satir });
   const pLink = p => `<a href="#/proje/${p.id}"><b>${esc(p.ad)}</b></a>`;

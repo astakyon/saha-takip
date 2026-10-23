@@ -1,7 +1,7 @@
 // Saha Takip service worker: uygulama dosyalarını ve harita karolarını önbelleğe alır
-const V = 'saha-v29';
+const V = 'saha-v30';
 const SHELL = ['./', 'index.html', 'styles.css', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon-180.png', 'icons/icon.svg', 'js/kurulum.js', 'js/birlestir.js', 'js/google.js', 'js/views/ice-aktar.js',
-  'js/main.js', 'js/altlik.js', 'js/osm-bolge.js', 'js/tasima.js', 'js/yetki.js', 'js/views/kullanicilar.js', 'js/views/bayi.js', 'js/tema.js', 'js/push.js', 'js/menu.js', 'js/hizli.js', 'js/kayip.js', 'js/gizli.js', 'js/esle.js', 'js/filtre.js', 'js/gecmis.js', 'js/listeler.js', 'js/guvenlik.js', 'js/oneri.js', 'js/duyuru.js', 'js/db.js', 'js/ui.js', 'js/forms.js', 'js/state.js',
+  'js/main.js', 'js/altlik.js', 'js/osm-bolge.js', 'js/tasima.js', 'js/yetki.js', 'js/views/kullanicilar.js', 'js/views/bayi.js', 'js/tema.js', 'js/push.js', 'js/menu.js', 'js/hizli.js', 'js/kayip.js', 'js/gizli.js', 'js/esle.js', 'js/filtre.js', 'js/gecmis.js', 'js/listeler.js', 'js/guvenlik.js', 'js/oneri.js', 'js/duyuru.js', 'js/yorum.js', 'js/iliski.js', 'js/aday.js', 'js/barkod.js', 'js/karo.js', 'js/db.js', 'js/ui.js', 'js/forms.js', 'js/state.js',
   'js/views/map.js', 'js/views/projeler.js', 'js/views/firmalar.js', 'js/views/ziyaret.js',
   'js/views/urunler.js', 'js/views/panel.js', 'js/views/ayarlar.js', 'js/views/bolgeler.js', 'js/geo.js', 'js/data/iller.js',
   'js/ayar.js', 'js/sablon.js', 'js/sunum.js', 'js/zip.js', 'js/pptx.js', 'js/pptx-tema.js', 'js/paylas.js',
@@ -9,6 +9,8 @@ const SHELL = ['./', 'index.html', 'styles.css', 'manifest.json', 'icons/icon-19
   'js/belgeler.js', 'js/ocr.js', 'js/ses.js', 'js/grafik.js', 'js/kur.js', 'js/bildirim.js', 'js/views/tahsilat.js', 'js/views/rapor.js', 'js/ceyrek.js', 'js/views/kontrol.js', 'js/data/eae-katalog.js', 'js/views/dosyalar.js'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V && k !== 'tiles').map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+// Harita karoları en fazla ~8000 adet tutulur; fazlası en eskiden silinir
+async function karoKirp(c) { const k = await c.keys(); for (const r of k.slice(0, Math.max(0, k.length - 8000))) await c.delete(r); }
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
@@ -18,7 +20,7 @@ self.addEventListener('fetch', e => {
   if (tile) {
     e.respondWith(caches.open('tiles').then(async c => {
       const hit = await c.match(e.request);
-      const net = fetch(e.request).then(r => { if (r.ok || r.type === 'opaque') c.put(e.request, r.clone()); return r; }).catch(() => hit);
+      const net = fetch(e.request).then(r => { if (r.ok || r.type === 'opaque') { c.put(e.request, r.clone()); if (Math.random() < 0.02) karoKirp(c); } return r; }).catch(() => hit);
       return hit || net;
     }));
     return;

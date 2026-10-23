@@ -12,6 +12,7 @@ import { ayar, ayarYaz } from '../ayar.js';
 import { haftaVerisi, haftaBasi } from './rapor.js';
 import { F, saveFilters } from '../state.js';
 import { sahipMi } from '../yetki.js';
+import { etiketKarti } from '../yorum.js';
 
 // Segmente göre ziyaret sıklığı: A 30, B 60, C 90 gün; segmentsiz firmalarda 45 gün
 export const SIKLIK = { A: 30, B: 60, C: 90 };
@@ -56,7 +57,7 @@ const gunFarki = (a, b) => Math.round((new Date(b + 'T00:00') - new Date(a + 'T0
 export function zamaniGelenler() {
   const t = today(), ay = gunEkle(t, 30), son = new Map();
   for (const z of S.ziyaretler) if (z.proje_id && (!son.has(z.proje_id) || z.tarih > son.get(z.proje_id))) son.set(z.proje_id, z.tarih);
-  return S.projeler.filter(p => ACIK.includes(p.durum)).map(p => {
+  return S.projeler.filter(p => !p.aday && ACIK.includes(p.durum)).map(p => {
     const neden = [];
     if (p.alim_tarihi && p.alim_tarihi <= ay) neden.push(p.alim_tarihi < t ? `aydınlatma alımı ${tarih(p.alim_tarihi)} bekleniyordu` : `aydınlatma alımı ${tarih(p.alim_tarihi)}`);
     if (['İnce işler', 'Elektrik tesisatı'].includes(p.santiye_asamasi)) neden.push('şantiye ' + p.santiye_asamasi.toLowerCase() + ' aşamasında');
@@ -107,8 +108,8 @@ async function kmMasrafa(gun) {
 }
 
 // ---------- Bugün kartlarının sırası ve görünürlüğü (Düzenle) ----------
-const KARTLAR = [['plan', 'Bugünün planı'], ['gorev', 'Görevler'], ['yapilan', 'Bugün yapılanlar'], ['zaman', 'Zamanı gelen projeler'], ['gidilmeyen', 'Uzun süredir gidilmeyenler'], ['yarin', 'Yarın'], ['dogum', 'Doğum günleri'], ['uyari', 'Uyarılar'], ['rapor', 'Geçen haftanın raporu']];
-const kartAnahtar = h => { const t = (h || '').trim(); if (/^Bugünün planı/.test(t)) return 'plan'; if (/görevler$|^Görevler/i.test(t) && !/^Bugün/.test(t)) return 'gorev'; if (/^Bugün yapılanlar/.test(t)) return 'yapilan'; if (/^Zamanı gelen/.test(t)) return 'zaman'; if (/^Uzun süredir/.test(t)) return 'gidilmeyen'; if (/^Yarın/.test(t)) return 'yarin'; if (/^Doğum/.test(t)) return 'dogum'; if (/^Uyarılar/.test(t)) return 'uyari'; if (/haftanın raporu/.test(t)) return 'rapor'; return null; };
+const KARTLAR = [['plan', 'Bugünün planı'], ['gorev', 'Görevler'], ['yapilan', 'Bugün yapılanlar'], ['zaman', 'Zamanı gelen projeler'], ['gidilmeyen', 'Uzun süredir gidilmeyenler'], ['yarin', 'Yarın'], ['dogum', 'Doğum günleri'], ['uyari', 'Uyarılar'], ['rapor', 'Geçen haftanın raporu'], ['etiket', 'Seni etiketlediler']];
+const kartAnahtar = h => { const t = (h || '').trim(); if (/^Bugünün planı/.test(t)) return 'plan'; if (/görevler$|^Görevler/i.test(t) && !/^Bugün/.test(t)) return 'gorev'; if (/^Bugün yapılanlar/.test(t)) return 'yapilan'; if (/^Zamanı gelen/.test(t)) return 'zaman'; if (/^Uzun süredir/.test(t)) return 'gidilmeyen'; if (/^Yarın/.test(t)) return 'yarin'; if (/^Doğum/.test(t)) return 'dogum'; if (/^Uyarılar/.test(t)) return 'uyari'; if (/haftanın raporu/.test(t)) return 'rapor'; if (/^Seni etiketlediler/.test(t)) return 'etiket'; return null; };
 const kartAyar = () => ({ sira: [], gizli: [], ...(ayar('bugun_kartlar') || {}) });
 function kartDuzeniUygula(el) {
   const a = kartAyar(), dash = el.querySelector('.dash'); if (!dash) return;
@@ -166,6 +167,7 @@ export function bugunView(el) {
     <div class="vh-act"><button class="btn ghost" data-kduzen title="Kartları sırala ve gizle">Düzenle</button><button class="btn ghost" data-yakin>Yakınımdakiler</button><button class="btn primary" data-yeni>Ziyaret kaydet</button></div></header>
     <div class="dash today-grid">
       ${raporKarti()}
+      ${etiketKarti()}
       <section class="card wide"><h2>Bugünün planı</h2>
         ${planli.length ? `<ol class="route">${sirali.map((x, i) => `<li><span class="rn">${i + 1}</span><span class="rt"><b>${x.z.saat ? esc(x.z.saat) + ' · ' : ''}${esc(firmaAd(x.z.firma_id) || 'Ziyaret')}</b><small>${esc([byId('kisiler', x.z.kisi_id)?.ad_soyad, x.z.amac, byId('projeler', x.z.proje_id)?.ad].filter(Boolean).join(' · '))}</small></span>
           <span class="ra"><a class="btn sm ghost" href="${directionsUrl(x.p[0], x.p[1])}" target="_blank" rel="noopener">Yol</a><button type="button" class="btn sm" data-yapildi="${x.z.id}">Yapıldı</button></span></li>`).join('')}</ol>

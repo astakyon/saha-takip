@@ -16,12 +16,13 @@ function ogeler() {
     { ad: 'Sesli not', alt: 'konuş, sonra firmaya bağla', t: 'gorevler', r: 'bugun', f: () => sesliNot() },
     { ad: 'Görev', alt: 'yapılacak iş, hatırlatma', t: 'gorevler', r: 'gorevler', f: async () => (await import('./views/ziyaret.js')).gorevForm({}) },
     { ad: 'Kartvizit', alt: 'fotoğrafla kişi ekle', t: 'kisiler', r: 'kisiler', f: async () => (await import('./views/firmalar.js')).kartvizittenKisi() },
+    { ad: 'Ürün kodu oku', alt: 'etiket, barkod → stok ve fiyat', t: 'urunler', oku: true, r: 'urunler', f: async () => (await import('./barkod.js')).kodOku() },
     { ad: 'Kişi', alt: 'elle', t: 'kisiler', r: 'kisiler', f: async () => (await import('./views/firmalar.js')).kisiDetay(null, {}) },
     { ad: 'Proje', alt: 'yeni proje', t: 'projeler', r: 'projeler', f: async () => (await import('./views/projeler.js')).yeniProje({}) },
     { ad: 'Firma', alt: 'yeni firma', t: 'firmalar', r: 'firmalar', f: async () => (await import('./views/firmalar.js')).yeniFirma({}) },
     { ad: 'Teklif', alt: 'yeni teklif', t: 'teklifler', r: 'teklifler', f: async () => (await import('./views/teklif.js')).teklifForm({}) },
     { ad: 'Masraf', alt: 'yakıt, yemek, km', t: 'masraflar', r: 'masraflar', f: async () => (await import('./views/kayitlar.js')).masrafForm({}) },
-  ].filter(o => yazabilir(o.t) && gorunur(o.r));
+  ].filter(o => (o.oku ? !!izin(o.t) : yazabilir(o.t)) && gorunur(o.r));
 }
 
 export function hizliKur() {

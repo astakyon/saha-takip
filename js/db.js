@@ -2,7 +2,7 @@
 export const TABLES = {
   firmalar: ['id','ad','tipler','il','ilce','belde','osb','bolge_id','adres','lat','lng','konum_yaklasik','telefon','eposta','web','vergi_no','segment','sektor','key_account','notlar','fotolar','google_place_id','google_url'],
   kisiler: ['id','firma_id','ad_soyad','unvan','telefon','eposta','rol','kartvizit_on','kartvizit_arka','dogum_gunu','notlar'],
-  projeler: ['id','ad','durum','durum_alt','kritik','takip_yili','hedef_listesi','baska_bolge','il','ilce','belde','bolge_id','osb','lokasyon','adres','lat','lng','konum_yaklasik','icerik','kanal','bayi_id','takipci','takipci_tel','calisildi','tutar_usd','olasilik','beklenen_tarih','teklif_no','crm_kodu','urun_gruplari','sektor','alt_sektor','yeni_refit','yatirimci_id','projeci_id','danisman_id','gemut_id','emut_id','alici_id','ilgili_kisi_id','ziyaret_edilecek','sorulacak','notlar','fotolar','siparis_tutari_usd','siparis_tarihi','bizim_teklif_usd','bizim_urun','rakip_marka','rakip_urun','rakip_birim_fiyat','rakip_miktar','rakip_toplam_usd','kayip_nedeni','kayip_aciklama','google_place_id','google_url','santiye_asamasi','alim_tarihi','referans'],
+  projeler: ['id','ad','durum','durum_alt','kritik','takip_yili','hedef_listesi','baska_bolge','il','ilce','belde','bolge_id','osb','lokasyon','adres','lat','lng','konum_yaklasik','icerik','kanal','bayi_id','takipci','takipci_tel','calisildi','tutar_usd','olasilik','beklenen_tarih','teklif_no','crm_kodu','urun_gruplari','sektor','alt_sektor','yeni_refit','yatirimci_id','projeci_id','danisman_id','gemut_id','emut_id','alici_id','ilgili_kisi_id','ziyaret_edilecek','sorulacak','notlar','fotolar','siparis_tutari_usd','siparis_tarihi','bizim_teklif_usd','bizim_urun','rakip_marka','rakip_urun','rakip_birim_fiyat','rakip_miktar','rakip_toplam_usd','kayip_nedeni','kayip_aciklama','google_place_id','google_url','santiye_asamasi','alim_tarihi','referans','aday','aday_kaynak','ihale_tarihi'],
   proje_gecmis: ['id','proje_id','tarih','eski_durum','yeni_durum','notlar'],
   ziyaretler: ['id','tarih','saat','durum','firma_id','kisi_id','proje_id','amac','notlar','sonuc_tipi','sonuc','lat','lng','fotolar'],
   gorevler: ['id','baslik','son_tarih','oncelik','durum','firma_id','proje_id','kisi_id','notlar','atanan','tamamlayan'],
@@ -20,8 +20,9 @@ export const TABLES = {
   ayarlar: ['id','anahtar','deger'],
   tahsilatlar: ['id','firma_id','cari','belge_no','tarih','vade','tutar','para_birimi','odenen','durum','odeme_tarihi','notlar'],
   belgeler: ['id','proje_id','firma_id','ad','yol','tur','boyut','notlar','kategori'],
+  yorumlar: ['id','tablo','kayit_id','metin','yazan','yazan_ad','etiketler','created_at'],
 };
-const ARRAYS = new Set(['tipler','fotolar','urun_gruplari']);
+const ARRAYS = new Set(['tipler','fotolar','urun_gruplari','etiketler']);
 
 export const S = Object.fromEntries(Object.keys(TABLES).map(t => [t, []]));
 export const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
@@ -224,7 +225,7 @@ class SupaAdapter {
     return full;
   }
   yazamaz(t, row) {
-    if (this.yetki?.ben_sahip !== false || t === 'ayarlar' || this.yetki.yetkiler?.[t] === 'yaz') return false;
+    if (this.yetki?.ben_sahip !== false || t === 'ayarlar' || t === 'yorumlar' || this.yetki.yetkiler?.[t] === 'yaz') return false;
     // kendisine atanan görevi güncelleyebilir
     if (t === 'gorevler' && row?.atanan && row.atanan.toLowerCase() === (this.user()?.email || '').toLowerCase() && S.gorevler.some(g => g.id === row.id)) return false;
     return true;

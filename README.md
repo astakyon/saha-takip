@@ -32,6 +32,18 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 23)
+
+**Supabase'de bir kez:** SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 12: yorumlar tablosu, etiketlenecek kişi listesi, aday proje alanları). Etiketlenen kişiye anlık bildirim için `bildir` Edge Function'ını güncel `supabase/functions/bildir/index.ts` ile yeniden yayınla (Edge Functions → bildir → Code → yapıştır → Deploy).
+
+- **Yorumlar ve etiketleme:** Proje kartında “Yorumlar” sekmesi, firma kartında Yorumlar bölümü. Ekipten kişileri seçerek etiketle; etiketlenen kişi Bugün ekranında “Seni etiketlediler” kartını ve (kuruluysa) bildirim görür. Kaydı görebilen herkes yorum yazabilir, yorumu yazanı ya da veri sahibi siler.
+- **Aday projeler (Projeler → Adaylar):** EKAP ihale ilanları, inşaat ruhsatları, duyumlar elle ya da Excel'den eklenir (sütunlar ilk yüklemede sorulur, aynı adlı olanlar atlanır). Adaylar ana listede, haritada ve raporlarda görünmez; “Takibe al” ile projeye dönüşür.
+- **Kart / tablo görünümü ve sütunlar (Projeler):** Tablo, Kart ve Satış hunisi arasında geçiş; “Sütunlar” ile tabloda görünecek sütunları seç (olasılık, beklenen tarih, şantiye aşaması, son güncelleme de eklenebilir); sütun başlığına dokunarak sırala.
+- **Firma ilişki ağı (firma kartı):** Aynı projelerde yer alan firmalar şema ve listeyle; “Bir firmaya kimin üzerinden ulaşırım?” ile hedef firmaya giden en kısa tanıdık zinciri.
+- **Geçen yılla karşılaştırma (Panel):** Çeyrek ve firma bazında bu yıl / geçen yıl, geçen yılın aynı gününe kadar karşılaştırma, geçen yıl alıp bu yıl sipariş vermeyenler. Geçen yılın SAS sipariş raporunu Siparişler'den yükleyince dolar.
+- **Ürün kodu okuma (Stok ve fiyat → Kodu oku, + menüsü):** Android Chrome'da kamerayla canlı barkod / QR; iPhone'da etiketin fotoğrafından yazı okuma. Stok kodu ya da açıklama eşleşirse Drv stoğu, fiyat ve EAE ürün sayfası.
+- **Çevrimdışı harita:** Gezdiğin harita karoları kaydedilir (en fazla ~8000). Haritada bir sanayi bölgesinin balonundan “Çevrimdışı için indir” ile o OSB'nin karoları önceden indirilir (yakınlaştırma 13–16, en fazla ~300 karo; Google katmanı koşulları gereği indirilmez, Esri uydu ya da sokak haritası indirilir).
+
 ## Güncelleme notu (sürüm 22)
 
 **Supabase'de bir kez:** SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 11). Ekip üyelerinin son girişi bunun için gerekir. İki adımlı doğrulama için Authentication → Multi-Factor'da **TOTP** açık olmalı (varsayılan açık).

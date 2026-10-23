@@ -19,7 +19,7 @@ function markerIcon(kind, color, approx) {
   return L.divIcon({ className: 'mk-wrap', iconSize: [26, 34], iconAnchor: [13, 32], popupAnchor: [0, -28], tooltipAnchor: [0, -30],
     html: `<span class="mk mk-${kind} ${approx ? 'approx' : ''}" style="--c:${color}"><i></i></span>` });
 }
-const needsLoc = r => r.lat == null || r.konum_yaklasik;
+const needsLoc = r => !r.aday && (r.lat == null || r.konum_yaklasik);
 
 export async function mapView(el) {
   const f = F('harita', { il: 'Tümü', proje: true, yaklasik: false, firma: true, ziyaret: false, bolge: true, yil: 'Tümü', durumlar: DURUMLAR.map(d => d.k), q: '', uydu: true });
@@ -51,6 +51,7 @@ export async function mapView(el) {
       <label class="chk"><input type="checkbox" data-layer="bolge" ${f.bolge ? 'checked' : ''}> <span>Sanayi bölgeleri</span></label>
       <label class="chk"><input type="checkbox" data-layer="isi" ${f.isi ? 'checked' : ''}> <span>Ziyaret yoğunluğu (son 90 gün)</span></label></div>
       <div class="isi-lejant" data-isilej ${f.isi ? '' : 'hidden'}><span style="--c:#B91C1C">hiç</span><span style="--c:#EA580C">1–2</span><span style="--c:#CA8A04">3–5</span><span style="--c:#15803D">6+</span> ziyaret (bölge) · firmalar: son ziyaret 20 / 45 / 90 gün</div>
+      <p class="hint karo-bilgi" data-karo></p>
       <div class="lrow"><label>Takip yılı <select data-yil>${['Tümü', 2026, 2027].map(y => `<option ${f.yil == y ? 'selected' : ''}>${y}</option>`).join('')}</select></label></div>
       <div class="legend">${DURUMLAR.map(d => `<label class="lg"><input type="checkbox" data-durum="${d.k}" ${f.durumlar.includes(d.k) ? 'checked' : ''}><span class="dot" style="--c:${d.c}"></span>${d.k}</label>`).join('')}</div>
       <p class="hint">Yakınlaştırınca proje adları raptiyelerin üstünde görünür. Yaklaşık konumlu projeler (ilçe veya OSB merkezine yerleştirilmiş olanlar) varsayılan olarak gizli; “Konum ata” ile tek tek yerleştir.</p>
@@ -241,6 +242,14 @@ export async function mapView(el) {
     return { n };
   }
   const sonZiyaretGun = id => { const t = S.ziyaretler.filter(z => z.firma_id === id && (z.durum || 'Yapıldı') === 'Yapıldı').map(z => z.tarih).sort().pop(); return t ? Math.round((Date.now() - new Date(t)) / 864e5) : null; };
+  const aktifAltlik = () => el.querySelector('[data-altlik]')?.value || 'osm';
+  async function updKaro() {
+    const kutu = el.querySelector('[data-karo]'); if (!kutu) return;
+    const { karoSay, karoTemizle } = await import('../karo.js'); const n = await karoSay();
+    kutu.innerHTML = n ? `Çevrimdışı: ${n} harita karosu kayıtlı. <button type="button" class="linkbtn" data-karosil>Temizle</button>` : 'Çevrimdışı kullanım: gezdiğin yerler kaydedilir; bölge balonundan “Çevrimdışı için indir” ile OSB\'yi önceden indirebilirsin.';
+    kutu.querySelector('[data-karosil]')?.addEventListener('click', async () => { await karoTemizle(); updKaro(); });
+  }
+  updKaro();
   function drawRegions() {
     const lej = el.querySelector('[data-isilej]'); if (lej) lej.hidden = !f.isi;
     regionLayer.clearLayers();
@@ -263,7 +272,7 @@ export async function mapView(el) {
     const ilOk = r => f.il === 'Tümü' || r.il === f.il;
     let n = 0; const pts = [];
     if (f.proje || f.yaklasik) for (const p of S.projeler) {
-      if (p.lat == null || !ilOk(p) || !f.durumlar.includes(p.durum) || (f.yil !== 'Tümü' && p.takip_yili != f.yil)) continue;
+      if (p.aday || p.lat == null || !ilOk(p) || !f.durumlar.includes(p.durum) || (f.yil !== 'Tümü' && p.takip_yili != f.yil)) continue;
       if (p.konum_yaklasik ? !f.yaklasik : !f.proje) continue;
       if (!match(f.q, p.ad, p.lokasyon, p.osb, p.belde, firmaAd(p.emut_id), firmaAd(p.gemut_id), p.notlar)) continue;
       const m = L.marker([p.lat, p.lng], { icon: markerIcon('p', durumRenk(p.durum), p.konum_yaklasik), title: p.ad, keyboard: true, draggable: moveOn, autoPan: true });
@@ -356,6 +365,14 @@ export async function mapView(el) {
       <div class="pp-act"><a class="btn sm" href="#/bolgeler">Bölgeler</a><button type="button" class="btn sm ghost" data-ed>Düzenle</button><button type="button" class="btn sm ghost" data-redraw>Sınırı yeniden çiz</button></div>`;
     div.querySelector('[data-ed]').onclick = () => { map.closePopup(); bolgeForm(b, () => { draw(); drawRegions(); }); };
     div.querySelector('[data-redraw]').onclick = () => { map.closePopup(); startDraw(b); };
+    div.querySelector('.pp-act').insertAdjacentHTML('beforeend', '<button type="button" class="btn sm ghost" data-cevrim>Çevrimdışı için indir</button>');
+    div.querySelector('[data-cevrim]').onclick = async e => {
+      const k = await import('../karo.js'), kutu = k.bolgeKutusu(b); if (!kutu) return toast('Bu bölgenin sınırı yok.', 'err');
+      const alt = String(aktifAltlik()).startsWith('google') || aktifAltlik() === 'esri' ? 'esri' : 'osm';
+      const btn = e.currentTarget; btn.disabled = true;
+      try { const r = await k.karoIndir(kutu, alt, (i, n) => { btn.textContent = `İndiriliyor ${i}/${n}`; }); btn.textContent = 'İndirildi ✓'; toast(`${b.ad}: ${r.ok} harita karosu kaydedildi (${alt === 'esri' ? 'Esri uydu' : 'sokak haritası'}).${r.kirpildi ? ' Alan büyük olduğu için en yakın görünüm indirilmedi.' : ''} İnternet yokken bu bölge haritada görünür.`); updKaro(); }
+      catch (err) { btn.disabled = false; btn.textContent = 'Çevrimdışı için indir'; toast(err.message, 'err'); }
+    };
     return div;
   }
 

@@ -4,7 +4,7 @@
 import { S, TABLES, pick } from './db.js';
 import { fold } from './ui.js';
 
-export const SIRA = ['ayarlar', 'bolgeler', 'firmalar', 'kisiler', 'projeler', 'proje_gecmis', 'ziyaretler', 'gorevler', 'urunler', 'urun_aileleri', 'stok_gecmis', 'rakip_fiyatlar', 'siparisler', 'hedefler', 'teklifler', 'numuneler', 'servis_kayitlari', 'masraflar', 'tahsilatlar', 'belgeler'];
+export const SIRA = ['ayarlar', 'bolgeler', 'firmalar', 'kisiler', 'projeler', 'proje_gecmis', 'ziyaretler', 'gorevler', 'urunler', 'urun_aileleri', 'stok_gecmis', 'rakip_fiyatlar', 'siparisler', 'hedefler', 'teklifler', 'numuneler', 'servis_kayitlari', 'masraflar', 'tahsilatlar', 'belgeler', 'yorumlar'];
 const FK = {
   firmalar: ['bolge_id'], kisiler: ['firma_id'],
   projeler: ['bayi_id', 'yatirimci_id', 'projeci_id', 'danisman_id', 'gemut_id', 'emut_id', 'alici_id', 'ilgili_kisi_id', 'bolge_id'],

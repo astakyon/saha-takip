@@ -11,6 +11,7 @@ import { renderForm, bindForm, readForm } from '../forms.js';
 import { googleBul, aramaMetni } from '../google.js';
 import { backToList } from '../main.js';
 import { ziyaretForm, gorevForm } from './ziyaret.js';
+import { ayar, ayarYaz } from '../ayar.js';
 
 // Proje formu: yeni projede yalnızca gerekli alanlar açık; ayrıntılar açılır bölümlerde
 const yeniMi = o => !!o._new;
@@ -91,7 +92,7 @@ const ROLLER = [['yatirimci_id', 'Yatırımcı'], ['projeci_id', 'Projeci'], ['d
 export const projeRolleri = (p, firmaId) => ROLLER.filter(([k]) => p[k] === firmaId).map(r => r[1]);
 
 function filtered(f) {
-  return S.projeler.filter(p =>
+  return S.projeler.filter(p => !p.aday &&
     (f.yil === 'Tümü' || String(p.takip_yili) === String(f.yil)) &&
     (!f.durumlar.length || f.durumlar.includes(p.durum)) &&
     (f.il === 'Tümü' || p.il === f.il) &&
@@ -109,6 +110,57 @@ const SORTS = {
   'Ada göre': (a, b) => a.ad.localeCompare(b.ad, 'tr'),
   'Beklenen tarih': (a, b) => (a.beklenen_tarih || '9').localeCompare(b.beklenen_tarih || '9'),
 };
+// ---------- Tablo sütunları (Sütunlar düğmesiyle seçilir, başlığa dokununca sıralanır) ----------
+const SUTUNLAR = [
+  { k: 'sip', l: 'Sipariş', cls: 'c-sip r num', td: p => { const st = siparisToplam(p); return st ? usd(st) : '<span class="muted">—</span>'; }, v: p => siparisToplam(p) || 0 },
+  { k: 'ad', l: 'Proje', cls: 'c-ad', sabit: true, td: p => `<b>${esc(p.ad)}</b>${p.kritik ? ' <em class="flag">Kritik</em>' : ''}${p.hedef_listesi ? ' <em class="flag soft">Hedef</em>' : ''}${p.lat == null || p.konum_yaklasik ? ' <em class="flag gray">Konum bekliyor</em>' : ''}${p.notlar ? `<small>${esc(p.notlar.slice(0, 80))}</small>` : ''}`, v: p => p.ad },
+  { k: 'yer', l: 'Yer', td: p => esc([p.belde, p.ilce, p.il].filter(Boolean).join(', ') || p.lokasyon || '—'), v: p => [p.il, p.ilce].join(' ') },
+  { k: 'osb', l: 'Bölge / OSB', td: p => esc(p.osb || '—'), v: p => p.osb || '' },
+  { k: 'yatirimci_id', l: 'Yatırımcı', td: p => fa(p.yatirimci_id), v: p => firmaAd(p.yatirimci_id) || '' },
+  { k: 'projeci_id', l: 'Projeci', td: p => fa(p.projeci_id), v: p => firmaAd(p.projeci_id) || '' },
+  { k: 'danisman_id', l: 'Danışman', td: p => fa(p.danisman_id), v: p => firmaAd(p.danisman_id) || '' },
+  { k: 'gemut_id', l: 'Gemüt', td: p => fa(p.gemut_id), v: p => firmaAd(p.gemut_id) || '' },
+  { k: 'emut_id', l: 'Emüt', td: p => fa(p.emut_id), v: p => firmaAd(p.emut_id) || '' },
+  { k: 'alici_id', l: 'Malzeme alıcısı', td: p => fa(p.alici_id), v: p => firmaAd(p.alici_id) || '' },
+  { k: 'kanal', l: 'Kanal', td: p => p.kanal === 'Direkt' ? 'Direkt' : fa(p.bayi_id), v: p => p.kanal === 'Direkt' ? 'Direkt' : firmaAd(p.bayi_id) || '' },
+  { k: 'tutar', l: 'Tutar', cls: 'r num', td: p => usd(p.tutar_usd), v: p => +p.tutar_usd || 0 },
+  { k: 'olasilik', l: 'Olasılık', cls: 'r num', varsayilanKapali: true, td: p => '%' + olasilik(p), v: p => olasilik(p) },
+  { k: 'beklenen', l: 'Beklenen tarih', varsayilanKapali: true, td: p => p.beklenen_tarih ? tarih(p.beklenen_tarih) : '<span class="muted">—</span>', v: p => p.beklenen_tarih || '9' },
+  { k: 'santiye', l: 'Şantiye aşaması', varsayilanKapali: true, td: p => esc(p.santiye_asamasi || '—'), v: p => p.santiye_asamasi || '' },
+  { k: 'guncel', l: 'Son güncelleme', varsayilanKapali: true, td: p => p.updated_at ? tarih(p.updated_at.slice(0, 10)) : '—', v: p => p.updated_at || '' },
+  { k: 'yil', l: 'Yıl', td: p => p.takip_yili || '—', v: p => p.takip_yili || 0 },
+  { k: 'kayip', l: 'Kayıp / rakip', td: p => p.durum === 'Kayıp' ? esc([p.rakip_marka, p.kayip_nedeni].filter(Boolean).join(' · ') || '—') : '<span class="muted">—</span>', v: p => p.rakip_marka || '' },
+];
+const sutunAyar = () => { const a = ayar('proje_sutunlar'); return Array.isArray(a) ? a : null; };
+function gorunenSutunlar() { const a = sutunAyar(); return SUTUNLAR.filter(c => c.sabit || (a ? a.includes(c.k) : !c.varsayilanKapali)); }
+function siralayici(f) {
+  if (!f.sk) return SORTS[f.sort] || SORTS['Duruma göre'];
+  const c = f.sk === 'durum' ? { v: p => DURUMLAR.findIndex(d => d.k === p.durum) } : SUTUNLAR.find(x => x.k === f.sk);
+  if (!c) return SORTS[f.sort];
+  const d = f.sd === -1 ? -1 : 1;
+  return (a, b) => { const x = c.v(a), y = c.v(b); return d * (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'tr')) || a.ad.localeCompare(b.ad, 'tr'); };
+}
+function sutunPaneli(sonra) {
+  const sec = new Set(gorunenSutunlar().map(c => c.k));
+  const p = openDrawer(`<header class="dh"><div><p class="muted">Projeler tablosu</p><h2 id="drawer-title">Sütunlar</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+    <div class="dbody form"><p class="hint">Tabloda görmek istediğin sütunları seç. Seçim her cihazda geçerli olur. Sıralamak için tablodaki sütun başlığına dokun; ikinci dokunuş tersine çevirir, üçüncü kapatır.</p>
+      <ul class="list sutun-l">${SUTUNLAR.map(c => `<li><label class="chk"><input type="checkbox" data-c="${c.k}" ${sec.has(c.k) ? 'checked' : ''} ${c.sabit ? 'disabled' : ''}> <span>${c.l}${c.sabit ? ' <small class="muted">(her zaman)</small>' : ''}</span></label></li>`).join('')}</ul>
+      <div class="dfoot sticky"><button type="button" class="btn ghost" data-vars>Varsayılan</button><button type="button" class="btn primary" data-ok>Uygula</button></div></div>`);
+  p.querySelector('[data-vars]').onclick = async () => { await ayarYaz('proje_sutunlar', null); closeDrawer(); sonra(); };
+  p.querySelector('[data-ok]').onclick = async () => { await ayarYaz('proje_sutunlar', [...p.querySelectorAll('[data-c]:checked')].map(i => i.dataset.c)); closeDrawer(); sonra(); };
+}
+// Kart görünümü: telefonda ve hızlı göz atmada daha rahat
+function kartlar(kutu, list, daha) {
+  kutu.classList.add('is-kart');
+  kutu.innerHTML = list.length ? `<ul class="p-kartlar">${list.map(p => { const st = siparisToplam(p); return `<li><a href="#/proje/${p.id}" class="p-kart" style="--c:${durumRenk(p.durum)}">
+      <span class="pk-ust">${pill(p.durum)}${p.kritik ? '<em class="flag">Kritik</em>' : ''}${p.hedef_listesi ? '<em class="flag soft">Hedef</em>' : ''}</span>
+      <b>${esc(p.ad)}</b>
+      <small class="muted">${esc([p.osb, p.ilce || p.il].filter(Boolean).join(' · ') || '—')}</small>
+      <span class="pk-f">${esc([firmaAd(p.emut_id) && 'Emüt: ' + firmaAd(p.emut_id), firmaAd(p.gemut_id) && 'Gemüt: ' + firmaAd(p.gemut_id), p.kanal === 'Direkt' ? 'Direkt' : firmaAd(p.bayi_id) && 'Bayi: ' + firmaAd(p.bayi_id)].filter(Boolean).join(' · '))}</span>
+      <span class="pk-alt"><span>${usd(p.tutar_usd)}${st ? ` · sipariş ${usd(st)}` : ''}</span><span class="muted">${p.beklenen_tarih ? 'beklenen ' + tarih(p.beklenen_tarih) : p.takip_yili || ''}</span></span></a></li>`; }).join('')}</ul>${daha ? '<div class="daha"><button type="button" class="btn" data-kdaha>Daha fazla göster</button></div>' : ''}`
+    : '<div class="empty"><p>Bu filtrelerle eşleşen proje yok.</p></div>';
+  kutu.querySelector('[data-kdaha]')?.addEventListener('click', daha);
+}
 const fa = id => id ? `<a href="#/firma/${id}" class="flink">${esc(firmaAd(id))}</a>` : '<span class="muted">—</span>';
 
 export function projelerView(el) {
@@ -119,7 +171,7 @@ export function projelerView(el) {
   const rakipler = [...new Set(S.projeler.map(p => p.rakip_marka).filter(Boolean))].sort();
   el.innerHTML = `
   <header class="vh"><div><h1>Projeler</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="liste" class="${f.gor !== 'huni' ? 'on' : ''}">Liste</button><button type="button" data-gor="huni" class="${f.gor === 'huni' ? 'on' : ''}">Satış hunisi</button></div><button class="btn ghost" data-toplu aria-pressed="false">Toplu düzelt</button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Yeni proje</button></div></header>
+    <div class="vh-act"><div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="liste" class="${!['huni', 'kart'].includes(f.gor) ? 'on' : ''}">Tablo</button><button type="button" data-gor="kart" class="${f.gor === 'kart' ? 'on' : ''}">Kart</button><button type="button" data-gor="huni" class="${f.gor === 'huni' ? 'on' : ''}">Satış hunisi</button></div><button class="btn ghost" data-sutun aria-haspopup="dialog" ${['huni', 'kart'].includes(f.gor) ? 'hidden' : ''}>Sütunlar</button><button class="btn ghost" data-toplu aria-pressed="false">Toplu düzelt</button><button class="btn ghost" data-adaylar>Adaylar <i data-adaysay></i></button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Yeni proje</button></div></header>
   <div class="filters">
     <input type="search" data-q placeholder="Proje, firma (Emüt, Gemüt…), OSB, not ara" value="${esc(f.q)}" aria-label="Projelerde ara">
     <div class="seg" role="group" aria-label="Takip yılı">${['Tümü', '2026', '2027'].map(y => `<button type="button" data-yil="${y}" class="${String(f.yil) === y ? 'on' : ''}">${y === 'Tümü' ? 'Tüm projeler' : y + ' listesi'}</button>`).join('')}</div>
@@ -141,29 +193,27 @@ export function projelerView(el) {
   let goster = 80;   // uzun listede ilk 80 satır, sonra “daha fazla”
   let secMod = false; const secili = new Set();   // toplu düzeltme
   const draw = () => {
-    const base = S.projeler.filter(p => f.yil === 'Tümü' || String(p.takip_yili) === String(f.yil));
+    const base = S.projeler.filter(p => !p.aday && (f.yil === 'Tümü' || String(p.takip_yili) === String(f.yil)));
+    const as = el.querySelector('[data-adaysay]'); if (as) as.textContent = S.projeler.filter(p => p.aday).length || '';
     DURUMLAR.forEach(d => { const c = el.querySelector(`[data-cnt="${d.k}"]`); if (c) c.textContent = base.filter(p => p.durum === d.k).length || ''; });
-    const list = filtered(f).sort(SORTS[f.sort]);
+    const list = filtered(f).sort(siralayici(f));
     const acik = list.filter(p => ACIK.includes(p.durum));
     const sipT = list.reduce((s, p) => s + (siparisToplam(p) || 0), 0);
     el.querySelector('[data-sum]').innerHTML = `${list.length} proje · açık potansiyel <b>${usd(acik.reduce((s, p) => s + (+p.tutar_usd || 0), 0))}</b> · ağırlıklı <b>${usd(acik.reduce((s, p) => s + (+p.tutar_usd || 0) * olasilik(p) / 100, 0))}</b> · sipariş <b>${usd(sipT)}</b>`;
+    el.querySelector('[data-rows]').classList.remove('is-kart');
     if (f.gor === 'huni') return huni(el.querySelector('[data-rows]'), list, draw);
-    el.querySelector('[data-rows]').innerHTML = list.length ? `<table class="ptable">
-      <thead><tr><th class="c-dur">${secMod ? `<label class="sec-k"><input type="checkbox" data-hepsi ${list.length && list.every(p => secili.has(p.id)) ? 'checked' : ''} aria-label="Listedeki tüm projeleri seç"></label>` : ''}Durum</th><th class="c-sip r">Sipariş</th><th class="c-ad">Proje</th><th>Yer</th><th>Bölge / OSB</th><th>Yatırımcı</th><th>Projeci</th><th>Danışman</th><th>Gemüt</th><th>Emüt</th><th>Malzeme alıcısı</th><th>Kanal</th><th class="r">Tutar</th><th>Yıl</th><th>Kayıp / rakip</th></tr></thead>
-      <tbody>${list.slice(0, goster).map(p => { const st = siparisToplam(p); return `<tr data-pid="${p.id}" style="--c:${durumRenk(p.durum)}" tabindex="0">
-        <td class="c-dur" data-l="Durum">${secMod ? `<label class="sec-k"><input type="checkbox" data-sec="${p.id}" ${secili.has(p.id) ? 'checked' : ''} aria-label="${esc(p.ad)} seç"></label>` : ''}<select class="dsel" data-dsel="${p.id}" aria-label="${esc(p.ad)} durumu" style="--c:${durumRenk(p.durum)}">${DURUMLAR.map(d => `<option ${d.k === p.durum ? 'selected' : ''}>${d.k}</option>`).join('')}</select></td>
-        <td class="c-sip r num" data-l="Sipariş">${st ? usd(st) : '<span class="muted">—</span>'}</td>
-        <td class="c-ad" data-l="Proje"><b>${esc(p.ad)}</b>${p.kritik ? ' <em class="flag">Kritik</em>' : ''}${p.hedef_listesi ? ' <em class="flag soft">Hedef</em>' : ''}${p.lat == null || p.konum_yaklasik ? ' <em class="flag gray">Konum bekliyor</em>' : ''}${p.notlar ? `<small>${esc(p.notlar.slice(0, 80))}</small>` : ''}</td>
-        <td data-l="Yer">${esc([p.belde, p.ilce, p.il].filter(Boolean).join(', ') || p.lokasyon || '—')}</td>
-        <td data-l="Bölge / OSB">${esc(p.osb || '—')}</td>
-        <td data-l="Yatırımcı">${fa(p.yatirimci_id)}</td><td data-l="Projeci">${fa(p.projeci_id)}</td><td data-l="Danışman">${fa(p.danisman_id)}</td>
-        <td data-l="Gemüt">${fa(p.gemut_id)}</td><td data-l="Emüt">${fa(p.emut_id)}</td><td data-l="Malzeme alıcısı">${fa(p.alici_id)}</td>
-        <td data-l="Kanal">${p.kanal === 'Direkt' ? 'Direkt' : fa(p.bayi_id)}</td>
-        <td class="r num" data-l="Tutar">${usd(p.tutar_usd)}</td><td data-l="Yıl">${p.takip_yili || '—'}</td>
-        <td data-l="Kayıp / rakip">${p.durum === 'Kayıp' ? esc([p.rakip_marka, p.kayip_nedeni].filter(Boolean).join(' · ') || '—') : '<span class="muted">—</span>'}</td></tr>`; }).join('')}</tbody></table>${list.length > goster ? `<div class="daha"><button type="button" class="btn" data-daha>${Math.min(80, list.length - goster)} proje daha göster</button><span class="muted">${goster} / ${list.length} gösteriliyor</span></div>` : ''}`
+    if (f.gor === 'kart' && !secMod) return kartlar(el.querySelector('[data-rows]'), list.slice(0, goster), list.length > goster ? () => { goster += 80; draw(); } : null);
+    const gor = gorunenSutunlar();
+    const okIsaret = k => f.sk === k ? (f.sd === -1 ? ' ↓' : ' ↑') : '';
+    el.querySelector('[data-rows]').innerHTML = list.length ? `<table class="ptable ${gor.some(c => c.k === 'sip') ? '' : 'no-sip'}">
+      <thead><tr><th class="c-dur">${secMod ? `<label class="sec-k"><input type="checkbox" data-hepsi ${list.length && list.every(p => secili.has(p.id)) ? 'checked' : ''} aria-label="Listedeki tüm projeleri seç"></label>` : ''}<button type="button" class="th-s" data-sk="durum">Durum${okIsaret('durum')}</button></th>${gor.map(c => `<th class="${c.cls || ''}"><button type="button" class="th-s" data-sk="${c.k}">${c.l}${okIsaret(c.k)}</button></th>`).join('')}</tr></thead>
+      <tbody>${list.slice(0, goster).map(p => `<tr data-pid="${p.id}" style="--c:${durumRenk(p.durum)}" tabindex="0">
+        <td class="c-dur" data-l="Durum">${secMod ? `<label class="sec-k"><input type="checkbox" data-sec="${p.id}" ${secili.has(p.id) ? 'checked' : ''} aria-label="${esc(p.ad)} seç"></label>` : ''}<select class="dsel" data-dsel="${p.id}" aria-label="${esc(p.ad)} durumu" style="--c:${durumRenk(p.durum)}">${DURUMLAR.map(d => `<option ${p.durum === d.k ? 'selected' : ''}>${d.k}</option>`).join('')}</select></td>
+        ${gor.map(c => `<td class="${c.cls || ''}" data-l="${c.l}">${c.td(p)}</td>`).join('')}</tr>`).join('')}</tbody></table>${list.length > goster ? `<div class="daha"><button type="button" class="btn" data-daha>${Math.min(80, list.length - goster)} proje daha göster</button> <span class="muted">${goster} / ${list.length}</span></div>` : ''}`
       : `<div class="empty"><p>Bu filtrelerle eşleşen proje yok.</p><button class="btn" data-reset2>Filtreleri temizle</button></div>`;
     const r2 = el.querySelector('[data-reset2]'); if (r2) r2.onclick = reset;
     el.querySelector('[data-daha]')?.addEventListener('click', () => { const y = window.scrollY; goster += 80; draw(); window.scrollTo(0, y); });
+    el.querySelectorAll('[data-sk]').forEach(b => b.onclick = e => { e.stopPropagation(); const k = b.dataset.sk; if (f.sk === k) { if (f.sd === -1) f.sk = null; else f.sd = -1; } else { f.sk = k; f.sd = 1; } saveFilters(); draw(); });
     const open = id => { location.hash = '#/proje/' + id; };
     el.querySelectorAll('tr[data-pid]').forEach(tr => {
       tr.onclick = e => { if (e.target.closest('select, a, label')) return; if (secMod) { const c = tr.querySelector('[data-sec]'); c.checked = !c.checked; c.dispatchEvent(new Event('change')); return; } open(tr.dataset.pid); };
@@ -230,14 +280,16 @@ export function projelerView(el) {
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelectorAll('[data-yil]').forEach(b => b.onclick = () => { f.yil = b.dataset.yil; saveFilters(); el.querySelectorAll('[data-yil]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
   el.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const d = b.dataset.d; f.durumlar = f.durumlar.includes(d) ? f.durumlar.filter(x => x !== d) : [...f.durumlar, d]; b.classList.toggle('on'); saveFilters(); draw(); });
-  el.querySelectorAll('[data-k]').forEach(s => s.onchange = () => { f[s.dataset.k] = s.value; saveFilters(); draw(); });
+  el.querySelectorAll('[data-k]').forEach(s => s.onchange = () => { f[s.dataset.k] = s.value; if (s.dataset.k === 'sort') f.sk = null; saveFilters(); draw(); });
   el.querySelectorAll('[data-b]').forEach(s => s.onchange = () => { f[s.dataset.b] = s.checked; saveFilters(); draw(); });
   el.querySelector('[data-reset]').onclick = reset;
-  el.querySelectorAll('[data-gor]').forEach(b => b.onclick = () => { f.gor = b.dataset.gor; saveFilters(); el.querySelectorAll('[data-gor]').forEach(x => x.classList.toggle('on', x === b)); el.classList.toggle('is-huni', f.gor === 'huni'); draw(); });
+  el.querySelectorAll('[data-gor]').forEach(b => b.onclick = () => { f.gor = b.dataset.gor; saveFilters(); el.querySelector('[data-sutun]').hidden = ['huni', 'kart'].includes(f.gor); el.querySelectorAll('[data-gor]').forEach(x => x.classList.toggle('on', x === b)); el.classList.toggle('is-huni', f.gor === 'huni'); draw(); });
   el.classList.toggle('is-huni', f.gor === 'huni');
   el.querySelector('[data-ft]').onclick = e => { const o = el.querySelector('.filters').classList.toggle('open'); e.target.setAttribute('aria-expanded', String(o)); };
   el.querySelector('[data-new]').onclick = () => yeniProje({});
-  el.querySelector('[data-exp]').onclick = () => exportProjeler(filtered(f).sort(SORTS[f.sort]));
+  el.querySelector('[data-sutun]').onclick = () => sutunPaneli(draw);
+  el.querySelector('[data-adaylar]').onclick = async () => (await import('../aday.js')).adaylarPaneli(() => draw());
+  el.querySelector('[data-exp]').onclick = () => exportProjeler(filtered(f).sort(siralayici(f)));
   draw();
 }
 
@@ -340,7 +392,7 @@ export function projeDetay(id, init) {
   const gec = S.proje_gecmis.filter(g => g.proje_id === p.id).sort((a, b) => b.tarih.localeCompare(a.tarih));
   const gor = S.gorevler.filter(g => g.proje_id === p.id);
   const tek = S.teklifler.filter(x => x.proje_id === p.id).sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
-  const sekme = ['bilgi', 'ziyaret', 'satis', 'belge', 'gecmis'].includes(init?.sekme) ? init.sekme : (projeSekme.id === p.id ? projeSekme.k : 'bilgi');
+  const sekme = ['bilgi', 'ziyaret', 'satis', 'belge', 'yorum', 'gecmis'].includes(init?.sekme) ? init.sekme : (projeSekme.id === p.id ? projeSekme.k : 'bilgi');
   const panel = openDrawer(`
     <header class="dh" style="--c:${durumRenk(p.durum)}"><div><p class="muted">${p._new ? 'Yeni proje' : 'Proje'}</p><h2 id="drawer-title">${esc(p.ad || 'Yeni proje')}</h2>
       ${p._new ? '' : `<div class="dh-meta">${pill(p.durum)}<span>${usd(p.tutar_usd)}</span><span>${esc([p.ilce, p.il].filter(Boolean).join(', '))}</span></div>`}</div>
@@ -350,11 +402,11 @@ export function projeDetay(id, init) {
       ${p.lat != null ? `<a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}">Yol tarifi</a>` : ''}
       <button class="btn sm ghost danger" data-a="sil">Sil</button></div>
       <div class="quick-durum" role="group" aria-label="Durumu hızlı değiştir">${DURUMLAR.map(d => `<button type="button" data-qd="${d.k}" class="${p.durum === d.k ? 'on' : ''}" style="--c:${d.c}">${d.k}</button>`).join('')}</div>
-      <div class="p-sekme" role="tablist" aria-label="Proje bölümleri">${[['bilgi', 'Bilgiler', ''], ['ziyaret', 'Ziyaret ve görev', ziy.length + gor.length], ['satis', 'Teklif ve sipariş', tek.length + sip.length], ['belge', 'Belgeler', belgeleri({ proje_id: p.id }).length], ['gecmis', 'Geçmiş', gec.length]].map(([k, t, n]) => `<button type="button" role="tab" data-psk="${k}" aria-selected="${k === sekme}" class="${k === sekme ? 'on' : ''}">${t}${n ? ` <i>${n}</i>` : ''}</button>`).join('')}</div>`}
+      <div class="p-sekme" role="tablist" aria-label="Proje bölümleri">${[['bilgi', 'Bilgiler', ''], ['ziyaret', 'Ziyaret ve görev', ziy.length + gor.length], ['satis', 'Teklif ve sipariş', tek.length + sip.length], ['belge', 'Belgeler', belgeleri({ proje_id: p.id }).length], ['yorum', 'Yorumlar', (S.yorumlar || []).filter(y => y.kayit_id === p.id).length], ['gecmis', 'Geçmiş', gec.length]].map(([k, t, n]) => `<button type="button" role="tab" data-psk="${k}" aria-selected="${k === sekme}" class="${k === sekme ? 'on' : ''}">${t}${n ? ` <i>${n}</i>` : ''}</button>`).join('')}</div>`}
     <form class="dbody form" novalidate>
       <div data-ps="bilgi" ${p._new || sekme === 'bilgi' ? '' : 'hidden'}>${renderForm(PROJE_FORM, p)}
       <div class="calc" data-calc hidden></div></div>
-      ${p._new ? '' : (() => { const r = related(ziy, sip, gec, gor, tek); return `<div data-ps="ziyaret" ${sekme === 'ziyaret' ? '' : 'hidden'}>${r.ziyaret}</div><div data-ps="satis" ${sekme === 'satis' ? '' : 'hidden'}>${r.satis}<section class="rel" data-oneri></section><section class="rel" data-sartname></section></div><div data-ps="belge" ${sekme === 'belge' ? '' : 'hidden'}><section class="rel" data-santiye></section><section class="rel" data-belgeler></section></div><div data-ps="gecmis" ${sekme === 'gecmis' ? '' : 'hidden'}>${r.gecmis}<section class="rel" data-gecmis></section></div>`; })()}
+      ${p._new ? '' : (() => { const r = related(ziy, sip, gec, gor, tek); return `<div data-ps="ziyaret" ${sekme === 'ziyaret' ? '' : 'hidden'}>${r.ziyaret}</div><div data-ps="satis" ${sekme === 'satis' ? '' : 'hidden'}>${r.satis}<section class="rel" data-oneri></section><section class="rel" data-sartname></section></div><div data-ps="belge" ${sekme === 'belge' ? '' : 'hidden'}><section class="rel" data-santiye></section><section class="rel" data-belgeler></section></div><div data-ps="yorum" ${sekme === 'yorum' ? '' : 'hidden'}><section class="rel" data-yorumlar></section></div><div data-ps="gecmis" ${sekme === 'gecmis' ? '' : 'hidden'}>${r.gecmis}<section class="rel" data-gecmis></section></div>`; })()}
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div>
     </form>`, { wide: true, onClose: () => backToList() });
   const form = panel.querySelector('form');
@@ -367,6 +419,7 @@ export function projeDetay(id, init) {
   });
   if (!p._new) import('../oneri.js').then(m => { m.oneriBolumu(panel.querySelector('[data-oneri]'), p); m.sartnameBolumu(panel.querySelector('[data-sartname]'), p); });
   if (!p._new) santiyeBolumu(panel.querySelector('[data-santiye]'), p);
+  if (!p._new) import('../yorum.js').then(m => m.yorumBolumu(panel.querySelector('[data-yorumlar]'), 'projeler', p));
   if (!p._new) { belgeBolumu(panel.querySelector('[data-belgeler]'), { proje_id: p.id }); kayitGecmisi(panel.querySelector('[data-gecmis]'), 'projeler', p.id); }
   const calc = (o, root) => {
     const box = root.querySelector('[data-calc]');

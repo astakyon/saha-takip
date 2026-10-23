@@ -26,6 +26,12 @@ async function onIsle(blob) {
   x.putImageData(d, 0, 0);
   return await new Promise(r => c.toBlob(r, 'image/png'));
 }
+// Genel metin okuma (ürün etiketi vb.)
+export async function metinOku(blob, ilerleme) {
+  const w = await hazirla(ilerleme);
+  const { data } = await w.recognize(await onIsle(blob));
+  return data.text || '';
+}
 export async function kartvizitOku(blob, ilerleme) {
   const w = await hazirla(ilerleme);
   const { data } = await w.recognize(await onIsle(blob));

@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 11)
+--  Saha Satış Takip — Supabase şeması (sürüm 12)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -489,3 +489,43 @@ revoke all on function public.ekip_son_giris() from public, anon;
 revoke all on function public.gorundum() from public, anon;
 grant execute on function public.ekip_son_giris() to authenticated;
 grant execute on function public.gorundum() to authenticated;
+
+-- ---------- Sürüm 12: yorumlar ve etiketleme, aday projeler (ihale / ruhsat) ----------
+-- Proje ve firma kartına yorum: kaydı görebilen herkes yazabilir; yorumu yalnızca yazanı ya da veri sahibi siler.
+create table if not exists public.yorumlar (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default public.veri_sahibi() references auth.users(id) on delete cascade,
+  tablo text not null check (tablo in ('projeler', 'firmalar')),
+  kayit_id uuid not null,
+  metin text not null,
+  yazan text not null default public.benim_epostam(),
+  yazan_ad text,
+  etiketler text[] not null default '{}',
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create index if not exists yorumlar_kayit_idx on public.yorumlar (kayit_id);
+create index if not exists yorumlar_owner_idx on public.yorumlar (owner);
+alter table public.yorumlar enable row level security;
+drop policy if exists "yorum_oku" on public.yorumlar;
+drop policy if exists "yorum_ekle" on public.yorumlar;
+drop policy if exists "yorum_degistir" on public.yorumlar;
+drop policy if exists "yorum_sil" on public.yorumlar;
+create policy "yorum_oku" on public.yorumlar for select to authenticated using (public.yetki(owner, tablo, 'oku'));
+create policy "yorum_ekle" on public.yorumlar for insert to authenticated with check (public.yetki(owner, tablo, 'oku') and lower(yazan) = public.benim_epostam());
+create policy "yorum_degistir" on public.yorumlar for update to authenticated using (lower(yazan) = public.benim_epostam()) with check (lower(yazan) = public.benim_epostam() and public.yetki(owner, tablo, 'oku'));
+create policy "yorum_sil" on public.yorumlar for delete to authenticated using (owner = auth.uid() or lower(yazan) = public.benim_epostam());
+drop trigger if exists touch on public.yorumlar;
+create trigger touch before update on public.yorumlar for each row execute function public.touch_updated_at();
+-- Etiketlenebilecek kişiler: veri sahibi ve aktif ekip üyeleri (yalnızca e-posta ve ad)
+create or replace function public.ekip_listesi() returns table (eposta text, ad text, sahip boolean)
+language sql stable security definer set search_path = public, auth as $f$
+  select lower(u.email), 'Veri sahibi', true from auth.users u where u.id = public.veri_sahibi()
+  union all
+  select lower(e.eposta), e.ad, false from public.ekip_uyeleri e where e.owner = public.veri_sahibi() and e.aktif
+$f$;
+revoke all on function public.ekip_listesi() from public, anon;
+grant execute on function public.ekip_listesi() to authenticated;
+-- Aday projeler: ihale ilanı ya da inşaat ruhsatından gelen, henüz takibe alınmamış projeler
+alter table public.projeler add column if not exists aday boolean default false;
+alter table public.projeler add column if not exists aday_kaynak text;
+alter table public.projeler add column if not exists ihale_tarihi date;

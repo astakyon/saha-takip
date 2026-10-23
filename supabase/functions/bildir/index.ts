@@ -1,4 +1,5 @@
-// Saha Takip: anlık bildirim (Web Push). Görev atanınca atanan kişiye, ekip üyesi görevi tamamlayınca veri sahibine bildirim gönderir.
+// Saha Takip: anlık bildirim (Web Push). Görev atanınca atanan kişiye, ekip üyesi görevi tamamlayınca veri sahibine,
+// bir yorumda etiketlenen kişilere bildirim gönderir.
 // Kurulum (bir kez):
 //   1) Uygulamada Ayarlar → Genel → Bildirimler → “Anahtar üret” ile iki anahtar al.
 //   2) Supabase paneli → Edge Functions → Secrets: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY ve VAPID_SUBJECT (ör. mailto:adresin@ornek.com) ekle.
@@ -29,7 +30,7 @@ Deno.serve(async (req) => {
   const user = ud?.user;
   if (!user) return json({ hata: 'Oturum bulunamadı.' }, 401);
   const ben = (user.email || '').toLowerCase();
-  const { olay, gorev_id } = await req.json().catch(() => ({} as Record<string, string>));
+  const { olay, gorev_id, yorum_id } = await req.json().catch(() => ({} as Record<string, string>));
 
   let alici: { tur: 'id' | 'eposta'; deger: string[] } | null = null;
   let mesaj = { baslik: 'Saha Takip', govde: '', hedef: '#/bugun', tag: '' };
@@ -37,6 +38,19 @@ Deno.serve(async (req) => {
   if (olay === 'deneme') {
     alici = { tur: 'id', deger: [user.id] };
     mesaj = { baslik: 'Saha Takip', govde: 'Deneme bildirimi: bu cihaza bildirim geliyor.', hedef: '#/bugun', tag: 'deneme' };
+  } else if (olay === 'yorum') {
+    const { data: y } = await admin.from('yorumlar').select('id, owner, tablo, kayit_id, metin, yazan, yazan_ad, etiketler').eq('id', yorum_id).maybeSingle();
+    if (!y) return json({ hata: 'Yorum bulunamadı.' }, 404);
+    if ((y.yazan || '').toLowerCase() !== ben) return json({ hata: 'Bu yorum için yetkin yok.' }, 403);
+    // Yalnızca aynı ekipteki kişiler (veri sahibi ve aktif üyeler) etiketlenebilir
+    const { data: uyeler } = await admin.from('ekip_uyeleri').select('eposta').eq('owner', y.owner).eq('aktif', true);
+    const { data: sahipU } = await admin.auth.admin.getUserById(y.owner);
+    const ekip = new Set([...(uyeler || []).map((u: { eposta: string }) => u.eposta.toLowerCase()), (sahipU?.user?.email || '').toLowerCase()]);
+    const kime = (y.etiketler || []).map((e: string) => e.toLowerCase()).filter((e: string) => ekip.has(e) && e !== ben);
+    if (!kime.length) return json({ gonderilen: 0, not: 'Etiketlenen ekip üyesi yok.' });
+    const { data: k } = await admin.from(y.tablo).select('ad').eq('id', y.kayit_id).maybeSingle();
+    alici = { tur: 'eposta', deger: kime };
+    mesaj = { baslik: `${y.yazan_ad || ben} seni etiketledi`, govde: (k?.ad ? k.ad + ': ' : '') + String(y.metin).slice(0, 160), hedef: (y.tablo === 'projeler' ? '#/proje/' : '#/firma/') + y.kayit_id, tag: 'yorum-' + y.id };
   } else {
     const { data: g } = await admin.from('gorevler').select('id, owner, baslik, son_tarih, atanan, durum').eq('id', gorev_id).maybeSingle();
     if (!g) return json({ hata: 'Görev bulunamadı.' }, 404);
