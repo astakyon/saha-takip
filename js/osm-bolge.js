@@ -2,12 +2,13 @@
 // Sorguda yalnızca bölgenin koordinat kutusu gönderilir; kişisel veri gitmez.
 import { S } from './db.js';
 import { app } from './state.js';
-import { esc, fold, toast, openDrawer, closeDrawer, num } from './ui.js';
+import { esc, fold, toast, openDrawer, closeDrawer, num, BOLGE_KUTU, ILLER } from './ui.js';
 import { ilBul, ilceBul } from './geo.js';
 
-const KUTU = '35.80,32.50,38.05,36.75'; // Adana, Mersin, Hatay, Osmaniye
+// Arama kutusu: firma profilindeki illerin sınırları (s,w,n,e)
+const kutu = () => `${BOLGE_KUTU.s},${BOLGE_KUTU.w},${BOLGE_KUTU.n},${BOLGE_KUTU.e}`;
 const AD = 'OSB|Organize|Sanayi Sitesi|Sanayi Bölgesi|Serbest Bölge|Küçük Sanayi|KSS|Sanayi Çarşısı|Teknopark';
-export const SORGU = `[out:json][timeout:90];(way["landuse"="industrial"]["name"~"${AD}",i](${KUTU});relation["landuse"="industrial"]["name"~"${AD}",i](${KUTU});way["place"="industrial"]["name"~"${AD}",i](${KUTU});relation["boundary"]["name"~"Organize Sanayi",i](${KUTU}););out geom;`;
+export const SORGU = () => `[out:json][timeout:90];(way["landuse"="industrial"]["name"~"${AD}",i](${kutu()});relation["landuse"="industrial"]["name"~"${AD}",i](${kutu()});way["place"="industrial"]["name"~"${AD}",i](${kutu()});relation["boundary"]["name"~"Organize Sanayi",i](${kutu()}););out geom;`;
 const SUNUCU = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 
 const anahtar = p => p.map(c => c[0].toFixed(6) + ',' + c[1].toFixed(6));
@@ -66,7 +67,7 @@ export function eslesen(ad) {
 export async function osbGetir() {
   let son;
   for (const u of SUNUCU) {
-    try { const r = await fetch(u, { method: 'POST', body: 'data=' + encodeURIComponent(SORGU), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }); if (r.ok) return overpassCevir(await r.json()); son = new Error('Sunucu yanıtı ' + r.status); }
+    try { const r = await fetch(u, { method: 'POST', body: 'data=' + encodeURIComponent(SORGU()), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }); if (r.ok) return overpassCevir(await r.json()); son = new Error('Sunucu yanıtı ' + r.status); }
     catch (e) { son = e; }
   }
   throw new Error('OpenStreetMap sunucusuna ulaşılamadı (' + (son?.message || '') + '). Biraz sonra tekrar dene.');
@@ -74,7 +75,7 @@ export async function osbGetir() {
 
 export async function osbPaneli(sonra) {
   const p = openDrawer(`<header class="dh"><div><p class="muted">OpenStreetMap</p><h2 id="drawer-title">Sanayi bölgelerini otomatik getir</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
-    <div class="dbody" data-govde><p class="hint">Adana, Mersin, Hatay ve Osmaniye'deki OSB, sanayi sitesi ve serbest bölge sınırları aranıyor…</p><div class="progress"><span style="width:30%"></span></div></div>`, { wide: true });
+    <div class="dbody" data-govde><p class="hint">${esc(ILLER.join(', '))} illerindeki OSB, sanayi sitesi ve serbest bölge sınırları aranıyor…</p><div class="progress"><span style="width:30%"></span></div></div>`, { wide: true });
   const g = p.querySelector('[data-govde]');
   let l;
   try { l = await osbGetir(); } catch (e) { g.innerHTML = `<p class="warn">${esc(e.message)}</p>`; return; }

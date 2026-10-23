@@ -149,10 +149,10 @@ export function iceAktarPaneli(sonra) {
       <details class="howto"><summary>Konumları Google'dan nasıl alırım?</summary>
         <p><b>Google Benim Haritalarım (My Maps):</b> haritayı aç → ⋮ menü → <i>KML/KMZ'ye aktar</i> → dosyayı burada seç. Klasörler ve çizdiğin alanlar (OSB sınırları) da gelir.</p>
         <p><b>Google Haritalar'da kaydettiğin yerler:</b> takeout.google.com → yalnızca <i>Haritalar (yerleriniz)</i> ve <i>Kaydedilenler</i>'i seç → indir. Zip içindeki <code>Kaydedilen Yerler.json</code> (Saved Places.json) ve listelerin <code>.csv</code> dosyalarını burada seç.</p>
-        <p><b>Tek tek yerler:</b> Google Haritalar'da yeri aç → <i>Paylaş → Bağlantıyı kopyala</i> → aşağıya yapıştır. Her satıra bir bağlantı; istersen başına adını yaz: <code>Drv Depo | https://…</code>. Telefondaki kısa bağlantılar (maps.app.goo.gl) koordinat içermez; onları tarayıcıda açıp adres çubuğundaki uzun bağlantıyı kopyala.</p>
+        <p><b>Tek tek yerler:</b> Google Haritalar'da yeri aç → <i>Paylaş → Bağlantıyı kopyala</i> → aşağıya yapıştır. Her satıra bir bağlantı; istersen başına adını yaz: <code>Yıldız Depo | https://…</code>. Telefondaki kısa bağlantılar (maps.app.goo.gl) koordinat içermez; onları tarayıcıda açıp adres çubuğundaki uzun bağlantıyı kopyala.</p>
       </details>
       <div class="btnrow"><button type="button" class="btn primary" data-file>Dosya seç (KML, KMZ, JSON, CSV)</button></div>
-      <div class="fld"><label for="imp-links">ya da Google Haritalar bağlantılarını yapıştır</label><textarea id="imp-links" rows="3" placeholder="Drv Depo | https://www.google.com/maps/place/…/@36.99,35.33,17z/…"></textarea>
+      <div class="fld"><label for="imp-links">ya da Google Haritalar bağlantılarını yapıştır</label><textarea id="imp-links" rows="3" placeholder="Yıldız Depo | https://www.google.com/maps/place/…/@36.99,35.33,17z/…"></textarea>
         <div class="btnrow"><button type="button" class="btn" data-links>Bağlantıları oku</button></div></div>
       <div data-prev></div>
     </div>`, { wide: true });

@@ -62,7 +62,7 @@ export function loginView(el, done) {
   const cfg = getConfig();
   const davet = ss.al('saha-davet');
   let cikis = ss.al('saha-cikis-mesaj'); ss.sil('saha-cikis-mesaj');
-  let mod = davet ? 'ilk' : 'sifre';
+  let mod = davet || ss.al('saha-yeni') ? 'ilk' : 'sifre';
   const son = ls.al(SON);
   const ciz = (mesaj = '') => {
     el.innerHTML = `<div class="login"><div class="login-card"><div class="brand"><span class="bulb big" aria-hidden="true"></span><h1>Saha Takip</h1></div>
@@ -94,7 +94,7 @@ export function loginView(el, done) {
       const eposta = await epostaBul(kim);
       await app.db.signIn(eposta, p);
       const hat = f.querySelector('[data-hatirla]').checked; ls.yaz(SON, hat ? kim : ''); ls.yaz(SON + '-yok', hat ? '' : '1');
-      ls.yaz('saha-son-etkinlik', String(Date.now())); ss.sil('saha-davet');
+      ls.yaz('saha-son-etkinlik', String(Date.now())); ss.sil('saha-davet'); ss.sil('saha-yeni');
       done();
     }); });
     el.querySelector('[data-unuttum]')?.addEventListener('click', () => { const kim = el.querySelector('#l-e').value.trim(); sifremiUnuttum(kim, m => ciz(m)); });
@@ -112,7 +112,7 @@ export function loginView(el, done) {
       if (!sifreUygun(p)) throw new Error('Şifre en az 8 karakter olmalı, harf ve rakam içermeli.');
       if (p !== p2) throw new Error('İki şifre aynı değil.');
       const r = await app.db.signUp(eposta, p);
-      ls.yaz(SON, eposta); ss.sil('saha-davet');
+      ls.yaz(SON, eposta); ss.sil('saha-davet'); ss.sil('saha-yeni');
       if (r?.user && Array.isArray(r.user.identities) && !r.user.identities.length) { mod = 'sifre'; return ciz('<p class="davet">Bu e-postayla zaten bir hesap var. Şifreni hatırlamıyorsan "Şifremi unuttum"a dokun.</p>'); }
       if (!r.session) { mod = 'sifre'; return ciz(`<p class="davet ok">Hesabın oluşturuldu. <b>${esc(maskele(eposta))}</b> adresine gelen onay bağlantısına dokun, sonra burada şifrenle giriş yap.</p>`); }
       ls.yaz('saha-son-etkinlik', String(Date.now())); done();

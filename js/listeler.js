@@ -4,6 +4,7 @@ import { S } from './db.js';
 import { app } from './state.js';
 import { esc, toast, confirmBox, FIRMA_TIPLERI, RAKIPLER, KAYIP_NEDENLERI, ZIYARET_AMAC, URUN_AILELERI, SEKTORLER, MASRAF_TIP, SERVIS_TIP, DURUMLAR, OLASILIK } from './ui.js';
 import { ayar, ayarYaz } from './ayar.js';
+import { profilUygula, sektorListesi } from './profil.js';
 
 export const LISTELER = [
   { k: 'FIRMA_TIPLERI', ad: 'Firma tipleri', arr: FIRMA_TIPLERI, kul: [['firmalar', 'tipler', true]] },
@@ -15,10 +16,13 @@ export const LISTELER = [
   { k: 'MASRAF_TIP', ad: 'Masraf türleri', arr: MASRAF_TIP, kul: [['masraflar', 'tip']] },
   { k: 'SERVIS_TIP', ad: 'Servis kaydı türleri', arr: SERVIS_TIP, kul: [['servis_kayitlari', 'tip']] },
 ];
-const VARSAYILAN = Object.fromEntries(LISTELER.map(l => [l.k, [...l.arr]]));
+const ILK = Object.fromEntries(LISTELER.map(l => [l.k, [...l.arr]]));
+// Varsayılan liste: firma profilindeki sektöre göre (rakipler, ürün aileleri), diğerleri ilk liste
+const VARSAYILAN = new Proxy({}, { get: (_, k) => sektorListesi(k) || ILK[k] });
 const VARS_DURUM = Object.fromEntries(DURUMLAR.map(d => [d.k, { c: d.c, o: OLASILIK[d.k] }]));
 
 export function listeleriUygula() {
+  profilUygula();
   const s = ayar('listeler', {}) || {};
   for (const l of LISTELER) { const v = Array.isArray(s[l.k]) && s[l.k].length ? s[l.k] : VARSAYILAN[l.k]; l.arr.splice(0, l.arr.length, ...v); }
   for (const d of DURUMLAR) { const x = s.durum?.[d.k] || {}; d.c = x.c || VARS_DURUM[d.k].c; OLASILIK[d.k] = x.o != null && x.o !== '' ? +x.o : VARS_DURUM[d.k].o; }

@@ -3,8 +3,11 @@
 import { S, idbGet, idbSet } from './db.js';
 import { gizliMod } from './gizli.js';
 import { IL_SINIR } from './data/iller.js';
+import { ILLER } from './ui.js';
+import { ilSiniri } from './profil.js';
 
-export const ILLER4 = ['Adana', 'Mersin', 'Hatay', 'Osmaniye'];
+// Çalışılan iller firma profilinden gelir (ilk kurulumda Adana, Mersin, Hatay, Osmaniye)
+export const ILLER4 = ILLER;
 
 // İlçe merkezleri (yaklaşık) [enlem, boylam]
 export const ILCE_MERKEZ = {
@@ -53,7 +56,7 @@ export function toMulti(g) {
 let detayli = null;
 export async function ilSinirlari() {
   if (!detayli) { try { detayli = (await idbGet('il-sinir-detay')) || {}; } catch { detayli = {}; } }
-  return Object.fromEntries(ILLER4.map(il => [il, detayli[il] || IL_SINIR[il]]));
+  return Object.fromEntries(ILLER4.map(il => [il, detayli[il] || IL_SINIR[il] || ilSiniri(il)]).filter(([, v]) => v));
 }
 export async function detayliSinirIndir() {
   if (!navigator.onLine) return;
@@ -76,7 +79,7 @@ export async function detayliSinirIndir() {
 
 export async function ilBul(lat, lng) {
   const s = await ilSinirlari();
-  for (const il of ILLER4) if (inMulti(lng, lat, s[il])) return il;
+  for (const il of ILLER4) if (s[il] && inMulti(lng, lat, s[il])) return il;
   return null;
 }
 export function ilceBul(il, lat, lng) {

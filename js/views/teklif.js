@@ -6,6 +6,7 @@ import { renderForm, bindForm, readForm } from '../forms.js';
 import { ayar, ayarYaz } from '../ayar.js';
 import { benimAdim } from '../sablon.js';
 import { tl, kur } from '../kur.js';
+import { firmaAdi } from '../profil.js';
 
 export const TEKLIF_DURUM = [{ k: 'Taslak', c: '#64748B' }, { k: 'Gönderildi', c: '#7C3AED' }, { k: 'Kabul', c: '#15803D' }, { k: 'Red', c: '#B91C1C' }];
 const tpill = d => `<span class="pill" style="--c:${(TEKLIF_DURUM.find(x => x.k === d) || TEKLIF_DURUM[0]).c}">${esc(d)}</span>`;
@@ -142,13 +143,13 @@ export function teklifHtml(t) {
     .r { text-align: right; white-space: nowrap; } .tot { margin-left: auto; width: 55%; margin-top: 10px; } .tot td { border: 0; padding: 3px 8px; } .tot tr.g td { border-top: 2px solid #1D2B36; font-weight: 700; font-size: 12pt; }
     .not { margin-top: 18px; white-space: pre-wrap; font-size: 9.5pt; } footer { margin-top: 28px; font-size: 9pt; color: #4A5A66; display: flex; justify-content: space-between; }
   </style></head><body>
-  <header><div class="firm"><b>${esc(bilgi.ad || 'EAE Aydınlatma')}</b><br>${esc(bilgi.iletisim || '').replace(/\n/g, '<br>')}</div><div class="meta"><h1>TEKLİF</h1>No: <b>${esc(t.teklif_no || '')}</b><br>Tarih: ${tarih(t.tarih)}${t.gecerlilik ? `<br>Geçerlilik: ${tarih(t.gecerlilik)}` : ''}</div></header>
+  <header><div class="firm"><b>${esc(bilgi.ad || firmaAdi())}</b><br>${esc(bilgi.iletisim || '').replace(/\n/g, '<br>')}</div><div class="meta"><h1>TEKLİF</h1>No: <b>${esc(t.teklif_no || '')}</b><br>Tarih: ${tarih(t.tarih)}${t.gecerlilik ? `<br>Geçerlilik: ${tarih(t.gecerlilik)}` : ''}</div></header>
   <div class="to"><div><small>Sayın</small><b>${esc(f?.ad || '')}</b>${k ? `<br>${esc(k.ad_soyad)}${k.unvan ? ' · ' + esc(k.unvan) : ''}` : ''}${f?.adres ? `<br>${esc(f.adres)}` : ''}</div><div><small>Proje</small><b>${esc(p?.ad || '—')}</b>${p ? `<br>${esc([p.osb, p.ilce, p.il].filter(Boolean).join(', '))}` : ''}</div></div>
   <table><thead><tr><th>#</th><th>Ürün</th><th class="r">Adet</th><th class="r">Birim fiyat</th>${(t.kalemler || []).some(x => +x.iskonto) ? '<th class="r">İsk.</th>' : ''}<th class="r">Tutar</th></tr></thead><tbody>
   ${(t.kalemler || []).map((x, i) => { const b = urunBilgi(x.ad); return `<tr><td>${i + 1}</td><td>${esc(x.ad)}${x.kod || b.w ? `<br><small>${esc([x.kod && 'Kod ' + x.kod, b.w && b.w + ' W', b.lm && num(b.lm) + ' lm', b.k && b.k + ' K'].filter(Boolean).join(' · '))}</small>` : ''}</td><td class="r">${num(x.adet)}</td><td class="r">${para(x.birim_fiyat, pb)}</td>${(t.kalemler || []).some(y => +y.iskonto) ? `<td class="r">${x.iskonto ? '%' + num(x.iskonto) : ''}</td>` : ''}<td class="r">${para((+x.adet || 0) * (+x.birim_fiyat || 0) * (1 - (+x.iskonto || 0) / 100), pb)}</td></tr>`; }).join('')}</tbody></table>
   <table class="tot"><tr><td>Ara toplam</td><td class="r">${para(h.ara, pb)}</td></tr>${h.isk ? `<tr><td>İskonto (%${num(t.iskonto)})</td><td class="r">−${para(h.isk, pb)}</td></tr>` : ''}<tr><td>KDV hariç toplam</td><td class="r"><b>${para(h.net, pb)}</b></td></tr><tr><td>KDV (%${num(t.kdv)})</td><td class="r">${para(h.kdv, pb)}</td></tr><tr class="g"><td>Genel toplam</td><td class="r">${para(h.genel, pb)}</td></tr></table>
   ${t.notlar || bilgi.kosullar ? `<div class="not">${esc([t.notlar, bilgi.kosullar].filter(Boolean).join('\n\n'))}</div>` : ''}
-  <footer><span>${esc(benimAdim())}</span><span>${esc(bilgi.ad || 'EAE Aydınlatma')}</span></footer>
+  <footer><span>${esc(benimAdim())}</span><span>${esc(bilgi.ad || firmaAdi())}</span></footer>
   </body></html>`;
 }
 export function teklifYazdir(t) {
@@ -163,7 +164,7 @@ export function teklifYazdir(t) {
 // Teklif bilgileri (Ayarlar)
 export function teklifAyarlari(root) {
   const b = ayar('teklif_firma') || {};
-  root.innerHTML = `<div class="fld"><label for="tf-ad">Firma adı</label><input id="tf-ad" value="${esc(b.ad || 'EAE Aydınlatma')}"></div>
+  root.innerHTML = `<div class="fld"><label for="tf-ad">Firma adı</label><input id="tf-ad" value="${esc(b.ad || firmaAdi())}"></div>
     <div class="fld"><label for="tf-il">İletişim bilgileri</label><textarea id="tf-il" rows="3" placeholder="Adres, telefon, e-posta">${esc(b.iletisim || '')}</textarea></div>
     <div class="fld"><label for="tf-k">Standart koşullar</label><textarea id="tf-k" rows="4" placeholder="Fiyatlarımıza KDV dahil değildir. Teslim: …  Ödeme: …  Garanti: …">${esc(b.kosullar || '')}</textarea></div>
     <div class="btnrow"><button type="button" class="btn primary" data-k>Kaydet</button></div>`;
@@ -172,7 +173,7 @@ export function teklifAyarlari(root) {
 
 export function tekliflerView(el) {
   const f = F('teklifler', { q: '', durum: 'Tümü' });
-  el.innerHTML = `<header class="vh"><div><h1>Teklifler</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn ghost" data-fl data-gerek="yaz:teklifler" title="Yeni EAE fiyat listesini yükle, açık tekliflerle karşılaştır">Fiyat listesi</button><button class="btn ghost" data-xls>Excel</button><button class="btn primary" data-new>Yeni teklif</button></div></header>
+  el.innerHTML = `<header class="vh"><div><h1>Teklifler</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn ghost" data-fl data-gerek="yaz:teklifler" title="Üreticinin yeni fiyat listesini yükle, açık tekliflerle karşılaştır">Fiyat listesi</button><button class="btn ghost" data-xls>Excel</button><button class="btn primary" data-new>Yeni teklif</button></div></header>
     <div class="filters"><input type="search" data-q placeholder="Teklif no, firma, proje ara" value="${esc(f.q)}" aria-label="Tekliflerde ara">
       <div class="seg" role="group" aria-label="Durum">${['Tümü', ...TEKLIF_DURUM.map(d => d.k)].map(d => `<button type="button" data-d="${d}" class="${f.durum === d ? 'on' : ''}">${d}</button>`).join('')}</div></div>
     <div data-rows></div>`;

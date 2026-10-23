@@ -19,7 +19,7 @@ const Y = {
   servis: ['Servis ve şikayet', 'Arıza, garanti ve iade kayıtları; çözülene kadar açık görünür.'],
   urunler: ['Stok ve fiyat', 'Bayinin stok Excel\'inden gelen ürünler, adetleri ve birim fiyatları. “Kodu oku” ile etiket ya da barkoddan ürünü bulursun.'],
   bayi: ['Bayi paneli', 'Bayi stok adetlerini hızlıca güncelle, bayinin siparişlerini ve projelerini gör.'],
-  katalog: ['Katalog', 'EAE ürün aileleri, kataloglar ve ürün sayfaları.'],
+  katalog: ['Katalog', 'Ürün aileleri, kataloglar ve ürün sayfaları.'],
   rakip: ['Rakip fiyatları', 'Sahada duyduğun rakip fiyatları; Analiz görünümünde kayıp nedenleri ve fiyat eğilimi.'],
   araclar: ['Hesap araçları', 'Aydınlatma hesabı ve enerji tasarrufu; tasarrufu PowerPoint sunum olarak indirebilirsin.'],
   panel: ['Panel', 'Çeyrek hedefleri, gerçekleşen, olasılıklı tahmin, geçen yılla karşılaştırma ve firma karnesi. Toplantı için hazır sunum tabloları.'],

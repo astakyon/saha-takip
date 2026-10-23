@@ -32,6 +32,26 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 37): genel sürüm, kurulum sihirbazı, geri bildirim
+**Bir kez:** Supabase SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (şema sürüm 18).
+
+- **Firma profili:** uygulama artık tek bir firmaya bağlı değil. Firma adı, sektör (aydınlatma, elektrik malzemesi ve tesisat, diğer), temsil edilen marka, çalışılan iller (Türkiye'nin 81 ili), ana bayi ve rakip markalar profilden gelir. Harita, il filtreleri, konum bulma, sanayi bölgesi arama, teklif başlığı, sipariş kanalı ("bayi üzerinden / harici") ve proje formu bu profile göre çalışır. Ekip üyeleri veri sahibinin profilini kullanır.
+- **Kurulum sihirbazı:** yeni bir hesap ilk açıldığında beş adımlık kısa kurulum gelir (firma, sektör, iller, bayi ve rakipler, özet). Aydınlatma dışı sektörde aydınlatma hesap araçları menüde gizli başlar. Sonradan Ayarlar → Firma profili → Düzenle.
+- **Eski kurulum değişmez:** profili olmayan ve kaydı bulunan hesap (bu uygulamanın ilk sahibi) eskisi gibi EAE kataloğu, Çukurova bölgesi ve Drv Elektrik ile çalışır. Ayarlar → Firma profili'nden "Hazır EAE kataloğu / Kendi kataloğum" seçilebilir.
+- **Katalog:** hazır EAE kataloğu, ürün önerisi ve şartname karşılaştırması yalnızca EAE kataloğunu kullanan hesapta açıktır. Diğerleri kendi ürün ailelerini ve katalog bağlantılarını ekler.
+- **Geri bildirim:** + menüsü ve Ayarlar → Uygulama'dan "Geri bildirim". Tür (hata, öneri, soru, beğendim), açıklama ve isteğe bağlı ekran görüntüsü; ekran, sürüm ve telefon türü otomatik eklenir.
+- **Uygulama yöneticisi:** SQL Editor'de kendini yönetici olarak eklersin. Yönetici Ayarlar → Uygulama'da gelen bütün geri bildirimleri (durumunu değiştirerek, e-postayla yanıtlayarak) ve bütün kullanıcıların hata günlüğünü görür, test davet bağlantısı oluşturur.
+
+### Test edecek kişiler için ayrı veritabanı (önerilen)
+Test edenler senin müşteri verilerinle aynı veritabanında olmasın:
+1. supabase.com'da yeni bir proje aç (ör. `saha-takip-deneme`, ücretsiz plan yeterli).
+2. SQL Editor'de `supabase/schema.sql` dosyasının tamamını çalıştır.
+3. Aynı yerde kendini yönetici olarak ekle (e-postanı yaz): `insert into public.uygulama_yoneticileri values ('senin@epostan.com');`
+4. Authentication → URL Configuration: Site URL ve Redirect URLs'e `https://astakyon.github.io/saha-takip/` yaz. Authentication ayarlarında e-postayla girişin (Email) ve yeni kullanıcı kaydının ("Allow new users to sign up") açık olduğunu kontrol et. E-posta onayı açıksa test edenler gelen onay bağlantısına dokunur.
+5. Bilgisayarda başka bir tarayıcıda (ya da gizli pencerede) uygulamayı aç, Ayarlar → Hesap → Bağlantı ayarları'na yeni projenin adresini ve anon anahtarını gir, kendine bir hesap aç.
+6. Ayarlar → Uygulama → Test daveti'ndeki bağlantıyı test edenlere gönder. Bağlantıyı açan kişi "İlk giriş"te kendi hesabını açar, kurulum sihirbazını doldurur ve kendi verisini girer; birbirlerinin verisini görmezler.
+7. Geri bildirimler ve hatalar aynı tarayıcıda Ayarlar → Uygulama'da toplanır.
+
 ## Güncelleme notu (sürüm 36): satış araçları
 - **Hedefe kalan (Panel):** bu çeyreğin hedefine kalan tutar, kalan gün ve hafta, haftada gereken sipariş. Altında bunu karşılayabilecek projeler sıralanır: bu çeyrekte beklenenler ve Sıcak olanlar önce gelir, olasılıkla ağırlıklı toplam da hesaplanır. Hedef girilmemişse kart doğrudan hedef formunu açar.
 - **EAE fiyat listesi (Teklifler ve Stok ekranında "Fiyat listesi"):** yeni liste Excel'i yüklenir; sütunlar ilk seferde sorulur ve hatırlanır. Açık teklifler (Taslak ve Gönderildi) kalem kalem yeni fiyatlarla karşılaştırılır: eski ve yeni toplam, fark ve yüzde gösterilir. Her teklif tek dokunuşla ya da hepsi birlikte yeni fiyatlara çekilir; adet ve iskontolar korunur, teklif notuna tarih düşülür. Stok listesindeki fiyatlar da istenirse güncellenir. Fark tablosu Excel'e alınabilir.

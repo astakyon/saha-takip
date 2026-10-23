@@ -141,6 +141,29 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 7) Genel sürüm: kurulum sihirbazı ve firma profili; eski kurulum değişmez ----------
+{
+  const { p, c, hatalar } = await sayfa({ hazirla: new Function(`localStorage.removeItem('saha-tanitim');`) });
+  await p.goto(U); await w(1500);
+  kontrol('Yeni hesapta kurulum sihirbazı açılıyor', await p.isVisible('.sihirbaz'));
+  await p.fill('#sz-firma', 'Deneme Elektrik'); await p.click('[data-ileri]'); await w(150);
+  await p.click('[data-sektor="elektrik"]'); await p.click('[data-ileri]'); await w(150);
+  await p.click('[data-il="Konya"]'); await p.click('[data-il="İzmir"]'); await p.click('[data-ileri]'); await w(150);
+  await p.fill('#sz-bayi', 'Örnek Bayi'); await p.click('[data-ileri]'); await w(150); await p.click('[data-ileri]'); await w(1200);
+  const st = await p.evaluate(async () => { const ui = await import('./js/ui.js'); const { S } = await import('./js/db.js'); return { iller: ui.ILLER.join(','), rakip: ui.RAKIPLER[0], bayi: S.firmalar.some(f => f.ad === 'Örnek Bayi'), eae: (await import('./js/profil.js')).eaeKatalog() }; });
+  kontrol('Sihirbaz bölgeyi, rakipleri ve bayiyi ayarlıyor', st.iller === 'Konya,İzmir' && st.rakip === 'Schneider' && st.bayi && !st.eae, JSON.stringify(st));
+  await p.goto(U + '#/katalog'); await w(500); kontrol('Genel sürümde EAE kataloğu yok', !(await p.isVisible('[data-eae]')));
+  kontrol('Sihirbazda hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+{
+  const { p, c } = await sayfa({ supabase: true, hazirla: DB });
+  await p.goto(U + '#/bugun'); await w(1500);
+  const st = await p.evaluate(async () => ({ iller: (await import('./js/ui.js')).ILLER.join(','), eae: (await import('./js/profil.js')).eaeKatalog() }));
+  kontrol('Profilsiz eski kurulum aynen çalışıyor (sihirbaz yok, bölge ve katalog aynı)', !(await p.isVisible('.sihirbaz')) && st.iller === 'Adana,Mersin,Hatay,Osmaniye' && st.eae, JSON.stringify(st));
+  await c.close();
+}
+
 await tarayici.close(); sunucu.close();
 console.log(sonuc.join('\n'));
 console.log(basarisiz ? `\n${basarisiz} test başarısız.` : `\nTüm testler geçti (${sonuc.length}).`);

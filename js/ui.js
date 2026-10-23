@@ -9,7 +9,8 @@ export const DURUMLAR = [
 ];
 export const durumRenk = d => (DURUMLAR.find(x => x.k === d) || DURUMLAR[0]).c;
 export const ACIK = ['Proje', 'İhale', 'Teklif Verildi', 'Sıcak', 'Beklemede'];
-export const ILLER = ['Adana', 'Mersin', 'Hatay', 'Osmaniye'];
+export const ILLER = ['Adana', 'Mersin', 'Hatay', 'Osmaniye'];   // firma profilindeki bölgeye göre profil.js değiştirir
+export const BOLGE_KUTU = { s: 35.8, w: 32.5, n: 38.05, e: 36.75 };
 export const IL_MERKEZ = { Adana: [37.0, 35.3213, 10], Mersin: [36.75, 34.3, 9], Hatay: [36.45, 36.2, 9], Osmaniye: [37.15, 36.25, 10] };
 export const ILCELER = {
   Adana: ['Seyhan', 'Yüreğir', 'Çukurova', 'Sarıçam', 'Ceyhan', 'Kozan', 'Karataş', 'Yumurtalık', 'İmamoğlu', 'Pozantı', 'Karaisalı', 'Aladağ', 'Feke', 'Saimbeyli', 'Tufanbeyli'],

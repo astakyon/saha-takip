@@ -6,6 +6,7 @@ import { renderForm, bindForm, readForm } from '../forms.js';
 import { sunumAc } from '../sunum.js';
 import { teklifForm } from './teklif.js';
 import { KATALOGLAR, EAE_LINKLER, AILELER } from '../data/eae-katalog.js';
+import { eaeKatalog, aydinlatmaMi } from '../profil.js';
 import { ayar, ayarYaz } from '../ayar.js';
 
 const ak = s => fold(s || '').replace(/[^a-z0-9]/g, '');
@@ -53,31 +54,31 @@ function aileDetay(a, urunler) {
 
 export function katalogView(el) {
   const f = F('katalog', { q: '', kat: 'Tümü' });
-  const KAT = ['Tümü', 'Endüstriyel', 'Dış', 'Mimari', 'Acil durum'];
-  el.innerHTML = `<header class="vh"><div><h1>Ürün kataloğu</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn ghost" data-xls>Excel</button><button class="btn ghost" data-eae>EAE sitesinden aileleri aktar</button><button class="btn primary" data-new>Aile ekle</button></div></header>
+  const KAT = eaeKatalog() ? ['Tümü', 'Endüstriyel', 'Dış', 'Mimari', 'Acil durum'] : [];
+  el.innerHTML = `<header class="vh"><div><h1>Ürün kataloğu</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn ghost" data-xls>Excel</button>${eaeKatalog() ? '<button class="btn ghost" data-eae>EAE sitesinden aileleri aktar</button>' : ''}<button class="btn primary" data-new>Aile ekle</button></div></header>
     <section class="card kataloglar"><div class="card-h"><h2>Kataloglar</h2><button type="button" class="btn sm ghost" data-kekle>Katalog ekle</button></div><div data-kat></div></section>
     <div class="filters"><input type="search" data-q placeholder="Aile, ürün, özellik ara (örn. IP65, highbay)" value="${esc(f.q)}" aria-label="Katalogda ara">
-      <div class="chips">${KAT.map(k => `<button type="button" class="chip ${f.kat === k ? 'on' : ''}" data-kt="${k}">${k}</button>`).join('')}</div></div>
+      <div class="chips" ${KAT.length ? '' : 'hidden'}>${KAT.map(k => `<button type="button" class="chip ${f.kat === k ? 'on' : ''}" data-kt="${k}">${k}</button>`).join('')}</div></div>
     <ul class="cards katalog" data-rows></ul>`;
   katalogListesi(el.querySelector('[data-kat]'));
   el.querySelector('[data-kekle]').onclick = () => katalogEkle(() => katalogListesi(el.querySelector('[data-kat]')));
-  el.querySelector('[data-eae]').onclick = async () => { const n = await eaeAktar(); toast(n.yeni || n.guncel ? `${n.yeni} aile eklendi, ${n.guncel} aile tamamlandı.` : 'Katalog zaten güncel.'); draw(); };
+  el.querySelector('[data-eae]')?.addEventListener('click', async () => { const n = await eaeAktar(); toast(n.yeni || n.guncel ? `${n.yeni} aile eklendi, ${n.guncel} aile tamamlandı.` : 'Katalog zaten güncel.'); draw(); });
   el.querySelectorAll('[data-kt]').forEach(b => b.onclick = () => { f.kat = b.dataset.kt; saveFilters(); el.querySelectorAll('[data-kt]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
   const draw = () => {
     // Stoktaki armatür aileleri + katalogda tanımlı aileler
     const grup = new Map();
-    for (const u of S.urunler) { const b = urunBilgi(u.aciklama); if (!b.w) continue; const k = ak(u.aile); (grup.get(k) || grup.set(k, { aile: u.aile, urunler: [] }).get(k)).urunler.push({ u, ...b }); }
+    for (const u of S.urunler) { const b = urunBilgi(u.aciklama); if (!b.w && aydinlatmaMi()) continue; const k = ak(u.aile || (u.aciklama || '').split(/\s+/)[0]); (grup.get(k) || grup.set(k, { aile: u.aile, urunler: [] }).get(k)).urunler.push({ u, ...b }); }
     for (const a of S.urun_aileleri) { const k = ak(a.aile); const g = grup.get(k) || grup.set(k, { aile: a.aile, urunler: [] }).get(k); g.kayit = a; }
     const l = [...grup.values()].filter(g => (f.kat === 'Tümü' || fold(g.kayit?.aciklama || '').startsWith(fold(f.kat))) && match(f.q, g.aile, g.kayit?.ad, g.kayit?.aciklama, g.kayit?.ozellikler, ...g.urunler.map(x => x.u.aciklama)))
       .sort((a, b) => (!!b.kayit - !!a.kayit) || b.urunler.length - a.urunler.length);
     el.querySelector('[data-sum]').textContent = `${l.length} ürün ailesi · ${S.urun_aileleri.length} ailenin tanıtım bilgisi girilmiş`;
     el.querySelector('[data-rows]').innerHTML = l.map((g, i) => {
-      const ws = g.urunler.map(x => x.w), lms = g.urunler.map(x => x.lm).filter(Boolean), stok = g.urunler.reduce((s, x) => s + (+x.u.stok || 0), 0);
+      const ws = g.urunler.map(x => x.w).filter(Boolean), lms = g.urunler.map(x => x.lm).filter(Boolean), stok = g.urunler.reduce((s, x) => s + (+x.u.stok || 0), 0);
       return `<li><button type="button" class="card-btn kat" data-i="${i}">${g.kayit?.fotolar?.[0] ? `<img alt="" data-path="${esc(g.kayit.fotolar[0])}">` : `<span class="kat-ph" aria-hidden="true">${esc((g.aile || '?').slice(0, 3))}</span>`}
         <span class="cb-top"><b>${esc(g.kayit?.ad || g.aile)}</b><small class="muted">${esc(g.aile)}</small></span>
-        <small class="muted">${g.urunler.length ? `${g.urunler.length} model · ${Math.min(...ws)}–${Math.max(...ws)} W${lms.length ? ` · ${num(Math.min(...lms))}–${num(Math.max(...lms))} lm` : ''}` : 'stokta modeli yok'}</small>
+        <small class="muted">${g.urunler.length ? `${g.urunler.length} model${ws.length ? ` · ${Math.min(...ws)}–${Math.max(...ws)} W` : ''}${lms.length ? ` · ${num(Math.min(...lms))}–${num(Math.max(...lms))} lm` : ''}` : 'stokta modeli yok'}</small>
         <small class="${stok ? 'pos' : 'muted'}">${stok ? 'Bayide ' + num(stok) + ' adet' : 'Bayide stok yok'}${g.kayit ? '' : ' · tanıtım bilgisi yok'}</small></button></li>`;
-    }).join('') || '<li class="empty"><p>Katalog boş. Stok listesi yüklendiğinde armatür aileleri burada kendiliğinden listelenir.</p></li>';
+    }).join('') || `<li class="empty"><p>Katalog boş. Stok listesi yüklendiğinde ürün aileleri burada kendiliğinden listelenir; “Yeni aile” ile tanıtım bilgisi, fotoğraf ve ürün sayfası ekleyebilirsin.</p></li>`;
     fotolariYukle(el);
     el.querySelectorAll('[data-i]').forEach(b => b.onclick = () => { const g = l[+b.dataset.i]; aileDetay(g.kayit || { aile: g.aile, fotolar: [] }, g.urunler.sort((a, b) => a.w - b.w)); });
   };
@@ -92,13 +93,13 @@ export function katalogView(el) {
 }
 
 // ---------- Kataloglar (PDF / interaktif) ----------
-const katalogTum = () => [...KATALOGLAR, ...(ayar('kataloglar_ek') || [])];
+const katalogTum = () => [...(eaeKatalog() ? KATALOGLAR : []), ...(ayar('kataloglar_ek') || [])];
 function katalogListesi(kutu) {
   const l = katalogTum();
-  kutu.innerHTML = `<ul class="list kat-list">${l.map((k, i) => `<li><a href="${esc(k.url)}" target="_blank" rel="noopener" class="grow"><b>${esc(k.ad)}</b><span class="muted">${esc(k.tur || 'PDF')}${i >= KATALOGLAR.length ? ' · senin eklediğin' : ''}</span></a>
-    <span class="ra"><a class="btn sm ghost" href="${waLink('', k.ad + ' kataloğumuz: ' + k.url)}" target="_blank" rel="noopener">WhatsApp</a><button type="button" class="btn sm ghost" data-kk="${i}">Bağlantıyı kopyala</button>${i >= KATALOGLAR.length ? `<button type="button" class="x" data-ksil="${i - KATALOGLAR.length}" aria-label="Kaldır">×</button>` : ''}</span></li>`).join('')}
-    ${EAE_LINKLER.map(k => `<li><a href="${esc(k.url)}" target="_blank" rel="noopener" class="grow"><b>${esc(k.ad)}</b><span class="muted">web</span></a></li>`).join('')}</ul>
-    <p class="hint">Bağlantıyı WhatsApp ile müşteriye gönderebilirsin; dosya telefonunda yer kaplamaz. Kataloglar EAE Aydınlatma sitesinden açılır.</p>`;
+  kutu.innerHTML = `<ul class="list kat-list">${l.map((k, i) => `<li><a href="${esc(k.url)}" target="_blank" rel="noopener" class="grow"><b>${esc(k.ad)}</b><span class="muted">${esc(k.tur || 'PDF')}${i >= (eaeKatalog() ? KATALOGLAR.length : 0) ? ' · senin eklediğin' : ''}</span></a>
+    <span class="ra"><a class="btn sm ghost" href="${waLink('', k.ad + ' kataloğumuz: ' + k.url)}" target="_blank" rel="noopener">WhatsApp</a><button type="button" class="btn sm ghost" data-kk="${i}">Bağlantıyı kopyala</button>${i >= (eaeKatalog() ? KATALOGLAR.length : 0) ? `<button type="button" class="x" data-ksil="${i - (eaeKatalog() ? KATALOGLAR.length : 0)}" aria-label="Kaldır">×</button>` : ''}</span></li>`).join('')}
+    ${(eaeKatalog() ? EAE_LINKLER : []).map(k => `<li><a href="${esc(k.url)}" target="_blank" rel="noopener" class="grow"><b>${esc(k.ad)}</b><span class="muted">web</span></a></li>`).join('')}</ul>
+    <p class="hint">Bağlantıyı WhatsApp ile müşteriye gönderebilirsin; dosya telefonunda yer kaplamaz. ${eaeKatalog() ? 'Kataloglar EAE Aydınlatma sitesinden açılır.' : ''}${l.length ? '' : ' Henüz katalog yok: “Katalog ekle” ile PDF ya da web bağlantısı ekle.'}</p>`;
   kutu.querySelectorAll('[data-kk]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(l[+b.dataset.kk].url); toast('Bağlantı kopyalandı.'); } catch { toast('Kopyalanamadı.', 'err'); } });
   kutu.querySelectorAll('[data-ksil]').forEach(b => b.onclick = async () => { const ek = [...(ayar('kataloglar_ek') || [])]; ek.splice(+b.dataset.ksil, 1); await ayarYaz('kataloglar_ek', ek); katalogListesi(kutu); });
 }

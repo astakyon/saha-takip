@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 17)
+--  Saha Satış Takip — Supabase şeması (sürüm 18)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -635,3 +635,68 @@ create or replace function public.hata_temizle() returns trigger language plpgsq
 begin delete from public.hata_gunlugu where owner = new.owner and zaman < now() - interval '90 days'; return new; end $f$;
 drop trigger if exists hata_temizle on public.hata_gunlugu;
 create trigger hata_temizle after insert on public.hata_gunlugu for each row execute function public.hata_temizle();
+
+-- ---------- Sürüm 18: genel sürüm — firma profili, geri bildirim, uygulama yöneticisi ----------
+-- Firma profili (sektör, bölge, bayi) ekip üyeleriyle paylaşılır.
+create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) returns boolean language sql stable security definer set search_path = public as $f$
+  select sahip = auth.uid() or (public.ekipte(sahip::text) and (
+    anahtar in ('google_key', 'wa_sablonlar', 'teklif_firma', 'listeler', 'kataloglar_ek', 'ziyaret_siklik', 'usd_kur', 'kur_elle', 'elektrik_tl_kwh', 'firma_profil')
+    or (anahtar like 'sartname:%' and public.yetki(sahip, 'projeler', 'oku'))))
+$f$;
+-- Uygulama yöneticisi: geri bildirimleri ve bütün kullanıcıların hata günlüğünü görür.
+-- Kendini eklemek için SQL Editor'de bir kez çalıştır:  insert into public.uygulama_yoneticileri values ('senin@epostan.com');
+create table if not exists public.uygulama_yoneticileri (eposta text primary key);
+alter table public.uygulama_yoneticileri enable row level security;   -- uygulamadan okunamaz/yazılamaz; yalnızca SQL Editor
+create or replace function public.yonetici_mi() returns boolean language sql stable security definer set search_path = public as $f$
+  select exists (select 1 from public.uygulama_yoneticileri y where lower(y.eposta) = public.benim_epostam())
+$f$;
+revoke all on function public.yonetici_mi() from public, anon;
+grant execute on function public.yonetici_mi() to authenticated;
+-- Geri bildirimler: herkes kendi gönderdiğini görür; yönetici hepsini görür ve durumunu değiştirir.
+create table if not exists public.geri_bildirim (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  kim text default public.benim_epostam(),
+  firma text, tur text, metin text not null check (length(metin) <= 4000),
+  ekran text, surum text, tarayici text, foto text,
+  durum text default 'Yeni',
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create index if not exists geri_bildirim_zaman_idx on public.geri_bildirim (created_at desc);
+alter table public.geri_bildirim enable row level security;
+drop policy if exists "gb_ekle" on public.geri_bildirim;
+drop policy if exists "gb_oku" on public.geri_bildirim;
+drop policy if exists "gb_degistir" on public.geri_bildirim;
+drop policy if exists "gb_sil" on public.geri_bildirim;
+create policy "gb_ekle" on public.geri_bildirim for insert to authenticated with check (user_id = auth.uid() and kim = public.benim_epostam());
+create policy "gb_oku" on public.geri_bildirim for select to authenticated using (user_id = auth.uid() or public.yonetici_mi());
+create policy "gb_degistir" on public.geri_bildirim for update to authenticated using (public.yonetici_mi()) with check (public.yonetici_mi());
+create policy "gb_sil" on public.geri_bildirim for delete to authenticated using (user_id = auth.uid() or public.yonetici_mi());
+drop trigger if exists touch on public.geri_bildirim;
+create trigger touch before update on public.geri_bildirim for each row execute function public.touch_updated_at();
+-- Yönetici bütün kullanıcıların hata günlüğünü okur (kayıt içeriği yoktur; hata metni, ekran, sürüm)
+drop policy if exists "hata_oku_yonetici" on public.hata_gunlugu;
+create policy "hata_oku_yonetici" on public.hata_gunlugu for select to authenticated using (public.yonetici_mi());
+-- Geri bildirime eklenen ekran görüntüleri (<sahip>/geri/…) yöneticiye de açılır
+create or replace function public.foto_izinli(yol text) returns boolean language plpgsql stable security definer set search_path = public as $f$
+declare s text := split_part(yol, '/', 1); o uuid; y text;
+begin
+  if s = auth.uid()::text then return true; end if;
+  if split_part(yol, '/', 2) = 'geri' then return public.yonetici_mi(); end if;
+  if not public.ekipte(s) then return false; end if;
+  if split_part(yol, '/', 2) = 'yedek' then return false; end if;
+  o := s::uuid;
+  y := regexp_replace(yol, '_k\.jpg$', '.jpg');
+  if public.yetki(o, 'belgeler', 'oku') and exists (select 1 from public.belgeler b where b.owner = o and b.yol = y) then return true; end if;
+  if split_part(yol, '/', 2) = 'belge' then return false; end if;
+  if public.yetki(o, 'projeler', 'oku') and exists (select 1 from public.projeler t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'firmalar', 'oku') and exists (select 1 from public.firmalar t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'kisiler', 'oku') and exists (select 1 from public.kisiler t where t.owner = o and (t.kartvizit_on = y or t.kartvizit_arka = y)) then return true; end if;
+  if public.yetki(o, 'ziyaretler', 'oku') and exists (select 1 from public.ziyaretler t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'servis_kayitlari', 'oku') and exists (select 1 from public.servis_kayitlari t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'urun_aileleri', 'oku') and exists (select 1 from public.urun_aileleri t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'masraflar', 'oku') and exists (select 1 from public.masraflar t where t.owner = o and t.fis = y) then return true; end if;
+  return false;
+exception when others then return false;
+end $f$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 18 $f$;

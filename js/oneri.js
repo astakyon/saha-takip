@@ -32,7 +32,7 @@ export function oneriBolumu(kutu, p) {
     kutu.innerHTML = `<h3>Önerilen ürün aileleri</h3>
       <div class="chips">${ALANLAR.map(a => `<button type="button" class="chip ${secili.includes(a.k) ? 'on' : ''}" data-alan="${a.k}">${esc(a.ad)}</button>`).join('')}</div>
       ${alanlar.length ? alanlar.map(a => `<div class="oneri"><b>${esc(a.ad)}</b>${a.not ? `<small class="muted"> · ${esc(a.not)}</small>` : ''}
-        <ul class="list">${a.aileler.map(aileBul).filter(Boolean).map(x => { const st = stokta(x.aile); return `<li><span class="grow"><b>${esc(x.ad)}</b><small class="muted"> · ${esc(x.kategori)}${st ? ` · Drv stokta ${num(st)} adet` : ''}</small><br><small>${esc(x.aciklama)}</small></span><a class="btn sm ghost" href="${x.url || 'https://www.eaeaydinlatma.com/urun/' + x.yol}" target="_blank" rel="noopener">Ürün sayfası</a></li>`; }).join('')}
+        <ul class="list">${a.aileler.map(aileBul).filter(Boolean).map(x => { const st = stokta(x.aile); return `<li><span class="grow"><b>${esc(x.ad)}</b><small class="muted"> · ${esc(x.kategori)}${st ? ` · bayi stoğunda ${num(st)} adet` : ''}</small><br><small>${esc(x.aciklama)}</small></span><a class="btn sm ghost" href="${x.url || 'https://www.eaeaydinlatma.com/urun/' + x.yol}" target="_blank" rel="noopener">Ürün sayfası</a></li>`; }).join('')}
         ${a.link ? `<li><a href="${a.link.url}" target="_blank" rel="noopener">${esc(a.link.ad)}</a></li>` : ''}</ul></div>`).join('')
       : '<p class="hint">Projenin adı, sektörü ve notlarından alan tipi çıkarılamadı. Yukarıdan alan tipini seç.</p>'}`;
     kutu.querySelectorAll('[data-alan]').forEach(b => b.onclick = () => { const k = b.dataset.alan; secili = secili.includes(k) ? secili.filter(x => x !== k) : [...secili, k]; ciz(); });

@@ -1,4 +1,5 @@
 import { S, uuid } from '../db.js';
+import { anaBayi, anaBayiKisa, markaAdi, eaeKatalog } from '../profil.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, usd, num, pill, tarih, today, DURUMLAR, ACIK, ILLER, ILCELER, OSBLER, RAKIPLER, KAYIP_NEDENLERI, URUN_AILELERI, SEKTORLER,
   byId, firmaAd, match, toast, openDrawer, closeDrawer, exportXlsx, directionsUrl, confirmBox, durumRenk, SANTIYE, olasilik, gunEkle, fold } from '../ui.js';
@@ -35,7 +36,7 @@ export const PROJE_FORM = [
     { k: 'ilgili_kisi_id', l: 'Proje ilgilisi (kişi)', t: 'ref', ref: 'kisiler' },
     { k: 'takipci', l: 'Takip eden (bayi / ekip)' },
     { k: 'takipci_tel', l: 'Takip eden telefonu', t: 'tel' },
-    { k: 'calisildi', l: 'Proje çalışıldı mı?', t: 'combo', opts: ['Çalışıldı - Drv', 'Çalışıldı - EAE', 'Çalışıldı - Ben', 'Çalışılmadı'] },
+    { k: 'calisildi', l: 'Proje çalışıldı mı?', t: 'combo', opts: [...(anaBayi() ? ['Çalışıldı - ' + anaBayi()] : []), ...(markaAdi() ? ['Çalışıldı - ' + markaAdi()] : []), 'Çalışıldı - Ben', 'Çalışılmadı'] },
   ]},
   { title: 'Konum', ozet: 'harita, il, ilçe, OSB', kapali: o => !yeniMi(o), fields: [
     { k: 'loc', l: 'Harita konumu', t: 'loc' },
@@ -72,7 +73,7 @@ export const PROJE_FORM = [
     { k: 'urun_gruplari', l: 'Ürün grupları', t: 'tags', opts: URUN_AILELERI, free: true },
     { k: 'teklif_no', l: 'Teklif no' },
     { k: 'crm_kodu', l: 'CRM kart no' },
-    { k: 'durum_alt', l: 'Durum notu', t: 'combo', opts: ['Drv depodan', 'AOSB genişleme', 'Sözlü onay', 'İhaleye çıkacak'], ph: 'İsteğe bağlı' },
+    { k: 'durum_alt', l: 'Durum notu', t: 'combo', opts: [anaBayi() ? anaBayi() + ' depodan' : 'Bayi depodan', 'Genişleme', 'Sözlü onay', 'İhaleye çıkacak'], ph: 'İsteğe bağlı' },
     { k: 'sorulacak', l: 'Sorulacak / yapılacak' },
     { k: 'ziyaret_edilecek', l: 'Ziyaret', t: 'chk', cl: 'Ziyaret edilecek' },
   ]},
@@ -354,7 +355,7 @@ function exportProjeler(list) {
 
 // ---------- Detay ----------
 export function yeniProje(init) {
-  projeDetay(null, { durum: 'Proje', takip_yili: new Date().getFullYear() >= 2026 ? 2026 : 2026, kanal: 'Bayi', bayi_id: S.firmalar.find(x => x.ad === 'Drv Elektrik')?.id || null, fotolar: [], urun_gruplari: [], konum_yaklasik: false, ...init });
+  projeDetay(null, { durum: 'Proje', takip_yili: new Date().getFullYear() >= 2026 ? 2026 : 2026, kanal: 'Bayi', bayi_id: (anaBayi() && S.firmalar.find(x => x.ad === anaBayi())?.id) || null, fotolar: [], urun_gruplari: [], konum_yaklasik: false, ...init });
 }
 
 // Şantiye ilerleme fotoğrafları: projenin ve projeye bağlı ziyaretlerin fotoğrafları tarih sırasıyla
@@ -420,7 +421,7 @@ export function projeDetay(id, init) {
     if (k === 'bilgi') panel.querySelectorAll('[data-loc]').forEach(m => setTimeout(() => m._map?.invalidateSize(), 50));
     panel.scrollTop = 0;
   });
-  if (!p._new) import('../oneri.js').then(m => { m.oneriBolumu(panel.querySelector('[data-oneri]'), p); m.sartnameBolumu(panel.querySelector('[data-sartname]'), p); });
+  if (!p._new && eaeKatalog()) import('../oneri.js').then(m => { m.oneriBolumu(panel.querySelector('[data-oneri]'), p); m.sartnameBolumu(panel.querySelector('[data-sartname]'), p); });
   if (!p._new) santiyeBolumu(panel.querySelector('[data-santiye]'), p);
   if (!p._new) import('../yorum.js').then(m => m.yorumBolumu(panel.querySelector('[data-yorumlar]'), 'projeler', p));
   if (!p._new) { belgeBolumu(panel.querySelector('[data-belgeler]'), { proje_id: p.id }); kayitGecmisi(panel.querySelector('[data-gecmis]'), 'projeler', p.id); }

@@ -2,6 +2,7 @@ import { S, uuid } from '../db.js';
 import { kayipKarti, kayipTamamla } from '../kayip.js';
 import { app, F, saveFilters } from '../state.js';
 import { hedefKalanKarti } from '../hedef.js';
+import { anaBayiKisa, anaBayiMi, anaBayi } from '../profil.js';
 import { esc, usd, num, tarih, today, DURUMLAR, ACIK, byId, firmaAd, match, toast, exportXlsx, pickFiles, fold, durumRenk, openDrawer, closeDrawer, pill, olasilik, confirmBox, parcali } from '../ui.js';
 import { gorevForm } from './ziyaret.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
@@ -183,11 +184,11 @@ export function siparislerView(el) {
       <div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="liste" class="${f.gor === 'liste' ? 'on' : ''}">Sipariş listesi</button><button type="button" data-gor="ceyrek" class="${f.gor === 'ceyrek' ? 'on' : ''}">Çeyrek özeti</button><button type="button" data-gor="cari" class="${f.gor === 'cari' ? 'on' : ''}">Cari bazında</button><button type="button" data-gor="proje" class="${f.gor === 'proje' ? 'on' : ''}">Proje bazında</button></div>
       <div class="frow"><label>Yıl <select data-k="yil">${[2025, 2026, 2027].map(y => `<option ${y == f.yil ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
       <label>Çeyrek <select data-k="ceyrek">${['Tümü', '1', '2', '3', '4'].map(c => `<option value="${c}" ${String(f.ceyrek) === c ? 'selected' : ''}>${c === 'Tümü' ? 'Tümü' : c + '. çeyrek'}</option>`).join('')}</select></label>
-      <label>Kanal <select data-k="kanal">${['Tümü', 'Drv', 'Drv harici'].map(c => `<option ${f.kanal === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+      ${anaBayiKisa() ? `<label>Kanal <select data-k="kanal">${[['Tümü', 'Tümü'], ['Drv', esc(anaBayiKisa())], ['Drv harici', esc(anaBayiKisa()) + ' harici']].map(([v, t]) => `<option value="${v}" ${f.kanal === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>` : ''}
       <label>Cari <select data-k="cari"><option>Tümü</option>${cariler.map(c => `<option ${f.cari === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label></div></div>
     <div class="ptable-wrap" data-rows></div>`;
   const pAd = s => s.proje_id ? (byId('projeler', s.proje_id)?.ad || s.proje_tanimi) : s.proje_tanimi;
-  const list = () => S.siparisler.filter(s => s.tarih && s.tarih.startsWith(String(f.yil)) && (f.ceyrek === 'Tümü' || q(s.tarih) == f.ceyrek) && (f.kanal === 'Tümü' || (f.kanal === 'Drv') === !!s.drv)
+  const list = () => S.siparisler.filter(s => s.tarih && s.tarih.startsWith(String(f.yil)) && (f.ceyrek === 'Tümü' || q(s.tarih) == f.ceyrek) && (f.kanal === 'Tümü' || !anaBayiKisa() || (f.kanal === 'Drv') === !!s.drv)
     && (f.cari === 'Tümü' || s.musteri_adi === f.cari) && match(f.q, s.musteri_adi, s.proje_tanimi, pAd(s), s.referans, s.belge_no, s.siparis_no, s.siparis_notu))
     .sort((a, b) => b.tarih.localeCompare(a.tarih) || (b.siparis_no || '').localeCompare(a.siparis_no || ''));
   const tut = s => `${num(s.net_deger)} ${s.para_birimi === 'USD' ? '$' : esc(s.para_birimi)}`;
@@ -204,7 +205,7 @@ export function siparislerView(el) {
         <td data-l="Tarih" class="nowrap">${tarih(s.tarih)}</td>
         <td data-l="Sipariş no" class="num nowrap"><b>${esc(s.siparis_no || '—')}</b>${s.belge_no ? `<small>Satış belgesi ${esc(s.belge_no)}</small>` : ''}</td>
         <td data-l="SAS no"><span class="sas">${esc(s.referans || '—')}</span>${s.siparis_notu ? `<small class="snot">Not: ${esc(s.siparis_notu.slice(0, 90))}</small>` : ''}</td>
-        <td data-l="Cari">${s.firma_id ? `<a href="#/firma/${s.firma_id}" class="flink">${esc(s.musteri_adi || '')}</a>` : esc(s.musteri_adi || '—')}${s.drv ? ' <em class="flag soft">Drv</em>' : ''}</td>
+        <td data-l="Cari">${s.firma_id ? `<a href="#/firma/${s.firma_id}" class="flink">${esc(s.musteri_adi || '')}</a>` : esc(s.musteri_adi || '—')}${s.drv && anaBayiKisa() ? ` <em class="flag soft">${esc(anaBayiKisa())}</em>` : ''}</td>
         <td data-l="Proje">${s.proje_id ? `<a href="#/proje/${s.proje_id}" class="flink">${esc(pAd(s))}</a>` : `<span class="muted">${esc(s.proje_tanimi || '—')}</span> <small class="muted">projeye bağlı değil</small>`}</td>
         <td data-l="Net değer" class="r num nowrap"><b>${tut(s)}</b>${s.rapor_disi ? '<small class="neg">rapor dışı</small>' : ''}</td></tr>`), { sar: x => `<table class="ptable otable"><thead><tr><th>Tarih</th><th>Sipariş no</th><th>SAS no</th><th>Cari</th><th>Proje</th><th class="r">Net değer</th></tr></thead><tbody data-parca>${x}</tbody></table>` });
       box.onclick = e => { const tr = e.target.closest('tr[data-sid]'); if (tr && !e.target.closest('a')) siparisForm({ id: tr.dataset.sid }); };
@@ -227,7 +228,7 @@ export function siparislerView(el) {
   el.querySelectorAll('[data-gor]').forEach(b => b.onclick = () => { f.gor = b.dataset.gor; saveFilters(); el.querySelectorAll('[data-gor]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
   el.querySelector('[data-up]').onclick = siparisYukle;
   el.querySelector('[data-yeni]').onclick = () => siparisForm({});
-  el.querySelector('[data-exp]').onclick = () => exportXlsx(`siparisler-${today()}.xlsx`, { 'Siparişler': list().map(s => ({ 'Tarih': s.tarih, 'Sipariş no': s.siparis_no, 'SAS no': s.referans, 'Satış belgesi': s.belge_no, 'Cari': s.musteri_adi, 'Cari no': s.musteri_no, 'Proje': pAd(s), 'SAP proje tanımı': s.proje_tanimi, 'Net değer': s.net_deger, 'Para birimi': s.para_birimi, 'Sipariş notu': s.siparis_notu, 'Drv': s.drv ? 'Evet' : '', 'Rapor dışı': s.rapor_disi ? 'Evet' : '' })) });
+  el.querySelector('[data-exp]').onclick = () => exportXlsx(`siparisler-${today()}.xlsx`, { 'Siparişler': list().map(s => ({ 'Tarih': s.tarih, 'Sipariş no': s.siparis_no, 'SAS no': s.referans, 'Satış belgesi': s.belge_no, 'Cari': s.musteri_adi, 'Cari no': s.musteri_no, 'Proje': pAd(s), 'SAP proje tanımı': s.proje_tanimi, 'Net değer': s.net_deger, 'Para birimi': s.para_birimi, 'Sipariş notu': s.siparis_notu, [anaBayiKisa() || 'Bayi']: s.drv ? 'Evet' : '', 'Rapor dışı': s.rapor_disi ? 'Evet' : '' })) });
   draw();
 }
 
@@ -235,14 +236,14 @@ const SIPARIS_FORM = [
   { title: 'Sipariş', fields: [
     { k: 'tarih', l: 'Sipariş tarihi', t: 'date', help: 'Hangi çeyreğe sayılacağını bu tarih belirler' },
     { k: 'siparis_no', l: 'Sipariş no', ph: '2000…' },
-    { k: 'referans', l: 'SAS no', full: true, ph: 'Örn. DRV_EKOL_ELK_KILIÇLAR_HADDE_2809', help: 'SAP sipariş açıklamasına yazdığın not: kime ait, hangi proje' },
+    { k: 'referans', l: 'SAS no', full: true, ph: 'Örn. BAYI_FIRMA_PROJE_2809', help: 'SAP sipariş açıklamasına yazdığın not: kime ait, hangi proje' },
     { k: 'firma_id', l: 'Cari (firma)', t: 'ref', ref: 'firmalar' },
     { k: 'proje_id', l: 'Proje', t: 'ref', ref: 'projeler' },
     { k: 'net_deger', l: 'Net değer', t: 'num' },
     { k: 'para_birimi', l: 'Para birimi', t: 'sel', opts: ['USD', 'TRY', 'EUR'] },
     { k: 'teslim_tarihi', l: 'Teslim tarihi', t: 'date' },
     { k: 'belge_no', l: 'Satış belgesi', help: 'SAP belge numarası' },
-    { k: 'drv', l: 'Kanal', t: 'chk', cl: 'Drv üzerinden' },
+    ...(anaBayiKisa() ? [{ k: 'drv', l: 'Kanal', t: 'chk', cl: anaBayiKisa() + ' üzerinden' }] : []),
     { k: 'rapor_disi', l: 'Rapor', t: 'chk', cl: 'Çeyrek toplamlarına katma (iade, iptal, mükerrer…)' },
   ]},
   { title: 'Sipariş notu', note: 'Siparişin içeriğinde özel ya da ekstra olması gerekenler: özel renk sıcaklığı, optik, kablo boyu, montaj aparatı, etiket, teslim şartı…', fields: [
@@ -346,14 +347,14 @@ async function siparisYukle() {
     if (!C) return toast('Yükleme iptal edildi.');
     const dt = v => v instanceof Date ? new Date(v.getTime() - v.getTimezoneOffset() * 6e4).toISOString().slice(0, 10) : (typeof v === 'string' && /\d{2}\.\d{2}\.\d{4}/.test(v) ? v.split('.').reverse().join('-') : null);
     const byBelge = new Map(S.siparisler.map(s => [s.belge_no + '|' + s.siparis_no, s]));
-    const drv = S.firmalar.find(x => /^drv/i.test(x.ad));
+    const drv = anaBayi() ? S.firmalar.find(x => anaBayiMi(x.ad)) : null;
     // Daha önce bir firmaya bağlanmış cari adı: yeni siparişler de aynı firmaya bağlanır
     const cariHafiza = new Map(S.siparisler.filter(s => s.firma_id && s.musteri_adi).map(s => [normName(s.musteri_adi), s.firma_id]));
     const out = [];
     for (const r of rows.slice(hi + 1)) {
       if (!r[C.belge] && !r[C.mad]) continue;
       const mad = r[C.mad] ? String(r[C.mad]).trim() : null;
-      const isDrv = !!mad && /^drv/i.test(mad);
+      const isDrv = !!mad && anaBayiMi(mad);
       const fm = mad && (isDrv ? drv : S.firmalar.find(x => normName(x.ad) === normName(mad)) || byId('firmalar', cariHafiza.get(normName(mad))));
       const pt = r[C.pt] ? String(r[C.pt]).trim() : null;
       const key = String(r[C.belge] ?? '') + '|' + String(r[C.no] ?? '');

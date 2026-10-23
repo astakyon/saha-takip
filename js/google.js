@@ -84,7 +84,7 @@ export async function googleBul(opts = {}) {
   const hedef = opts.hedef;
   const panel = openDrawer(`<header class="dh"><div><p class="muted">${hedef ? esc(hedef.rec.ad) + ' · ' : ''}Google Haritalar</p><h2 id="drawer-title">Google'da ara</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <div class="dbody gpick">
-      <form class="gsearch" data-gs><input type="search" name="q" value="${esc(opts.q || '')}" placeholder="Firma veya yer adı, örn. Drv Elektrik Adana" aria-label="Google'da ara" autofocus><button class="btn primary" type="submit">Ara</button></form>
+      <form class="gsearch" data-gs><input type="search" name="q" value="${esc(opts.q || '')}" placeholder="Firma veya yer adı, örn. Yıldız Elektrik Seyhan" aria-label="Google'da ara" autofocus><button class="btn primary" type="submit">Ara</button></form>
       <div class="gmap" data-gmap><p class="hint">Google Haritalar yükleniyor…</p></div>
       <p class="hint">Haritadaki işletme simgelerine dokunarak da seçebilirsin. Boş bir noktaya dokunursan oraya kendi raptiyeni koyarsın.</p>
       <ul class="glist" data-glist></ul>

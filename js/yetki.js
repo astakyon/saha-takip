@@ -39,7 +39,7 @@ export const EKRANLAR = {
   servis:     { t: ['servis_kayitlari'], o: ['firmalar', 'projeler'], d: 'Servis ve şikayet kayıtları' },
   urunler:    { t: ['urunler', 'stok_gecmis'], o: [], d: 'Stok listesi ve fiyatlar' },
   bayi:       { t: ['urunler', 'stok_gecmis'], o: ['firmalar'], d: 'Bayinin stoğu; sipariş ve projeler yalnızca o ekranlar açıksa' },
-  katalog:    { t: ['urun_aileleri'], o: [], d: 'EAE ürün kataloğu' },
+  katalog:    { t: ['urun_aileleri'], o: [], d: 'Ürün kataloğu' },
   rakip:      { t: ['rakip_fiyatlar'], o: [], d: 'Rakip marka fiyatları' },
   araclar:    { t: [], o: [], salt: true, d: 'Aydınlatma hesap araçları' },
   panel:      { t: ['hedefler'], o: ['siparisler', 'projeler'], d: 'Hedefler, satış grafikleri ve özetler' },

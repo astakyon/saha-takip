@@ -166,7 +166,7 @@ function davetAl() {
   const d = q.get('davet'); if (!d) return;
   try {
     const j = JSON.parse(decodeURIComponent(escape(atob(d.replace(/-/g, '+').replace(/_/g, '/')))));
-    if (/^https:\/\//.test(j.u) && j.k) { setConfig({ mode: 'supabase', url: j.u, key: j.k }); if (j.e) sessionStorage.setItem('saha-davet', j.e); }
+    if (/^https:\/\//.test(j.u) && j.k) { setConfig({ mode: 'supabase', url: j.u, key: j.k }); if (j.e) sessionStorage.setItem('saha-davet', j.e); if (j.y) sessionStorage.setItem('saha-yeni', '1'); }
   } catch {}
   history.replaceState(null, '', location.pathname + location.hash);
 }
@@ -227,13 +227,16 @@ async function boot() {
   const act = kisayolAl();
   const pay = paylasimAl();
   const empty = Object.values(S).every(a => !a.length);
-  if (empty && !location.hash) location.hash = '#/ayarlar';
+  const sz = await import('./sihirbaz.js'), kurulum = sz.sihirbazGerekli();
+  if (kurulum) { if (!location.hash || /^#\/ayarlar/.test(location.hash)) location.hash = '#/bugun'; }
+  else if (empty && !location.hash) location.hash = '#/ayarlar';
   filtreIzle(document.getElementById('view'), () => lastView);
   import('./baslik.js').then(m => m.basliklariIzle(document.getElementById('view')));
   await route();
   hizliKur();
   if ('ontouchstart' in window) import('./dokunma.js').then(m => m.dokunmaKur());
-  if (Object.values(S).some(a => a.length) || !sahipMi()) import('./yardim.js').then(m => m.tanitimGerekirse());
+  if (kurulum) sz.sihirbazAc({ sonra: () => { renderNav(navSon); app.refresh?.(); import('./yardim.js').then(m => m.tanitimGerekirse()); } });
+  else if (Object.values(S).some(a => a.length) || !sahipMi()) import('./yardim.js').then(m => m.tanitimGerekirse());
   if (act === 'ziyaret') import('./views/ziyaret.js').then(m => m.ziyaretForm({}));
   if (act === 'ara') aramaAc();
   if (pay) paylasimPaneli(pay);

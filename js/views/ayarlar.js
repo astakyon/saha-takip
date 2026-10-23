@@ -37,6 +37,7 @@ export async function ayarlarView(el) {
   if (ESKI[f.sekme]) f.sekme = ESKI[f.sekme];
   if (!S.projeler.length && !S.firmalar.length && !f._ilk) { f.sekme = 'veri'; f._ilk = 1; }
   const BOLUM = [
+    ['profil', 'Firma profili', 'Firma, sektör, çalıştığın iller, bayi', 'building', true],
     ['hesap', 'Hesap ve güvenlik', 'Bulut bağlantısı, iki adımlı doğrulama, otomatik çıkış', 'user'],
     ['gorunum', 'Görünüm ve menü', 'Tema, yazı boyutu, menüdeki ekranlar', 'sun'],
     ['ekip', 'Ekip ve yetkiler', 'Kullanıcılar, roller, son değişiklikler', 'building', true],
@@ -60,6 +61,7 @@ export async function ayarlarView(el) {
   <div class="settings">
     <button type="button" class="ayar-geri" data-geri>‹ Ayarlar</button>
     <h2 class="ayar-bolum-bas" data-bolumbas></h2>
+    <section class="card" data-tab="profil"><h2>Firma profili</h2><div data-profil></div></section>
     <section class="card" data-tab="hesap"><h2>Hesap</h2>
       ${sup ? `<p>Bulut hesabına bağlısın; telefonda ve bilgisayarda aynı verileri görürsün.</p><div class="btnrow"><button class="btn ghost" data-out>Çıkış yap</button></div><details class="gelismis"><summary>Bağlantı bilgileri (Supabase)</summary>${connForm(cfg)}</details>`
       : `<p>Şu an <b>deneme modundasın</b>: veriler yalnızca bu tarayıcıda durur. Telefon ve bilgisayarda ortak kullanmak için Supabase bilgilerini gir.</p>${connForm(cfg)}`}
@@ -77,6 +79,9 @@ export async function ayarlarView(el) {
     <section class="card" data-tab="uygulama"><h2>Gizlilik</h2>
       <label class="chk"><input type="checkbox" data-gizli ${ayar('gizli_mod', false) === true ? 'checked' : ''}> <span><b>Gizli mod</b>: kayıtlarımı ve konumumu dış servislere gönderme</span></label>
       <p class="hint">Açıkken kapananlar: Google uydu/harita katmanı ve Google'da firma arama, OpenStreetMap ile adres ve il/ilçe bulma, sesle yazma (Google konuşma tanıma). Konum yine telefonda alınır, il ve sanayi bölgesi cihazda hesaplanır. Açık kalanlar: kendi Supabase veritabanın, harita görüntüsü (Esri ya da OpenStreetMap; yalnızca baktığın bölgenin görüntüsü istenir), döviz kuru.</p></section>
+    <section class="card" data-tab="uygulama"><h2>Geri bildirim</h2><p class="hint">Bir şey çalışmadıysa ya da aklına bir öneri geldiyse yaz; ekran ve sürüm bilgisi otomatik eklenir. + menüsünden de açılır.</p><div class="btnrow"><button type="button" class="btn" data-geribildirim>Geri bildirim gönder</button></div></section>
+    <section class="card wide-card" data-tab="uygulama" data-yonetici hidden><h2>Gelen geri bildirimler</h2><div data-gblist></div></section>
+    <section class="card" data-tab="uygulama" data-yonetici hidden><h2>Test daveti</h2><div data-testdavet></div></section>
     <section class="card" data-tab="uygulama"><h2>Hata günlüğü</h2><div data-hatalar></div></section>
     <section class="card" data-tab="uygulama"><h2>Uygulama sürümü</h2><p>Bu cihazda açık sürüm: <b data-surum></b></p><p class="hint">Yeni bir özellik görünmüyorsa “Şimdi güncelle”ye dokun; uygulama en son sürümü indirip yeniden açılır. Verilerin silinmez.</p><div class="btnrow"><button type="button" class="btn" data-guncelle>Şimdi güncelle</button></div></section>
     <section class="card" data-tab="uygulama"><h2>Telefona yükle</h2>
@@ -149,9 +154,12 @@ export async function ayarlarView(el) {
       gizle: async rs => { const mm = ayar('menu') || {}; await ayarYaz('menu', { ...mm, gizli: [...new Set([...(mm.gizli || []), ...rs])] }); window.dispatchEvent(new CustomEvent('menu')); menuAyarlari(el.querySelector('[data-menu]')); kul(); } }); };
     kul(); m.hataGunluguKarti(el.querySelector('[data-hatalar]'));
   });
+  el.querySelector('[data-geribildirim]').onclick = async () => (await import('../geribildirim.js')).geriBildirimAc();
+  import('../geribildirim.js').then(async g => { if (!(await g.yoneticiMi())) return; el.querySelectorAll('[data-yonetici]').forEach(s => s.hidden = false); g.geriBildirimListesi(el.querySelector('[data-gblist]')); g.testDavetKarti(el.querySelector('[data-testdavet]')); });
   if (menuAc) el.querySelector('.menu-d')?.setAttribute('open', '');
   import('../guvenlik.js').then(m => m.guvenlikAyarlari(el.querySelector('[data-guvenlik]')));
   hesapGirisAyarlari(el.querySelector('[data-girisayar]'));
+  if (sahipMi()) profilKarti(el.querySelector('[data-profil]'), () => ayarlarView(el));
   if (menuAc) setTimeout(() => el.querySelector('#menu-karti')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   bildirimAyarlari(el.querySelector('[data-bildirim]'));
   teklifAyarlari(el.querySelector('[data-teklifb]'));
@@ -266,4 +274,18 @@ async function migrate(el) {
   d.belgeler = d.belgeler.filter(b => b.yol);
   for (const k of d.kisiler) { k.kartvizit_on = await conv(k.kartvizit_on); k.kartvizit_arka = await conv(k.kartvizit_arka); }
   await importAll(d, el, 'yedek');
+}
+
+// ---------- Firma profili ----------
+async function profilKarti(kok, yenile) {
+  if (!kok) return;
+  const { profil, profilVar, SEKTOR, ESKI } = await import('../profil.js');
+  const p = profil();
+  kok.innerHTML = `<dl class="profil-dl"><dt>Firma</dt><dd>${esc(p.firma || '—')}</dd><dt>Sektör</dt><dd>${esc(SEKTOR[p.sektor] || '—')}</dd>${p.marka ? `<dt>Temsil edilen marka</dt><dd>${esc(p.marka)}</dd>` : ''}
+      <dt>Çalışılan iller</dt><dd>${esc(p.iller.join(', '))}</dd><dt>Ana bayi</dt><dd>${esc(p.bayi || '—')}</dd></dl>
+    ${p.katalog === 'eae' ? `<div class="fld"><label>Ürün kataloğu</label><div class="seg" role="group" aria-label="Ürün kataloğu"><button type="button" data-kat="eae" class="on">Hazır EAE kataloğu</button><button type="button" data-kat="kendi">Kendi kataloğum</button></div><small>Hazır katalogda EAE ürün aileleri, ürün önerisi ve şartname karşılaştırması açıktır.</small></div>` : ''}
+    <p class="hint">Bu bilgiler ekip üyelerinde de geçerlidir. Rakip markaları ve diğer seçim listelerini Listeler bölümünden düzenleyebilirsin.</p>
+    <div class="btnrow"><button type="button" class="btn primary" data-pduz>Düzenle</button></div>`;
+  kok.querySelector('[data-pduz]').onclick = async () => (await import('../sihirbaz.js')).sihirbazAc({ duzenle: true, sonra: yenile });
+  kok.querySelectorAll('[data-kat]').forEach(b => b.onclick = async () => { if (b.dataset.kat === 'kendi' && !confirmBox('Hazır EAE kataloğu, ürün önerisi ve şartname karşılaştırması kapatılsın mı? Kendi girdiğin ürün aileleri kalır.')) return; await ayarYaz('firma_profil', { ...(profilVar() ? profil() : ESKI), eski: undefined, katalog: b.dataset.kat }); toast('Kaydedildi.'); yenile(); });
 }

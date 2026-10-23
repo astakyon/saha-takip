@@ -1,8 +1,11 @@
 // Ürün kodu okuma: kamerayla barkod / QR (tarayıcı destekliyorsa canlı), olmazsa etiketin fotoğrafından yazı okuma.
-// Bulunan kod stok listesinde ve EAE kataloğunda aranır: açıklama, Drv stoğu, fiyat, ürün sayfası.
+// Bulunan kod stok listesinde ve katalogda aranır: açıklama, bayi stoğu, fiyat, ürün sayfası.
 import { S } from './db.js';
 import { esc, toast, openDrawer, closeDrawer, num, fold, pickFiles, urunBilgi } from './ui.js';
-import { AILELER } from './data/eae-katalog.js';
+import { AILELER as EAE_AILE } from './data/eae-katalog.js';
+import { eaeKatalog } from './profil.js';
+// Katalog: EAE kullanan için gömülü EAE aileleri, diğerleri için kendi girdiği ürün aileleri
+const AILELER_AL = () => eaeKatalog() ? EAE_AILE : (S.urun_aileleri || []).map(a => ({ aile: a.aile, ad: a.ad || a.aile, kategori: '', aciklama: a.aciklama || '', yol: null }));
 
 const BICIMLER = ['code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'qr_code', 'data_matrix', 'itf'];
 const detektor = async () => {
@@ -32,6 +35,7 @@ export function urunAra(metin) {
   }
   // 3) EAE ürün sayfası bağlantısı (QR) ya da aile adı
   const aileler = new Set();
+  const AILELER = AILELER_AL();
   const url = /eaeaydinlatma\.com\/urun\/([\w-]+)/i.exec(m); if (url) { const a = AILELER.find(x => x.yol === url[1]); if (a) aileler.add(a); }
   const kelimeler = new Set(m.toUpperCase().split(/[^A-Z0-9-]+/).filter(Boolean));
   for (const a of AILELER) if (kelimeler.has(a.aile.toUpperCase())) aileler.add(a);

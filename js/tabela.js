@@ -3,7 +3,7 @@
 // Firmalar kayıtlı firmalarla eşleştirilir; olmayanlar istenirse oluşturulur, sonra yeni proje formu dolu açılır.
 import { S, uuid } from './db.js';
 import { app } from './state.js';
-import { esc, toast, openDrawer, closeDrawer, pickFiles, fold } from './ui.js';
+import { esc, toast, openDrawer, closeDrawer, pickFiles, fold, ILLER } from './ui.js';
 
 const ETIKET = [
   ['ad', /^(proje(nin)?\s*ad[ıi]|i[şs]in\s*ad[ıi]|yap[ıi]n[ıi]n\s*ad[ıi]|proje|tesis\s*ad[ıi])\b/],
@@ -22,7 +22,6 @@ const ETIKET = [
   ['alan', /^(in[şs]aat\s*alan[ıi]|toplam\s*alan|yap[ıi]\s*alan[ıi])\b/],
   ['adres', /^(adres|yer[ıi]|il\s*\/\s*il[çc]e|konum)\b/],
 ];
-const ILLER = ['Adana', 'Mersin', 'Hatay', 'Osmaniye'];
 const temizle = s => String(s || '').replace(/[|_~•·“”"]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
 
 export function tabelaAyristir(metin) {

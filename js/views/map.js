@@ -1,7 +1,7 @@
 import { ALTLIKLAR, varsayilanAltlik, altlikKatmani, uyduMu } from '../altlik.js';
 import { S, DB_DURUM } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, usd, pill, durumRenk, DURUMLAR, ACIK, ILLER, IL_MERKEZ, BOLGE_RENKLERI, byId, firmaAd, match, tarih, myLocation, toast, directionsUrl, openDrawer, closeDrawer, fold } from '../ui.js';
+import { esc, usd, pill, durumRenk, DURUMLAR, ACIK, ILLER, IL_MERKEZ, BOLGE_KUTU, BOLGE_RENKLERI, byId, firmaAd, match, tarih, myLocation, toast, directionsUrl, openDrawer, closeDrawer, fold } from '../ui.js';
 import { ilSinirlari, detayliSinirIndir, konumAlgila, konumMetni, toMulti, inMulti } from '../geo.js';
 import { yeniProje } from './projeler.js';
 import { yeniFirma } from './firmalar.js';
@@ -12,7 +12,7 @@ import { iceAktarPaneli } from './ice-aktar.js';
 
 let map, cluster, regionLayer, borderLayer, drawLayer, meMarker;
 let mode = null, moveOn = false, harita = null;            // null | {t:'pin'} | {t:'assign', table, rec} | {t:'draw', pts:[], bolge}
-const REGION = [[35.75, 32.6], [38.0, 36.75]];
+const REGION = () => [[BOLGE_KUTU.s, BOLGE_KUTU.w], [BOLGE_KUTU.n, BOLGE_KUTU.e]];   // firma profilindeki bölge
 const LABEL_ZOOM = 14, REGION_LABEL_ZOOM = 11;
 
 function markerIcon(kind, color, approx) {
@@ -257,6 +257,7 @@ export async function mapView(el) {
     const s = await ilSinirlari();
     for (const il of ILLER) {
       const on = f.il === il, any = f.il === 'Tümü';
+      if (!s[il]) continue;
       const coords = s[il].map(poly => poly.map(ring => ring.map(([x, y]) => [y, x])));
       L.polygon(coords, { color: on ? '#1D2B36' : '#46606F', weight: on ? 3 : (any ? 1.6 : 1), opacity: on ? 0.9 : (any ? 0.6 : 0.35), fillColor: '#1D2B36', fillOpacity: on ? 0.03 : 0, dashArray: on ? null : '4 4', interactive: false }).addTo(borderLayer);
     }
@@ -455,8 +456,8 @@ export async function mapView(el) {
 }
 
 function fly(il, anim = true) {
-  if (il === 'Tümü') map.fitBounds(REGION, { animate: anim });
-  else ilSinirlari().then(s => { const pts = s[il].flatMap(p => p[0].map(([x, y]) => [y, x])); map.fitBounds(pts, { animate: anim, padding: [20, 20] }); });
+  if (il === 'Tümü' || !ILLER.includes(il)) map.fitBounds(REGION(), { animate: anim });
+  else ilSinirlari().then(s => { if (!s[il]) return; const pts = s[il].flatMap(p => p[0].map(([x, y]) => [y, x])); map.fitBounds(pts, { animate: anim, padding: [20, 20] }); });
 }
 
 let undoT;

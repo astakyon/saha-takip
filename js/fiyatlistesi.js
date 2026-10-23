@@ -1,4 +1,4 @@
-// EAE fiyat listesi güncelleme: yeni liste Excel'i yüklenince açık teklifler (Taslak, Gönderildi) yeni fiyatlarla karşılaştırılır.
+// Üretici fiyat listesi güncelleme: yeni liste Excel'i yüklenince açık teklifler (Taslak, Gönderildi) yeni fiyatlarla karşılaştırılır.
 // Teklif başına eski / yeni toplam ve fark; istenirse teklif tek dokunuşla yeni fiyatlara çekilir (kalem iskontoları korunur).
 // Stok listesindeki birim fiyatlar da istenirse güncellenir. Liste bu cihazda son yükleme olarak hatırlanır.
 import { S } from './db.js';
@@ -23,7 +23,7 @@ async function listeOku(file) {
   const h = (rows[hi] || []).map(c => fold(c || ''));
   const col = (...re) => h.findIndex(x => re.some(r => r.test(x)));
   const { sutunlariEsle } = await import('./esle.js');
-  const M = await sutunlariEsle('fiyat_listesi', 'EAE fiyat listesi', (rows[hi] || []).map(x => String(x ?? '')), rows.slice(hi + 1, hi + 4), [
+  const M = await sutunlariEsle('fiyat_listesi', 'Fiyat listesi', (rows[hi] || []).map(x => String(x ?? '')), rows.slice(hi + 1, hi + 4), [
     { k: 'kod', l: 'Ürün kodu' }, { k: 'ac', l: 'Ürün adı / açıklama' }, { k: 'fiyat', l: 'Liste fiyatı', zorunlu: true }, { k: 'pb', l: 'Para birimi' }],
     { kod: col(/kod/, /code/, /malzeme/), ac: col(/aciklama/, /urun ad/, /tanim/, /description/), fiyat: col(/liste fiyat/, /birim fiyat/, /fiyat/, /price/), pb: col(/para birim/, /doviz/, /currency/) });
   if (!M) return null;

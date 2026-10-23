@@ -1286,3 +1286,26 @@ html[data-tutar=gizli] .fld:has(:is([name*=tutar], [name*=fiyat], [name$=_usd], 
 .tb-foto img { width: 100%; max-height: 220px; object-fit: contain; border-radius: 10px; background: var(--zemin-3); }
 .tb-rol small { display: block; margin-top: 4px; color: var(--muted); font-size: 12.5px; }
 .tb-metin { white-space: pre-wrap; font-size: 12px; background: var(--zemin-2); padding: 8px; border-radius: 8px; max-height: 200px; overflow: auto; }
+
+/* ---------- Sürüm 37: kurulum sihirbazı, firma profili, geri bildirim ---------- */
+body.sihirbaz-acik { overflow: hidden; }
+.sihirbaz { position: fixed; inset: 0; z-index: 1250; background: var(--koyu); overflow-y: auto; display: grid; place-items: start center; padding: 16px; }
+.sz-kutu { background: var(--card); border-radius: 14px; width: min(560px, 100%); margin: 4vh 0; display: flex; flex-direction: column; }
+.sz-ust { display: flex; align-items: center; gap: 10px; padding: 16px 20px 0; }
+.sz-ust .sz-adim { margin-left: auto; color: var(--muted); font-size: 13px; }
+.sz-cizgi { display: flex; gap: 4px; list-style: none; padding: 0 20px; margin: 12px 0 0; }
+.sz-cizgi li { flex: 1; height: 4px; border-radius: 2px; background: var(--line-2); font-size: 0; }
+.sz-cizgi li.bitti, .sz-cizgi li.simdi { background: var(--lumen); }
+.sz-govde { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+.sz-govde h2 { font-size: 22px; }
+.sz-kartlar { display: grid; gap: 8px; }
+.sz-kart { text-align: left; border: 1.5px solid var(--line); background: var(--card); border-radius: 10px; padding: 12px 14px; display: grid; gap: 2px; cursor: pointer; font: inherit; color: var(--ink); }
+.sz-kart small { color: var(--muted); }
+.sz-kart.on { border-color: var(--lumen); background: var(--lumen-soft); }
+.sz-secili { display: flex; flex-wrap: wrap; gap: 6px; min-height: 32px; align-items: center; }
+.sz-iller { max-height: 34vh; overflow-y: auto; padding: 2px; }
+.sz-ozet { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 15px; }
+.sz-alt { display: flex; justify-content: space-between; gap: 8px; padding: 12px 20px 18px; border-top: 1px solid var(--line-2); position: sticky; bottom: 0; background: var(--card); border-radius: 0 0 14px 14px; }
+.profil-dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 4px 0 12px; }
+.profil-dl dt { color: var(--muted); }
+.profil-dl dd { margin: 0; font-weight: 600; }

@@ -54,7 +54,7 @@ export function waGonder(ctx = {}) {
 export function sablonDuzenleyici(root) {
   let list = sablonlar().map(x => ({ ...x }));
   const ciz = () => {
-    root.innerHTML = `<div class="fld"><label for="benim">İmzan (mesajların sonunda {benim} yerine geçer)</label><input id="benim" value="${esc(benimAdim())}" placeholder="Örn. Burak Ayyıldız · EAE Aydınlatma"></div>
+    root.innerHTML = `<div class="fld"><label for="benim">İmzan (mesajların sonunda {benim} yerine geçer)</label><input id="benim" value="${esc(benimAdim())}" placeholder="Örn. Ali Yılmaz · Yıldız Elektrik"></div>
       ${list.map((s, i) => `<div class="sab"><div class="sab-h"><input data-ad="${i}" value="${esc(s.ad)}" aria-label="Şablon adı"><button type="button" class="x" data-sil="${i}" aria-label="Şablonu sil">×</button></div><textarea data-metin="${i}" rows="3">${esc(s.metin)}</textarea></div>`).join('')}
       <p class="hint">Kullanılabilir alanlar: {ad} kişinin adı, {adsoyad}, {firma}, {proje}, {tarih}, {benim}.</p>
       <div class="btnrow"><button type="button" class="btn" data-ekle>Şablon ekle</button><button type="button" class="btn primary" data-kaydet>Kaydet</button><button type="button" class="btn ghost" data-sifirla>Varsayılanlara dön</button></div>`;

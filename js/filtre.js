@@ -36,7 +36,7 @@ export function filtreCubugu(kok, ekran) {
   d.querySelector('[data-kfyeni]')?.addEventListener('click', e => {
     const b = e.currentTarget;
     const f = document.createElement('form'); f.className = 'kf-form';
-    f.innerHTML = `<input required maxlength="40" placeholder="Ad, örn. Adana açık projeler" aria-label="Filtre adı"><button type="submit" class="btn sm primary">Kaydet</button><button type="button" class="btn sm ghost" data-iptal>Vazgeç</button>`;
+    f.innerHTML = `<input required maxlength="40" placeholder="Ad, örn. Bu ayın açık projeleri" aria-label="Filtre adı"><button type="submit" class="btn sm primary">Kaydet</button><button type="button" class="btn sm ghost" data-iptal>Vazgeç</button>`;
     b.replaceWith(f); f.querySelector('input').focus();
     f.querySelector('[data-iptal]').onclick = yenile;
     f.onsubmit = async ev => {

@@ -1,6 +1,6 @@
 // Tek tuşla çeyrek toplantı sunumu (.pptx): şirketin çeyrek sunum düzeninde, düzenlenebilir tablolarla
 import { S } from './db.js';
-import { byId, firmaAd, today, download, toast, openDrawer, closeDrawer, ACIK, num } from './ui.js';
+import { byId, firmaAd, today, download, toast, openDrawer, closeDrawer, ACIK, num, ILLER } from './ui.js';
 import { zipYaz } from './zip.js';
 import { TEMA } from './pptx-tema.js';
 import { benimAdim } from './sablon.js';
@@ -105,7 +105,7 @@ export function sunumOlustur(Y, C) {
   // Kapak
   ek(kutu({ x: 0, y: 0, w: W, h: H, dolgu: RENK.ink }) + kutu({ x: 1.5 * CM, y: 4.2 * CM, w: W - 3 * CM, h: 2.6 * CM, satirlar: [{ t: `${Y} ${C}. ÇEYREK DEĞERLENDİRME`, sz: 4000, b: true, renk: 'FFFFFF' }] })
     + kutu({ x: 1.5 * CM, y: 7.0 * CM, w: 5 * CM, h: 0.2 * CM, dolgu: RENK.lumen })
-    + kutu({ x: 1.5 * CM, y: 7.6 * CM, w: W - 3 * CM, h: 3 * CM, satirlar: [{ t: 'Adana · Mersin · Hatay · Osmaniye', sz: 2000, renk: 'FFFFFF' }, { t: d.tem, sz: 1600, renk: 'B6C2CA' }, { t: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }), sz: 1400, renk: 'B6C2CA' }] }));
+    + kutu({ x: 1.5 * CM, y: 7.6 * CM, w: W - 3 * CM, h: 3 * CM, satirlar: [{ t: ILLER.join(' · '), sz: 2000, renk: 'FFFFFF' }, { t: d.tem, sz: 1600, renk: 'B6C2CA' }, { t: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }), sz: 1400, renk: 'B6C2CA' }] }));
   // Hedef ve gerçekleşen
   const topH = d.hed.reduce((a, b) => a + b, 0), topG = d.ger.reduce((a, b) => a + b, 0);
   ek(baslik(`${Y} / SATIŞ HEDEFLERİMİZ & GERÇEKLEŞEN SATIŞLAR`)
