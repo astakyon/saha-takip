@@ -16,7 +16,8 @@ import { yuklemeKaydet } from '../belgeler.js';
 import { ayar, ayarYaz } from '../ayar.js';
 import { sahipMi } from '../yetki.js';
 import { kullaniciAyarlari } from './kullanicilar.js';
-import { menuAyarlari } from '../menu.js';
+import { menuAyarlari, menuDuzeni } from '../menu.js';
+import { SEKME_AD } from '../basliklar.js';
 import { connForm, bindConn, hesapGirisAyarlari } from '../giris.js';
 
 const ORDER = SIRA;
@@ -70,11 +71,13 @@ export async function ayarlarView(el) {
     <section class="card" data-tab="hesap"><h2>Güvenlik</h2><div data-guvenlik></div></section>
     <section class="card wide-card" data-tab="listeler"><h2>Seçim listeleri</h2><div data-listeler></div></section>
     <section class="card" data-tab="gorunum" id="menu-karti"><h2>Menü</h2><div data-menu></div></section>
+    <section class="card" data-tab="gorunum"><h2>Kullanım</h2><div data-kullanim></div></section>
     <section class="card" data-tab="gorunum"><h2>Görünüm</h2><div class="seg" role="group" aria-label="Tema" data-tema>${[['acik', 'Açık'], ['koyu', 'Koyu'], ['oto', 'Cihaza göre']].map(([k, t]) => `<button type="button" data-tm="${k}" class="${(ayar('tema', 'acik') || 'acik') === k ? 'on' : ''}">${t}</button>`).join('')}</div><p class="hint">Koyu tema akşam ve gece kullanımında gözü daha az yorar. “Cihaza göre” telefonun gece/gündüz ayarını izler.</p><h3>Yazı boyutu</h3><div class="seg" role="group" aria-label="Yazı boyutu">${[['normal', 'Normal'], ['buyuk', 'Büyük'], ['cokbuyuk', 'Çok büyük']].map(([k, t]) => `<button type="button" data-yz="${k}" class="${(ayar('yazi', 'normal') || 'normal') === k ? 'on' : ''}">${t}</button>`).join('')}</div></section>
     <section class="card" data-tab="uygulama"><h2>Araç</h2><p class="hint">Günlük km'yi masrafa yazarken yakıt tutarı buna göre hesaplanır.</p><div class="grid"><div class="fld"><label for="a-l">Tüketim (litre / 100 km)</label><input id="a-l" type="number" step="0.1" inputmode="decimal" data-yakit="yakit_lt100" value="${ayar('yakit_lt100', '') || ''}" placeholder="örn. 6,5"></div><div class="fld"><label for="a-f">Yakıt litre fiyatı (TL)</label><input id="a-f" type="number" step="0.01" inputmode="decimal" data-yakit="yakit_tl" value="${ayar('yakit_tl', '') || ''}" placeholder="örn. 52,40"></div></div></section>
     <section class="card" data-tab="uygulama"><h2>Gizlilik</h2>
       <label class="chk"><input type="checkbox" data-gizli ${ayar('gizli_mod', false) === true ? 'checked' : ''}> <span><b>Gizli mod</b>: kayıtlarımı ve konumumu dış servislere gönderme</span></label>
       <p class="hint">Açıkken kapananlar: Google uydu/harita katmanı ve Google'da firma arama, OpenStreetMap ile adres ve il/ilçe bulma, sesle yazma (Google konuşma tanıma). Konum yine telefonda alınır, il ve sanayi bölgesi cihazda hesaplanır. Açık kalanlar: kendi Supabase veritabanın, harita görüntüsü (Esri ya da OpenStreetMap; yalnızca baktığın bölgenin görüntüsü istenir), döviz kuru.</p></section>
+    <section class="card" data-tab="uygulama"><h2>Hata günlüğü</h2><div data-hatalar></div></section>
     <section class="card" data-tab="uygulama"><h2>Uygulama sürümü</h2><p>Bu cihazda açık sürüm: <b data-surum></b></p><p class="hint">Yeni bir özellik görünmüyorsa “Şimdi güncelle”ye dokun; uygulama en son sürümü indirip yeniden açılır. Verilerin silinmez.</p><div class="btnrow"><button type="button" class="btn" data-guncelle>Şimdi güncelle</button></div></section>
     <section class="card" data-tab="uygulama"><h2>Telefona yükle</h2>
       ${INST.standalone ? '<p><b>Uygulama yüklü.</b> Simgeye uzun basınca Ziyaret kaydet, Harita, Takvim ve Projeler kısayolları çıkar.</p>' : `<p>Ana ekrana Saha Takip simgesi eklenir, tam ekran açılır ve internet yokken de çalışır.</p><div class="btnrow"><button class="btn primary" data-install>Uygulamayı yükle</button></div>
@@ -141,6 +144,11 @@ export async function ayarlarView(el) {
   sablonDuzenleyici(el.querySelector('[data-sablon]'));
   kurAyarlari(el.querySelector('[data-kur]'));
   menuAyarlari(el.querySelector('[data-menu]'));
+  import('../saglik.js').then(m => {
+    const kul = () => { const { gizli } = menuDuzeni(app.rotalar); m.kullanimKarti(el.querySelector('[data-kullanim]'), { rotalar: app.rotalar, gizli, ad: r => SEKME_AD[r] || app.rotalar[r]?.t || r,
+      gizle: async rs => { const mm = ayar('menu') || {}; await ayarYaz('menu', { ...mm, gizli: [...new Set([...(mm.gizli || []), ...rs])] }); window.dispatchEvent(new CustomEvent('menu')); menuAyarlari(el.querySelector('[data-menu]')); kul(); } }); };
+    kul(); m.hataGunluguKarti(el.querySelector('[data-hatalar]'));
+  });
   if (menuAc) el.querySelector('.menu-d')?.setAttribute('open', '');
   import('../guvenlik.js').then(m => m.guvenlikAyarlari(el.querySelector('[data-guvenlik]')));
   hesapGirisAyarlari(el.querySelector('[data-girisayar]'));

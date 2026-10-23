@@ -1,0 +1,22 @@
+# Her gönderimde otomatik testler: sözdizimi, çevrimdışı önbellek listesi, her ekranın açılması,
+# ekip üyesi yetkileri, giriş ekranı ve hata günlüğü. Sonuç GitHub'da Actions sekmesinde görünür.
+name: Testler
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Playwright kur
+        run: |
+          npm install --no-save --no-package-lock playwright@1.48.2
+          npx playwright install --with-deps chromium
+      - name: Testleri çalıştır
+        run: node tests/calistir.mjs

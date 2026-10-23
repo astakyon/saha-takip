@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 16)
+--  Saha Satış Takip — Supabase şeması (sürüm 17)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -610,3 +610,28 @@ create or replace function public.giris_epostasi(ad text) returns text language 
 $f$;
 revoke all on function public.giris_epostasi(text) from public;
 grant execute on function public.giris_epostasi(text) to anon, authenticated;
+
+-- ---------- Sürüm 17: hata günlüğü ----------
+-- Telefonda oluşan hatalar (metin, ekran, sürüm, telefon türü) veri sahibinin günlüğüne yazılır. Kayıt içeriği yazılmaz.
+-- Ekip üyesi yalnızca ekleyebilir; okumak ve silmek veri sahibine aittir.
+create table if not exists public.hata_gunlugu (
+  id bigserial primary key,
+  owner uuid not null default public.veri_sahibi() references auth.users(id) on delete cascade,
+  kim text default public.benim_epostam(),
+  zaman timestamptz not null default now(),
+  surum text, ekran text, mesaj text not null, yer text, tarayici text, adet int default 1
+);
+create index if not exists hata_gunlugu_owner_idx on public.hata_gunlugu (owner, zaman desc);
+alter table public.hata_gunlugu enable row level security;
+drop policy if exists "hata_ekle" on public.hata_gunlugu;
+drop policy if exists "hata_oku" on public.hata_gunlugu;
+drop policy if exists "hata_sil" on public.hata_gunlugu;
+create policy "hata_ekle" on public.hata_gunlugu for insert to authenticated
+  with check (owner = public.veri_sahibi() and kim = public.benim_epostam() and length(mesaj) <= 500);
+create policy "hata_oku" on public.hata_gunlugu for select to authenticated using (owner = auth.uid());
+create policy "hata_sil" on public.hata_gunlugu for delete to authenticated using (owner = auth.uid());
+-- Günlük şişmesin: 90 günden eski kayıtlar, yenisi eklenirken silinir
+create or replace function public.hata_temizle() returns trigger language plpgsql security definer set search_path = public as $f$
+begin delete from public.hata_gunlugu where owner = new.owner and zaman < now() - interval '90 days'; return new; end $f$;
+drop trigger if exists hata_temizle on public.hata_gunlugu;
+create trigger hata_temizle after insert on public.hata_gunlugu for each row execute function public.hata_temizle();

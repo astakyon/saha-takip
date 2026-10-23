@@ -4,3 +4,5 @@ baslangic-verisi.json
 *.xlsx
 *.xls
 .DS_Store
+node_modules/
+tests/cikti/

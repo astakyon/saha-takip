@@ -1266,3 +1266,9 @@ html[data-tutar=gizli] .fld:has(:is([name*=tutar], [name*=fiyat], [name$=_usd], 
 .login-card .davet.ok { background: var(--yesil-soft); color: var(--green); }
 .login-card details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 .kad-sat { display: flex; gap: 8px; align-items: center; }
+
+/* ---------- Sürüm 35: uygulama sağlığı ---------- */
+.kul-oneri { background: var(--sari-soft); border-radius: 10px; padding: 10px 12px; margin: 8px 0; display: grid; gap: 8px; font-size: 14px; }
+.kul-l li { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.kul-bar { display: block; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--lumen) var(--w), var(--line-2) var(--w)); }
+.hata-l b { font-weight: 600; word-break: break-word; }

@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 35): uygulamanın sağlığı
+**Bir kez:** Supabase SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (şema sürüm 17).
+- **Hata günlüğü:** senin ya da ekibinin telefonunda bir hata olursa kısa bir kayıt otomatik olarak Supabase'e yazılır. Kayıtta hata metni, ekran, sürüm ve telefon türü bulunur; kayıtların içeriği yazılmaz. Günlüğü yalnızca sen görürsün: Ayarlar → Uygulama → Hata günlüğü. Aynı hatalar gruplanır, "Kopyala" ile bildirebilirsin. 90 günden eski kayıtlar kendiliğinden silinir. İnternet yokken kayıt telefonda bekler.
+- **Kullanım ölçümü:** hangi ekranı ne sıklıkla açtığın yalnızca o cihazda sayılır, hiçbir yere gönderilmez. Ayarlar → Görünüm ve menü → Kullanım. 3 hafta sonra hiç açmadığın ekranlar menüden kaldırılmak üzere önerilir.
+- **Otomatik testler:** GitHub her gönderimde `tests/calistir.mjs` testlerini çalıştırır. Sonuç depodaki Actions sekmesinde görünür. Testler kodu, çevrimdışı dosya listesini, her ekranın açılmasını, ekip üyesi yetkilerini, girişi ve hata günlüğünü denetler. Gerçek müşteri verisi kullanılmaz.
+
 ## Güncelleme notu (sürüm 34): giriş ve kullanıcı adı
 **Bir kez:**
 1. Supabase SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (şema sürüm 16).
@@ -45,7 +51,7 @@ Giriş ekranında üç sekme var:
 Diğer değişiklikler:
 - Ayarlar → Hesap → Giriş bilgileri: kendi kullanıcı adını belirlersin ve şifreni değiştirirsin.
 - Ekip ve yetkiler: her kişiye kullanıcı adı verilebilir. Davet mesajı adım adım yazıldı.
-- Not: kullanıcı adını bilen biri, giriş ekranı üzerinden o adın e-postasına bir giriş ya da yenileme bağlantısı gönderilmesini isteyebilir. Şifre ya da veri açılmaz.
+- Not: giriş ekranı kullanıcı adını e-postaya kendisi çevirir. Bu yüzden veritabanı adresini ve herkese açık anahtarı bilen biri (örneğin davet bağlantısını gören), bir kullanıcı adının e-posta adresini öğrenebilir ve o adrese giriş ya da yenileme bağlantısı gönderilmesini isteyebilir. Şifre ve kayıtlar açılmaz.
 
 ## Güncelleme notu (sürüm 33): ayrıntılı yetkiler
 **Bir kez:** Supabase SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (şema sürüm 15).

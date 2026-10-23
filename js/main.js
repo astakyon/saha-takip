@@ -4,6 +4,7 @@ import { esc, toast, closeDrawer } from './ui.js';
 import { listeleriUygula } from './listeler.js';
 import { kisayolAl, canInstall, install, onInstallChange } from './kurulum.js';
 import { paylasimAl, paylasimPaneli } from './paylas.js';
+import { hataKaydet, kullanimSay, hataGonder } from './saglik.js';
 import { rotaIzinli, sahipMi, rotaYazilabilir, izin, yetkiUygula, gerekUygula, onizlemede, onizlemeBitir } from './yetki.js';
 import { menuDuzeni } from './menu.js';
 import { BASLIKLAR, SEKME_AD, baslikOf } from './basliklar.js';
@@ -125,6 +126,7 @@ async function route() {
 }
 async function show(k) {
   lastView = k;
+  if (lastShown !== k) try { kullanimSay(k); } catch {}
   saltOku(k);
   renderNav(k);
   const donus = lastShown !== k ? kayKonum[k] : null;
@@ -209,7 +211,7 @@ async function boot() {
       if (!otoKuruldu) { otoKuruldu = true; g.otoCikisKur(); }
     }
     await app.db.loadAll({ hizli: true });
-    yetkiUygula(); gerekIzle();
+    yetkiUygula(); gerekIzle(); setTimeout(hataGonder, 8000);
     listeleriUygula();
     if (app.db.mode === 'supabase') import('./guvenlik.js').then(g => g.gorundum());
     temaUygula(); yaziUygula();
@@ -286,8 +288,10 @@ onInstallChange(() => { const b = document.querySelector('[data-inst]'); if (b) 
 // Beklenmeyen hatalar: ekranda kısa bir not (sorunu bildirmek için ekran görüntüsü yeterli olsun)
 let sonHata = 0;
 function hataGoster(m, dosya, satir) {
-  if (!m || /^Script error|ResizeObserver/i.test(m) || Date.now() - sonHata < 3000) return; sonHata = Date.now();
+  if (!m || /^Script error|ResizeObserver/i.test(m)) return;
   const yer = dosya ? ' (' + String(dosya).split('/').slice(-2).join('/').replace(/\?.*$/, '') + (satir ? ':' + satir : '') + ')' : '';
+  try { hataKaydet(m, yer.trim().replace(/^\(|\)$/g, '')); } catch {}
+  if (Date.now() - sonHata < 3000) return; sonHata = Date.now();
   console.error('Saha Takip hata:', m, yer);
   try { toast('Hata: ' + m + yer, 'err'); } catch {}
 }
