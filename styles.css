@@ -1272,3 +1272,17 @@ html[data-tutar=gizli] .fld:has(:is([name*=tutar], [name*=fiyat], [name$=_usd], 
 .kul-l li { display: grid; grid-template-columns: 1fr; gap: 4px; }
 .kul-bar { display: block; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--lumen) var(--w), var(--line-2) var(--w)); }
 .hata-l b { font-weight: 600; word-break: break-word; }
+
+/* ---------- Sürüm 36: hedefe kalan, fiyat listesi ---------- */
+.hedef-k .hk-ust { display: flex; flex-wrap: wrap; gap: 12px 32px; margin: 4px 0 10px; }
+.hedef-k .hk-ust > div { display: grid; }
+.hk-buyuk { font: 700 26px var(--fc); }
+.hedef-k small { color: var(--muted); font-size: 13px; }
+.hk-cubuk { height: 8px; border-radius: 4px; background: var(--line-2); overflow: hidden; margin-bottom: 10px; }
+.hk-cubuk span { display: block; height: 100%; background: var(--lumen); }
+.fl-ozet { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 8px 0; font-size: 14px; }
+.fl-tbl td.artti { color: var(--red); }
+.fl-tbl td.azaldi { color: var(--green); }
+.tb-foto img { width: 100%; max-height: 220px; object-fit: contain; border-radius: 10px; background: var(--zemin-3); }
+.tb-rol small { display: block; margin-top: 4px; color: var(--muted); font-size: 12.5px; }
+.tb-metin { white-space: pre-wrap; font-size: 12px; background: var(--zemin-2); padding: 8px; border-radius: 8px; max-height: 200px; overflow: auto; }

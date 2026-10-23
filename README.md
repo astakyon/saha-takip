@@ -32,6 +32,11 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 36): satış araçları
+- **Hedefe kalan (Panel):** bu çeyreğin hedefine kalan tutar, kalan gün ve hafta, haftada gereken sipariş. Altında bunu karşılayabilecek projeler sıralanır: bu çeyrekte beklenenler ve Sıcak olanlar önce gelir, olasılıkla ağırlıklı toplam da hesaplanır. Hedef girilmemişse kart doğrudan hedef formunu açar.
+- **EAE fiyat listesi (Teklifler ve Stok ekranında "Fiyat listesi"):** yeni liste Excel'i yüklenir; sütunlar ilk seferde sorulur ve hatırlanır. Açık teklifler (Taslak ve Gönderildi) kalem kalem yeni fiyatlarla karşılaştırılır: eski ve yeni toplam, fark ve yüzde gösterilir. Her teklif tek dokunuşla ya da hepsi birlikte yeni fiyatlara çekilir; adet ve iskontolar korunur, teklif notuna tarih düşülür. Stok listesindeki fiyatlar da istenirse güncellenir. Fark tablosu Excel'e alınabilir.
+- **Şantiye tabelasından proje (Projeler → "Tabeladan proje" ve + menüsü):** tabelanın fotoğrafındaki yazı okunur. Proje adı, yapı sahibi, müteahhit, elektrik yüklenicisi, proje müellifi, kontrollük ve il ayrılır. Ruhsat, ada-parsel, yapı denetim ve bitiş tarihi notlara yazılır. Firmalar kayıtlı firmalarla eşleşir; olmayanlar istenirse yeni firma olarak eklenir. Tabela fotoğrafı projeye eklenir ve yeni proje formu dolu açılır. Okuma motoru kartvizit okumada kullanılanla aynıdır.
+
 ## Güncelleme notu (sürüm 35): uygulamanın sağlığı
 **Bir kez:** Supabase SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (şema sürüm 17).
 - **Hata günlüğü:** senin ya da ekibinin telefonunda bir hata olursa kısa bir kayıt otomatik olarak Supabase'e yazılır. Kayıtta hata metni, ekran, sürüm ve telefon türü bulunur; kayıtların içeriği yazılmaz. Günlüğü yalnızca sen görürsün: Ayarlar → Uygulama → Hata günlüğü. Aynı hatalar gruplanır, "Kopyala" ile bildirebilirsin. 90 günden eski kayıtlar kendiliğinden silinir. İnternet yokken kayıt telefonda bekler.

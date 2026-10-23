@@ -172,7 +172,7 @@ export function teklifAyarlari(root) {
 
 export function tekliflerView(el) {
   const f = F('teklifler', { q: '', durum: 'Tümü' });
-  el.innerHTML = `<header class="vh"><div><h1>Teklifler</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn ghost" data-xls>Excel</button><button class="btn primary" data-new>Yeni teklif</button></div></header>
+  el.innerHTML = `<header class="vh"><div><h1>Teklifler</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn ghost" data-fl data-gerek="yaz:teklifler" title="Yeni EAE fiyat listesini yükle, açık tekliflerle karşılaştır">Fiyat listesi</button><button class="btn ghost" data-xls>Excel</button><button class="btn primary" data-new>Yeni teklif</button></div></header>
     <div class="filters"><input type="search" data-q placeholder="Teklif no, firma, proje ara" value="${esc(f.q)}" aria-label="Tekliflerde ara">
       <div class="seg" role="group" aria-label="Durum">${['Tümü', ...TEKLIF_DURUM.map(d => d.k)].map(d => `<button type="button" data-d="${d}" class="${f.durum === d ? 'on' : ''}">${d}</button>`).join('')}</div></div>
     <div data-rows></div>`;
@@ -194,6 +194,7 @@ export function tekliflerView(el) {
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { f.durum = b.dataset.d; saveFilters(); el.querySelectorAll('[data-d]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
   el.querySelector('[data-new]').onclick = () => teklifForm({});
+  el.querySelector('[data-fl]')?.addEventListener('click', async () => (await import('../fiyatlistesi.js')).fiyatListesiYukle());
   el.querySelector('[data-xls]').onclick = () => exportXlsx(`teklifler-${today()}.xlsx`, {
     'Teklifler': S.teklifler.map(t => ({ 'Teklif no': t.teklif_no, 'Tarih': t.tarih, 'Geçerlilik': t.gecerlilik, 'Durum': t.durum, 'Firma': firmaAd(t.firma_id), 'Yetkili': byId('kisiler', t.kisi_id)?.ad_soyad, 'Proje': byId('projeler', t.proje_id)?.ad, 'İskonto %': t.iskonto, 'KDV %': t.kdv, 'Toplam (KDV hariç)': t.toplam, 'Para birimi': t.para_birimi, 'Not': t.notlar })),
     'Kalemler': S.teklifler.flatMap(t => (t.kalemler || []).map(k => ({ 'Teklif no': t.teklif_no, 'Ürün kodu': k.kod, 'Ürün': k.ad, 'Adet': k.adet, 'Birim fiyat': k.birim_fiyat, 'İskonto %': k.iskonto, 'Tutar': Math.round((+k.adet || 0) * (+k.birim_fiyat || 0) * (1 - (+k.iskonto || 0) / 100) * 100) / 100, 'Para birimi': t.para_birimi }))) });

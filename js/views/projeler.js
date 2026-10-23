@@ -172,7 +172,7 @@ export function projelerView(el) {
   const rakipler = [...new Set(S.projeler.map(p => p.rakip_marka).filter(Boolean))].sort();
   el.innerHTML = `
   <header class="vh"><div><h1>Projeler</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="liste" class="${!['huni', 'kart'].includes(f.gor) ? 'on' : ''}">Tablo</button><button type="button" data-gor="kart" class="${f.gor === 'kart' ? 'on' : ''}">Kart</button><button type="button" data-gor="huni" class="${f.gor === 'huni' ? 'on' : ''}">Satış hunisi</button></div><button class="btn ghost" data-sutun aria-haspopup="dialog" ${['huni', 'kart'].includes(f.gor) ? 'hidden' : ''}>Sütunlar</button><button class="btn ghost" data-toplu aria-pressed="false">Toplu düzelt</button><button class="btn ghost" data-adaylar>Adaylar <i data-adaysay></i></button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Yeni proje</button></div></header>
+    <div class="vh-act"><div class="seg" role="group" aria-label="Görünüm"><button type="button" data-gor="liste" class="${!['huni', 'kart'].includes(f.gor) ? 'on' : ''}">Tablo</button><button type="button" data-gor="kart" class="${f.gor === 'kart' ? 'on' : ''}">Kart</button><button type="button" data-gor="huni" class="${f.gor === 'huni' ? 'on' : ''}">Satış hunisi</button></div><button class="btn ghost" data-sutun aria-haspopup="dialog" ${['huni', 'kart'].includes(f.gor) ? 'hidden' : ''}>Sütunlar</button><button class="btn ghost" data-toplu aria-pressed="false">Toplu düzelt</button><button class="btn ghost" data-adaylar>Adaylar <i data-adaysay></i></button><button class="btn ghost" data-tabela data-gerek="yaz:projeler" title="Şantiye tabelasının fotoğrafından yeni proje">Tabeladan proje</button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Yeni proje</button></div></header>
   <div class="filters">
     <input type="search" data-q placeholder="Proje, firma (Emüt, Gemüt…), OSB, not ara" value="${esc(f.q)}" aria-label="Projelerde ara">
     <div class="seg" role="group" aria-label="Takip yılı">${['Tümü', '2026', '2027'].map(y => `<button type="button" data-yil="${y}" class="${String(f.yil) === y ? 'on' : ''}">${y === 'Tümü' ? 'Tüm projeler' : y + ' listesi'}</button>`).join('')}</div>
@@ -289,6 +289,7 @@ export function projelerView(el) {
   el.querySelector('[data-ft]').onclick = e => { const o = el.querySelector('.filters').classList.toggle('open'); e.target.setAttribute('aria-expanded', String(o)); };
   el.querySelector('[data-new]').onclick = () => yeniProje({});
   el.querySelector('[data-sutun]').onclick = () => sutunPaneli(draw);
+  el.querySelector('[data-tabela]')?.addEventListener('click', async () => (await import('../tabela.js')).tabeladanProje());
   el.querySelector('[data-adaylar]').onclick = async () => (await import('../aday.js')).adaylarPaneli(() => draw());
   el.querySelector('[data-exp]').onclick = () => exportProjeler(filtered(f).sort(siralayici(f)));
   draw();

@@ -1,6 +1,7 @@
 import { S, uuid } from '../db.js';
 import { kayipKarti, kayipTamamla } from '../kayip.js';
 import { app, F, saveFilters } from '../state.js';
+import { hedefKalanKarti } from '../hedef.js';
 import { esc, usd, num, tarih, today, DURUMLAR, ACIK, byId, firmaAd, match, toast, exportXlsx, pickFiles, fold, durumRenk, openDrawer, closeDrawer, pill, olasilik, confirmBox, parcali } from '../ui.js';
 import { gorevForm } from './ziyaret.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
@@ -49,6 +50,7 @@ export function panelView(el) {
     <div><span>Kaybedilen (${Y})</span><b>${usd(sum(kayip, p => p.bizim_teklif_usd || p.tutar_usd))}</b><small>${kayip.length} proje</small></div>
   </section>
   <div class="dash">
+    ${hedefKalanKarti(t)}
     <section class="card wide"><h2>Çeyrek bazında sipariş ve hedef</h2>
       <div class="qbars">${[0, 1, 2, 3].map(i => `<div class="qb"><div class="qb-cols"><span class="bar target" style="height:${hed[i] / maxQ * 100}%" title="Hedef ${usd(hed[i])}"></span><span class="bar real ${gercek[i] >= hed[i] && hed[i] ? 'ok' : ''}" style="height:${gercek[i] / maxQ * 100}%" title="Gerçekleşen ${usd(gercek[i])}"></span></div>
         <b>${i + 1}. çeyrek</b><small>${usd(gercek[i])}${hed[i] ? ` · %${num(gercek[i] / hed[i] * 100)}` : ''}</small></div>`).join('')}</div>
@@ -84,6 +86,7 @@ export function panelView(el) {
       <div class="btnrow"><button class="btn primary" data-pptx>Çeyrek sunumu (PowerPoint)</button><button class="btn" data-s="kayip">Kayıp projeler</button><button class="btn" data-s="pot">Potansiyel projeler (${Y})</button><button class="btn" data-s="str">${Y + 1} potansiyel ve stratejik projeler</button><button class="btn ghost" data-s="hedef">Hedef proje listesi</button></div></section>
   </div>`;
   el.querySelector('[data-yil]').onchange = e => { f.yil = +e.target.value; saveFilters(); panelView(el); };
+  el.querySelector('[data-hedefgir]')?.addEventListener('click', () => hedefForm(+t.slice(0, 4)));
   el.querySelector('[data-ozet]').onclick = () => { const fs = F('siparisler', {}); fs.gor = 'ceyrek'; fs.yil = Y; saveFilters(); };
   el.querySelector('[data-xls]').onclick = () => exportXlsx(`panel-${Y}-${today()}.xlsx`, {
     'Çeyrekler': G.map((g, i) => ({ 'Çeyrek': i + 1, 'Hedef (USD)': g.hedef, 'Siparişlerden (USD)': Math.round(g.siparis), 'Resmi rakam (USD)': g.resmi != null ? Math.round(g.resmi) : '', 'Raporlarda kullanılan (USD)': Math.round(g.gercek), 'Hedefe oran %': g.hedef ? Math.round(g.gercek / g.hedef * 100) : '', 'Ağırlıklı açık potansiyel (USD)': Math.round(tah.ag[i]) })),

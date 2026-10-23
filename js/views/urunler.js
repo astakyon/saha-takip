@@ -35,7 +35,7 @@ export function urunlerView(el) {
   const aileler = [...new Set(S.urunler.map(u => u.aile).filter(Boolean))].sort();
   const sonTarih = S.urunler.map(u => u.stok_tarihi).filter(Boolean).sort().pop();
   el.innerHTML = `<header class="vh"><div><h1>Stok ve birim fiyat</h1><p class="sum">${S.urunler.length} kalem · ${S.urunler.filter(u => u.stok > 0).length} kalem stokta${sonTarih ? ` · stok tarihi ${tarih(sonTarih)}` : ''}</p></div>
-    <div class="vh-act"><button class="btn ghost" data-kodoku>Kodu oku</button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-up>Stok Excel'i yükle</button></div></header>
+    <div class="vh-act"><button class="btn ghost" data-kodoku>Kodu oku</button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn ghost" data-fl data-gerek="yaz:urunler">EAE fiyat listesi</button><button class="btn primary" data-up>Stok Excel'i yükle</button></div></header>
     <div class="filters"><input type="search" data-q placeholder="Ürün kodu veya açıklama ara (örn. HBL 150)" value="${esc(f.q)}" aria-label="Ürünlerde ara">
       <div class="frow"><label>Ürün ailesi <select data-aile>${['Tümü', ...aileler].map(a => `<option ${f.aile === a ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></label><label class="chk"><input type="checkbox" data-stokta ${f.stokta ? 'checked' : ''}> <span>Sadece stokta olanlar</span></label></div></div>
     <section class="ledger stock-ledger" data-ledger></section>
@@ -74,6 +74,7 @@ export function urunlerView(el) {
   el.querySelector('[data-aile]').onchange = e => { f.aile = e.target.value; saveFilters(); draw(); };
   el.querySelector('[data-stokta]').onchange = e => { f.stokta = e.target.checked; saveFilters(); draw(); };
   el.querySelector('[data-up]').onclick = stokYukle;
+  el.querySelector('[data-fl]')?.addEventListener('click', async () => (await import('../fiyatlistesi.js')).fiyatListesiYukle());
   el.querySelector('[data-kodoku]').onclick = async () => (await import('../barkod.js')).kodOku();
   el.querySelector('[data-exp]').onclick = () => exportXlsx(`stok-fiyat-${today()}.xlsx`, { 'Stok': list().map(u => ({ 'Kod': u.kod, 'Açıklama': u.aciklama, 'Aile': u.aile, 'Birim': u.birim, 'Stok': u.stok, 'Birim fiyat (USD)': u.birim_fiyat_usd, 'Kalem tutarı (USD)': Math.round((+u.stok || 0) * (+u.birim_fiyat_usd || 0) * 100) / 100, 'Stok tarihi': u.stok_tarihi, 'Depo': u.depo })) });
   draw();

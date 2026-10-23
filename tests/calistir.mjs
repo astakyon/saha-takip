@@ -121,6 +121,26 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 6) Satış araçları: tabela okuma, hedefe kalan, fiyat listesi karşılaştırması ----------
+{
+  const { p, c, hatalar } = await sayfa();
+  await p.clock.setFixedTime(new Date('2026-10-23T10:00:00'));
+  await p.goto(U + '#/bugun'); await w(1000);
+  const tb = await p.evaluate(async () => (await import('./js/tabela.js')).tabelaAyristir('İŞİN ADI : ÖRNEK HASTANE EK BİNA\nYAPI SAHİBİ: Örnek Bakanlık\nYÜKLENİCİ FİRMA : ÖRNEK İNŞAAT LTD. ŞTİ.\nELEKTRİK YÜKLENİCİSİ: Örnek Elektrik\nADA/PARSEL: 12/3\nMERSİN'));
+  kontrol('Tabeladan proje adı ve firmalar ayrılıyor', tb.ad === 'Örnek Hastane Ek Bina' && tb.yatirimci === 'Örnek Bakanlık' && /İNŞAAT/.test(tb.gemut || '') && tb.emut === 'Örnek Elektrik' && tb.parsel === '12/3' && tb.il === 'Mersin', JSON.stringify(tb));
+  await p.evaluate(async () => { const { app } = await import('./js/state.js');
+    await app.db.save('hedefler', { yil: 2026, ceyrek: 4, tutar_usd: 200000 }); await app.db.save('siparisler', { tarih: '2026-10-05', net_deger: 50000, para_birimi: 'USD' });
+    await app.db.save('projeler', { id: 'hs', ad: 'Sıcak Proje', durum: 'Sıcak', tutar_usd: 80000, beklenen_tarih: '2026-11-15' });
+    await app.db.save('teklifler', { id: 'tf', teklif_no: 'T-1', durum: 'Gönderildi', para_birimi: 'USD', iskonto: 10, kalemler: [{ kod: '1000001', ad: 'ORNEK', adet: 100, birim_fiyat: 40, iskonto: 5 }] }); });
+  const h = await p.evaluate(async () => { const r = (await import('./js/hedef.js')).hedefDurumu('2026-10-23'); return { kalan: r.kalan, hafta: r.hafta, liste: r.liste.map(x => x.p.id) }; });
+  kontrol('Hedefe kalan ve haftalık ihtiyaç hesaplanıyor', h.kalan === 150000 && h.hafta === 10 && h.liste.includes('hs'), JSON.stringify(h));
+  await p.goto(U + '#/panel'); await w(600); kontrol('Panelde hedefe kalan kartı var', /150\.000/.test(await p.textContent('.hedef-k').catch(() => '')));
+  const fk = await p.evaluate(async () => { const m = await import('./js/fiyatlistesi.js'); return m.karsilastir({ liste: new Map([['1000001', { kod: '1000001', fiyat: 44, pb: 'USD' }]]), acMap: new Map() }).map(x => [x.degisen, Math.round(x.eski), Math.round(x.yeni)]); });
+  kontrol('Fiyat listesi açık teklifi doğru karşılaştırıyor', JSON.stringify(fk) === '[[1,3420,3762]]', JSON.stringify(fk));
+  kontrol('Satış araçlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
 await tarayici.close(); sunucu.close();
 console.log(sonuc.join('\n'));
 console.log(basarisiz ? `\n${basarisiz} test başarısız.` : `\nTüm testler geçti (${sonuc.length}).`);
