@@ -32,6 +32,21 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 34): giriş ve kullanıcı adı
+**Bir kez:**
+1. Supabase SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (şema sürüm 16).
+2. Supabase → Authentication → URL Configuration ekranında **Site URL** olarak `https://astakyon.github.io/saha-takip/` yaz. Aynı adresi **Redirect URLs** listesine de ekle. Bu ayar yapılmazsa e-postadaki bağlantılar uygulamaya dönmez.
+
+Giriş ekranında üç sekme var:
+- **Şifreyle:** e-posta ya da kullanıcı adıyla girilir. Şifre "Göster" ile görünür olur. Ad bu cihazda hatırlanır. "Şifremi unuttum" e-postaya yenileme bağlantısı gönderir; bağlantı uygulamayı yeni şifre ekranıyla açar.
+- **Bağlantıyla:** şifresiz giriş. E-postaya tek kullanımlık bir giriş bağlantısı gelir. Yalnızca zaten hesabı olan kişiler kullanabilir.
+- **İlk giriş:** davet edilen kişi şifresini iki kez yazarak belirler. Şifre en az 8 karakter olmalı, harf ve rakam içermeli.
+
+Diğer değişiklikler:
+- Ayarlar → Hesap → Giriş bilgileri: kendi kullanıcı adını belirlersin ve şifreni değiştirirsin.
+- Ekip ve yetkiler: her kişiye kullanıcı adı verilebilir. Davet mesajı adım adım yazıldı.
+- Not: kullanıcı adını bilen biri, giriş ekranı üzerinden o adın e-postasına bir giriş ya da yenileme bağlantısı gönderilmesini isteyebilir. Şifre ya da veri açılmaz.
+
 ## Güncelleme notu (sürüm 33): ayrıntılı yetkiler
 **Bir kez:** Supabase SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (şema sürüm 15).
 - Ayarlar → Ekip ve yetkiler: her kişi için 23 ekranın her biri ayrı ayrı **Kapalı / Görür / Düzenler** olarak ayarlanır. Ekranlar menü başlıklarına göre gruplanmıştır. Bir başlığın tamamı tek dokunuşla açılıp kapatılabilir.

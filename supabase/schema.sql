@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 15)
+--  Saha Satış Takip — Supabase şeması (sürüm 16)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -584,3 +584,29 @@ create policy "foto_oku" on storage.objects for select to authenticated
 -- Uygulama bu fonksiyonla sunucu kurallarının güncel olduğunu anlar
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 15 $f$;
 grant execute on function public.yetki_surum() to authenticated;
+
+-- ---------- Sürüm 16: kullanıcı adıyla giriş ----------
+-- Her e-postanın en fazla bir kullanıcı adı olur. Kişi kendi adını, veri sahibi kendi ekip üyelerinin adını belirler.
+-- Giriş ekranı adı e-postaya çevirmek için yalnızca giris_epostasi() fonksiyonunu kullanır; tablo herkese kapalıdır.
+create table if not exists public.kullanici_adlari (
+  ad text primary key check (ad ~ '^[a-z0-9._-]{3,30}$'),
+  eposta text not null unique,
+  ekleyen uuid default auth.uid(),
+  created_at timestamptz default now()
+);
+alter table public.kullanici_adlari enable row level security;
+create or replace function public.kad_yonetebilir(e text) returns boolean language sql stable security definer set search_path = public as $f$
+  select lower(e) = public.benim_epostam()
+      or exists (select 1 from public.ekip_uyeleri u where u.owner = auth.uid() and lower(u.eposta) = lower(e))
+$f$;
+drop policy if exists "kad_oku" on public.kullanici_adlari;
+drop policy if exists "kad_ekle" on public.kullanici_adlari;
+drop policy if exists "kad_sil" on public.kullanici_adlari;
+create policy "kad_oku" on public.kullanici_adlari for select to authenticated using (public.kad_yonetebilir(eposta));
+create policy "kad_ekle" on public.kullanici_adlari for insert to authenticated with check (public.kad_yonetebilir(eposta) and eposta = lower(eposta));
+create policy "kad_sil" on public.kullanici_adlari for delete to authenticated using (public.kad_yonetebilir(eposta));
+create or replace function public.giris_epostasi(ad text) returns text language sql stable security definer set search_path = public as $f$
+  select k.eposta from public.kullanici_adlari k where k.ad = lower(trim($1)) limit 1
+$f$;
+revoke all on function public.giris_epostasi(text) from public;
+grant execute on function public.giris_epostasi(text) to anon, authenticated;

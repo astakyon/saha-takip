@@ -156,7 +156,7 @@ class SupaAdapter {
   async init() {
     const { data } = await this.c.auth.getSession();
     this.session = data.session;
-    this.c.auth.onAuthStateChange((_e, s) => { this.session = s; });
+    this.c.auth.onAuthStateChange((e, s) => { this.session = s; if (e === 'PASSWORD_RECOVERY') this.kurtarma = true; });
     window.addEventListener('online', () => this.flush());
     return !!this.session;
   }

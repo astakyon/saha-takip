@@ -1256,3 +1256,13 @@ html[data-tutar=gizli] .fld:has(:is([name*=tutar], [name*=fiyat], [name$=_usd], 
 .yetki-ozet b { font-weight: 600; }
 .yetki-ozet .kapali { color: var(--muted); }
 [data-gizlendi] { display: none !important; }
+
+/* ---------- Sürüm 34: giriş ---------- */
+.giris-mod { display: flex; width: 100%; }
+.giris-mod button { flex: 1; padding-inline: 6px; font-size: 13.5px; }
+.sifre-kutu { position: relative; }
+.sifre-kutu input { padding-right: 76px; }
+.sifre-goz { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--blue); font: 600 13px var(--f); padding: 8px 10px; cursor: pointer; min-height: 36px; }
+.login-card .davet.ok { background: var(--yesil-soft); color: var(--green); }
+.login-card details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.kad-sat { display: flex; gap: 8px; align-items: center; }

@@ -169,6 +169,11 @@ function davetAl() {
   history.replaceState(null, '', location.pathname + location.hash);
 }
 let otoKuruldu = false;
+// E-postadaki bağlantıdan dönüş (giriş bağlantısı, şifre yenileme, hesap onayı): adres #access_token=… taşır
+const AUTH_DONUS = /access_token=|error_description=|type=(recovery|magiclink|signup)/.test(location.hash);
+let kurtarma = /type=recovery/.test(location.hash);
+const authHata = (() => { const m = /error_description=([^&]+)/.exec(location.hash); try { return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : ''; } catch { return ''; } })();
+if (AUTH_DONUS) { try { localStorage.setItem('saha-son-etkinlik', String(Date.now())); } catch {} }
 // Kapalı bölümler: ekip üyesinde (ve önizlemede) data-gerek işaretli parçalar, yetki yoksa eklendiği anda kaldırılır
 let gerekGozcu = null;
 function gerekIzle() {
@@ -193,7 +198,10 @@ async function boot() {
   view.innerHTML = '<div class="boot"><span class="bulb big"></span><p>Veriler yükleniyor…</p></div>';
   try {
     const ok = await app.db.init();
-    if (app.db.mode === 'supabase' && !ok) { document.getElementById('nav').innerHTML = ''; return (await import('./views/ayarlar.js')).loginView(view, boot); }
+    if (AUTH_DONUS && /access_token|error_description|type=/.test(location.hash)) history.replaceState(null, '', location.pathname + '#/bugun');
+    if (authHata) { try { sessionStorage.setItem('saha-cikis-mesaj', /expired|invalid/i.test(authHata) ? 'E-postadaki bağlantının süresi dolmuş ya da daha önce kullanılmış. Yeni bağlantı iste.' : authHata); } catch {} }
+    if (app.db.mode === 'supabase' && !ok) { document.getElementById('nav').innerHTML = ''; return (await import('./giris.js')).loginView(view, boot); }
+    if (app.db.mode === 'supabase' && (kurtarma || app.db.kurtarma)) { kurtarma = false; app.db.kurtarma = false; document.getElementById('nav').innerHTML = ''; return (await import('./giris.js')).yeniSifreEkrani(view, boot); }
     if (app.db.mode === 'supabase') {
       const g = await import('./guvenlik.js');
       if (await g.otoCikisGerekli()) return;

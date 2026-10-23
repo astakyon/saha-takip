@@ -17,53 +17,12 @@ import { ayar, ayarYaz } from '../ayar.js';
 import { sahipMi } from '../yetki.js';
 import { kullaniciAyarlari } from './kullanicilar.js';
 import { menuAyarlari } from '../menu.js';
+import { connForm, bindConn, hesapGirisAyarlari } from '../giris.js';
 
 const ORDER = SIRA;
 const ETIKET = { bolgeler: 'sanayi bölgesi', firmalar: 'firma', kisiler: 'kişi', projeler: 'proje', proje_gecmis: 'durum geçmişi', ziyaretler: 'ziyaret', gorevler: 'görev', urunler: 'ürün', stok_gecmis: 'stok geçmişi', rakip_fiyatlar: 'rakip fiyatı', siparisler: 'sipariş', hedefler: 'hedef', teklifler: 'teklif', numuneler: 'numune', servis_kayitlari: 'servis kaydı', masraflar: 'masraf', urun_aileleri: 'ürün ailesi', ayarlar: 'ayar', tahsilatlar: 'tahsilat kaydı', belgeler: 'belge' };
 
-function connForm(cfg) {
-  return `<form class="form conn" data-conn>
-    <div class="grid"><div class="fld full"><label for="c-url">Supabase proje adresi (Project URL)</label><input id="c-url" placeholder="https://xxxx.supabase.co" value="${esc(cfg?.url || '')}" autocomplete="off"></div>
-    <div class="fld full"><label for="c-key">Anon public anahtar</label><textarea id="c-key" rows="3" placeholder="eyJhbGciOi…">${esc(cfg?.key || '')}</textarea>
-    <small>Supabase panelinde Project Settings → API bölümünde bulunur. “service_role” anahtarını değil, “anon public” anahtarı gir.</small></div></div>
-    <div class="btnrow"><button class="btn primary" type="submit">Supabase'e bağlan</button>${cfg?.mode === 'supabase' ? '<button class="btn ghost" type="button" data-demo>Deneme moduna dön</button>' : ''}</div></form>`;
-}
-function bindConn(root) {
-  const f = root.querySelector('[data-conn]');
-  f.onsubmit = e => {
-    e.preventDefault();
-    const url = f.querySelector('#c-url').value.trim().replace(/\/$/, ''), key = f.querySelector('#c-key').value.trim();
-    if (!/^https:\/\/.+/.test(url) || key.length < 40) return toast('Adres https:// ile başlamalı ve anahtar tam olmalı.', 'err');
-    setConfig({ mode: 'supabase', url, key }); toast('Bağlantı kaydedildi.'); location.hash = '#/ayarlar'; location.reload();
-  };
-  f.querySelector('[data-demo]')?.addEventListener('click', () => { setConfig({ ...(getConfig() || {}), mode: 'local' }); location.reload(); });
-}
-
-export function loginView(el, done) {
-  const cfg = getConfig();
-  el.innerHTML = `<div class="login"><div class="login-card"><div class="brand"><span class="bulb big" aria-hidden="true"></span><h1>Saha Takip</h1></div>
-    <p class="muted">${esc(cfg.url.replace('https://', ''))}</p>
-    ${(() => { let m = ''; try { m = sessionStorage.getItem('saha-cikis-mesaj') || ''; sessionStorage.removeItem('saha-cikis-mesaj'); } catch {} return m ? `<p class="davet">${esc(m)}</p>` : ''; })()}
-    ${sessionStorage.getItem('saha-davet') ? '<p class="davet">Saha Takip\'e davet edildin. <b>İlk girişte</b> bu e-postayla bir şifre belirleyip “Hesap oluştur”a dokun; sonra giriş yap.</p>' : ''}
-    <form class="form" data-login><div class="fld"><label for="l-e">E-posta</label><input id="l-e" type="email" autocomplete="username" required autofocus value="${esc(sessionStorage.getItem('saha-davet') || '')}"></div>
-    <div class="fld"><label for="l-p">Şifre</label><input id="l-p" type="password" autocomplete="current-password" minlength="6" required></div>
-    <div class="btnrow"><button class="btn primary" type="submit">Giriş yap</button><button class="btn ghost" type="button" data-up>Hesap oluştur</button></div></form>
-    <details><summary>Bağlantı ayarları</summary>${connForm(cfg)}</details></div></div>`;
-  bindConn(el);
-  const f = el.querySelector('[data-login]');
-  const go = async up => {
-    const e = f.querySelector('#l-e').value.trim(), p = f.querySelector('#l-p').value;
-    if (!e || p.length < 6) return toast('E-posta ve en az 6 karakterli şifre gir.', 'err');
-    try {
-      if (up) { const r = await app.db.signUp(e, p); if (!r.session) return toast('Hesap oluşturuldu. E-postana gelen onay bağlantısına tıkla, sonra giriş yap.'); }
-      else await app.db.signIn(e, p);
-      try { localStorage.setItem('saha-son-etkinlik', Date.now()); } catch {}
-      done();
-    } catch (err) { toast(/Invalid login/i.test(err.message) ? 'E-posta veya şifre hatalı.' : /not confirmed/i.test(err.message) ? 'E-posta adresin henüz onaylanmamış. Gelen kutundaki bağlantıya tıkla.' : err.message, 'err'); }
-  };
-  f.onsubmit = e => { e.preventDefault(); go(false); };
-  el.querySelector('[data-up]').onclick = () => go(true);
-}
+export { loginView } from '../giris.js';
 
 export async function ayarlarView(el) {
   const cfg = getConfig();
@@ -107,6 +66,7 @@ export async function ayarlarView(el) {
     ${sahipMi() ? '' : `<section class="card" data-tab="hesap"><h2>Ekip üyesi</h2><p>Bu hesapla veri sahibinin sana açtığı bölümleri görüyorsun. Yeni bölüm için veri sahibinden yetki iste.</p></section>`}
     <section class="card wide-card" data-tab="ekip"><h2>Kullanıcılar ve yetkiler</h2><div data-kullanici></div></section>
     <section class="card wide-card" data-tab="ekip" data-sondeg></section>
+    ${sup ? '<section class="card" data-tab="hesap"><h2>Giriş bilgileri</h2><div data-girisayar><p class="hint">Yükleniyor…</p></div></section>' : ''}
     <section class="card" data-tab="hesap"><h2>Güvenlik</h2><div data-guvenlik></div></section>
     <section class="card wide-card" data-tab="listeler"><h2>Seçim listeleri</h2><div data-listeler></div></section>
     <section class="card" data-tab="gorunum" id="menu-karti"><h2>Menü</h2><div data-menu></div></section>
@@ -183,6 +143,7 @@ export async function ayarlarView(el) {
   menuAyarlari(el.querySelector('[data-menu]'));
   if (menuAc) el.querySelector('.menu-d')?.setAttribute('open', '');
   import('../guvenlik.js').then(m => m.guvenlikAyarlari(el.querySelector('[data-guvenlik]')));
+  hesapGirisAyarlari(el.querySelector('[data-girisayar]'));
   if (menuAc) setTimeout(() => el.querySelector('#menu-karti')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   bildirimAyarlari(el.querySelector('[data-bildirim]'));
   teklifAyarlari(el.querySelector('[data-teklifb]'));
