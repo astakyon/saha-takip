@@ -5,6 +5,7 @@ import { esc, fold, toast, openDrawer, closeDrawer, download, today, byId, ACIK 
 import { linkCoz } from './views/ice-aktar.js';
 import { konumAlgila, konumMetni } from './geo.js';
 import { googleKey, adaGoreBul } from './google.js';
+import { disaAktarabilir } from './yetki.js';
 
 // Paylaşım parametrelerini (manifest share_target) okur ve adres çubuğunu temizler
 export function paylasimAl() {
@@ -136,4 +137,4 @@ export function kmlUret({ projeler = true, firmalar = true, sadeceAcik = false }
   }
   return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Saha Takip ${today()}</name>${stiller}${klasor}</Document></kml>`;
 }
-export function kmlIndir(opts) { download(`saha-takip-${today()}.kml`, kmlUret(opts), 'application/vnd.google-earth.kml+xml'); toast('KML dosyası indirildi. Google Benim Haritalarım → İçe aktar ile açabilirsin.'); }
+export function kmlIndir(opts) { if (!disaAktarabilir()) return toast('Dışa aktarma yetkin yok.', 'err'); download(`saha-takip-${today()}.kml`, kmlUret(opts), 'application/vnd.google-earth.kml+xml'); toast('KML dosyası indirildi. Google Benim Haritalarım → İçe aktar ile açabilirsin.'); }

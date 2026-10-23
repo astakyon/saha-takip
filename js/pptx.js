@@ -5,6 +5,7 @@ import { zipYaz } from './zip.js';
 import { TEMA } from './pptx-tema.js';
 import { benimAdim } from './sablon.js';
 import { yilGercek } from './ceyrek.js';
+import { disaAktarabilir } from './yetki.js';
 
 const W = 12192000, H = 6858000, CM = 360000;
 const x = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
@@ -161,6 +162,7 @@ export function pptxPaketle(slaytlar) {
 
 // Panelden çağrılır: çeyrek seçimi ve indirme
 export function ceyrekSunumu(Y) {
+  if (!disaAktarabilir()) { toast('Sunum çıktısı alma yetkin yok. Gerekirse veri sahibinden iste.', 'err'); return 0; }
   const buC = +Y === new Date().getFullYear() ? Math.floor(new Date().getMonth() / 3) + 1 : 4;
   const p = openDrawer(`<header class="dh"><div><p class="muted">PowerPoint</p><h2 id="drawer-title">${Y} çeyrek sunumu</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <div class="dbody form"><div class="fld"><label for="pp-c">Hangi çeyreğin sonu itibarıyla?</label><select id="pp-c">${[1, 2, 3, 4].map(c => `<option value="${c}" ${c === buC ? 'selected' : ''}>${c}. çeyrek</option>`).join('')}</select></div>
@@ -179,6 +181,7 @@ export function ceyrekSunumu(Y) {
 
 // Enerji tasarrufu önerisi (Aydınlatma araçları → Enerji tasarrufu): 3 slaytlık, müşteriye gönderilecek sunum
 export function tasarrufSunumu(v) {
+  if (!disaAktarabilir()) { toast('Sunum çıktısı alma yetkin yok. Gerekirse veri sahibinden iste.', 'err'); return 0; }
   sid = 2;
   const sayi = n => new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(n || 0);
   const kartlar = (liste, Y) => { const w = (W - 1.8 * CM - 3 * 0.5 * CM) / 4; return liste.map(([b, d, a], i) => kutu({ x: 0.9 * CM + i * (w + 0.5 * CM), y: Y, w, h: 4.2 * CM, dolgu: i === 0 ? RENK.ink : RENK.acik, satirlar: [{ t: b, sz: 1200, renk: i === 0 ? 'B6C2CA' : RENK.gri }, { t: d, sz: 2600, b: true, renk: i === 0 ? 'FFFFFF' : RENK.ink }, { t: a, sz: 1000, renk: i === 0 ? 'B6C2CA' : RENK.gri }] })).join(''); };

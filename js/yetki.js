@@ -17,6 +17,8 @@ export const MODULLER = [
   { k: 'belgeler', ad: 'Dosyalar ve belgeler', t: ['belgeler'], rota: ['dosyalar'] },
 ];
 export const sahipMi = () => !app.yetki || app.yetki.ben_sahip !== false;
+// Excel / sunum çıktısı: veri sahibi her zaman; ekip üyesi yalnızca izin verildiyse (yetkiler._disa)
+export const disaAktarabilir = () => sahipMi() || app.yetki?.yetkiler?._disa === true;
 // tablo için 'oku' | 'yaz' | null
 export function izin(tablo) {
   if (sahipMi()) return 'yaz';

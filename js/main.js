@@ -9,6 +9,7 @@ import { bolgelerView } from './views/bolgeler.js';
 import { urunlerView, rakipView } from './views/urunler.js';
 import { panelView, siparislerView } from './views/panel.js';
 import { ayarlarView, loginView } from './views/ayarlar.js';
+import { listeleriUygula } from './listeler.js';
 import { kisayolAl, canInstall, install, onInstallChange } from './kurulum.js';
 import { bugunView } from './views/bugun.js';
 import { araclarView } from './views/araclar.js';
@@ -158,6 +159,7 @@ function davetAl() {
   } catch {}
   history.replaceState(null, '', location.pathname + location.hash);
 }
+let otoKuruldu = false;
 async function boot() {
   loadFilters();
   davetAl();
@@ -167,8 +169,16 @@ async function boot() {
   try {
     const ok = await app.db.init();
     if (app.db.mode === 'supabase' && !ok) { document.getElementById('nav').innerHTML = ''; return loginView(view, boot); }
+    if (app.db.mode === 'supabase') {
+      const g = await import('./guvenlik.js');
+      if (await g.otoCikisGerekli()) return;
+      if (await g.ikinciAdimGerekli()) { document.getElementById('nav').innerHTML = ''; return g.ikinciAdimEkrani(view, boot); }
+      if (!otoKuruldu) { otoKuruldu = true; g.otoCikisKur(); }
+    }
     await app.db.loadAll();
     app.yetki = app.db.yetki || null;
+    listeleriUygula();
+    if (app.db.mode === 'supabase') import('./guvenlik.js').then(g => g.gorundum());
     temaUygula(); yaziUygula();
     app.ekip = [];
     if (app.db.mode === 'supabase' && sahipMi()) app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif,yetkiler').then(({ data }) => { app.ekip = (data || []).filter(u => u.aktif); if (app.ekip.length && ['gorevler', 'bugun'].includes(lastView) && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});
@@ -212,7 +222,7 @@ async function tazele(zorla) {
   if (tazeleniyor || !app.db || app.db.mode !== 'supabase' || !navigator.onLine || document.hidden) return;
   if (!zorla && Date.now() - sonTazele < 120000) return;
   tazeleniyor = true;
-  try { await app.db.loadAll(); sonTazele = Date.now(); if (!document.querySelector('.drawer.open') && !document.activeElement?.matches?.('input, textarea, select')) { const y = window.scrollY; app.refresh(); window.scrollTo(0, y); } }
+  try { await app.db.loadAll(); listeleriUygula(); sonTazele = Date.now(); if (!document.querySelector('.drawer.open') && !document.activeElement?.matches?.('input, textarea, select')) { const y = window.scrollY; app.refresh(); window.scrollTo(0, y); } }
   catch {} finally { tazeleniyor = false; }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tazele(); });

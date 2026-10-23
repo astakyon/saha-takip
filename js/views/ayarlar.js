@@ -43,6 +43,7 @@ export function loginView(el, done) {
   const cfg = getConfig();
   el.innerHTML = `<div class="login"><div class="login-card"><div class="brand"><span class="bulb big" aria-hidden="true"></span><h1>Saha Takip</h1></div>
     <p class="muted">${esc(cfg.url.replace('https://', ''))}</p>
+    ${(() => { let m = ''; try { m = sessionStorage.getItem('saha-cikis-mesaj') || ''; sessionStorage.removeItem('saha-cikis-mesaj'); } catch {} return m ? `<p class="davet">${esc(m)}</p>` : ''; })()}
     ${sessionStorage.getItem('saha-davet') ? '<p class="davet">Saha Takip\'e davet edildin. <b>İlk girişte</b> bu e-postayla bir şifre belirleyip “Hesap oluştur”a dokun; sonra giriş yap.</p>' : ''}
     <form class="form" data-login><div class="fld"><label for="l-e">E-posta</label><input id="l-e" type="email" autocomplete="username" required autofocus value="${esc(sessionStorage.getItem('saha-davet') || '')}"></div>
     <div class="fld"><label for="l-p">Şifre</label><input id="l-p" type="password" autocomplete="current-password" minlength="6" required></div>
@@ -56,6 +57,7 @@ export function loginView(el, done) {
     try {
       if (up) { const r = await app.db.signUp(e, p); if (!r.session) return toast('Hesap oluşturuldu. E-postana gelen onay bağlantısına tıkla, sonra giriş yap.'); }
       else await app.db.signIn(e, p);
+      try { localStorage.setItem('saha-son-etkinlik', Date.now()); } catch {}
       done();
     } catch (err) { toast(/Invalid login/i.test(err.message) ? 'E-posta veya şifre hatalı.' : /not confirmed/i.test(err.message) ? 'E-posta adresin henüz onaylanmamış. Gelen kutundaki bağlantıya tıkla.' : err.message, 'err'); }
   };
@@ -72,7 +74,7 @@ export async function ayarlarView(el) {
   const pend = sup ? await app.db.pending() : 0;
   const f = F('ayarlar', { sekme: 'genel' });
   if (!S.projeler.length && !S.firmalar.length && f.sekme === 'genel' && !f._ilk) { f.sekme = 'veri'; f._ilk = 1; }
-  const SEKME = sahipMi() ? [['genel', 'Genel'], ['kullanici', 'Kullanıcılar'], ['veri', 'Veri ve yedek'], ['google', 'Google ve harita'], ['mesaj', 'Mesaj ve teklif']] : [['genel', 'Genel']];
+  const SEKME = sahipMi() ? [['genel', 'Genel'], ['kullanici', 'Kullanıcılar'], ['listeler', 'Listeler'], ['veri', 'Veri ve yedek'], ['google', 'Google ve harita'], ['mesaj', 'Mesaj ve teklif']] : [['genel', 'Genel']];
   let menuAc = false; try { menuAc = !!sessionStorage.getItem('menu-ac'); sessionStorage.removeItem('menu-ac'); } catch {}
   if (menuAc) f.sekme = 'genel';
   try { const s = sessionStorage.getItem('ayar-sekme'); if (s) { f.sekme = s; sessionStorage.removeItem('ayar-sekme'); } } catch {}
@@ -88,6 +90,8 @@ export async function ayarlarView(el) {
     ${sahipMi() ? '' : `<section class="card" data-tab="genel"><h2>Ekip üyesi</h2><p>Bu hesapla veri sahibinin sana açtığı bölümleri görüyorsun. Yeni bölüm için veri sahibinden yetki iste.</p></section>`}
     <section class="card wide-card" data-tab="kullanici"><h2>Kullanıcılar ve yetkiler</h2><div data-kullanici></div></section>
     <section class="card wide-card" data-tab="kullanici" data-sondeg></section>
+    <section class="card" data-tab="genel"><h2>Güvenlik</h2><div data-guvenlik></div></section>
+    <section class="card wide-card" data-tab="listeler"><h2>Seçim listeleri</h2><div data-listeler></div></section>
     <section class="card" data-tab="genel" id="menu-karti"><h2>Menü</h2><div data-menu></div></section>
     <section class="card" data-tab="genel"><h2>Görünüm</h2><div class="seg" role="group" aria-label="Tema" data-tema>${[['acik', 'Açık'], ['koyu', 'Koyu'], ['oto', 'Cihaza göre']].map(([k, t]) => `<button type="button" data-tm="${k}" class="${(ayar('tema', 'acik') || 'acik') === k ? 'on' : ''}">${t}</button>`).join('')}</div><p class="hint">Koyu tema akşam ve gece kullanımında gözü daha az yorar. “Cihaza göre” telefonun gece/gündüz ayarını izler.</p><h3>Yazı boyutu</h3><div class="seg" role="group" aria-label="Yazı boyutu">${[['normal', 'Normal'], ['buyuk', 'Büyük'], ['cokbuyuk', 'Çok büyük']].map(([k, t]) => `<button type="button" data-yz="${k}" class="${(ayar('yazi', 'normal') || 'normal') === k ? 'on' : ''}">${t}</button>`).join('')}</div></section>
     <section class="card" data-tab="genel"><h2>Araç</h2><p class="hint">Günlük km'yi masrafa yazarken yakıt tutarı buna göre hesaplanır.</p><div class="grid"><div class="fld"><label for="a-l">Tüketim (litre / 100 km)</label><input id="a-l" type="number" step="0.1" inputmode="decimal" data-yakit="yakit_lt100" value="${ayar('yakit_lt100', '') || ''}" placeholder="örn. 6,5"></div><div class="fld"><label for="a-f">Yakıt litre fiyatı (TL)</label><input id="a-f" type="number" step="0.01" inputmode="decimal" data-yakit="yakit_tl" value="${ayar('yakit_tl', '') || ''}" placeholder="örn. 52,40"></div></div></section>
@@ -139,8 +143,9 @@ export async function ayarlarView(el) {
     <section class="card" data-tab="mesaj"><h2>WhatsApp mesaj şablonları</h2><p class="hint">Kişi ve firma kartındaki WhatsApp düğmesi bu şablonları kullanır.</p><div data-sablon></div></section>
     <section class="card" data-tab="mesaj"><h2>Teklif bilgileri</h2><p class="hint">PDF teklifin üst bilgisi ve alt koşulları.</p><div data-teklifb></div></section>
   </div>`;
-  let kulYuklendi = false;
+  let kulYuklendi = false, listeYuklendi = false;
   const sekmeGoster = k => {
+    if (k === 'listeler' && !listeYuklendi) { listeYuklendi = true; import('../listeler.js').then(m => m.listeAyarlari(el.querySelector('[data-listeler]'))); }
     if (k === 'kullanici' && !kulYuklendi) { kulYuklendi = true; kullaniciAyarlari(el.querySelector('[data-kullanici]')); import('../gecmis.js').then(m => m.sonDegisiklikler(el.querySelector('[data-sondeg]'))); } el.querySelectorAll('[data-tab]').forEach(x => x.hidden = x.dataset.tab !== k); el.querySelectorAll('[data-sekme]').forEach(b => { b.classList.toggle('on', b.dataset.sekme === k); b.setAttribute('aria-selected', b.dataset.sekme === k); }); };
   el.querySelectorAll('[data-sekme]').forEach(b => b.onclick = () => { f.sekme = b.dataset.sekme; saveFilters(); sekmeGoster(f.sekme); });
   sekmeGoster(f.sekme);
@@ -149,6 +154,7 @@ export async function ayarlarView(el) {
   sablonDuzenleyici(el.querySelector('[data-sablon]'));
   kurAyarlari(el.querySelector('[data-kur]'));
   menuAyarlari(el.querySelector('[data-menu]'));
+  import('../guvenlik.js').then(m => m.guvenlikAyarlari(el.querySelector('[data-guvenlik]')));
   if (menuAc) setTimeout(() => el.querySelector('#menu-karti')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   bildirimAyarlari(el.querySelector('[data-bildirim]'));
   teklifAyarlari(el.querySelector('[data-teklifb]'));

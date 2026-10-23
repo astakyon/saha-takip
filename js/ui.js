@@ -1,4 +1,5 @@
 import { S } from './db.js';
+import { disaAktarabilir } from './yetki.js';
 
 // ---------- Sabit listeler ----------
 export const DURUMLAR = [
@@ -129,6 +130,7 @@ export function download(name, content, type = 'application/json') {
 }
 // Excel çıktısı: sütun genişlikleri ve filtre düğmeleriyle; bir kopyası “Dosyalar → Çıktılar”a kaydedilir
 export function exportXlsx(name, sheets) {
+  if (!disaAktarabilir()) return toast('Excel\'e aktarma yetkin yok. Gerekirse veri sahibinden iste.', 'err');
   const wb = XLSX.utils.book_new();
   for (const [sn, rows0] of Object.entries(sheets)) {
     const rows = rows0.length ? rows0 : [{ 'Kayıt yok': '' }];

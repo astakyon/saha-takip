@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 22)
+
+**Supabase'de bir kez:** SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 11). Ekip üyelerinin son girişi bunun için gerekir. İki adımlı doğrulama için Authentication → Multi-Factor'da **TOTP** açık olmalı (varsayılan açık).
+
+- **Ayarlar → Listeler:** firma tipleri, rakip markaları, kayıp nedenleri, ziyaret amaçları, sektörler, ürün aileleri, masraf ve servis türleri eklenir, sıralanır, yeniden adlandırılır; ad değişince eski kayıtlar da istenirse yeni adla güncellenir. Proje aşamalarının rengi ve varsayılan kazanma olasılığı da buradan.
+- **Güvenlik (Ayarlar → Genel):** son giriş zamanı; iki adımlı doğrulama (Google/Microsoft Authenticator); bu cihazda kullanılmayınca otomatik çıkış (15 dk – 1 gün, çıkışta cihazdaki kayıt kopyası silinir); “Tüm cihazlarda çıkış yap” (telefon kaybolursa).
+- **Kullanıcılar:** her üyenin son kullanım zamanı; “Excel'e aktarabilir ve sunum çıktısı alabilir” izni (varsayılan kapalı). Yedek alma yalnızca veri sahibinde.
+
 ## Güncelleme notu (sürüm 21)
 
 - **Ürün önerisi (Proje → Satış):** proje adı/notundan alan tahmini (üretim, depo, nemli alan, Ex, ofis, çevre, AVM/hastane, kanopi); uygun EAE aileleri, Drv stoğu ve ürün sayfası bağlantısı. Alan elle değiştirilebilir.

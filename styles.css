@@ -985,3 +985,24 @@ body:has(.toplu-bar) #fab { display: none; }
 .list.duyuru li{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
 .list.duyuru li small{display:block}
 .list.duyuru li.gitti b{color:var(--muted);text-decoration:line-through}
+/* Ayarlar → Listeler, Güvenlik */
+.liste-kartlar{display:grid;gap:8px}
+.liste-k{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--card)}
+.liste-k summary{cursor:pointer;list-style:none}
+.liste-k summary::-webkit-details-marker{display:none}
+.liste-k[open] summary{margin-bottom:8px}
+.liste-ed{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:4px}
+.liste-ed li{display:flex;align-items:center;gap:6px}
+.liste-ed li input{flex:1;min-width:0}
+.liste-ed li small{min-width:56px;text-align:right;font-size:12px}
+.liste-ed .ic-btn{width:32px;height:32px;flex:none;padding:0;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:600 15px/1 var(--f);cursor:pointer;display:inline-grid;place-items:center}
+.liste-ed .ic-btn[data-cikar]{color:var(--red)}
+.liste-ed .ic-btn:disabled{opacity:.35;cursor:default}
+.liste-ekle{display:flex;gap:6px;margin:6px 0}
+.liste-ekle input{flex:1;min-width:0}
+.liste-durum input[type=color]{width:44px;height:30px;padding:0;border:1px solid var(--line);border-radius:6px;background:none}
+.liste-durum input[type=number]{width:80px;text-align:right}
+.mfa-adim{padding-left:20px;display:grid;gap:8px}
+.mfa-qr{background:#fff;display:inline-block;padding:8px;border-radius:8px;margin:6px 0}
+.mfa-qr img{width:180px;height:180px;display:block}
+.mfa-adim code{word-break:break-all;user-select:all}

@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 10)
+--  Saha Satış Takip — Supabase şeması (sürüm 11)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -471,3 +471,21 @@ create index if not exists push_abonelikleri_eposta_idx on public.push_abonelikl
 alter table public.push_abonelikleri enable row level security;
 drop policy if exists "kendi_cihazim" on public.push_abonelikleri;
 create policy "kendi_cihazim" on public.push_abonelikleri for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- ---------- Sürüm 11: ekip üyelerinin son girişi ----------
+-- Üye uygulamayı açtığında "gorundum()" kendi satırına zamanı yazar; veri sahibi "ekip_son_giris()" ile
+-- üyelerinin son giriş (Supabase oturum) ve son kullanım zamanlarını görür. Başka hiçbir kullanıcı bilgisi dönmez.
+alter table public.ekip_uyeleri add column if not exists son_gorulme timestamptz;
+create or replace function public.gorundum() returns void language sql security definer set search_path = public as $f$
+  update public.ekip_uyeleri set son_gorulme = now() where aktif and lower(eposta) = public.benim_epostam() and owner <> auth.uid()
+$f$;
+create or replace function public.ekip_son_giris() returns table (eposta text, son_giris timestamptz, son_gorulme timestamptz)
+language sql stable security definer set search_path = public, auth as $f$
+  select e.eposta, u.last_sign_in_at, e.son_gorulme
+  from public.ekip_uyeleri e left join auth.users u on lower(u.email) = lower(e.eposta)
+  where e.owner = auth.uid()
+$f$;
+revoke all on function public.ekip_son_giris() from public, anon;
+revoke all on function public.gorundum() from public, anon;
+grant execute on function public.ekip_son_giris() to authenticated;
+grant execute on function public.gorundum() to authenticated;

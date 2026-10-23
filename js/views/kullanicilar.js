@@ -38,8 +38,14 @@ export async function kullaniciAyarlari(root) {
       <form class="form" data-yeni><div class="grid"><div class="fld"><label for="ku-e">E-posta</label><input id="ku-e" type="email" required placeholder="ornek@firma.com"></div><div class="fld"><label for="ku-a">Ad</label><input id="ku-a" placeholder="Örn. Ali (Drv)"></div><div class="fld"><label for="ku-r">Rol / ünvan</label>${rolSecici('', 'ku-r')}</div></div>
       <div class="fld"><label>Hazır yetki</label><div class="chips">${Object.keys(HAZIR).map(h => `<button type="button" class="chip" data-hazir="${h}">${h}</button>`).join('')}</div></div>
       ${modulTablosu('yeni', {})}
+      ${disaKutusu(false)}<p class="hint">Kapalıyken kişi ekranda görebildiği kayıtları Excel'e ya da sunuma aktaramaz. Yedek alma her zaman yalnızca sende.</p>
       <div class="btnrow"><button type="submit" class="btn primary">Ekle ve davet bağlantısı oluştur</button></div></form></details>`;
   rolBagla(root);
+  import('../guvenlik.js').then(async g => {
+    const sg = await g.sonGirisler();
+    root.querySelectorAll('[data-uye]').forEach(k => { const s = k.querySelector('[data-songiris]'); if (!s) return; if (!sg) { s.remove(); return; } s.textContent = g.sonGirisMetni(sg[k.dataset.uye.toLowerCase()]); });
+    if (!sg && uyeler.length) root.querySelector('.uyeler')?.insertAdjacentHTML('afterend', '<p class="hint">Son giriş tarihlerini görmek için Supabase SQL Editor\'de güncel <b>schema.sql</b> dosyasını çalıştır (sürüm 11).</p>');
+  });
   const yeni = root.querySelector('[data-yeni]');
   yeni.querySelectorAll('[data-hazir]').forEach(b => b.onclick = () => { const h = HAZIR[b.dataset.hazir]; yeni.querySelectorAll('select[data-m]').forEach(s => s.value = h[s.dataset.m] || ''); const r = yeni.querySelector('#ku-r'); if (!rolOku(yeni) && HAZIR_ROL[b.dataset.hazir]) { r.value = HAZIR_ROL[b.dataset.hazir]; r.dispatchEvent(new Event('change')); } yeni.querySelectorAll('[data-hazir]').forEach(x => x.classList.toggle('on', x === b)); });
   yeni.onsubmit = async e => {
@@ -47,14 +53,14 @@ export async function kullaniciAyarlari(root) {
     const eposta = yeni.querySelector('#ku-e').value.trim().toLowerCase(); if (!/^\S+@\S+\.\S+$/.test(eposta)) return toast('Geçerli bir e-posta yaz.', 'err');
     if (eposta === (app.db.user()?.email || '').toLowerCase()) return toast('Kendini ekleyemezsin; sen zaten veri sahibisin.', 'err');
     const secim = secimOku(yeni); if (!Object.values(secim).some(Boolean)) return toast('En az bir bölüm için yetki seç.', 'err');
-    const { error } = await app.db.c.from('ekip_uyeleri').insert({ eposta, ad: yeni.querySelector('#ku-a').value.trim() || null, yetkiler: rolEkle(tabloYetkileri(secim), rolOku(yeni)), aktif: true });
+    const { error } = await app.db.c.from('ekip_uyeleri').insert({ eposta, ad: yeni.querySelector('#ku-a').value.trim() || null, yetkiler: rolEkle(tabloYetkileri(secim), rolOku(yeni), yeni.querySelector('[data-disa]').checked), aktif: true });
     if (error) return toast(/duplicate|unique/i.test(error.message) ? 'Bu e-posta zaten ekli.' : 'Eklenemedi: ' + error.message, 'err');
     toast('Kişi eklendi. Davet bağlantısını gönder.'); await kullaniciAyarlari(root); root.querySelector(`[data-uye="${CSS.escape(eposta)}"] [data-davet]`)?.click();
   };
   root.querySelectorAll('[data-uye]').forEach(k => {
     const u = uyeler.find(x => x.eposta === k.dataset.uye);
     k.querySelector('[data-kaydet]').onclick = async () => {
-      const { error } = await app.db.c.from('ekip_uyeleri').update({ ad: k.querySelector('[data-ad]').value.trim() || null, aktif: k.querySelector('[data-aktif]').checked, yetkiler: rolEkle(tabloYetkileri(secimOku(k)), rolOku(k)) }).eq('id', u.id);
+      const { error } = await app.db.c.from('ekip_uyeleri').update({ ad: k.querySelector('[data-ad]').value.trim() || null, aktif: k.querySelector('[data-aktif]').checked, yetkiler: rolEkle(tabloYetkileri(secimOku(k)), rolOku(k), k.querySelector('[data-disa]').checked) }).eq('id', u.id);
       if (!error) { const y = rolOku(k); const rb = k.querySelector('.rol-r'); if (rb) { rb.textContent = y; rb.hidden = !y; } }
       toast(error ? 'Kaydedilemedi: ' + error.message : 'Yetkiler kaydedildi. Kişi uygulamayı yeniden açınca geçerli olur.', error ? 'err' : '');
     };
@@ -72,13 +78,15 @@ function modulTablosu(id, secim) {
   return `<table class="tbl yetki-tbl"><thead><tr><th>Bölüm</th><th>Yetki</th></tr></thead><tbody>${MODULLER.map(m => `<tr><td>${esc(m.ad)}</td><td><select data-m="${m.k}" aria-label="${esc(m.ad)} yetkisi">${SEVIYE.map(([v, t]) => `<option value="${v || ''}" ${(secim[m.k] || null) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table>`;
 }
 const secimOku = kok => Object.fromEntries([...kok.querySelectorAll('select[data-m]')].map(s => [s.dataset.m, s.value || null]));
-const rolEkle = (y, rol) => { const r = String(rol || '').trim(); return r ? { ...y, _rol: r.slice(0, 40) } : y; };
+const rolEkle = (y, rol, disa) => { const r = String(rol || '').trim(), o = r ? { ...y, _rol: r.slice(0, 40) } : { ...y }; if (disa) o._disa = true; return o; };
+const disaKutusu = v => `<label class="chk"><input type="checkbox" data-disa ${v ? 'checked' : ''}> <span>Excel'e aktarabilir ve sunum çıktısı alabilir</span></label>`;
 function uyeKarti(u) {
   const secim = modulSecimi(u.yetkiler);
   const ozet = MODULLER.filter(m => secim[m.k]).map(m => m.ad + (secim[m.k] === 'yaz' ? '' : ' (görür)')).join(', ');
-  return `<details class="uye" data-uye="${esc(u.eposta)}"><summary><span class="uye-ad"><b>${esc(u.ad || u.eposta)}</b><em class="rol-r" ${rolAl(u) ? '' : 'hidden'}>${esc(rolAl(u))}</em><small class="muted">${esc(u.eposta)}${u.aktif ? '' : ' · pasif'}</small></span><small class="muted">${esc(ozet || 'yetki yok')}</small></summary>
+  return `<details class="uye" data-uye="${esc(u.eposta)}"><summary><span class="uye-ad"><b>${esc(u.ad || u.eposta)}</b><em class="rol-r" ${rolAl(u) ? '' : 'hidden'}>${esc(rolAl(u))}</em><small class="muted">${esc(u.eposta)}${u.aktif ? '' : ' · pasif'} · <span data-songiris>…</span></small></span><small class="muted">${esc(ozet || 'yetki yok')}</small></summary>
     <div class="grid"><div class="fld"><label>Ad</label><input data-ad value="${esc(u.ad || '')}"></div><div class="fld"><label>Rol / ünvan</label>${rolSecici(rolAl(u))}</div><div class="fld is-chk"><label class="chk"><input type="checkbox" data-aktif ${u.aktif ? 'checked' : ''}> <span>Erişimi açık</span></label></div></div>
     ${modulTablosu(u.id, secim)}
+    ${disaKutusu(u.yetkiler?._disa === true)}
     <div class="btnrow"><button type="button" class="btn sm primary" data-kaydet>Kaydet</button><button type="button" class="btn sm" data-davet>Davet bağlantısı</button><button type="button" class="btn sm ghost danger" data-sil>Çıkar</button></div>
     <div data-link class="davet-kutu" hidden></div></details>`;
 }

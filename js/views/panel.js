@@ -93,7 +93,7 @@ export function panelView(el) {
   el.querySelectorAll('[data-g]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.g }));
   el.querySelectorAll('[data-s]').forEach(b => b.onclick = () => sunum(b.dataset.s, Y));
   el.querySelector('[data-kayiptamam]')?.addEventListener('click', () => kayipTamamla(Y, () => { const y = window.scrollY; panelView(el); window.scrollTo(0, y); }));
-  el.querySelector('[data-pptx]').onclick = async () => { const { ceyrekSunumu } = await import('../pptx.js'); ceyrekSunumu(Y); };
+  el.querySelector('[data-pptx]').onclick = async () => { const { disaAktarabilir } = await import('../yetki.js'); if (!disaAktarabilir()) return toast('Sunum çıktısı alma yetkin yok.', 'err'); const { ceyrekSunumu } = await import('../pptx.js'); ceyrekSunumu(Y); };
 }
 
 // Olasılıklı tahmin: açık projeler × olasılık, beklenen tarihin çeyreğine
