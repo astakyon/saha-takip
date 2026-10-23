@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 32) — yardım, bildirim tercihleri, son kontrol
+
+**Supabase'de bir kez (bildirim tercihleri için):** SQL Editor'de güncel `schema.sql` (sürüm 14), sonra Edge Functions → bildir → Code'a güncel `supabase/functions/bildir/index.ts` → Deploy. Sıra önemli: önce SQL.
+
+- **Tanıtım:** ilk açılışta 4 adımlık kısa tanıtım (Bugün, + düğmesi, menü, arama ve yardım). Yardım penceresinden yeniden gösterilebilir.
+- **Ekran yardımı:** her ekranın başlığındaki **?** o ekranın ne işe yaradığını ve her yerde geçerli kısayolları anlatır.
+- **Boş ekranlar:** kayıt yoksa ekranın ana düğmesi (Yeni teklif, Yeni firma…), filtre yüzünden boşsa “Filtreleri temizle” düğmesi.
+- **Bildirim tercihleri (Ayarlar → Bağlantılar → Bildirimler):** bu cihaza hangi anlık bildirimlerin geleceği (görev atandı, görev tamamlandı, yorumda etiketlendim) ve günlük özete hangi başlıkların gireceği (ziyaretler, görevler, doğum günleri, tahsilat, teklifler, dünkü siparişler).
+- **Son kontrol:** bütün ekranlar telefon ve bilgisayarda; açık, koyu tema ve büyük yazıyla tek tek gözden geçirildi.
+
 ## Güncelleme notu (sürüm 31) — formlar, veri kalitesi, arama, çıktılar
 
 - **Kaydedilmemiş değişiklik uyarısı:** formda bir şey değiştirip kaydetmeden kapatınca (çarpı, Esc ya da telefonun geri tuşu) sorulur.

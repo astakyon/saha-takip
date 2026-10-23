@@ -66,12 +66,14 @@ Deno.serve(async (req) => {
     } else return json({ gonderilen: 0, not: 'Bu değişiklik için bildirim gerekmiyor.' });
   }
 
-  const q = admin.from('push_abonelikleri').select('id, endpoint, p256dh, auth');
+  const q = admin.from('push_abonelikleri').select('*');
   const { data: abonelikler, error } = alici.tur === 'id' ? await q.in('user_id', alici.deger) : await q.in('eposta', alici.deger);
   if (error) return json({ hata: 'Abonelik tablosu okunamadı: ' + error.message }, 500);
   webpush.setVapidDetails(SUBJ, PUB, PRIV);
   let gonderilen = 0;
-  for (const s of abonelikler || []) {
+  // Cihaz tercihleri: kişi bu tür bildirimi kapattıysa o cihaza gönderilmez (deneme her zaman gider)
+  const izinli = (abonelikler || []).filter((s: { tercihler?: Record<string, boolean> }) => olay === 'deneme' || s.tercihler?.[olay] !== false);
+  for (const s of izinli) {
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(mesaj), { TTL: 86400 });
       gonderilen++;
@@ -80,5 +82,5 @@ Deno.serve(async (req) => {
       if (kod === 404 || kod === 410) await admin.from('push_abonelikleri').delete().eq('id', s.id);   // artık geçersiz cihaz
     }
   }
-  return json({ gonderilen, abone: (abonelikler || []).length });
+  return json({ gonderilen, abone: izinli.length });
 });

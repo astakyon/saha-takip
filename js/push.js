@@ -66,6 +66,18 @@ export async function pushAyarlari(root) {
       <div class="btnrow">${sub && izin === 'granted' ? '<button type="button" class="btn" data-pdeneme>Deneme bildirimi gönder</button><button type="button" class="btn ghost" data-pkapat>Bu cihazda kapat</button>' : '<button type="button" class="btn primary" data-pac>Bu cihazda aç</button>'}</div>
       ${!yuklu ? '<p class="hint">En güvenilir çalışma için uygulamayı telefona yükle (Telefona yükle). iPhone\'da yalnızca ana ekrana eklenmiş uygulamada çalışır.</p>' : ''}`}`;
   const yenile = () => pushAyarlari(root);
+  // Hangi bildirimler gelsin (bu cihaz için)
+  if (sub && izin === 'granted' && kurulu) {
+    const TUR = [['atandi', 'Bana görev atandığında'], ...(sahipMi() ? [['tamamlandi', 'Ekipten biri görevi tamamladığında']] : []), ['yorum', 'Bir yorumda etiketlendiğimde']];
+    let ter = {}; try { const { data } = await app.db.c.from('push_abonelikleri').select('tercihler').eq('endpoint', sub.endpoint).maybeSingle(); ter = data?.tercihler || {}; } catch {}
+    root.insertAdjacentHTML('beforeend', `<h4>Bu cihaza gelsin</h4><div class="bil-ter">${TUR.map(([k, t]) => `<label class="chk"><input type="checkbox" data-ter="${k}" ${ter[k] !== false ? 'checked' : ''}> <span>${t}</span></label>`).join('')}</div>`);
+    root.querySelectorAll('[data-ter]').forEach(c => c.onchange = async () => {
+      ter = { ...ter, [c.dataset.ter]: c.checked };
+      const { error } = await app.db.c.from('push_abonelikleri').update({ tercihler: ter }).eq('endpoint', sub.endpoint);
+      if (error) { c.checked = !c.checked; return toast(/tercihler/.test(error.message) ? 'Bunun için Supabase SQL Editor\'de güncel schema.sql dosyasını çalıştır (sürüm 14).' : 'Kaydedilemedi: ' + error.message, 'err'); }
+      toast('Bildirim tercihi kaydedildi.');
+    });
+  }
   root.querySelector('[data-pac]')?.addEventListener('click', async e => { e.target.disabled = true; try { await aboneOl(); toast('Bu cihazda anlık bildirim açıldı.'); } catch (err) { toast(err.message, 'err'); } yenile(); });
   root.querySelector('[data-pkapat]')?.addEventListener('click', async () => { await abonelikKapat(); toast('Bu cihazda kapatıldı.'); yenile(); });
   root.querySelector('[data-pdeneme]')?.addEventListener('click', async () => { const d = await gonder('deneme'); toast(d?.gonderilen ? `Deneme gönderildi (${d.gonderilen} cihaz).` : 'Gönderilemedi: ' + (d?.hata || 'abone cihaz bulunamadı'), d?.gonderilen ? '' : 'err'); });

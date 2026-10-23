@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 13)
+--  Saha Satış Takip — Supabase şeması (sürüm 14)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -538,3 +538,7 @@ create policy "foto_oku" on storage.objects for select to authenticated
          and ((storage.foldername(name))[2] is distinct from 'yedek' or (storage.foldername(name))[1] = auth.uid()::text));
 create or replace function public.yedek_guvenli() returns boolean language sql stable as $f$ select true $f$;
 grant execute on function public.yedek_guvenli() to authenticated;
+
+-- ---------- Sürüm 14: cihaz başına bildirim tercihleri ----------
+-- { "atandi": false } gibi: kişi o türü kapattıysa bildir fonksiyonu o cihaza göndermez.
+alter table public.push_abonelikleri add column if not exists tercihler jsonb not null default '{}'::jsonb;

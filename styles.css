@@ -1212,3 +1212,21 @@ a.row, a.pcard { touch-action: pan-y; }
 .cek-yenile { position: fixed; top: 0; left: 50%; transform: translate(-50%, -60px); z-index: 2400; background: var(--card); color: var(--muted); border-radius: 999px; padding: 6px 14px; font: 600 13px var(--f); box-shadow: 0 4px 14px rgba(0,0,0,.18); opacity: 0; pointer-events: none; transition: opacity .15s; }
 .cek-yenile.gor { opacity: 1; }
 .cek-yenile.hazir { background: var(--lumen); color: #10181D; }
+
+/* ===== Sürüm 32: yardım, tanıtım, bildirim tercihleri, boş ekran ===== */
+.yardim-btn { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 10px; vertical-align: middle; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--muted); font: 700 13px var(--f); cursor: pointer; }
+.yardim-btn:hover { color: var(--ink); border-color: var(--muted); }
+.yardim-m { font-size: 15.5px; line-height: 1.55; }
+.yardim-l { padding-left: 18px; display: grid; gap: 6px; }
+.tanitim { position: fixed; inset: 0; z-index: 3500; background: rgba(16, 24, 29, .55); display: grid; place-items: center; padding: 16px; opacity: 0; transition: opacity .2s; }
+.tanitim.acik { opacity: 1; }
+.tn-kutu { width: min(440px, 100%); background: var(--card); color: var(--ink); border-radius: 18px; padding: 22px 22px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.tn-kutu h2 { margin: 10px 0 8px; font-size: 21px; }
+.tn-kutu p { margin: 0 0 18px; font-size: 15.5px; line-height: 1.55; color: var(--ink-2, var(--ink)); }
+.tn-nokta { display: flex; gap: 6px; }
+.tn-nokta span { width: 8px; height: 8px; border-radius: 4px; background: var(--line); transition: width .2s; }
+.tn-nokta span.on { width: 22px; background: var(--lumen); }
+.tn-alt { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.tn-alt > span { display: flex; gap: 8px; }
+.bil-ter { display: grid; gap: 8px; margin: 6px 0 4px; }
+.bos-eylem { justify-content: center; margin-top: 10px; }

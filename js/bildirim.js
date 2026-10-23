@@ -31,7 +31,7 @@ export async function bildirimKapat() {
 // Uygulama açılışında: bildirim açıksa ayarı servis çalışanıyla eşitle, kaydı tazele
 export async function bildirimHazirla() {
   const b = ayar('bildirim'); if (!b?.acik || !bildirimDestek() || Notification.permission !== 'granted') return;
-  await idbSet('bildirim-ayar', b);
+  await idbSet('bildirim-ayar', b); await idbSet('bildirim-icerik', ayar('bildirim_icerik') || {});
   const r = await kayit();
   try {
     if (r && 'periodicSync' in r) { const tags = await r.periodicSync.getTags(); if (!tags.includes('gunluk-ozet')) await r.periodicSync.register('gunluk-ozet', { minInterval: 12 * 60 * 60 * 1000 }); }
@@ -54,6 +54,13 @@ export function bildirimAyarlari(root) {
       <div class="frow"><label>Saat <input type="time" data-saat value="${esc(b.saat || '08:00')}"></label></div>
       <div class="btnrow">${b.acik && izin === 'granted' ? '<button type="button" class="btn" data-deneme>Şimdi dene</button><button type="button" class="btn ghost" data-kapat>Kapat</button>' : '<button type="button" class="btn primary" data-ac>Bildirimleri aç</button>'}</div>
       <p class="hint">${!yuklu ? 'Bildirimlerin kendiliğinden gelmesi için uygulamanın telefona <b>yüklü</b> olması gerekir. ' : ''}${per ? 'Bildirim zamanını Chrome belirler: seçtiğin saatten sonraki ilk uygun anda, günde bir kez gelir. Telefon uzun süre kullanılmazsa gecikebilir.' : 'Bu cihaz arka planda zamanlanmış bildirimi desteklemiyor; hatırlatma uygulamayı açtığında gösterilir.'}</p>`;
+    // Günlük özete hangi başlıklar girsin
+    if (bildirimDestek()) {
+      const ic = ayar('bildirim_icerik') || {};
+      const IC = [['ziyaret', 'Bugünün ziyaretleri'], ['gorev', 'Görevler'], ['dogum', 'Doğum günleri'], ['tahsilat', 'Vadesi geçen tahsilatlar'], ['teklif', 'Süresi dolan teklifler'], ['siparis', 'Dünkü siparişler']];
+      root.insertAdjacentHTML('beforeend', `<h4>Günlük özette</h4><div class="bil-ter">${IC.map(([k, t]) => `<label class="chk"><input type="checkbox" data-ic="${k}" ${ic[k] !== false ? 'checked' : ''}> <span>${t}</span></label>`).join('')}</div>`);
+      root.querySelectorAll('[data-ic]').forEach(c => c.onchange = async () => { const y = { ...(ayar('bildirim_icerik') || {}), [c.dataset.ic]: c.checked }; await ayarYaz('bildirim_icerik', y); await idbSet('bildirim-icerik', y); toast('Kaydedildi.'); });
+    }
     root.appendChild(pkutu); import('./push.js').then(m => m.pushAyarlari(pkutu));
     root.querySelector('[data-ac]')?.addEventListener('click', async () => { try { const { periyodik } = await bildirimAc(root.querySelector('[data-saat]').value); toast(periyodik ? 'Günlük hatırlatma açıldı.' : 'Bildirim izni verildi; hatırlatma uygulamayı açtığında gösterilecek.'); ciz(); } catch (e) { toast(e.message, 'err'); ciz(); } });
     root.querySelector('[data-kapat]')?.addEventListener('click', async () => { await bildirimKapat(); toast('Günlük hatırlatma kapatıldı.'); ciz(); });

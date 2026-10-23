@@ -205,6 +205,7 @@ async function boot() {
   await route();
   hizliKur();
   if ('ontouchstart' in window) import('./dokunma.js').then(m => m.dokunmaKur());
+  if (Object.values(S).some(a => a.length) || !sahipMi()) import('./yardim.js').then(m => m.tanitimGerekirse());
   if (act === 'ziyaret') import('./views/ziyaret.js').then(m => m.ziyaretForm({}));
   if (act === 'ara') aramaAc();
   if (pay) paylasimPaneli(pay);

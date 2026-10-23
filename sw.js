@@ -1,7 +1,7 @@
 // Saha Takip service worker: uygulama dosyalarını ve harita karolarını önbelleğe alır
-const V = 'saha-v38';
+const V = 'saha-v39';
 const SHELL = ['./', 'index.html', 'styles.css', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon-180.png', 'icons/icon.svg', 'js/kurulum.js', 'js/birlestir.js', 'js/google.js', 'js/views/ice-aktar.js',
-  'js/main.js', 'js/altlik.js', 'js/osm-bolge.js', 'js/tasima.js', 'js/yetki.js', 'js/views/kullanicilar.js', 'js/views/bayi.js', 'js/tema.js', 'js/push.js', 'js/menu.js', 'js/hizli.js', 'js/kayip.js', 'js/gizli.js', 'js/esle.js', 'js/filtre.js', 'js/gecmis.js', 'js/listeler.js', 'js/guvenlik.js', 'js/oneri.js', 'js/duyuru.js', 'js/bekleyen.js', 'js/otoyedek.js', 'js/basliklar.js', 'js/baslik.js', 'js/dokunma.js', 'js/yorum.js', 'js/iliski.js', 'js/aday.js', 'js/barkod.js', 'js/karo.js', 'js/db.js', 'js/ui.js', 'js/forms.js', 'js/state.js',
+  'js/main.js', 'js/altlik.js', 'js/osm-bolge.js', 'js/tasima.js', 'js/yetki.js', 'js/views/kullanicilar.js', 'js/views/bayi.js', 'js/tema.js', 'js/push.js', 'js/menu.js', 'js/hizli.js', 'js/kayip.js', 'js/gizli.js', 'js/esle.js', 'js/filtre.js', 'js/gecmis.js', 'js/listeler.js', 'js/guvenlik.js', 'js/oneri.js', 'js/duyuru.js', 'js/bekleyen.js', 'js/otoyedek.js', 'js/basliklar.js', 'js/baslik.js', 'js/dokunma.js', 'js/yardim.js', 'js/yorum.js', 'js/iliski.js', 'js/aday.js', 'js/barkod.js', 'js/karo.js', 'js/db.js', 'js/ui.js', 'js/forms.js', 'js/state.js',
   'js/views/map.js', 'js/views/projeler.js', 'js/views/firmalar.js', 'js/views/ziyaret.js',
   'js/views/urunler.js', 'js/views/panel.js', 'js/views/ayarlar.js', 'js/views/bolgeler.js', 'js/geo.js', 'js/data/iller.js',
   'js/ayar.js', 'js/sablon.js', 'js/sunum.js', 'js/zip.js', 'js/pptx.js', 'js/pptx-tema.js', 'js/paylas.js',
@@ -73,12 +73,13 @@ async function ozetGoster(zorla) {
   const tk = (S.teklifler || []).filter(t => t.durum === 'Gönderildi' && t.gecerlilik && t.gecerlilik <= ileri(2));
   const dun = ileri(-1), sp = (S.siparisler || []).filter(s => s.tarih === dun || (s.created_at || '').slice(0, 10) === dun);
   const satir = [];
-  if (z.length) satir.push(`${z.length} ziyaret: ` + z.slice(0, 4).map(x => (x.saat ? x.saat + ' ' : '') + (fa(x.firma_id) || 'Ziyaret')).join(', ') + (z.length > 4 ? '…' : ''));
-  if (g.length) satir.push(`${g.length} görev: ` + g.slice(0, 3).map(x => x.baslik).join(', ') + (g.length > 3 ? '…' : ''));
-  if (dg.length) satir.push('Doğum günü: ' + dg.map(k => k.ad_soyad).join(', '));
-  if (th.length) satir.push(`${th.length} faturanın vadesi geçti`);
-  if (tk.length) satir.push(`${tk.length} teklifin geçerliliği doluyor: ` + tk.slice(0, 3).map(t => t.teklif_no).join(', '));
-  if (sp.length) satir.push(`Dün ${sp.length} yeni sipariş`);
+  const ic = (await idbIstek(d, s => s.get('bildirim-icerik'))) || {};   // Ayarlar'da kapatılan başlıklar özete girmez
+  if (ic.ziyaret !== false && z.length) satir.push(`${z.length} ziyaret: ` + z.slice(0, 4).map(x => (x.saat ? x.saat + ' ' : '') + (fa(x.firma_id) || 'Ziyaret')).join(', ') + (z.length > 4 ? '…' : ''));
+  if (ic.gorev !== false && g.length) satir.push(`${g.length} görev: ` + g.slice(0, 3).map(x => x.baslik).join(', ') + (g.length > 3 ? '…' : ''));
+  if (ic.dogum !== false && dg.length) satir.push('Doğum günü: ' + dg.map(k => k.ad_soyad).join(', '));
+  if (ic.tahsilat !== false && th.length) satir.push(`${th.length} faturanın vadesi geçti`);
+  if (ic.teklif !== false && tk.length) satir.push(`${tk.length} teklifin geçerliliği doluyor: ` + tk.slice(0, 3).map(t => t.teklif_no).join(', '));
+  if (ic.siparis !== false && sp.length) satir.push(`Dün ${sp.length} yeni sipariş`);
   if (!satir.length && !zorla) { await idbIstek(d, s => s.put(bugun, 'bildirim-son'), 'readwrite'); return; }
   await self.registration.showNotification('Saha Takip · Bugün', { body: satir.join('\n') || 'Bugün için planlı ziyaret ya da görev yok.', icon: 'icons/icon-192.png', badge: 'icons/icon-mono-512.png', tag: 'gunluk-ozet', data: { url: './#/bugun' } });
   await idbIstek(d, s => s.put(bugun, 'bildirim-son'), 'readwrite');
