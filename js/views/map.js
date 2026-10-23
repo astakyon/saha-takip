@@ -410,7 +410,10 @@ export async function mapView(el) {
     };
   }
 
-  drawBorders(); drawRegions(); draw();
+  // Her katman ayrı: biri hata verirse diğerleri yine çizilir ve hata ekranda görünür
+  const dene = (ad, fn) => { try { const r = fn(); r?.catch?.(e => haritaHata(ad, e)); } catch (e) { haritaHata(ad, e); } };
+  function haritaHata(ad, e) { console.error('Harita', ad, e); const mi = el.querySelector('.map-info'); if (mi) mi.insertAdjacentHTML('beforeend', `<span class="neg"> · ${esc(ad)} çizilemedi: ${esc(e?.message || String(e))}</span>`); }
+  dene('İl sınırları', drawBorders); dene('Sanayi bölgeleri', drawRegions); dene('Raptiyeler', () => draw());
   setTimeout(() => map.invalidateSize(), 100);
   if (app.pendingDraw) { const b = app.pendingDraw; app.pendingDraw = null; if (b.geojson) { const m = toMulti(b.geojson); map.fitBounds(m[0][0].map(([x, y]) => [y, x]), { maxZoom: 16 }); } startDraw(b.id ? b : null); }
   // Çevrimiçiyse ayrıntılı il sınırlarını bir kez indir

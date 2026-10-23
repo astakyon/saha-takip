@@ -230,5 +230,15 @@ window.addEventListener('focus', () => tazele());
 setInterval(() => { if (Date.now() - sonTazele > 300000) tazele(true); }, 60000);
 onInstallChange(() => { const b = document.querySelector('[data-inst]'); if (b) b.hidden = !canInstall(); });
 
+// Beklenmeyen hatalar: ekranda kısa bir not (sorunu bildirmek için ekran görüntüsü yeterli olsun)
+let sonHata = 0;
+function hataGoster(m, dosya, satir) {
+  if (!m || /^Script error|ResizeObserver/i.test(m) || Date.now() - sonHata < 3000) return; sonHata = Date.now();
+  const yer = dosya ? ' (' + String(dosya).split('/').slice(-2).join('/').replace(/\?.*$/, '') + (satir ? ':' + satir : '') + ')' : '';
+  console.error('Saha Takip hata:', m, yer);
+  try { toast('Hata: ' + m + yer, 'err'); } catch {}
+}
+window.addEventListener('error', e => hataGoster(e.message, e.filename, e.lineno));
+window.addEventListener('unhandledrejection', e => { const r = e.reason; hataGoster(r?.message || String(r || ''), (r?.stack || '').match(/https?:\/\/[^\s)]+?\.js/)?.[0], (r?.stack || '').match(/\.js:(\d+)/)?.[1]); });
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 boot();
