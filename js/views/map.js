@@ -27,8 +27,10 @@ export async function mapView(el) {
   if (f.yaklasik === undefined) f.yaklasik = false;
   if (f.bolge === undefined) f.bolge = true;
   // Harita bir kez kurulur; sekmeye dönünce aynı harita geri takılır, veri değiştiyse yalnızca raptiyeler yeniden çizilir
-  if (harita?.kok && map && !app.pendingDraw) {
-    el.replaceChildren(harita.kok);
+  if (harita?.el && map && !app.pendingDraw) {
+    // kurulu haritanın kabını (içindeki düğmeler ve olaylarla birlikte) yeni sayfa kabının yerine koy
+    if (el !== harita.el && el.isConnected) el.replaceWith(harita.el);
+    if (!harita.el.isConnected) return;
     harita.sifirla();
     setTimeout(() => map.invalidateSize(), 30);
     if (harita.surum !== DB_DURUM.surum) { harita.surum = DB_DURUM.surum; harita.ciz(); }
@@ -425,7 +427,7 @@ export async function mapView(el) {
   function haritaHata(ad, e) { console.error('Harita', ad, e); const mi = el.querySelector('.map-info'); if (mi) mi.insertAdjacentHTML('beforeend', `<span class="neg"> · ${esc(ad)} çizilemedi: ${esc(e?.message || String(e))}</span>`); }
   dene('İl sınırları', drawBorders); dene('Sanayi bölgeleri', drawRegions); dene('Raptiyeler', () => draw());
   setTimeout(() => map.invalidateSize(), 100);
-  harita = { kok: el.firstElementChild, surum: DB_DURUM.surum, ciz: () => { dene('Sanayi bölgeleri', drawRegions); dene('Raptiyeler', () => draw()); }, sifirla: () => { if (mode) setMode(null); if (moveOn) top.querySelector('[data-tool="move"]')?.click(); } };
+  harita = { el, surum: DB_DURUM.surum, ciz: () => { dene('Sanayi bölgeleri', drawRegions); dene('Raptiyeler', () => draw()); }, sifirla: () => { if (mode) setMode(null); if (moveOn) top.querySelector('[data-tool="move"]')?.click(); } };
   if (app.pendingDraw) { const b = app.pendingDraw; app.pendingDraw = null; if (b.geojson) { const m = toMulti(b.geojson); map.fitBounds(m[0][0].map(([x, y]) => [y, x]), { maxZoom: 16 }); } startDraw(b.id ? b : null); }
   // Çevrimiçiyse ayrıntılı il sınırlarını bir kez indir
   detayliSinirIndir().then(ch => { if (ch && map) drawBorders(); }).catch(() => {});

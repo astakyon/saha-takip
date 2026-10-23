@@ -7,7 +7,8 @@ const EKRANLAR = ['projeler', 'firmalar', 'kisiler', 'ziyaretler', 'gorevler', '
 const HARIC = ['gun', 'ay', 'hafta', 'acik'];   // tarihe bağlı geçici alanlar saklanmaz (ay filtresi hariç ekranlarda)
 const tum = () => ayar('kayitli_filtreler', {}) || {};
 const temiz = (v, f) => Object.fromEntries(Object.entries(f).filter(([k]) => !(HARIC.includes(k) && v === 'gorevler')));
-const esit = (a, b) => Object.keys(a).every(k => JSON.stringify(a[k]) === JSON.stringify(b[k]));
+const GORUNUM = ['gor', '_gorSecim', '_v', '_ilk', 'sk', 'sd'];   // görünüm tercihleri filtre sayılmaz
+const esit = (a, b) => Object.keys(a).filter(k => !GORUNUM.includes(k)).every(k => JSON.stringify(a[k]) === JSON.stringify(b[k]));
 
 export function filtreCubugu(kok, ekran) {
   if (!EKRANLAR.includes(ekran)) return;
@@ -16,10 +17,11 @@ export function filtreCubugu(kok, ekran) {
   const l = tum()[ekran] || [];
   const degisti = !esit(vars, cur);
   const d = document.createElement('div'); d.className = 'kfiltre';
-  d.innerHTML = `<span class="kf-l">Kayıtlı:</span>${l.map((x, i) => `<span class="kf ${esit(x.f, cur) ? 'on' : ''}"><button type="button" data-kf="${i}">${esc(x.ad)}</button><button type="button" class="kf-x" data-kfsil="${i}" aria-label="${esc(x.ad)} filtresini sil">×</button></span>`).join('')}
-    ${degisti && !l.some(x => esit(x.f, cur)) ? `<button type="button" class="kf-yeni" data-kfyeni>+ Bu filtreyi kaydet</button>` : ''}
+  if (!l.length && !degisti) d.hidden = true;   // kayıtlı filtre yoksa ve filtre değişmediyse yer kaplamasın
+  d.innerHTML = `${l.length ? '<span class="kf-l">Kayıtlı:</span>' : ''}${l.map((x, i) => `<span class="kf ${esit(x.f, cur) ? 'on' : ''}"><button type="button" data-kf="${i}">${esc(x.ad)}</button><button type="button" class="kf-x" data-kfsil="${i}" aria-label="${esc(x.ad)} filtresini sil">×</button></span>`).join('')}
+    ${degisti && !l.some(x => esit(x.f, cur)) ? `<button type="button" class="kf-yeni" data-kfyeni>+ Filtreyi kaydet</button>` : ''}
     ${degisti ? `<button type="button" class="kf-temiz" data-kftemiz>Filtreleri temizle</button>` : ''}
-    ${!l.length && !degisti ? '<span class="kf-ipucu">Filtreleri ayarla, sonra “Bu filtreyi kaydet” ile adlandır.</span>' : ''}`;
+    `;
   fl.prepend(d);
   if (!fl.dataset.kfb) {   // görünüm yalnızca listeyi yeniden çizdiğinde çubuğu güncelle
     fl.dataset.kfb = '1'; let t;

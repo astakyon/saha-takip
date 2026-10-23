@@ -1060,3 +1060,52 @@ button.bekleyen{border:0;cursor:pointer}
 .bekleyen-l li{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
 .bekleyen-l small{display:block}
 .parca-son{height:1px}
+
+/* ===== Sürüm 27: menü başlıkları, sekmeler, ortak başlık ===== */
+#view { position: relative; }
+#view.view-harita > .view-ic { height: 100%; }
+.alt-sekme { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; margin: -6px 0 16px; padding: 4px; background: var(--zemin-2); border-radius: 12px; width: max-content; max-width: 100%; }
+.alt-sekme::-webkit-scrollbar { display: none; }
+.alt-sekme a { flex: none; padding: 7px 14px; border-radius: 9px; color: var(--muted); text-decoration: none; font: 600 14px var(--f); white-space: nowrap; }
+.alt-sekme a:hover { color: var(--ink); }
+.alt-sekme a.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+@media (max-width: 899px) { .alt-sekme { margin: 0 -16px 14px; border-radius: 0; width: auto; padding: 6px 12px; background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20; } }
+.sayfa-ara { display: none; }
+@media (max-width: 899px) {
+  .sayfa-ara { display: grid; place-items: center; position: absolute; top: 12px; right: 12px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; z-index: 21; }
+  #view:has(.alt-sekme) .sayfa-ara { top: 6px; width: 34px; height: 34px; }
+  #view:has(.alt-sekme) .alt-sekme { padding-right: 56px; }
+  #view.view-harita .sayfa-ara { display: none; }
+  .vh h1 { padding-right: 48px; }
+  .bekleyen { top: auto; bottom: calc(var(--nav-h) + var(--safe-b) + 84px); right: 14px; }
+}
+/* Başlık: ikincil düğmeler “Diğer” menüsünde */
+.vh-act { align-items: center; }
+.vh-daha { position: relative; }
+.vh-daha-btn { display: inline-flex; align-items: center; gap: 6px; }
+.vh-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; min-width: 220px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.18); padding: 6px; display: grid; gap: 2px; }
+.vh-menu .btn { display: block; width: 100%; text-align: left; border: 0; background: none; box-shadow: none; padding: 10px 12px; border-radius: 8px; color: var(--ink); font-weight: 500; }
+.vh-menu .btn:hover { background: var(--zemin-2); }
+.vh-menu .btn[hidden] { display: none; }
+.vh-menu .btn i { font-style: normal; }
+@media (max-width: 699px) {
+  .vh { flex-wrap: wrap; }
+  .vh-act { flex-wrap: wrap; width: 100%; gap: 8px; }
+  .vh-act > .btn.primary { flex: 1; }
+  .vh-act > .seg { flex: 1 1 100%; overflow-x: auto; }
+  .vh-act .seg button { white-space: nowrap; flex: 1; }
+  .vh-daha-btn span { display: none; }
+  .vh-menu { right: auto; left: 0; }
+  .vh-act > .vh-daha:last-child .vh-menu, .vh-act > .vh-daha + .btn.primary ~ * .vh-menu { left: auto; right: 0; }
+}
+/* Kayıtlı filtre çubuğu yer kaplamasın */
+.kfiltre[hidden] { display: none !important; }
+/* Firmalar listesinde boş alanlar */
+@media (max-width: 899px) { .rows .row > span:empty { display: none; } }
+/* Bildirim kutusu + düğmesiyle çakışmasın */
+@media (max-width: 899px) { #toast { left: 16px; right: 84px; transform: translateY(20px); max-width: none; } #toast.show { transform: none; } }
+#toast.tik { pointer-events: auto; cursor: pointer; }
+/* Menü ayarları tablosu */
+.menu-d summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+.menu-tbl td.alt { padding-left: 24px; color: var(--ink-2, var(--muted)); }
+.menu-tbl tr.grp td { background: var(--zemin-2); }

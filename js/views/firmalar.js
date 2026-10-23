@@ -79,8 +79,8 @@ export function firmalarView(el) {
     el.querySelector('[data-sum]').textContent = `${l.length} firma`;
     if (!l.length) { el.querySelector('[data-rows]').innerHTML = '<div class="empty"><p>Eşleşen firma yok.</p></div>'; return; }
     parcali(el.querySelector('[data-rows]'), l.map(x => { const s = stats.get(x.id); return `<a class="row" href="#/firma/${x.id}"><span class="nm"><b>${esc(x.ad)}</b>${x.key_account ? ' <em class="flag soft">Key account</em>' : ''}<small>${esc(x.telefon || '')}</small></span>
-      <span class="muted">${esc((x.tipler || []).join(', ') || '—')}</span><span class="muted">${esc(x.il || '—')}</span>
-      <span class="muted">${s.p ? `${s.p} proje · ${s.k} sipariş · ${s.s} kayıp` : '—'}</span><span class="r muted">${s.z ? tarih(s.z) : '—'}</span></a>`; }), { sar: x => `<div class="row head" aria-hidden="true"><span>Firma</span><span>Tip</span><span>İl</span><span>Projeler</span><span class="r">Son ziyaret</span></div>` + x });
+      <span class="muted">${esc((x.tipler || []).join(', '))}</span><span class="muted">${esc(x.il || '')}</span>
+      <span class="muted">${s.p ? `${s.p} proje · ${s.k} sipariş · ${s.s} kayıp` : ''}</span><span class="r muted">${s.z ? 'son ziyaret ' + tarih(s.z) : ''}</span></a>`; }), { sar: x => `<div class="row head" aria-hidden="true"><span>Firma</span><span>Tip</span><span>İl</span><span>Projeler</span><span class="r">Son ziyaret</span></div>` + x });
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { f.tip = b.dataset.t; el.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b)); saveFilters(); draw(); });

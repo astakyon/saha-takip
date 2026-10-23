@@ -167,6 +167,7 @@ export function projelerView(el) {
   const f = F('projeler', { q: '', yil: 'Tümü', durumlar: [], il: 'Tümü', kanal: 'Tümü', kritik: false, hedef: false, ziyaret: false, rakip: 'Tümü', sort: 'Duruma göre', gor: 'liste' });
   if (f._v !== 2) { f.yil = 'Tümü'; f.sort = 'Duruma göre'; f._v = 2; saveFilters(); }
   if (!SORTS[f.sort]) f.sort = 'Duruma göre';
+  if (!f._gorSecim && innerWidth < 700 && f.gor !== 'huni') f.gor = 'kart';   // telefonda varsayılan kart görünümü
   const bayiler = [...new Set(S.projeler.map(p => firmaAd(p.bayi_id)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
   const rakipler = [...new Set(S.projeler.map(p => p.rakip_marka).filter(Boolean))].sort();
   el.innerHTML = `
@@ -283,7 +284,7 @@ export function projelerView(el) {
   el.querySelectorAll('[data-k]').forEach(s => s.onchange = () => { f[s.dataset.k] = s.value; if (s.dataset.k === 'sort') f.sk = null; saveFilters(); draw(); });
   el.querySelectorAll('[data-b]').forEach(s => s.onchange = () => { f[s.dataset.b] = s.checked; saveFilters(); draw(); });
   el.querySelector('[data-reset]').onclick = reset;
-  el.querySelectorAll('[data-gor]').forEach(b => b.onclick = () => { f.gor = b.dataset.gor; saveFilters(); el.querySelector('[data-sutun]').hidden = ['huni', 'kart'].includes(f.gor); el.querySelectorAll('[data-gor]').forEach(x => x.classList.toggle('on', x === b)); el.classList.toggle('is-huni', f.gor === 'huni'); draw(); });
+  el.querySelectorAll('[data-gor]').forEach(b => b.onclick = () => { f.gor = b.dataset.gor; f._gorSecim = 1; saveFilters(); el.querySelector('[data-sutun]').hidden = ['huni', 'kart'].includes(f.gor); el.querySelectorAll('[data-gor]').forEach(x => x.classList.toggle('on', x === b)); el.classList.toggle('is-huni', f.gor === 'huni'); draw(); });
   el.classList.toggle('is-huni', f.gor === 'huni');
   el.querySelector('[data-ft]').onclick = e => { const o = el.querySelector('.filters').classList.toggle('open'); e.target.setAttribute('aria-expanded', String(o)); };
   el.querySelector('[data-new]').onclick = () => yeniProje({});

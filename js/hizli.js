@@ -29,7 +29,6 @@ export function hizliKur() {
   if (document.getElementById('fab')) return;
   const b = document.createElement('div'); b.id = 'fab';
   b.innerHTML = `<div class="fab-menu" role="menu" aria-label="Hızlı ekle" hidden></div>
-    <button type="button" class="fab-ara" aria-label="Ara" title="Ara (/)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
     <button type="button" class="fab-btn" aria-label="Hızlı ekle" aria-expanded="false" title="Hızlı ekle"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>`;
   document.body.appendChild(b);
   const menu = b.querySelector('.fab-menu'), btn = b.querySelector('.fab-btn');
@@ -43,7 +42,6 @@ export function hizliKur() {
     menu.hidden = false; btn.setAttribute('aria-expanded', 'true'); b.classList.add('acik');
     menu.querySelector('button')?.focus();
   };
-  b.querySelector('.fab-ara').onclick = () => { kapat(); aramaAc(); };
   document.addEventListener('click', e => { if (!b.contains(e.target)) kapat(); });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') kapat();

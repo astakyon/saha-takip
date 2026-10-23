@@ -32,6 +32,15 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 27) — menü ve ortak ekran düzeni
+
+- **Menü 11 başlıkta:** Bugün · Harita (+ Sanayi bölgeleri) · Projeler (+ Referanslar) · Firmalar (+ Kişiler) · Takvim (+ Ziyaretler, Görevler) · Satış (Teklifler, Siparişler, Tahsilat, Numuneler, Servis) · Ürünler (Stok ve fiyat, Bayi paneli, Katalog, Rakip fiyatları, Hesap araçları) · Raporlar (Panel, Haftalık rapor, Veri kontrolü) · Masraf ve km · Dosyalar · Ayarlar. Başlığın içindeki ekranlar üstte sekme olarak durur; başlık en son açtığın sekmeyi hatırlar.
+- **Menüyü düzenle:** ekranlar tek tek gizlenir, ana çubuk (telefonda alt çubuk) başlıklardan seçilir; eski ayarların otomatik çevrilir.
+- **Sade başlıklar:** her ekranda ana düğme (Yeni …) ve görünüm seçici görünür, Excel'e aktar, Toplu düzelt, Sütunlar gibi ikincil işler “⋯ Diğer” menüsünde.
+- **Arama düğmesi** artık listelerin üstüne binmiyor: telefonda sayfanın sağ üstünde; ekranda yalnızca + kaldı.
+- **Kayıtlı filtre çubuğu** yalnızca kayıtlı filtre varken ya da filtre değiştirildiğinde görünür.
+- **Telefonda Projeler kart görünümüyle açılır** (Tablo'yu seçersen hatırlanır); Firmalar listesinde boş “—” alanları kalktı; bildirim kutusu + düğmesinin altında kalmaz; bekleyen kayıt rozeti telefonda + düğmesinin üstünde.
+
 ## Güncelleme notu (sürüm 26) — hız
 
 - **Anında açılış:** uygulama dosyaları ve kütüphaneler telefonda saklanır, açılışta internetten indirilmez; kayıtlar önce telefondaki kopyadan gösterilir, buluttaki yenisi arkada gelir. Yeni sürüm yayınlanınca kendiliğinden kurulur (uygulama arka plandayken yenilenir ya da “yeni sürüm hazır” yazar).

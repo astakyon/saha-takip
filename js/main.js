@@ -6,6 +6,7 @@ import { kisayolAl, canInstall, install, onInstallChange } from './kurulum.js';
 import { paylasimAl, paylasimPaneli } from './paylas.js';
 import { rotaIzinli, sahipMi, rotaYazilabilir } from './yetki.js';
 import { menuDuzeni } from './menu.js';
+import { BASLIKLAR, SEKME_AD, baslikOf } from './basliklar.js';
 import { hizliKur, aramaAc } from './hizli.js';
 import { filtreIzle } from './filtre.js';
 import { temaUygula, yaziUygula } from './tema.js';
@@ -77,18 +78,22 @@ export const icon = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0
 
 let navSon = 'bugun';
 window.addEventListener('menu', () => renderNav(navSon));
+const sonAlt = {};   // her başlıkta en son açılan ekran
+const baslikRotasi = b => { const { gizli } = menuDuzeni(ROUTES); const rs = b.r.filter(r => ROUTES[r] && !gizli.has(r) && rotaIzinli(r)); if (b.k === 'urunler' && app.yetki?.yetkiler?._rol === 'Bayi' && rs.includes('bayi')) rs.unshift('bayi'); return rs.includes(sonAlt[b.k]) ? sonAlt[b.k] : rs[0]; };
 function renderNav(cur) {
   const nav = document.getElementById('nav');
-  const { gizli, ana } = menuDuzeni(ROUTES);
+  const { ana, gorunur } = menuDuzeni(ROUTES);
   navSon = cur;
-  const item = (k, r) => `<a href="#/${k}" class="${k === cur ? 'on' : ''}" ${k === cur ? 'aria-current="page"' : ''}>${icon(r.ico)}<span>${r.t}</span></a>`;
+  const aktif = baslikOf(cur)?.k;
+  const item = b => { const r = baslikRotasi(b); return r ? `<a href="#/${r}" class="${b.k === aktif ? 'on' : ''}" ${b.k === aktif ? 'aria-current="page"' : ''}>${icon(b.ico)}<span>${b.t}</span></a>` : ''; };
   const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : !sahipMi() ? `<span class="mode-badge">${esc(app.yetki?.yetkiler?._rol || 'Ekip üyesi')}${app.yetki?.ad ? ' · ' + esc(app.yetki.ad) : ''}</span>` : '';
+  const anaB = ana.map(k => BASLIKLAR.find(b => b.k === k)).filter(Boolean), digerB = BASLIKLAR.filter(b => !ana.includes(b.k) && gorunur(b));
   nav.innerHTML = `
     <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b>${mode}</div>
     <button type="button" class="nav-ara" data-navara><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Ara</span><kbd>/</kbd></button>
-    <div class="nav-main">${ana.filter(rotaIzinli).map(k => item(k, ROUTES[k])).join('')}
-      <button class="nav-more ${!ana.includes(cur) ? 'on' : ''}" type="button" aria-haspopup="true">${icon('more')}<span>Diğer</span></button></div>
-    <div class="nav-rest">${['Saha', 'Satış', 'Rapor'].map(g => `<p class="nav-g">${g}</p>` + Object.entries(ROUTES).filter(([k, r]) => r.g === g && !ana.includes(k) && !gizli.has(k) && rotaIzinli(k)).map(([k, r]) => item(k, r)).join('')).join('')}
+    <div class="nav-main">${anaB.map(item).join('')}
+      <button class="nav-more ${!ana.includes(aktif) ? 'on' : ''}" type="button" aria-haspopup="true">${icon('more')}<span>Diğer</span></button></div>
+    <div class="nav-rest">${digerB.map(item).join('')}
       <button type="button" class="nav-inst" data-inst ${canInstall() ? '' : 'hidden'}>${icon('down')}<span>Telefona yükle</span></button>
       <a href="#/ayarlar" class="nav-duzen" data-menuduzen>${icon('gear', 18)}<span>Menüyü düzenle</span></a></div>`;
   nav.querySelector('[data-navara]').onclick = () => aramaAc();
@@ -121,17 +126,25 @@ async function show(k) {
   lastView = k;
   saltOku(k);
   renderNav(k);
-  const el = document.getElementById('view');
-  el.className = 'view-' + k;
+  const donus = lastShown !== k ? kayKonum[k] : null;
+  if (lastShown && lastShown !== k) kayKonum[lastShown] = window.scrollY;   // içerik değişmeden önce
+  const kok = document.getElementById('view');
+  kok.className = 'view-' + k;
   document.title = ROUTES[k].t + ' · Saha Takip';
+  // Başlığın içindeki ekranlar üstte sekme olarak (harita kendi araç çubuğunu kullanır)
+  const b = baslikOf(k); if (b) sonAlt[b.k] = k;
+  const { gizli } = menuDuzeni(ROUTES);
+  const sekmeler = b ? b.r.filter(r => ROUTES[r] && !gizli.has(r) && rotaIzinli(r)) : [];
+  kok.innerHTML = (k !== 'harita' && sekmeler.length > 1 ? `<nav class="alt-sekme" aria-label="${esc(b.t)}">${sekmeler.map(r => `<a href="#/${r}" class="${r === k ? 'on' : ''}" ${r === k ? 'aria-current="page"' : ''}>${esc(SEKME_AD[r] || ROUTES[r].t)}</a>`).join('')}</nav>` : '')
+    + `<button type="button" class="sayfa-ara" aria-label="Ara" title="Ara (/)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button><div class="view-ic"></div>`;
+  kok.querySelector('.sayfa-ara').onclick = () => aramaAc();
+  const el = kok.querySelector('.view-ic');
   app.refresh = () => ROUTES[k].v(el);
   // Ekranlar arası geçişte her ekranın kaydırma konumu hatırlanır
-  const donus = lastShown !== k ? kayKonum[k] : null;
-  if (lastShown && lastShown !== k) kayKonum[lastShown] = window.scrollY;
   if (lastShown !== k) { window.scrollTo(0, 0); el.scrollTop = 0; } lastShown = k;
   await ROUTES[k].v(el);
   if (donus > 0) {
-    for (let i = 0; i < 30 && document.documentElement.scrollHeight < donus + innerHeight; i++) { const p = el.querySelector('.parcali-kok')?._parcali; if (!p || !p.ekle(200)) break; }
+    for (let i = 0; i < 30 && document.documentElement.scrollHeight < donus + innerHeight; i++) { const p = kok.querySelector('.parcali-kok')?._parcali; if (!p || !p.ekle(200)) break; }
     window.scrollTo(0, donus);
   }
 }
@@ -188,6 +201,7 @@ async function boot() {
   const empty = Object.values(S).every(a => !a.length);
   if (empty && !location.hash) location.hash = '#/ayarlar';
   filtreIzle(document.getElementById('view'), () => lastView);
+  import('./baslik.js').then(m => m.basliklariIzle(document.getElementById('view')));
   await route();
   hizliKur();
   if (act === 'ziyaret') import('./views/ziyaret.js').then(m => m.ziyaretForm({}));
@@ -256,7 +270,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     if (!ilkKontrol) return;
     const guvenli = () => !document.querySelector('.drawer.open') && !document.activeElement?.matches?.('input, textarea, select');
     if (guvenli() && document.hidden) location.reload();
-    else { toast('Uygulamanın yeni sürümü hazır. Yenilemek için dokun.'); const t = document.getElementById('toast'); if (t) { t.onclick = () => location.reload(); setTimeout(() => { t.onclick = null; }, 8000); } document.addEventListener('visibilitychange', () => { if (document.hidden && guvenli()) location.reload(); }, { once: true }); }
+    else { toast('Uygulamanın yeni sürümü hazır. Yenilemek için dokun.'); const t = document.getElementById('toast'); if (t) { t.classList.add('tik'); t.onclick = () => location.reload(); setTimeout(() => { t.onclick = null; t.classList.remove('tik'); }, 8000); } document.addEventListener('visibilitychange', () => { if (document.hidden && guvenli()) location.reload(); }, { once: true }); }
   });
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }

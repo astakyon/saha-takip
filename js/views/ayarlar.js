@@ -156,6 +156,7 @@ export async function ayarlarView(el) {
   sablonDuzenleyici(el.querySelector('[data-sablon]'));
   kurAyarlari(el.querySelector('[data-kur]'));
   menuAyarlari(el.querySelector('[data-menu]'));
+  if (menuAc) el.querySelector('.menu-d')?.setAttribute('open', '');
   import('../guvenlik.js').then(m => m.guvenlikAyarlari(el.querySelector('[data-guvenlik]')));
   if (menuAc) setTimeout(() => el.querySelector('#menu-karti')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   bildirimAyarlari(el.querySelector('[data-bildirim]'));
