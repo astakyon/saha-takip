@@ -366,7 +366,7 @@ function santiyeBolumu(kutu, p) {
       <div class="btnrow"><button type="button" class="btn sm" data-sfoto>Şantiye fotoğrafı çek</button>${pr.santiye_asamasi ? `<span class="muted">Aşama: ${esc(pr.santiye_asamasi)}</span>` : ''}</div>
       ${gruplar.length ? `<ol class="santiye">${gruplar.map(g => `<li><div class="st-h"><b>${g.tarih ? tarih(g.tarih) : 'Tarihsiz'}</b><small class="muted">${esc(String(g.baslik).slice(0, 90))}</small></div><div class="st-f">${g.fotolar.map(y => `<img alt="" loading="lazy" data-yol="${esc(y)}">`).join('')}</div></li>`).join('')}</ol>`
         : '<p class="hint">Her şantiye ziyaretinde bir fotoğraf çek; elektrik aşamasına ne kadar kaldığı burada tarih sırasıyla görünür.</p>'}`;
-    kutu.querySelectorAll('img[data-yol]').forEach(async im => { const u = await app.db.url(im.dataset.yol); if (u) { im.src = u; im.onclick = () => window.open(u, '_blank', 'noopener'); } });
+    kutu.querySelectorAll('img[data-yol]').forEach(async im => { const u = await app.db.url(im.dataset.yol, true); if (u) { im.src = u; im.onclick = () => window.open(u, '_blank', 'noopener'); } });
     kutu.querySelector('[data-sfoto]').onclick = async () => {
       const { pickFiles } = await import('../ui.js');
       const fs = await pickFiles({ accept: 'image/*', multiple: false, capture: true }); if (!fs.length) return;

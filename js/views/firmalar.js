@@ -1,7 +1,7 @@
 import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, usd, num, pill, tarih, today, ILLER, ILCELER, OSBLER, FIRMA_TIPLERI, SEKTORLER, byId, firmaAd, match, toast, openDrawer, closeDrawer,
-  exportXlsx, directionsUrl, confirmBox, download, ACIK } from '../ui.js';
+  exportXlsx, directionsUrl, confirmBox, download, ACIK, parcali, gorununce } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { googleBul, aramaMetni } from '../google.js';
 import { backToList } from '../main.js';
@@ -77,11 +77,10 @@ export function firmalarView(el) {
   const draw = () => {
     const l = list();
     el.querySelector('[data-sum]').textContent = `${l.length} firma`;
-    el.querySelector('[data-rows]').innerHTML = l.length ? `<div class="row head" aria-hidden="true"><span>Firma</span><span>Tip</span><span>İl</span><span>Projeler</span><span class="r">Son ziyaret</span></div>` +
-      l.map(x => { const s = stats.get(x.id); return `<a class="row" href="#/firma/${x.id}"><span class="nm"><b>${esc(x.ad)}</b>${x.key_account ? ' <em class="flag soft">Key account</em>' : ''}<small>${esc(x.telefon || '')}</small></span>
+    if (!l.length) { el.querySelector('[data-rows]').innerHTML = '<div class="empty"><p>Eşleşen firma yok.</p></div>'; return; }
+    parcali(el.querySelector('[data-rows]'), l.map(x => { const s = stats.get(x.id); return `<a class="row" href="#/firma/${x.id}"><span class="nm"><b>${esc(x.ad)}</b>${x.key_account ? ' <em class="flag soft">Key account</em>' : ''}<small>${esc(x.telefon || '')}</small></span>
       <span class="muted">${esc((x.tipler || []).join(', ') || '—')}</span><span class="muted">${esc(x.il || '—')}</span>
-      <span class="muted">${s.p ? `${s.p} proje · ${s.k} sipariş · ${s.s} kayıp` : '—'}</span><span class="r muted">${s.z ? tarih(s.z) : '—'}</span></a>`; }).join('')
-      : '<div class="empty"><p>Eşleşen firma yok.</p></div>';
+      <span class="muted">${s.p ? `${s.p} proje · ${s.k} sipariş · ${s.s} kayıp` : '—'}</span><span class="r muted">${s.z ? tarih(s.z) : '—'}</span></a>`; }), { sar: x => `<div class="row head" aria-hidden="true"><span>Firma</span><span>Tip</span><span>İl</span><span>Projeler</span><span class="r">Son ziyaret</span></div>` + x });
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { f.tip = b.dataset.t; el.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b)); saveFilters(); draw(); });
@@ -137,7 +136,7 @@ export function firmaDetay(id, init) {
   const form = panel.querySelector('form');
   bindForm(form, FIRMA_FORM, x);
   if (!x._new) { belgeBolumu(panel.querySelector('[data-belgeler]'), { firma_id: x.id }); tahsilatOzeti(panel.querySelector('[data-tahsilat]'), x); kayitGecmisi(panel.querySelector('[data-gecmis]'), 'firmalar', x.id); import('../yorum.js').then(m => m.yorumBolumu(panel.querySelector('[data-yorumlar]'), 'firmalar', x)); import('../iliski.js').then(m => m.iliskiBolumu(panel.querySelector('[data-iliski]'), x)); }
-  panel.querySelectorAll('.avatar[data-kv]').forEach(async a => { if (a.dataset.kv) { const u = await app.db.url(a.dataset.kv); if (u) { a.style.backgroundImage = `url("${u}")`; a.textContent = ''; } } });
+  panel.querySelectorAll('.avatar[data-kv]').forEach(async a => { if (a.dataset.kv) { const u = await app.db.url(a.dataset.kv, true); if (u) { a.style.backgroundImage = `url("${u}")`; a.textContent = ''; } } });
   panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     const a = b.dataset.a;
     if (a === 'kisi') kisiDetay(null, { firma_id: x.id });
@@ -215,10 +214,9 @@ export function kisilerView(el) {
   const draw = () => {
     const l = S.kisiler.filter(k => match(f.q, k.ad_soyad, firmaAd(k.firma_id), k.telefon, k.eposta, k.unvan)).sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr'));
     el.querySelector('[data-sum]').textContent = `${l.length} kişi`;
-    el.querySelector('[data-rows]').innerHTML = l.length ? l.map(k => `<li><a href="#/kisi/${k.id}" class="pcard"><span class="avatar" data-kv="${esc(k.kartvizit_on || '')}">${esc(k.ad_soyad.slice(0, 1))}</span>
-      <span><b>${esc(k.ad_soyad)}</b><small>${esc(firmaAd(k.firma_id) || 'Firma yok')}</small><small>${esc([k.unvan, k.telefon].filter(Boolean).join(' · '))}</small></span></a></li>`).join('')
-      : '<li class="empty"><p>Kişi bulunamadı. Kartvizit eklemek için “Yeni kişi”ye dokun.</p></li>';
-    el.querySelectorAll('.avatar[data-kv]').forEach(async a => { if (a.dataset.kv) { const u = await app.db.url(a.dataset.kv); if (u) { a.style.backgroundImage = `url("${u}")`; a.textContent = ''; } } });
+    if (!l.length) { el.querySelector('[data-rows]').innerHTML = '<li class="empty"><p>Kişi bulunamadı. Kartvizit eklemek için “Yeni kişi”ye dokun.</p></li>'; return; }
+    parcali(el.querySelector('[data-rows]'), l.map(k => `<li><a href="#/kisi/${k.id}" class="pcard"><span class="avatar" data-kv="${esc(k.kartvizit_on || '')}">${esc(k.ad_soyad.slice(0, 1))}</span>
+      <span><b>${esc(k.ad_soyad)}</b><small>${esc(firmaAd(k.firma_id) || 'Firma yok')}</small><small>${esc([k.unvan, k.telefon].filter(Boolean).join(' · '))}</small></span></a></li>`), { sonra: kok => gorununce([...kok.querySelectorAll('.avatar[data-kv]:not([data-kv=""])')], async a => { const u = await app.db.url(a.dataset.kv, true); if (u) { a.style.backgroundImage = `url("${u}")`; a.textContent = ''; } }) });
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelector('[data-new]').onclick = () => kisiDetay(null, {});

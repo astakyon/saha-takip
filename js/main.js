@@ -1,27 +1,9 @@
 import { S, makeAdapter, getConfig, setConfig } from './db.js';
 import { app, loadFilters } from './state.js';
 import { esc, toast, closeDrawer } from './ui.js';
-import { mapView } from './views/map.js';
-import { projelerView, projeDetay } from './views/projeler.js';
-import { firmalarView, firmaDetay, kisilerView, kisiDetay } from './views/firmalar.js';
-import { ziyaretlerView, gorevlerView, ziyaretForm, takvimView } from './views/ziyaret.js';
-import { bolgelerView } from './views/bolgeler.js';
-import { urunlerView, rakipView } from './views/urunler.js';
-import { panelView, siparislerView } from './views/panel.js';
-import { ayarlarView, loginView } from './views/ayarlar.js';
 import { listeleriUygula } from './listeler.js';
 import { kisayolAl, canInstall, install, onInstallChange } from './kurulum.js';
-import { bugunView } from './views/bugun.js';
-import { araclarView } from './views/araclar.js';
-import { tekliflerView } from './views/teklif.js';
-import { katalogView, referanslarView } from './views/katalog.js';
-import { numunelerView, servisView, masraflarView } from './views/kayitlar.js';
 import { paylasimAl, paylasimPaneli } from './paylas.js';
-import { tahsilatView } from './views/tahsilat.js';
-import { raporView } from './views/rapor.js';
-import { kontrolView } from './views/kontrol.js';
-import { dosyalarView } from './views/dosyalar.js';
-import { bayiView } from './views/bayi.js';
 import { rotaIzinli, sahipMi, rotaYazilabilir } from './yetki.js';
 import { menuDuzeni } from './menu.js';
 import { hizliKur, aramaAc } from './hizli.js';
@@ -30,35 +12,38 @@ import { temaUygula, yaziUygula } from './tema.js';
 import { kurGuncelle } from './kur.js';
 import { bildirimHazirla } from './bildirim.js';
 
+// Ekranlar ancak açılınca yüklenir (ilk açılış hızlı)
+const yukle = (yol, ad) => { let f = null; return async el => { f ||= (await import('./' + yol))[ad]; return f(el); }; };
 const ROUTES = {
-  bugun:     { t: 'Bugün', ico: 'sun', v: bugunView, main: true, g: 'Saha' },
-  harita:    { t: 'Harita', ico: 'map', v: mapView, main: true, g: 'Saha' },
-  projeler:  { t: 'Projeler', ico: 'folder', v: projelerView, main: true, g: 'Saha' },
-  takvim:    { t: 'Takvim', ico: 'cal', v: takvimView, main: true, g: 'Saha' },
-  firmalar:  { t: 'Firmalar', ico: 'building', v: firmalarView, main: true, g: 'Saha' },
-  ziyaretler:{ t: 'Ziyaretler', ico: 'pin', v: ziyaretlerView, g: 'Saha' },
-  gorevler:  { t: 'Görevler', ico: 'check', v: gorevlerView, g: 'Saha' },
-  kisiler:   { t: 'Kişiler', ico: 'user', v: kisilerView, g: 'Saha' },
-  bolgeler:  { t: 'Sanayi bölgeleri', ico: 'zone', v: bolgelerView, g: 'Saha' },
-  masraflar: { t: 'Masraf ve km', ico: 'wallet', v: masraflarView, g: 'Saha' },
-  dosyalar:  { t: 'Dosyalar', ico: 'doc', v: dosyalarView, g: 'Saha' },
-  tahsilat:  { t: 'Tahsilat', ico: 'coins', v: tahsilatView, g: 'Satış' },
-  bayi:      { t: 'Bayi paneli', ico: 'box', v: bayiView, g: 'Satış' },
-  teklifler: { t: 'Teklifler', ico: 'doc', v: tekliflerView, g: 'Satış' },
-  araclar:   { t: 'Aydınlatma araçları', ico: 'calc', v: araclarView, g: 'Satış' },
-  katalog:   { t: 'Ürün kataloğu', ico: 'book', v: katalogView, g: 'Satış' },
-  referanslar:{ t: 'Referanslar', ico: 'star', v: referanslarView, g: 'Satış' },
-  numuneler: { t: 'Numuneler', ico: 'gift', v: numunelerView, g: 'Satış' },
-  servis:    { t: 'Servis ve şikayet', ico: 'wrench', v: servisView, g: 'Satış' },
-  panel:     { t: 'Panel', ico: 'chart', v: panelView, g: 'Rapor' },
-  rapor:     { t: 'Haftalık rapor', ico: 'report', v: raporView, g: 'Rapor' },
-  kontrol:   { t: 'Veri kontrolü', ico: 'check', v: kontrolView, g: 'Rapor' },
-  siparisler:{ t: 'Siparişler', ico: 'receipt', v: siparislerView, g: 'Rapor' },
-  urunler:   { t: 'Stok ve fiyat', ico: 'box', v: urunlerView, g: 'Rapor' },
-  rakip:     { t: 'Rakip fiyatları', ico: 'tag', v: rakipView, g: 'Rapor' },
-  ayarlar:   { t: 'Ayarlar', ico: 'gear', v: ayarlarView, g: 'Rapor' },
+  bugun:     { t: 'Bugün', ico: 'sun', v: yukle('views/bugun.js', 'bugunView'), main: true, g: 'Saha' },
+  harita:    { t: 'Harita', ico: 'map', v: yukle('views/map.js', 'mapView'), main: true, g: 'Saha' },
+  projeler:  { t: 'Projeler', ico: 'folder', v: yukle('views/projeler.js', 'projelerView'), main: true, g: 'Saha' },
+  takvim:    { t: 'Takvim', ico: 'cal', v: yukle('views/ziyaret.js', 'takvimView'), main: true, g: 'Saha' },
+  firmalar:  { t: 'Firmalar', ico: 'building', v: yukle('views/firmalar.js', 'firmalarView'), main: true, g: 'Saha' },
+  ziyaretler:{ t: 'Ziyaretler', ico: 'pin', v: yukle('views/ziyaret.js', 'ziyaretlerView'), g: 'Saha' },
+  gorevler:  { t: 'Görevler', ico: 'check', v: yukle('views/ziyaret.js', 'gorevlerView'), g: 'Saha' },
+  kisiler:   { t: 'Kişiler', ico: 'user', v: yukle('views/firmalar.js', 'kisilerView'), g: 'Saha' },
+  bolgeler:  { t: 'Sanayi bölgeleri', ico: 'zone', v: yukle('views/bolgeler.js', 'bolgelerView'), g: 'Saha' },
+  masraflar: { t: 'Masraf ve km', ico: 'wallet', v: yukle('views/kayitlar.js', 'masraflarView'), g: 'Saha' },
+  dosyalar:  { t: 'Dosyalar', ico: 'doc', v: yukle('views/dosyalar.js', 'dosyalarView'), g: 'Saha' },
+  tahsilat:  { t: 'Tahsilat', ico: 'coins', v: yukle('views/tahsilat.js', 'tahsilatView'), g: 'Satış' },
+  bayi:      { t: 'Bayi paneli', ico: 'box', v: yukle('views/bayi.js', 'bayiView'), g: 'Satış' },
+  teklifler: { t: 'Teklifler', ico: 'doc', v: yukle('views/teklif.js', 'tekliflerView'), g: 'Satış' },
+  araclar:   { t: 'Aydınlatma araçları', ico: 'calc', v: yukle('views/araclar.js', 'araclarView'), g: 'Satış' },
+  katalog:   { t: 'Ürün kataloğu', ico: 'book', v: yukle('views/katalog.js', 'katalogView'), g: 'Satış' },
+  referanslar:{ t: 'Referanslar', ico: 'star', v: yukle('views/katalog.js', 'referanslarView'), g: 'Satış' },
+  numuneler: { t: 'Numuneler', ico: 'gift', v: yukle('views/kayitlar.js', 'numunelerView'), g: 'Satış' },
+  servis:    { t: 'Servis ve şikayet', ico: 'wrench', v: yukle('views/kayitlar.js', 'servisView'), g: 'Satış' },
+  panel:     { t: 'Panel', ico: 'chart', v: yukle('views/panel.js', 'panelView'), g: 'Rapor' },
+  rapor:     { t: 'Haftalık rapor', ico: 'report', v: yukle('views/rapor.js', 'raporView'), g: 'Rapor' },
+  kontrol:   { t: 'Veri kontrolü', ico: 'check', v: yukle('views/kontrol.js', 'kontrolView'), g: 'Rapor' },
+  siparisler:{ t: 'Siparişler', ico: 'receipt', v: yukle('views/panel.js', 'siparislerView'), g: 'Rapor' },
+  urunler:   { t: 'Stok ve fiyat', ico: 'box', v: yukle('views/urunler.js', 'urunlerView'), g: 'Rapor' },
+  rakip:     { t: 'Rakip fiyatları', ico: 'tag', v: yukle('views/urunler.js', 'rakipView'), g: 'Rapor' },
+  ayarlar:   { t: 'Ayarlar', ico: 'gear', v: yukle('views/ayarlar.js', 'ayarlarView'), g: 'Rapor' },
 };
-const DETAIL = { proje: projeDetay, firma: firmaDetay, kisi: kisiDetay };
+const detay = (yol, ad) => async (...a) => (await import('./' + yol))[ad](...a);
+const DETAIL = { proje: detay('views/projeler.js', 'projeDetay'), firma: detay('views/firmalar.js', 'firmaDetay'), kisi: detay('views/firmalar.js', 'kisiDetay') };
 app.rotalar = ROUTES;
 
 const ICONS = {
@@ -99,7 +84,7 @@ function renderNav(cur) {
   const item = (k, r) => `<a href="#/${k}" class="${k === cur ? 'on' : ''}" ${k === cur ? 'aria-current="page"' : ''}>${icon(r.ico)}<span>${r.t}</span></a>`;
   const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : !sahipMi() ? `<span class="mode-badge">${esc(app.yetki?.yetkiler?._rol || 'Ekip üyesi')}${app.yetki?.ad ? ' · ' + esc(app.yetki.ad) : ''}</span>` : '';
   nav.innerHTML = `
-    <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b>${mode}<a href="#/ayarlar" id="bekleyen" class="bekleyen" hidden title="İnternet gelince gönderilecek kayıtlar"></a></div>
+    <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b>${mode}</div>
     <button type="button" class="nav-ara" data-navara><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Ara</span><kbd>/</kbd></button>
     <div class="nav-main">${ana.filter(rotaIzinli).map(k => item(k, ROUTES[k])).join('')}
       <button class="nav-more ${!ana.includes(cur) ? 'on' : ''}" type="button" aria-haspopup="true">${icon('more')}<span>Diğer</span></button></div>
@@ -107,6 +92,8 @@ function renderNav(cur) {
       <button type="button" class="nav-inst" data-inst ${canInstall() ? '' : 'hidden'}>${icon('down')}<span>Telefona yükle</span></button>
       <a href="#/ayarlar" class="nav-duzen" data-menuduzen>${icon('gear', 18)}<span>Menüyü düzenle</span></a></div>`;
   nav.querySelector('[data-navara]').onclick = () => aramaAc();
+  // Bekleyen kayıt rozeti menüden bağımsız (telefonda menü başlığı gizli olduğu için)
+  if (!document.getElementById('bekleyen')) { const b = document.createElement('button'); b.type = 'button'; b.id = 'bekleyen'; b.className = 'bekleyen'; b.hidden = true; b.title = 'Buluta gönderilmeyi bekleyen kayıtlar'; b.onclick = async () => (await import('./bekleyen.js')).bekleyenPaneli(); document.body.appendChild(b); }
   bekleyenGuncelle();
   nav.querySelector('[data-menuduzen]').addEventListener('click', () => { try { sessionStorage.setItem('menu-ac', '1'); } catch {} if (location.hash === '#/ayarlar') window.dispatchEvent(new HashChangeEvent('hashchange')); });
   nav.querySelector('[data-inst]').onclick = () => { nav.classList.remove('more-open'); install(); };
@@ -114,7 +101,7 @@ function renderNav(cur) {
   nav.querySelectorAll('.nav-rest a').forEach(a => a.addEventListener('click', () => nav.classList.remove('more-open')));
 }
 
-let lastView = null, lastShown = null;
+let lastView = null, lastShown = null; const kayKonum = {};
 const saltOku = k => document.body.classList.toggle('salt-oku', !sahipMi() && !rotaYazilabilir(k));
 async function route() {
   const parts = (location.hash.replace(/^#\/?/, '') || 'bugun').split('/');
@@ -138,8 +125,15 @@ async function show(k) {
   el.className = 'view-' + k;
   document.title = ROUTES[k].t + ' · Saha Takip';
   app.refresh = () => ROUTES[k].v(el);
+  // Ekranlar arası geçişte her ekranın kaydırma konumu hatırlanır
+  const donus = lastShown !== k ? kayKonum[k] : null;
+  if (lastShown && lastShown !== k) kayKonum[lastShown] = window.scrollY;
   if (lastShown !== k) { window.scrollTo(0, 0); el.scrollTop = 0; } lastShown = k;
   await ROUTES[k].v(el);
+  if (donus > 0) {
+    for (let i = 0; i < 30 && document.documentElement.scrollHeight < donus + innerHeight; i++) { const p = el.querySelector('.parcali-kok')?._parcali; if (!p || !p.ekle(200)) break; }
+    window.scrollTo(0, donus);
+  }
 }
 // Detay paneli kapanınca adres çubuğunu listeye döndür (görünümü yeniden çizmeden)
 export function backToList(redraw = false) {
@@ -168,14 +162,14 @@ async function boot() {
   view.innerHTML = '<div class="boot"><span class="bulb big"></span><p>Veriler yükleniyor…</p></div>';
   try {
     const ok = await app.db.init();
-    if (app.db.mode === 'supabase' && !ok) { document.getElementById('nav').innerHTML = ''; return loginView(view, boot); }
+    if (app.db.mode === 'supabase' && !ok) { document.getElementById('nav').innerHTML = ''; return (await import('./views/ayarlar.js')).loginView(view, boot); }
     if (app.db.mode === 'supabase') {
       const g = await import('./guvenlik.js');
       if (await g.otoCikisGerekli()) return;
       if (await g.ikinciAdimGerekli()) { document.getElementById('nav').innerHTML = ''; return g.ikinciAdimEkrani(view, boot); }
       if (!otoKuruldu) { otoKuruldu = true; g.otoCikisKur(); }
     }
-    await app.db.loadAll();
+    await app.db.loadAll({ hizli: true });
     app.yetki = app.db.yetki || null;
     listeleriUygula();
     if (app.db.mode === 'supabase') import('./guvenlik.js').then(g => g.gorundum());
@@ -185,7 +179,7 @@ async function boot() {
     if (app.db.offline) toast('Çevrimdışısın: son kaydedilen veriler gösteriliyor.');
   } catch (e) {
     view.innerHTML = `<div class="empty"><h2>Veriler yüklenemedi</h2><p>${esc(e.message)}</p><p><a class="btn" href="#/ayarlar">Bağlantı ayarlarını aç</a></p></div>`;
-    renderNav('ayarlar'); app.refresh = () => ayarlarView(view);
+    renderNav('ayarlar'); app.refresh = () => ROUTES.ayarlar.v(view);
     window.addEventListener('hashchange', () => {}, { once: true });
     return;
   }
@@ -196,20 +190,35 @@ async function boot() {
   filtreIzle(document.getElementById('view'), () => lastView);
   await route();
   hizliKur();
-  if (act === 'ziyaret') ziyaretForm({});
+  if (act === 'ziyaret') import('./views/ziyaret.js').then(m => m.ziyaretForm({}));
   if (act === 'ara') aramaAc();
   if (pay) paylasimPaneli(pay);
   kurGuncelle().then(k => { if (k && lastView === 'bugun' && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});
   bildirimHazirla().catch(() => {});
+  // Boşta: haftalık otomatik yedek ve Excel aracını önceden önbelleğe alma (çevrimdışı Excel için)
+  setTimeout(() => {
+    import('./otoyedek.js').then(m => m.otoYedekKontrol()).catch(() => {});
+    if (!navigator.connection?.saveData) fetch('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', { mode: 'no-cors' }).catch(() => {});
+  }, 20000);
 }
+// Açılışta telefondaki kopya gösterildi; buluttaki yeni veri gelince ekranı sessizce yenile
+window.addEventListener('veri-tazelendi', () => {
+  const yetkiDegisti = JSON.stringify(app.yetki) !== JSON.stringify(app.db.yetki);
+  app.yetki = app.db.yetki || app.yetki; listeleriUygula(); sonTazele = Date.now();
+  if (yetkiDegisti) renderNav(navSon);
+  if (!document.querySelector('.drawer.open') && !document.activeElement?.matches?.('input, textarea, select') && app.refresh) { const y = window.scrollY; Promise.resolve(app.refresh()).then(() => window.scrollTo(0, y)); }
+  bekleyenGuncelle();
+});
 window.addEventListener('schema-old', () => toast('Veritabanı güncel değil: Supabase SQL Editor\'de supabase/schema.sql dosyasını yeniden çalıştır. Yeni alanlar (Google bilgileri) o zamana kadar kaydedilmez.', 'err'));
 window.addEventListener('outbox', e => { if (e.detail) toast('Bağlantı yok: değişiklik kaydedildi, internet gelince gönderilecek.'); bekleyenGuncelle(); });
+window.addEventListener('outbox-gonderim', () => bekleyenGuncelle());
 // Gönderilmeyi bekleyen kayıt sayısı (menüde rozet); sıfıra inince “gönderildi” bildirimi
 let sonBekleyen = 0;
 async function bekleyenGuncelle() {
   const n = app.db?.pending ? await app.db.pending().catch(() => 0) : 0;
   const b = document.getElementById('bekleyen');
-  if (b) { b.hidden = !n; b.textContent = n ? `${n} kayıt bekliyor` : ''; }
+  const hata = n && app.db?.bekleyenler ? (await app.db.bekleyenler()).some(o => o.hata) : false;
+  if (b) { b.hidden = !n; b.textContent = n ? `${n} kayıt ${hata ? 'gönderilemedi' : 'bekliyor'}` : ''; b.classList.toggle('hata', hata); }
   if (sonBekleyen && !n) toast('Bekleyen kayıtlar gönderildi.');
   sonBekleyen = n;
 }
@@ -222,7 +231,7 @@ async function tazele(zorla) {
   if (tazeleniyor || !app.db || app.db.mode !== 'supabase' || !navigator.onLine || document.hidden) return;
   if (!zorla && Date.now() - sonTazele < 120000) return;
   tazeleniyor = true;
-  try { await app.db.loadAll(); listeleriUygula(); sonTazele = Date.now(); if (!document.querySelector('.drawer.open') && !document.activeElement?.matches?.('input, textarea, select')) { const y = window.scrollY; app.refresh(); window.scrollTo(0, y); } }
+  try { await (app.db.tazeYukle ? app.db.tazeYukle() : app.db.loadAll()); app.yetki = app.db.yetki || app.yetki; listeleriUygula(); sonTazele = Date.now(); if (!document.querySelector('.drawer.open') && !document.activeElement?.matches?.('input, textarea, select')) { const y = window.scrollY; app.refresh(); window.scrollTo(0, y); } }
   catch {} finally { tazeleniyor = false; }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tazele(); });
@@ -240,5 +249,15 @@ function hataGoster(m, dosya, satir) {
 }
 window.addEventListener('error', e => hataGoster(e.message, e.filename, e.lineno));
 window.addEventListener('unhandledrejection', e => { const r = e.reason; hataGoster(r?.message || String(r || ''), (r?.stack || '').match(/https?:\/\/[^\s)]+?\.js/)?.[0], (r?.stack || '').match(/\.js:(\d+)/)?.[1]); });
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  // Yeni sürüm kurulunca: güvenli anda kendiliğinden yenile, değilse haber ver
+  const ilkKontrol = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!ilkKontrol) return;
+    const guvenli = () => !document.querySelector('.drawer.open') && !document.activeElement?.matches?.('input, textarea, select');
+    if (guvenli() && document.hidden) location.reload();
+    else { toast('Uygulamanın yeni sürümü hazır. Yenilemek için dokun.'); const t = document.getElementById('toast'); if (t) { t.onclick = () => location.reload(); setTimeout(() => { t.onclick = null; }, 8000); } document.addEventListener('visibilitychange', () => { if (document.hidden && guvenli()) location.reload(); }, { once: true }); }
+  });
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 boot();

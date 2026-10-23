@@ -69,6 +69,7 @@ function adayForm(a, sonra) {
 async function excelden(sonra) {
   const [file] = await pickFiles({ accept: '.xls,.xlsx,.csv', multiple: false }); if (!file) return;
   try {
+    await (await import('./ui.js')).xlsxYukle();
     const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
     const hi = rows.findIndex(r => r.filter(c => typeof c === 'string' && c.trim()).length >= 2); if (hi < 0) return toast('Dosyada başlık satırı bulunamadı.', 'err');

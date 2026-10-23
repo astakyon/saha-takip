@@ -23,7 +23,11 @@ export const TABLES = {
   yorumlar: ['id','tablo','kayit_id','metin','yazan','yazan_ad','etiketler','created_at'],
 };
 const ARRAYS = new Set(['tipler','fotolar','urun_gruplari','etiketler']);
+// updated_at sütunu olan tablolar: bunlarda yalnızca değişen kayıtlar çekilir ve aynı anda düzenleme denetlenir
+const GUNCEL = new Set(Object.keys(TABLES).filter(t => !['proje_gecmis', 'stok_gecmis'].includes(t)));
 
+// Veri her değiştiğinde artar (harita gibi önbellekli ekranlar yeniden çizmek için bakar)
+export const DB_DURUM = { surum: 0 };
 export const S = Object.fromEntries(Object.keys(TABLES).map(t => [t, []]));
 export const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
 
@@ -64,6 +68,7 @@ export const idbDel = (k, store = 'kv') => kv(store, 'readwrite', s => s.delete(
 // Depo yolu için dosya adı (Türkçe karakter ve boşluk temizlenir)
 export const guvenliAd = n => String(n || 'dosya').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').replace(/İ/g, 'I').replace(/[^A-Za-z0-9._-]+/g, '_').slice(-80);
 
+const kucukYol = p => p.replace(/\.jpg$/, '_k.jpg');
 // ---------- Görsel küçültme ----------
 export async function shrink(file, max = 1600, q = 0.82) {
   if (!file.type.startsWith('image/')) return file;
@@ -84,7 +89,7 @@ class LocalAdapter {
   async loadAll() {
     for (const t of Object.keys(TABLES)) S[t] = (await idbGet('t:' + t)) || [];
   }
-  async persist(t) { await idbSet('t:' + t, S[t]); }
+  async persist(t) { DB_DURUM.surum++; await idbSet('t:' + t, S[t]); }
   async save(t, obj) {
     const row = pick(t, obj); if (!row.id) row.id = uuid();
     const i = S[t].findIndex(x => x.id === row.id);
@@ -133,8 +138,11 @@ function schemaErr(e, t) {
 }
 async function upsertSafe(c, t, rows) {
   for (let i = 0; i < 12; i++) {
-    const { error } = await c.from(t).upsert(Array.isArray(rows) ? rows.map(r => strip(t, r)) : strip(t, rows));
-    if (!error) return;
+    const tek = !Array.isArray(rows);
+    let q = c.from(t).upsert(tek ? strip(t, rows) : rows.map(r => strip(t, r)));
+    if (tek && GUNCEL.has(t)) q = q.select('updated_at');
+    const { data, error } = await q;
+    if (!error) return data;
     const col = missingCol(error, t);
     if (!col || MISSING.has(col)) throw error;
     MISSING.add(col); warnOld();
@@ -162,28 +170,73 @@ class SupaAdapter {
     this.sahip = this.yetki?.sahip || this.user()?.id;
     return this.yetki;
   }
-  async loadAll() {
-    try {
-      await this.yetkiYukle();
-      for (const t of Object.keys(TABLES)) {
-        let all = [], from = 0;
-        for (;;) {
-          const { data, error } = await this.c.from(t).select('*').range(from, from + 999);
-          if (error && /does not exist|schema cache|Could not find/i.test(error.message)) { this.schemaOld = true; break; }
-          if (error) throw error;
-          all = all.concat(data); if (data.length < 1000) break; from += 1000;
-        }
-        S[t] = all;
-      }
-      await idbSet('cache:' + this.user()?.id, S);
-      await this.flush();
-    } catch (e) {
-      const cached = await idbGet('cache:' + this.user()?.id);
-      if (cached) { Object.assign(S, cached); this.offline = true; return; }
+  // ---------- Yükleme ve eşitleme ----------
+  // hizli: telefondaki kopya varsa onu hemen gösterir, buluttaki yenisi arkada iner ("veri-tazelendi" olayı)
+  async loadAll({ hizli = false } = {}) {
+    const uid = this.user()?.id;
+    const [cached, senk, yt] = await Promise.all([idbGet('cache:' + uid), idbGet('senk:' + uid), idbGet('yetki:' + uid)]).catch(() => [null, null, null]);
+    if (hizli && cached && yt) {
+      for (const t of Object.keys(TABLES)) S[t] = cached[t] || [];
+      this.yetki = yt; this.sahip = yt?.sahip || uid; this.senk = senk || {};
+      this.arkada = true;
+      this.tazeYukle().then(() => { this.offline = false; window.dispatchEvent(new CustomEvent('veri-tazelendi')); })
+        .catch(e => { this.offline = !navigator.onLine; console.warn('Arka plan yüklemesi', e); })
+        .finally(() => { this.arkada = false; });
+      return;
+    }
+    try { this.senk = cached ? (senk || {}) : {}; if (cached) for (const t of Object.keys(TABLES)) S[t] = cached[t] || []; await this.tazeYukle(); }
+    catch (e) {
+      if (cached) { for (const t of Object.keys(TABLES)) S[t] = cached[t] || []; if (yt) { this.yetki = yt; this.sahip = yt?.sahip || uid; } this.offline = true; return; }
       throw e;
     }
   }
-  async cache() { clearTimeout(this._ct); this._ct = setTimeout(() => idbSet('cache:' + this.user()?.id, S), 400); }
+  // Buluttan: ilk seferde her şey (tablolar aynı anda), sonra yalnızca değişenler + silinenlerin ayıklanması
+  async tazeYukle() {
+    if (this._tazeleniyor) return this._tazeleniyor;
+    this._tazeleniyor = (async () => {
+      const uid = this.user()?.id, onceki = JSON.stringify(this.yetki || null);
+      await this.yetkiYukle();
+      await idbSet('yetki:' + uid, this.yetki);
+      if (JSON.stringify(this.yetki) !== onceki && onceki !== 'null') this.senk = {};   // yetki değişti: görünen kayıtlar değişmiş olabilir
+      const senk = { ...(this.senk || {}) };
+      const bekleyen = new Set(((await idbGet('outbox')) || []).map(o => o.row?.id || o.id));
+      await Promise.all(Object.keys(TABLES).map(async t => {
+        try {
+          if (!senk[t] || !GUNCEL.has(t)) { const all = await this.tablo(t); const yerel = S[t].filter(r => bekleyen.has(r.id) && !all.some(x => x.id === r.id)); S[t] = all.concat(yerel); }
+          else {
+            const deg = await this.tablo(t, q => q.gt('updated_at', senk[t]));
+            if (deg.length) { const m = new Map(S[t].map(r => [r.id, r])); for (const r of deg) m.set(r.id, r); S[t] = [...m.values()]; }
+            const { count, error } = await this.c.from(t).select('id', { count: 'exact', head: true });
+            if (!error && count != null && count !== S[t].filter(r => !bekleyen.has(r.id) || r.updated_at).length) {
+              const ids = new Set((await this.tablo(t, null, 'id')).map(r => r.id));
+              const eksik = [...ids].filter(id => !S[t].some(r => r.id === id));
+              S[t] = S[t].filter(r => ids.has(r.id) || bekleyen.has(r.id));
+              for (let i = 0; i < eksik.length; i += 200) S[t] = S[t].concat(await this.tablo(t, q => q.in('id', eksik.slice(i, i + 200))));
+            }
+          }
+          if (GUNCEL.has(t)) senk[t] = S[t].reduce((a, r) => r.updated_at && r.updated_at > a ? r.updated_at : a, senk[t] || '');
+        } catch (e) {
+          if (/does not exist|schema cache|Could not find/i.test(e?.message || '')) { this.schemaOld = true; S[t] = S[t] || []; return; }
+          throw e;
+        }
+      }));
+      this.senk = senk; DB_DURUM.surum++;
+      await Promise.all([idbSet('cache:' + uid, S), idbSet('senk:' + uid, senk)]);
+      await this.flush();
+    })();
+    try { return await this._tazeleniyor; } finally { this._tazeleniyor = null; }
+  }
+  async tablo(t, filtre, alanlar = '*') {
+    let all = [], from = 0;
+    for (;;) {
+      let q = this.c.from(t).select(alanlar); if (filtre) q = filtre(q);
+      const { data, error } = await q.range(from, from + 999);
+      if (error) throw error;
+      all = all.concat(data); if (data.length < 1000) break; from += 1000;
+    }
+    return all;
+  }
+  async cache() { DB_DURUM.surum++; clearTimeout(this._ct); this._ct = setTimeout(() => idbSet('cache:' + this.user()?.id, S), 400); }
   async queue(op) { const q = (await idbGet('outbox')) || []; q.push(op); await idbSet('outbox', q); }
   async flush() {
     const q = (await idbGet('outbox')) || []; if (!q.length || !navigator.onLine) return;
@@ -193,27 +246,51 @@ class SupaAdapter {
         if (op.op === 'del') { const r = await this.c.from(op.t).delete().eq('id', op.id); if (r.error) throw r.error; }
         else if (op.op === 'upd') { const r = await this.c.from(op.t).update(strip(op.t, op.row)).eq('id', op.row.id); if (r.error) throw r.error; }
         else await upsertSafe(this.c, op.t, op.row);
-      } catch (e) { rest.push(op); }
+      } catch (e) { const ag = /fetch|network|Failed/i.test(e?.message || ''); rest.push(ag ? op : { ...op, hata: schemaErr(e).message, deneme: (op.deneme || 0) + 1 }); }
     }
     await idbSet('outbox', rest);
-    window.dispatchEvent(new CustomEvent('outbox', { detail: rest.length }));
+    window.dispatchEvent(new CustomEvent('outbox-gonderim', { detail: rest.length }));
   }
   async pending() { return ((await idbGet('outbox')) || []).length; }
+  async bekleyenler() { return (await idbGet('outbox')) || []; }
+  async bekleyenSil(i) { const q = (await idbGet('outbox')) || []; q.splice(i, 1); await idbSet('outbox', q); window.dispatchEvent(new CustomEvent('outbox', { detail: 0 })); }
   async save(t, obj) {
     if (this.yazamaz(t, obj)) throw new Error('Bu bölümde düzenleme yetkin yok. Veri sahibinden yetki iste.');
     const row = pick(t, obj); if (!row.id) row.id = uuid();
     const i = S[t].findIndex(x => x.id === row.id), onceki = i >= 0 ? S[t][i] : null;
     // Ekleme yetkisi olmayan ekip üyesi (ör. kendisine atanan görev) yalnızca var olan kaydı günceller; upsert ekleme izni de ister
     const sadeceGuncelle = this.yetki?.ben_sahip === false && this.yetki.yetkiler?.[t] !== 'yaz' && i >= 0;
-    const full = { ...(i >= 0 ? S[t][i] : {}), ...row, updated_at: new Date().toISOString() };
+    // updated_at yalnızca sunucudan gelir; bilinmiyorsa boş kalır (aynı anda düzenleme denetimi için)
+    const full = { ...(onceki || { created_at: new Date().toISOString() }), ...row, updated_at: onceki?.updated_at || null };
     if (i >= 0) S[t][i] = full; else S[t].push(full);
     this.cache();
+    const sunucuZamani = ts => { const j = S[t].findIndex(x => x.id === row.id); if (j >= 0 && ts) { S[t][j] = { ...S[t][j], updated_at: ts }; full.updated_at = ts; this.cache(); } };
     try {
       if (this.schemaOld && t === 'bolgeler') throw new Error('Bölgeleri kaydetmek için Supabase SQL Editor\'de supabase/schema.sql dosyasını yeniden çalıştır.');
-      if (sadeceGuncelle) { const r = await this.c.from(t).update(strip(t, row)).eq('id', row.id).select('id'); if (r.error) throw r.error; if (!r.data?.length) throw new Error('row-level security: güncelleme yetkisi yok'); }
-      else await upsertSafe(this.c, t, row);
+      if (onceki?.updated_at && GUNCEL.has(t)) {
+        // Koşullu güncelleme: kayıt sen açtıktan sonra başkası tarafından değiştirildiyse sor
+        const r = await this.c.from(t).update(strip(t, row)).eq('id', row.id).eq('updated_at', onceki.updated_at).select('updated_at');
+        if (r.error) throw r.error;
+        if (r.data?.length) sunucuZamani(r.data[0].updated_at);
+        else {
+          const { data: guncel, error: e2 } = await this.c.from(t).select('*').eq('id', row.id).maybeSingle();
+          if (e2) throw e2;
+          if (!guncel) { if (sadeceGuncelle) throw new Error('row-level security: güncelleme yetkisi yok'); const d = await upsertSafe(this.c, t, row); sunucuZamani(d?.[0]?.updated_at); }
+          else {
+            const saat = new Date(guncel.updated_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+            if (window.confirm(`Bu kaydı sen açtıktan sonra başka biri değiştirdi (${saat}).\n\nTamam: senin değişikliğin kaydedilsin (onunkinin üzerine yazılır).\nİptal: onun hali kalsın, seninki kaydedilmesin.`)) {
+              const r2 = await this.c.from(t).update(strip(t, row)).eq('id', row.id).select('updated_at'); if (r2.error) throw r2.error; sunucuZamani(r2.data?.[0]?.updated_at);
+            } else {
+              const j = S[t].findIndex(x => x.id === row.id); if (j >= 0) S[t][j] = guncel; this.cache();
+              throw Object.assign(new Error('Kayıt başkası tarafından değiştirilmişti; güncel hali yüklendi, seninki kaydedilmedi.'), { cakisma: true });
+            }
+          }
+        }
+      } else if (sadeceGuncelle) { const r = await this.c.from(t).update(strip(t, row)).eq('id', row.id).select('id,updated_at'); if (r.error) throw r.error; if (!r.data?.length) throw new Error('row-level security: güncelleme yetkisi yok'); sunucuZamani(r.data[0].updated_at); }
+      else { const d = await upsertSafe(this.c, t, row); sunucuZamani(d?.[0]?.updated_at); }
     } catch (e) {
-      if (e && e.message && /fetch|network|Failed/i.test(e.message)) { await this.queue({ op: sadeceGuncelle ? 'upd' : 'up', t, row }); window.dispatchEvent(new CustomEvent('outbox', { detail: 1 })); }
+      if (e && e.message && /fetch|network|Failed/i.test(e.message)) { const j = S[t].findIndex(x => x.id === row.id); if (j >= 0) S[t][j] = { ...S[t][j], updated_at: null }; full.updated_at = null; this.cache(); await this.queue({ op: sadeceGuncelle ? 'upd' : 'up', t, row, zaman: Date.now() }); window.dispatchEvent(new CustomEvent('outbox', { detail: 1 })); }
+      else if (e?.cakisma) throw e;
       else {
         // Kaydedilemeyen değişikliği ekrandan geri al
         const j = S[t].findIndex(x => x.id === row.id);
@@ -244,7 +321,7 @@ class SupaAdapter {
       onProgress && onProgress(Math.min(i + 400, rows.length));
     }
     const byId = new Map(S[t].map(x => [x.id, x]));
-    for (const r of rows) byId.set(r.id, { ...(byId.get(r.id) || {}), ...pick(t, r) });
+    for (const r of rows) byId.set(r.id, { ...(byId.get(r.id) || {}), ...pick(t, r), updated_at: null });
     S[t] = [...byId.values()]; this.cache();
   }
   async upload(file) {
@@ -252,7 +329,10 @@ class SupaAdapter {
     const blob = await shrink(file);
     const path = `${this.sahip || this.user().id}/${uuid()}.jpg`;
     const { error } = await this.c.storage.from('fotograflar').upload(path, blob, { contentType: 'image/jpeg' });
-    if (error) throw error; return path;
+    if (error) throw error;
+    // Listelerde kullanılan küçük önizleme (360 px); yüklenemezse sorun değil, büyüğü gösterilir
+    try { const k = await shrink(file, 360, 0.72); await this.c.storage.from('fotograflar').upload(kucukYol(path), k, { contentType: 'image/jpeg' }); this.urlCache.set('k:' + path, null); } catch {}
+    return path;
   }
   async uploadFile(file) {
     if (!navigator.onLine) throw new Error('Belge yüklemek için internet bağlantısı gerekiyor.');
@@ -261,15 +341,24 @@ class SupaAdapter {
     const { error } = await this.c.storage.from('fotograflar').upload(path, file, { contentType: file.type || 'application/octet-stream' });
     if (error) throw error; return path;
   }
-  async url(path) {
+  // kucuk: önce küçük önizlemeyi dener (yeni yüklenen fotoğraflarda var), yoksa büyüğü
+  async url(path, kucuk = false) {
     if (!path) return null;
     if (/^https?:\/\//.test(path)) return path;
+    if (kucuk && /\.jpg$/.test(path)) {
+      const kc = this.urlCache.get('k:' + path);
+      if (kc === false) return this.url(path);
+      if (kc && kc.exp > Date.now()) return kc.u;
+      const { data, error } = await this.c.storage.from('fotograflar').createSignedUrl(kucukYol(path), 3600);
+      if (error || !data?.signedUrl) { this.urlCache.set('k:' + path, false); return this.url(path); }
+      this.urlCache.set('k:' + path, { u: data.signedUrl, exp: Date.now() + 3500e3 }); return data.signedUrl;
+    }
     const c = this.urlCache.get(path); if (c && c.exp > Date.now()) return c.u;
     const { data, error } = await this.c.storage.from('fotograflar').createSignedUrl(path, 3600);
     if (error) return null;
     this.urlCache.set(path, { u: data.signedUrl, exp: Date.now() + 3500e3 }); return data.signedUrl;
   }
-  async removePhoto(path) { await this.c.storage.from('fotograflar').remove([path]); }
+  async removePhoto(path) { await this.c.storage.from('fotograflar').remove([path, kucukYol(path)]); }
   async clearAll() {
     for (const t of Object.keys(TABLES).reverse()) {
       const { error } = await this.c.from(t).delete().not('id', 'is', null);

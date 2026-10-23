@@ -128,9 +128,16 @@ export function download(name, content, type = 'application/json') {
   const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
+// Excel kütüphanesi (~900 KB) yalnızca Excel'e aktarırken ya da Excel yüklerken indirilir
+let xlsxSoz = null;
+export function xlsxYukle() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return xlsxSoz ||= new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = () => res(window.XLSX); s.onerror = () => { xlsxSoz = null; rej(new Error('Excel aracı indirilemedi. İnternet bağlantını kontrol et.')); }; document.head.appendChild(s); });
+}
 // Excel çıktısı: sütun genişlikleri ve filtre düğmeleriyle; bir kopyası “Dosyalar → Çıktılar”a kaydedilir
-export function exportXlsx(name, sheets) {
+export async function exportXlsx(name, sheets) {
   if (!disaAktarabilir()) return toast('Excel\'e aktarma yetkin yok. Gerekirse veri sahibinden iste.', 'err');
+  try { await xlsxYukle(); } catch (e) { return toast(e.message, 'err'); }
   const wb = XLSX.utils.book_new();
   for (const [sn, rows0] of Object.entries(sheets)) {
     const rows = rows0.length ? rows0 : [{ 'Kayıt yok': '' }];
@@ -164,4 +171,37 @@ export async function silGeriAl(tablo, kayit, ad, yenile, dosyaYolu) {
   const { app } = await import('./state.js');
   await app.db.del(tablo, kayit.id); yenile && yenile();
   geriAlToast(`${ad} silindi.`, async () => { await app.db.save(tablo, kayit); yenile && yenile(); }, dosyaYolu ? () => app.db.removePhoto(dosyaYolu).catch(() => {}) : null);
+}
+
+// ---------- Uzun listeler: parça parça çizim ----------
+// satirlar: HTML parçaları dizisi. İlk "ilk" kadarı hemen, kalanı kaydırdıkça eklenir.
+// sar: dış kalıp (ör. tablo); satırlar içindeki [data-parca] öğesine, yoksa doğrudan kutuya eklenir. sonra: her eklemeden sonra (olay bağlamak için)
+export function parcali(kutu, satirlar, { ilk = 60, adim = 80, sar = x => x, sonra } = {}) {
+  let n = Math.min(ilk, satirlar.length), gozcu = null, nokta = null;
+  kutu.innerHTML = sar(satirlar.slice(0, n).join(''));
+  const icerik = kutu.querySelector('[data-parca]');
+  const ekle = (k = adim) => {
+    if (n >= satirlar.length) return false;
+    const yeni = satirlar.slice(n, n + k).join(''); n = Math.min(satirlar.length, n + k);
+    if (icerik) icerik.insertAdjacentHTML('beforeend', yeni); else nokta.insertAdjacentHTML('beforebegin', yeni);
+    sonra?.(kutu);
+    if (n >= satirlar.length) { gozcu?.disconnect(); nokta?.remove(); }
+    else requestAnimationFrame(() => { if (nokta?.isConnected && nokta.getBoundingClientRect().top < innerHeight + 800) ekle(); });
+    return true;
+  };
+  if (n < satirlar.length) {
+    nokta = document.createElement('div'); nokta.className = 'parca-son'; nokta.setAttribute('aria-hidden', 'true'); kutu.appendChild(nokta);
+    if ('IntersectionObserver' in window) { gozcu = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) ekle(); }, { rootMargin: '800px 0px' }); gozcu.observe(nokta); }
+    else ekle(satirlar.length);
+  }
+  sonra?.(kutu);
+  kutu.classList.add('parcali-kok');
+  kutu._parcali = { ekle, hepsi: () => ekle(satirlar.length), kalan: () => satirlar.length - n };
+  return kutu._parcali;
+}
+// Görüntüler ekrana yaklaşınca yüklenir (kişi avatarları, foto önizlemeleri)
+export function gorununce(ogeler, yukle) {
+  if (!('IntersectionObserver' in window)) { ogeler.forEach(yukle); return; }
+  const g = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { g.unobserve(e.target); yukle(e.target); } }), { rootMargin: '300px 0px' });
+  ogeler.forEach(o => { if (!o._izleniyor) { o._izleniyor = true; g.observe(o); } });
 }

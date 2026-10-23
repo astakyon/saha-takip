@@ -47,7 +47,7 @@ export function dosyalarView(el) {
       return `<li><button type="button" class="dosya" data-i="${i}">${x.gorsel ? `<img alt="" loading="lazy" data-yol="${esc(x.yol)}">` : `<span class="dosya-ikon" style="--c:${IKON[ta] || '#64748B'}">${esc(ta)}</span>`}
         <span class="dosya-ad">${esc(x.ad)}</span><small class="muted">${esc([x.grup === 'Yüklemeler' ? x.alt : x.kayit?.ad || x.alt, x.boyut ? boyutYaz(x.boyut) : '', x.tarih ? tarih(String(x.tarih).slice(0, 10)) : ''].filter(Boolean).join(' · '))}</small></button></li>`; }).join('')
       : `<li class="empty"><p>${f.grup === 'Yüklemeler' ? 'Bundan sonra yüklediğin her stok, sipariş, tahsilat Excel\'i ve yedek dosyası burada ayrı ayrı saklanır.' : 'Bu grupta dosya yok.'}</p></li>`;
-    box.querySelectorAll('img[data-yol]').forEach(async img => { const u = await app.db.url(img.dataset.yol); if (u) img.src = u; });
+    box.querySelectorAll('img[data-yol]').forEach(async img => { const u = await app.db.url(img.dataset.yol, true); if (u) img.src = u; });
     box.querySelectorAll('[data-i]').forEach(b => b.onclick = () => onizle(l[+b.dataset.i], () => dosyalarView(el)));
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };

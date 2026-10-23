@@ -122,7 +122,7 @@ export function bindForm(root, sections, obj, { onChange } = {}) {
     const draw = async () => {
       const arr = list();
       box.querySelector('.ph-list').innerHTML = arr.map((p, i) => `<figure class="thumb" data-i="${i}"><img alt="" data-path="${esc(p)}"><button type="button" class="x" data-ph-del="${i}" aria-label="Fotoğrafı kaldır">×</button></figure>`).join('');
-      for (const img of box.querySelectorAll('img[data-path]')) { const u = await app.db.url(img.dataset.path); if (u) img.src = u; }
+      for (const img of box.querySelectorAll('img[data-path]')) { const u = await app.db.url(img.dataset.path, true); if (u) img.src = u; }
     };
     const add = async capture => {
       const files = await pickFiles({ capture, multiple: !capture });

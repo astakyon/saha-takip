@@ -1,5 +1,5 @@
 import { ALTLIKLAR, varsayilanAltlik, altlikKatmani, uyduMu } from '../altlik.js';
-import { S } from '../db.js';
+import { S, DB_DURUM } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, usd, pill, durumRenk, DURUMLAR, ACIK, ILLER, IL_MERKEZ, BOLGE_RENKLERI, byId, firmaAd, match, tarih, myLocation, toast, directionsUrl, openDrawer, closeDrawer, fold } from '../ui.js';
 import { ilSinirlari, detayliSinirIndir, konumAlgila, konumMetni, toMulti, inMulti } from '../geo.js';
@@ -11,7 +11,7 @@ import { googleBul, aramaMetni } from '../google.js';
 import { iceAktarPaneli } from './ice-aktar.js';
 
 let map, cluster, regionLayer, borderLayer, drawLayer, meMarker;
-let mode = null, moveOn = false;            // null | {t:'pin'} | {t:'assign', table, rec} | {t:'draw', pts:[], bolge}
+let mode = null, moveOn = false, harita = null;            // null | {t:'pin'} | {t:'assign', table, rec} | {t:'draw', pts:[], bolge}
 const REGION = [[35.75, 32.6], [38.0, 36.75]];
 const LABEL_ZOOM = 14, REGION_LABEL_ZOOM = 11;
 
@@ -26,6 +26,15 @@ export async function mapView(el) {
   if (f.uydu === undefined) f.uydu = true;
   if (f.yaklasik === undefined) f.yaklasik = false;
   if (f.bolge === undefined) f.bolge = true;
+  // Harita bir kez kurulur; sekmeye dönünce aynı harita geri takılır, veri değiştiyse yalnızca raptiyeler yeniden çizilir
+  if (harita?.kok && map && !app.pendingDraw) {
+    el.replaceChildren(harita.kok);
+    harita.sifirla();
+    setTimeout(() => map.invalidateSize(), 30);
+    if (harita.surum !== DB_DURUM.surum) { harita.surum = DB_DURUM.surum; harita.ciz(); }
+    if (app.mapFocus) { const fc = app.mapFocus; app.mapFocus = null; setTimeout(() => { if (fc.bounds) map.fitBounds(fc.bounds, { maxZoom: 16, padding: [30, 30] }); else map.setView(fc.c, fc.z || 16); }, 60); }
+    return;
+  }
   mode = null; moveOn = false;
   el.innerHTML = `
   <div class="mapwrap">
@@ -309,7 +318,7 @@ export async function mapView(el) {
   // ---------- Açılır pencereler ----------
   async function photoBlock(paths) {
     if (!paths || !paths.length) return '';
-    const urls = (await Promise.all(paths.slice(0, 4).map(p => app.db.url(p)))).filter(Boolean);
+    const urls = (await Promise.all(paths.slice(0, 4).map(p => app.db.url(p, true)))).filter(Boolean);
     if (!urls.length) return '';
     return `<a class="pp-hero" href="${urls[0]}" target="_blank" rel="noopener"><img src="${urls[0]}" alt=""></a>${urls.length > 1 ? `<div class="pp-photos">${urls.slice(1).map(u => `<a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt=""></a>`).join('')}</div>` : ''}`;
   }
@@ -416,6 +425,7 @@ export async function mapView(el) {
   function haritaHata(ad, e) { console.error('Harita', ad, e); const mi = el.querySelector('.map-info'); if (mi) mi.insertAdjacentHTML('beforeend', `<span class="neg"> · ${esc(ad)} çizilemedi: ${esc(e?.message || String(e))}</span>`); }
   dene('İl sınırları', drawBorders); dene('Sanayi bölgeleri', drawRegions); dene('Raptiyeler', () => draw());
   setTimeout(() => map.invalidateSize(), 100);
+  harita = { kok: el.firstElementChild, surum: DB_DURUM.surum, ciz: () => { dene('Sanayi bölgeleri', drawRegions); dene('Raptiyeler', () => draw()); }, sifirla: () => { if (mode) setMode(null); if (moveOn) top.querySelector('[data-tool="move"]')?.click(); } };
   if (app.pendingDraw) { const b = app.pendingDraw; app.pendingDraw = null; if (b.geojson) { const m = toMulti(b.geojson); map.fitBounds(m[0][0].map(([x, y]) => [y, x]), { maxZoom: 16 }); } startDraw(b.id ? b : null); }
   // Çevrimiçiyse ayrıntılı il sınırlarını bir kez indir
   detayliSinirIndir().then(ch => { if (ch && map) drawBorders(); }).catch(() => {});

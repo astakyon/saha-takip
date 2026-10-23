@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 12)
+--  Saha Satış Takip — Supabase şeması (sürüm 13)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -529,3 +529,12 @@ grant execute on function public.ekip_listesi() to authenticated;
 alter table public.projeler add column if not exists aday boolean default false;
 alter table public.projeler add column if not exists aday_kaynak text;
 alter table public.projeler add column if not exists ihale_tarihi date;
+
+-- ---------- Sürüm 13: otomatik yedek klasörü yalnızca veri sahibine açık ----------
+-- Yedekler fotograflar/<sahip>/yedek/ altında durur; ekip üyeleri fotoğraf ve belgeleri görür ama bu klasörü göremez.
+drop policy if exists "foto_oku" on storage.objects;
+create policy "foto_oku" on storage.objects for select to authenticated
+  using (bucket_id = 'fotograflar' and public.ekipte((storage.foldername(name))[1])
+         and ((storage.foldername(name))[2] is distinct from 'yedek' or (storage.foldername(name))[1] = auth.uid()::text));
+create or replace function public.yedek_guvenli() returns boolean language sql stable as $f$ select true $f$;
+grant execute on function public.yedek_guvenli() to authenticated;

@@ -1,6 +1,6 @@
 import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, num, usd, tarih, today, gunEkle, RAKIPLER, URUN_AILELERI, byId, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, pickFiles, fold } from '../ui.js';
+import { esc, num, usd, tarih, today, gunEkle, RAKIPLER, URUN_AILELERI, byId, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, pickFiles, fold, parcali } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { cubuklar, ikili } from '../grafik.js';
 import { yuklemeKaydet } from '../belgeler.js';
@@ -57,12 +57,11 @@ export function urunlerView(el) {
     el.querySelector('[data-ledger]').innerHTML = `<div><span>Toplam stok tutarı${filtreli ? ' (filtrelenen)' : ''}</span><b>${num2(topTutar)} $</b><small>${fiyatsiz ? `${fiyatsiz} stoklu kalemin birim fiyatı yok, tutara katılmadı` : 'stok × birim fiyat'}</small></div>
       <div><span>Toplam ürün adedi</span><b>${num(topAdet)}</b><small>${l.filter(u => u.stok > 0).length} kalem stokta</small></div>
       <div><span>Kalem</span><b>${l.length}</b><small>${filtreli ? `tümü ${S.urunler.length} kalem` : 'listede'}</small></div>`;
-    el.querySelector('[data-rows]').innerHTML = l.length ? `<div class="row head" aria-hidden="true"><span>Ürün</span><span>Aile</span><span class="r">Stok adedi</span><span class="r">Birim fiyat</span><span class="r">Kalem tutarı</span></div>` +
-      l.map(u => `<button type="button" class="row" data-id="${u.id}"><span class="nm"><b>${esc(u.aciklama)}</b><small>${esc(u.kod)}${u.aciklama2 ? ' · ' + esc(u.aciklama2) : ''}</small></span><span class="muted">${esc(u.aile || '')}</span>
-        <span class="r num ${u.stok > 0 ? '' : 'muted'}">${num(u.stok)} ${esc((u.birim || '').toLowerCase())}</span><span class="r num">${u.birim_fiyat_usd != null ? num(u.birim_fiyat_usd) + ' $' : '—'}</span><span class="r num ${deger(u) ? '' : 'muted'}">${deger(u) ? num2(deger(u)) + ' $' : '—'}</span></button>`).join('')
-      + `<div class="row foot"><span class="nm"><b>Toplam</b><small>${l.length} kalem</small></span><span></span><span class="r num"><b>${num(topAdet)}</b></span><span></span><span class="r num"><b>${num2(topTutar)} $</b></span></div>`
-      : '<div class="empty"><p>Ürün yok. Bayinin stok Excel dosyasını “Stok Excel\'i yükle” ile ekle.</p></div>';
-    el.querySelectorAll('[data-id]').forEach(b => b.onclick = () => urunDetay(b.dataset.id));
+    const kutu = el.querySelector('[data-rows]');
+    if (!l.length) kutu.innerHTML = '<div class="empty"><p>Ürün yok. Bayinin stok Excel dosyasını “Stok Excel\'i yükle” ile ekle.</p></div>';
+    else parcali(kutu, l.map(u => `<button type="button" class="row" data-id="${u.id}"><span class="nm"><b>${esc(u.aciklama)}</b><small>${esc(u.kod)}${u.aciklama2 ? ' · ' + esc(u.aciklama2) : ''}</small></span><span class="muted">${esc(u.aile || '')}</span>
+        <span class="r num ${u.stok > 0 ? '' : 'muted'}">${num(u.stok)} ${esc((u.birim || '').toLowerCase())}</span><span class="r num">${u.birim_fiyat_usd != null ? num(u.birim_fiyat_usd) + ' $' : '—'}</span><span class="r num ${deger(u) ? '' : 'muted'}">${deger(u) ? num2(deger(u)) + ' $' : '—'}</span></button>`), { sar: x => `<div class="row head" aria-hidden="true"><span>Ürün</span><span>Aile</span><span class="r">Stok adedi</span><span class="r">Birim fiyat</span><span class="r">Kalem tutarı</span></div>` + x });
+    kutu.onclick = e => { const b = e.target.closest('[data-id]'); if (b) urunDetay(b.dataset.id); };
     const groups = {};
     for (const u of S.urunler) (groups[u.aile] ||= []).push(u);
     el.querySelector('[data-ozet]').innerHTML = `<table class="tbl"><thead><tr><th>Aile</th><th class="r">Kalem</th><th class="r">Stok</th><th class="r">Ort. birim fiyat</th><th class="r">Rakip ort.</th></tr></thead><tbody>${
@@ -99,6 +98,7 @@ async function stokYukle() {
   const [file] = await pickFiles({ accept: '.xls,.xlsx,.csv', multiple: false });
   if (!file) return;
   try {
+    await (await import('../ui.js')).xlsxYukle();
     const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
     const hi = rows.findIndex(r => r.some(c => /kod/i.test(String(c || ''))));

@@ -1,13 +1,14 @@
 // Saha Takip service worker: uygulama dosyalarını ve harita karolarını önbelleğe alır
-const V = 'saha-v32';
+const V = 'saha-v33';
 const SHELL = ['./', 'index.html', 'styles.css', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon-180.png', 'icons/icon.svg', 'js/kurulum.js', 'js/birlestir.js', 'js/google.js', 'js/views/ice-aktar.js',
-  'js/main.js', 'js/altlik.js', 'js/osm-bolge.js', 'js/tasima.js', 'js/yetki.js', 'js/views/kullanicilar.js', 'js/views/bayi.js', 'js/tema.js', 'js/push.js', 'js/menu.js', 'js/hizli.js', 'js/kayip.js', 'js/gizli.js', 'js/esle.js', 'js/filtre.js', 'js/gecmis.js', 'js/listeler.js', 'js/guvenlik.js', 'js/oneri.js', 'js/duyuru.js', 'js/yorum.js', 'js/iliski.js', 'js/aday.js', 'js/barkod.js', 'js/karo.js', 'js/db.js', 'js/ui.js', 'js/forms.js', 'js/state.js',
+  'js/main.js', 'js/altlik.js', 'js/osm-bolge.js', 'js/tasima.js', 'js/yetki.js', 'js/views/kullanicilar.js', 'js/views/bayi.js', 'js/tema.js', 'js/push.js', 'js/menu.js', 'js/hizli.js', 'js/kayip.js', 'js/gizli.js', 'js/esle.js', 'js/filtre.js', 'js/gecmis.js', 'js/listeler.js', 'js/guvenlik.js', 'js/oneri.js', 'js/duyuru.js', 'js/bekleyen.js', 'js/otoyedek.js', 'js/yorum.js', 'js/iliski.js', 'js/aday.js', 'js/barkod.js', 'js/karo.js', 'js/db.js', 'js/ui.js', 'js/forms.js', 'js/state.js',
   'js/views/map.js', 'js/views/projeler.js', 'js/views/firmalar.js', 'js/views/ziyaret.js',
   'js/views/urunler.js', 'js/views/panel.js', 'js/views/ayarlar.js', 'js/views/bolgeler.js', 'js/geo.js', 'js/data/iller.js',
   'js/ayar.js', 'js/sablon.js', 'js/sunum.js', 'js/zip.js', 'js/pptx.js', 'js/pptx-tema.js', 'js/paylas.js',
   'js/views/bugun.js', 'js/views/araclar.js', 'js/views/teklif.js', 'js/views/katalog.js', 'js/views/kayitlar.js',
   'js/belgeler.js', 'js/ocr.js', 'js/ses.js', 'js/grafik.js', 'js/kur.js', 'js/bildirim.js', 'js/views/tahsilat.js', 'js/views/rapor.js', 'js/ceyrek.js', 'js/views/kontrol.js', 'js/data/eae-katalog.js', 'js/views/dosyalar.js'];
-self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
+// Kurulumda dosyalar sunucudan taze alınır (tarayıcı önbelleği atlanır); sürüm (V) değişince hepsi yenilenir
+self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V && k !== 'tiles').map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 // Harita karoları en fazla ~8000 adet tutulur; fazlası en eskiden silinir
 async function karoKirp(c) { const k = await c.keys(); for (const r of k.slice(0, Math.max(0, k.length - 8000))) await c.delete(r); }
@@ -25,10 +26,22 @@ self.addEventListener('fetch', e => {
     }));
     return;
   }
-  // uygulama ve kütüphaneler: önce ağ, yoksa önbellek
+  // Uygulama dosyaları ve sürüm numaralı kütüphaneler: önce önbellek (anında açılış), yoksa ağ.
+  // Uygulama güncellemesi sw.js'deki sürüm (V) değişince gelir: yeni dosyalar kurulumda indirilir.
   const ayni = u.origin === self.location.origin;
-  e.respondWith(fetch(e.request, ayni ? { cache: 'no-cache' } : undefined).then(r => { if (r.ok || r.type === 'opaque') { const cl = r.clone(); caches.open(V).then(c => c.put(e.request, cl)); } return r; })
-    .catch(() => caches.match(e.request, { ignoreSearch: e.request.mode === 'navigate' }).then(h => h || (e.request.mode === 'navigate' ? caches.match('index.html') : Response.error()))));
+  const surumlu = /cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|unpkg\.com/.test(u.hostname) && /@?\d+\.\d+\.\d+/.test(u.pathname);
+  if ((ayni && !u.pathname.endsWith('sw.js')) || surumlu) {
+    e.respondWith(caches.open(V).then(async c => {
+      const hit = await c.match(e.request, { ignoreSearch: e.request.mode === 'navigate' || ayni });
+      if (hit) return hit;
+      try { const r = await fetch(e.request, ayni ? { cache: 'no-cache' } : undefined); if (r.ok || r.type === 'opaque') c.put(e.request, r.clone()); return r; }
+      catch { return e.request.mode === 'navigate' ? (await c.match('index.html')) || Response.error() : Response.error(); }
+    }));
+    return;
+  }
+  // diğerleri (yazı tipleri vb.): önce ağ, yoksa önbellek
+  e.respondWith(fetch(e.request).then(r => { if (r.ok || r.type === 'opaque') { const cl = r.clone(); caches.open(V).then(c => c.put(e.request, cl)); } return r; })
+    .catch(() => caches.match(e.request).then(h => h || Response.error())));
 });
 
 // ---------- Günlük hatırlatma bildirimi ----------

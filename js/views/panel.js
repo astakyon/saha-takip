@@ -1,7 +1,7 @@
 import { S, uuid } from '../db.js';
 import { kayipKarti, kayipTamamla } from '../kayip.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, usd, num, tarih, today, DURUMLAR, ACIK, byId, firmaAd, match, toast, exportXlsx, pickFiles, fold, durumRenk, openDrawer, closeDrawer, pill, olasilik, confirmBox } from '../ui.js';
+import { esc, usd, num, tarih, today, DURUMLAR, ACIK, byId, firmaAd, match, toast, exportXlsx, pickFiles, fold, durumRenk, openDrawer, closeDrawer, pill, olasilik, confirmBox, parcali } from '../ui.js';
 import { gorevForm } from './ziyaret.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { yilGercek, ceyrekGercek, hedefKaydi, siparisUsd, donemKuru, ceyrekOf } from '../ceyrek.js';
@@ -197,14 +197,15 @@ export function siparislerView(el) {
     if (f.gor === 'ceyrek') return ceyrekOzeti(box, +f.yil, () => draw());
     if (!l.length) { box.innerHTML = '<div class="empty"><p>Bu filtrelerde sipariş yok. SAP sipariş listesini “Sipariş Excel\'i yükle” ile ekleyebilir ya da “Sipariş ekle” ile elle girebilirsin.</p></div>'; return; }
     if (f.gor === 'liste') {
-      box.innerHTML = `<table class="ptable otable"><thead><tr><th>Tarih</th><th>Sipariş no</th><th>SAS no</th><th>Cari</th><th>Proje</th><th class="r">Net değer</th></tr></thead><tbody>${l.map(s => `<tr data-sid="${s.id}" tabindex="0" class="${s.rapor_disi ? 'disi' : ''}">
+      parcali(box, l.map(s => `<tr data-sid="${s.id}" tabindex="0" class="${s.rapor_disi ? 'disi' : ''}">
         <td data-l="Tarih" class="nowrap">${tarih(s.tarih)}</td>
         <td data-l="Sipariş no" class="num nowrap"><b>${esc(s.siparis_no || '—')}</b>${s.belge_no ? `<small>Satış belgesi ${esc(s.belge_no)}</small>` : ''}</td>
         <td data-l="SAS no"><span class="sas">${esc(s.referans || '—')}</span>${s.siparis_notu ? `<small class="snot">Not: ${esc(s.siparis_notu.slice(0, 90))}</small>` : ''}</td>
         <td data-l="Cari">${s.firma_id ? `<a href="#/firma/${s.firma_id}" class="flink">${esc(s.musteri_adi || '')}</a>` : esc(s.musteri_adi || '—')}${s.drv ? ' <em class="flag soft">Drv</em>' : ''}</td>
         <td data-l="Proje">${s.proje_id ? `<a href="#/proje/${s.proje_id}" class="flink">${esc(pAd(s))}</a>` : `<span class="muted">${esc(s.proje_tanimi || '—')}</span> <small class="muted">projeye bağlı değil</small>`}</td>
-        <td data-l="Net değer" class="r num nowrap"><b>${tut(s)}</b>${s.rapor_disi ? '<small class="neg">rapor dışı</small>' : ''}</td></tr>`).join('')}</tbody></table>`;
-      box.querySelectorAll('tr[data-sid]').forEach(tr => { tr.onclick = e => { if (!e.target.closest('a')) siparisForm({ id: tr.dataset.sid }); }; tr.onkeydown = e => { if (e.key === 'Enter') siparisForm({ id: tr.dataset.sid }); }; });
+        <td data-l="Net değer" class="r num nowrap"><b>${tut(s)}</b>${s.rapor_disi ? '<small class="neg">rapor dışı</small>' : ''}</td></tr>`), { sar: x => `<table class="ptable otable"><thead><tr><th>Tarih</th><th>Sipariş no</th><th>SAS no</th><th>Cari</th><th>Proje</th><th class="r">Net değer</th></tr></thead><tbody data-parca>${x}</tbody></table>` });
+      box.onclick = e => { const tr = e.target.closest('tr[data-sid]'); if (tr && !e.target.closest('a')) siparisForm({ id: tr.dataset.sid }); };
+      box.onkeydown = e => { const tr = e.target.closest('tr[data-sid]'); if (tr && e.key === 'Enter') siparisForm({ id: tr.dataset.sid }); };
     } else if (f.gor === 'cari') {
       const g = grupla(l, s => s.musteri_adi);
       box.innerHTML = `<table class="ptable"><thead><tr><th>Cari</th><th class="r">Sipariş</th><th class="r">Proje</th><th class="r">Toplam (USD)</th><th class="r">TL</th><th class="r">Pay</th><th>Son sipariş</th></tr></thead><tbody>${g.map(r => `<tr data-cari="${esc(r.k)}" tabindex="0">
@@ -326,6 +327,7 @@ async function siparisYukle() {
   const [file] = await pickFiles({ accept: '.xls,.xlsx', multiple: false });
   if (!file) return;
   try {
+    await (await import('../ui.js')).xlsxYukle();
     const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
     const hi = rows.findIndex(r => r.some(c => /sipariş no|satış belgesi/i.test(String(c || ''))));

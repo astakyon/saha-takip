@@ -32,6 +32,18 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 26) — hız
+
+- **Anında açılış:** uygulama dosyaları ve kütüphaneler telefonda saklanır, açılışta internetten indirilmez; kayıtlar önce telefondaki kopyadan gösterilir, buluttaki yenisi arkada gelir. Yeni sürüm yayınlanınca kendiliğinden kurulur (uygulama arka plandayken yenilenir ya da “yeni sürüm hazır” yazar).
+- **Ekranlar ve Excel aracı ancak açılınca yüklenir:** ilk yükleme ~2 MB'tan birkaç yüz KB'a iner.
+- **Hızlı eşitleme:** tablolar aynı anda iner; yenilemede yalnızca son değişen kayıtlar çekilir, başka cihazda silinenler ayıklanır.
+- **Aynı anda düzenleme:** bir kaydı sen açtıktan sonra başkası değiştirdiyse kaydederken sorulur; üzerine yazma ile veri kaybı olmaz.
+- **Bekleyen kayıtlar:** sağ üstteki rozete dokununca internet yokken yapılan ve henüz gönderilmeyen değişiklikler, gönderilemeyenlerin nedeni, “Şimdi gönder”.
+- **Uzun listeler parça parça:** Firmalar, Kişiler, Stok ve fiyat, Siparişler kaydırdıkça gelir; ekranlar arası geçişte kaydırma konumu korunur.
+- **Harita bir kez kurulur:** sekmeye dönünce anında açılır; yalnızca değişen raptiyeler yeniden çizilir.
+- **Fotoğraf önizlemeleri:** yeni yüklenen fotoğrafların küçük kopyası da saklanır; listelerde o gösterilir, kişi avatarları ekrana gelince yüklenir.
+- **Otomatik yedek (Ayarlar → Veri ve yedek):** açarsan haftada bir bütün kayıtlar Supabase'de yalnızca senin görebildiğin klasöre yedeklenir, son 8 yedek tutulur. Açmak için SQL Editor'de güncel `schema.sql` dosyasını bir kez çalıştır (sürüm 13).
+
 ## Güncelleme notu (sürüm 23)
 
 **Supabase'de bir kez:** SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 12: yorumlar tablosu, etiketlenecek kişi listesi, aday proje alanları). Etiketlenen kişiye anlık bildirim için `bildir` Edge Function'ını güncel `supabase/functions/bildir/index.ts` ile yeniden yayınla (Edge Functions → bildir → Code → yapıştır → Deploy).

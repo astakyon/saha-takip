@@ -117,6 +117,7 @@ export async function ayarlarView(el) {
       <p class="hint">Sipariş, cari ekstresi ve stok Excel'lerinde sütun eşleştirmesi ilk yüklemede sorulur ve hatırlanır. ${Object.keys(ayar('excel_esle', {}) || {}).length ? `Kayıtlı: ${Object.keys(ayar('excel_esle', {})).map(k => ({ siparis: 'sipariş', tahsilat: 'cari ekstresi', stok: 'stok' })[k] || k).join(', ')}. <button type="button" class="linkbtn" data-eslesifirla>Sıfırla</button>` : ''}</p>
       <label class="chk"><input type="checkbox" data-cikti ${ayar('cikti_sakla', true) !== false ? 'checked' : ''}> <span>Aldığım Excel ve PowerPoint çıktılarının bir kopyasını Dosyalar'da sakla</span></label>
     </section>
+    <section class="card" data-tab="veri"><h2>Otomatik yedek</h2><div data-otoyedek></div></section>
     <section class="card" data-tab="veri"><h2>Başlangıç verisi</h2>
       <p>Proje takip Excel'inden hazırlanan <b>baslangic-verisi.json</b> dosyası: projeler, firmalar, kişiler, siparişler, stok, rakip fiyatları ve hedefler.</p>
       <div class="btnrow"><button class="btn primary" data-seed>Dosyayı seç ve yükle</button></div><div class="progress" data-prog hidden></div>
@@ -145,6 +146,7 @@ export async function ayarlarView(el) {
   </div>`;
   let kulYuklendi = false, listeYuklendi = false;
   const sekmeGoster = k => {
+    if (k === 'veri' && !el._otoYuklendi) { el._otoYuklendi = true; import('../otoyedek.js').then(m => m.otoYedekAyarlari(el.querySelector('[data-otoyedek]'))); }
     if (k === 'listeler' && !listeYuklendi) { listeYuklendi = true; import('../listeler.js').then(m => m.listeAyarlari(el.querySelector('[data-listeler]'))); }
     if (k === 'kullanici' && !kulYuklendi) { kulYuklendi = true; kullaniciAyarlari(el.querySelector('[data-kullanici]')); import('../gecmis.js').then(m => m.sonDegisiklikler(el.querySelector('[data-sondeg]'))); } el.querySelectorAll('[data-tab]').forEach(x => x.hidden = x.dataset.tab !== k); el.querySelectorAll('[data-sekme]').forEach(b => { b.classList.toggle('on', b.dataset.sekme === k); b.setAttribute('aria-selected', b.dataset.sekme === k); }); };
   el.querySelectorAll('[data-sekme]').forEach(b => b.onclick = () => { f.sekme = b.dataset.sekme; saveFilters(); sekmeGoster(f.sekme); });

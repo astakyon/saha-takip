@@ -949,8 +949,8 @@ section.card:empty { display: none; }
 .anahtar { margin: 8px 0; } .anahtar label { font: 600 12px var(--f); color: var(--muted); }
 .anahtar > div { display: flex; gap: 6px; } .anahtar input { flex: 1; min-width: 0; font: 12.5px ui-monospace, monospace; padding: 6px 8px; }
 /* Sürüm 19 */
-.bekleyen { display: block; margin-top: 4px; font: 600 11.5px var(--f); color: #10181D; background: var(--lumen); border-radius: 999px; padding: 1px 8px; text-decoration: none; width: max-content; }
-@media (max-width: 899px) { .bekleyen { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 6px); right: 10px; z-index: 1150; margin: 0; box-shadow: 0 2px 8px rgba(0,0,0,.2); } }
+.bekleyen { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 10px); right: 14px; z-index: 1150; display: block; font: 600 12px var(--f); color: #10181D; background: var(--lumen); border-radius: 999px; padding: 4px 10px; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+
 .daha { display: flex; align-items: center; gap: 12px; justify-content: center; padding: 14px; }
 .rev-list { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 20px; border-bottom: 1px solid var(--line); background: var(--zemin-2); }
 .rev-list b { font-size: 13px; margin-right: 4px; }
@@ -1055,3 +1055,8 @@ body:has(.toplu-bar) #fab { display: none; }
 .kod-sonuc .r small{display:block;color:var(--muted)}
 .karo-bilgi{font-size:12px;margin-top:6px}
 .ptable-wrap.is-kart{background:none;border:0;margin:0;max-height:none;overflow:visible;border-radius:0}
+button.bekleyen{border:0;cursor:pointer}
+.bekleyen.hata{background:var(--red);color:#fff}
+.bekleyen-l li{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.bekleyen-l small{display:block}
+.parca-son{height:1px}

@@ -18,7 +18,7 @@ export async function otoCikisGerekli() {
   return true;
 }
 async function cikis(mesaj) {
-  try { const uid = app.db.user()?.id; if (uid) await idbSet('cache:' + uid, null); } catch {}  // telefonda kayıt kopyası kalmasın (bekleyen değişiklikler korunur)
+  try { const uid = app.db.user()?.id; if (uid) { await idbSet('cache:' + uid, null); await idbSet('senk:' + uid, null); } } catch {}  // telefonda kayıt kopyası kalmasın (bekleyen değişiklikler korunur)
   try { await app.db.c.auth.signOut({ scope: 'local' }); } catch {}
   try { sessionStorage.setItem('saha-cikis-mesaj', mesaj); } catch {}
   location.reload();
