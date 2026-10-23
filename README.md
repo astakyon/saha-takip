@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 30) — Bugün, pencereler, telefon
+
+- **Bugün özeti:** boş kartlar (plan, görev, yapılanlar, yarın) tek “Bugün özeti” kartında; uyarılar üstte; uzun listeler ilk 5 satır + “Tümünü gör”.
+- **Proje ve firma pencereleri:** üstte üç ana düğme, kalanı ve Sil “⋯ Diğer” menüsünde; sekmeler kaydırınca başlığın altında yapışık kalır.
+- **Geri tuşu:** telefonun geri tuşu açık pencereyi kapatır, uygulamadan çıkmaz.
+- **Sola kaydır:** Firmalar ve Kişiler listesinde satırı sola kaydırınca Ara, WhatsApp, Ziyaret ekle, Yol tarifi.
+- **Aşağı çek:** sayfanın en üstünde aşağı çekince buluttaki yeni kayıtlar alınır ve ekran yenilenir.
+
 ## Güncelleme notu (sürüm 29) — Ayarlar
 
 - **Bölüm listesi:** Hesap ve güvenlik · Görünüm ve menü · Ekip ve yetkiler · Listeler · Veri ve yedek · Bağlantılar (Google, döviz kuru, bildirimler) · Mesaj ve teklif · Uygulama (sürüm, telefona yükle, araç, gizli mod) · Dikkat (tüm verileri silme). Bilgisayarda solda liste, sağda bölüm; telefonda önce liste, dokununca bölüm (‹ Ayarlar ile geri).

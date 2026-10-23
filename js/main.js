@@ -204,6 +204,7 @@ async function boot() {
   import('./baslik.js').then(m => m.basliklariIzle(document.getElementById('view')));
   await route();
   hizliKur();
+  if ('ontouchstart' in window) import('./dokunma.js').then(m => m.dokunmaKur());
   if (act === 'ziyaret') import('./views/ziyaret.js').then(m => m.ziyaretForm({}));
   if (act === 'ara') aramaAc();
   if (pay) paylasimPaneli(pay);
@@ -248,6 +249,8 @@ async function tazele(zorla) {
   try { await (app.db.tazeYukle ? app.db.tazeYukle() : app.db.loadAll()); app.yetki = app.db.yetki || app.yetki; listeleriUygula(); sonTazele = Date.now(); if (!document.querySelector('.drawer.open') && !document.activeElement?.matches?.('input, textarea, select')) { const y = window.scrollY; app.refresh(); window.scrollTo(0, y); } }
   catch {} finally { tazeleniyor = false; }
 }
+// Aşağı çekerek yenileme: buluttan değişenleri çek ve ekranı yenile
+app.yenile = async () => { if (app.db?.mode === 'supabase' && navigator.onLine) { await tazele(true); toast('Güncel.'); } else { const y = window.scrollY; await app.refresh?.(); window.scrollTo(0, y); toast(navigator.onLine ? 'Yenilendi.' : 'İnternet yok; telefondaki kayıtlar gösteriliyor.'); } };
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tazele(); });
 window.addEventListener('focus', () => tazele());
 setInterval(() => { if (Date.now() - sonTazele > 300000) tazele(true); }, 60000);

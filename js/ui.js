@@ -87,13 +87,42 @@ export function openDrawer(html, { wide = false, onClose } = {}) {
   d.classList.add('open'); d.setAttribute('aria-hidden', 'false');
   onCloseCb = onClose || null;
   p.scrollTop = 0;
+  aksiyonlariDuzenle(p);
+  // Sekmeler başlığın altında yapışık kalsın
+  requestAnimationFrame(() => { const dh = p.querySelector('.dh'), ps = p.querySelector('.p-sekme'); if (dh && ps) ps.style.top = dh.offsetHeight + 'px'; });
+  // Telefonun geri tuşu pencereyi kapatsın: pencere için geçmişe bir adım eklenir
+  try { if (!geriBekleniyor && !history.state?.cekmece) history.pushState({ cekmece: true }, '', location.href); } catch {}
   setTimeout(() => p.querySelector('[autofocus]')?.focus(), 50);
   return p;
 }
+let geriBekleniyor = false, geriSonra = null;
 export function closeDrawer() {
   const d = drawer(); if (!d.classList.contains('open')) return;
   d.classList.remove('open'); d.setAttribute('aria-hidden', 'true');
-  const cb = onCloseCb; onCloseCb = null; cb && cb();
+  const cb = onCloseCb; onCloseCb = null;
+  // Pencerenin geçmiş adımını geri al; adres değişikliği (listeye dönüş) ondan sonra yapılır
+  if (history.state?.cekmece) { geriBekleniyor = true; geriSonra = cb; try { history.back(); } catch { geriBekleniyor = false; geriSonra = null; cb && cb(); } }
+  else cb && cb();
+}
+window.addEventListener('popstate', () => {
+  if (geriBekleniyor) { geriBekleniyor = false; const c = geriSonra; geriSonra = null; c && c(); if (drawer().classList.contains('open') && !history.state?.cekmece) try { history.pushState({ cekmece: true }, '', location.href); } catch {} return; }
+  if (drawer().classList.contains('open')) { const d = drawer(); d.classList.remove('open'); d.setAttribute('aria-hidden', 'true'); const cb = onCloseCb; onCloseCb = null; cb && cb(); }
+});
+// Pencere başlığındaki düğmeler: ilk üçü görünür, kalanı (ve Sil) “⋯” menüsünde
+function aksiyonlariDuzenle(p) {
+  const act = p.querySelector('.dh-actions'); if (!act || act.dataset.duzen) return; act.dataset.duzen = '1';
+  const hepsi = [...act.children].filter(x => x.matches('.btn, a.btn'));
+  const sil = hepsi.filter(x => x.matches('.danger, [data-a="sil"]')), digerleri = hepsi.filter(x => !sil.includes(x));
+  const kalan = [...digerleri.slice(3), ...sil]; if (kalan.length < 2) return;
+  const kutu = document.createElement('div'); kutu.className = 'vh-daha';
+  kutu.innerHTML = '<button type="button" class="btn sm ghost vh-daha-btn" aria-haspopup="menu" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg><span>Diğer</span></button><div class="vh-menu" role="menu" hidden></div>';
+  const menu = kutu.querySelector('.vh-menu'), btn = kutu.querySelector('.vh-daha-btn');
+  for (const x of kalan) { x.setAttribute('role', 'menuitem'); menu.appendChild(x); }
+  act.appendChild(kutu);
+  const kapat = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+  btn.onclick = e => { e.stopPropagation(); if (!menu.hidden) return kapat(); menu.hidden = false; btn.setAttribute('aria-expanded', 'true'); };
+  menu.addEventListener('click', () => setTimeout(kapat, 0));
+  p.addEventListener('click', e => { if (!kutu.contains(e.target)) kapat(); });
 }
 export const drawerPanel = () => drawer().querySelector('.drawer-panel');
 document.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeDrawer(); });

@@ -108,8 +108,11 @@ async function kmMasrafa(gun) {
 }
 
 // ---------- Bugün kartlarının sırası ve görünürlüğü (Düzenle) ----------
-const KARTLAR = [['plan', 'Bugünün planı'], ['gorev', 'Görevler'], ['yapilan', 'Bugün yapılanlar'], ['zaman', 'Zamanı gelen projeler'], ['gidilmeyen', 'Uzun süredir gidilmeyenler'], ['yarin', 'Yarın'], ['dogum', 'Doğum günleri'], ['uyari', 'Uyarılar'], ['rapor', 'Geçen haftanın raporu'], ['etiket', 'Seni etiketlediler']];
-const kartAnahtar = h => { const t = (h || '').trim(); if (/^Bugünün planı/.test(t)) return 'plan'; if (/görevler$|^Görevler/i.test(t) && !/^Bugün/.test(t)) return 'gorev'; if (/^Bugün yapılanlar/.test(t)) return 'yapilan'; if (/^Zamanı gelen/.test(t)) return 'zaman'; if (/^Uzun süredir/.test(t)) return 'gidilmeyen'; if (/^Yarın/.test(t)) return 'yarin'; if (/^Doğum/.test(t)) return 'dogum'; if (/^Uyarılar/.test(t)) return 'uyari'; if (/haftanın raporu/.test(t)) return 'rapor'; if (/^Seni etiketlediler/.test(t)) return 'etiket'; return null; };
+// Uzun listeler: ilk n satır, kalanı “Tümünü gör” ile
+const kisa = (satirlar, n = 5, cls = 'list') => satirlar.length <= n ? `<ul class="${cls}">${satirlar.join('')}</ul>`
+  : `<ul class="${cls}">${satirlar.slice(0, n).join('')}</ul><ul class="${cls}" data-fazla hidden>${satirlar.slice(n).join('')}</ul><button type="button" class="linkbtn tumu" data-tumu>Tümünü gör (${satirlar.length})</button>`;
+const KARTLAR = [['ozet', 'Bugün özeti'], ['etiket', 'Seni etiketlediler'], ['plan', 'Bugünün planı'], ['uyari', 'Uyarılar'], ['gorev', 'Görevler'], ['yapilan', 'Bugün yapılanlar'], ['zaman', 'Zamanı gelen projeler'], ['gidilmeyen', 'Uzun süredir gidilmeyenler'], ['yarin', 'Yarın'], ['dogum', 'Doğum günleri'], ['rapor', 'Geçen haftanın raporu']];
+const kartAnahtar = h => { const t = (h || '').trim(); if (/^Bugünün planı/.test(t)) return 'plan'; if (/^Bugün özeti/.test(t)) return 'ozet'; if (/görevler$|^Görevler/i.test(t) && !/^Bugün/.test(t)) return 'gorev'; if (/^Bugün yapılanlar/.test(t)) return 'yapilan'; if (/^Zamanı gelen/.test(t)) return 'zaman'; if (/^Uzun süredir/.test(t)) return 'gidilmeyen'; if (/^Yarın/.test(t)) return 'yarin'; if (/^Doğum/.test(t)) return 'dogum'; if (/^Uyarılar/.test(t)) return 'uyari'; if (/haftanın raporu/.test(t)) return 'rapor'; if (/^Seni etiketlediler/.test(t)) return 'etiket'; return null; };
 const kartAyar = () => ({ sira: [], gizli: [], ...(ayar('bugun_kartlar') || {}) });
 function kartDuzeniUygula(el) {
   const a = kartAyar(), dash = el.querySelector('.dash'); if (!dash) return;
@@ -163,27 +166,36 @@ export function bugunView(el) {
   const z1 = z => `<li><button type="button" class="linkbtn" data-zid="${z.id}"><b>${z.saat ? esc(z.saat) + ' · ' : ''}${esc(firmaAd(z.firma_id) || 'Ziyaret')}</b></button><span class="muted">${esc([byId('kisiler', z.kisi_id)?.ad_soyad, z.amac, byId('projeler', z.proje_id)?.ad].filter(Boolean).join(' · '))}</span>${z.sonuc_tipi ? `<span class="tag-s res">${esc(z.sonuc_tipi)}</span>` : ''}</li>`;
   const g1 = g => `<li class="${g.son_tarih < t ? 'late' : ''}"><label class="chk"><input type="checkbox" data-done="${g.id}" aria-label="Tamamlandı"></label><button type="button" class="linkbtn" data-gid="${g.id}">${esc(g.baslik)}</button><span class="muted">${!g.son_tarih ? '' : g.son_tarih < t ? tarih(g.son_tarih) : g.son_tarih === t ? 'bugün' : tarih(g.son_tarih)}</span></li>`;
   const gun = new Date(t + 'T00:00').toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+  // Boş kartlar yerine tek özet: bugün yapılacak bir şey yoksa kısa satırlar ve tek dokunuşla eylem
+  const bos = [
+    !planli.length && `<li><span>Bugün için planlı ziyaret yok</span><a class="btn sm ghost" href="#/takvim">Planla</a></li>`,
+    !gorev.length && !ekipAcik.length && `<li><span>${uye ? 'Sana atanmış açık görev yok' : 'Bugün için açık görev yok'}</span></li>`,
+    !yapilan.length && `<li><span>Bugün henüz ziyaret kaydı yok</span><button type="button" class="btn sm ghost" data-yeni2>Ziyaret kaydet</button></li>`,
+    !yarinZ.length && !yarinG.length && `<li><span>Yarın için plan yok</span></li>`,
+  ].filter(Boolean);
+  const ozetKarti = bos.length ? `<section class="card ozet-k"><h2>Bugün özeti</h2><ul class="list ozet-l">${bos.join('')}</ul>${!zg.length ? '<p class="hint">Zamanı gelen proje yok. Projelere şantiye aşaması ve tahmini aydınlatma alımı girdikçe burada hatırlatılır.</p>' : ''}</section>` : '';
   el.innerHTML = `<header class="vh"><div><h1>Bugün</h1><p class="sum">${esc(gun)} · ${planli.length} planlı ziyaret · ${gorev.length} görev${kmBugun ? ` · yaklaşık ${kmBugun} km yol` : ''}${kurYazi() ? `<br><span class="kur">${kurYazi()}</span>` : ''}</p></div>
     <div class="vh-act"><button class="btn ghost" data-kduzen title="Kartları sırala ve gizle">Düzenle</button><button class="btn ghost" data-yakin>Yakınımdakiler</button><button class="btn primary" data-yeni>Ziyaret kaydet</button></div></header>
     <div class="dash today-grid">
       ${raporKarti()}
       ${etiketKarti()}
-      <section class="card wide"><h2>Bugünün planı</h2>
+      ${ozetKarti}
+      ${!planli.length ? '' : `<section class="card wide"><h2>Bugünün planı</h2>
         ${planli.length ? `<ol class="route">${sirali.map((x, i) => `<li><span class="rn">${i + 1}</span><span class="rt"><b>${x.z.saat ? esc(x.z.saat) + ' · ' : ''}${esc(firmaAd(x.z.firma_id) || 'Ziyaret')}</b><small>${esc([byId('kisiler', x.z.kisi_id)?.ad_soyad, x.z.amac, byId('projeler', x.z.proje_id)?.ad].filter(Boolean).join(' · '))}</small></span>
           <span class="ra"><a class="btn sm ghost" href="${directionsUrl(x.p[0], x.p[1])}" target="_blank" rel="noopener">Yol</a><button type="button" class="btn sm" data-yapildi="${x.z.id}">Yapıldı</button></span></li>`).join('')}</ol>
           ${planli.length > sirali.length ? `<p class="hint">${planli.length - sirali.length} ziyaretin konumu bilinmiyor (firmanın yeri haritada işaretli değil); rotaya eklenmedi: ${planli.filter(z => !ziyaretYeri(z)).map(z => esc(firmaAd(z.firma_id) || 'Ziyaret')).join(', ')}.</p>` : ''}
           <div class="btnrow">${rota ? `<a class="btn primary" href="${rota}" target="_blank" rel="noopener">Günün rotasını Google Haritalar'da aç</a>` : ''}<a class="btn ghost" href="#/takvim">Haftalık takvim</a></div>
           ${sirali.length > 10 ? '<p class="hint">Google Haritalar tek rotada en fazla 10 durak gösterir; ilk 10 durak eklendi.</p>' : ''}`
-        : `<p class="hint">Bugün için planlı ziyaret yok.</p><div class="btnrow"><a class="btn ghost" href="#/takvim">Takvimden ziyaret planla</a></div>`}
-      </section>
-      <section class="card"><h2>${uye ? 'Sana atanan görevler' : 'Görevler'}</h2>${gorev.length ? `<ul class="list chk-list">${gorev.slice(0, 10).map(g1).join('')}</ul>` : `<p class="hint">${uye ? 'Sana atanmış açık görev yok.' : 'Bugün için açık görev yok.'}</p>`}${ekipAcik.length ? `<p class="hint">Ekipte ${ekipAcik.length} açık görev: ${esc([...new Set(ekipAcik.map(g => kimAd(g.atanan)))].join(', '))}</p>` : ''}${uye ? '' : '<p><a href="#/gorevler">Görev takvimi</a></p>'}</section>
-      <section class="card"><h2>Bugün yapılanlar</h2>${yapilan.length ? `<ul class="list">${yapilan.map(z1).join('')}</ul>` : '<p class="hint">Henüz ziyaret kaydı yok.</p>'}${kmBugun ? `<p class="hint">Ziyaret noktalarına göre yaklaşık ${kmBugun} km.${kmYazildi(t) ? ' Masraflara yazıldı.' : ` <button type="button" class="linkbtn" data-kmyaz="${t}">Masrafa yaz</button>`}</p>` : ''}</section>
-      <section class="card"><h2>Zamanı gelen projeler <span class="muted">${zg.length}</span></h2>
-        ${zg.length ? `<ul class="list">${zg.slice(0, 8).map(x => `<li><a href="#/proje/${x.p.id}"><b>${esc(x.p.ad)}</b><span class="muted">${esc(x.neden.join(', '))}${x.sz ? ` · son ziyaret ${tarih(x.sz)}` : ' · hiç ziyaret yok'}</span></a>${pill(x.p.durum)}</li>`).join('')}</ul>`
-        : '<p class="hint">Aydınlatma alım tarihi ya da şantiye aşaması yaklaşan proje yok. Projelere “Şantiye aşaması” ve “Tahmini aydınlatma alımı” girdikçe burada uyarı alırsın.</p>'}</section>
+        : ''}
+      </section>`}
+      ${!gorev.length && !ekipAcik.length ? '' : `<section class="card"><h2>${uye ? 'Sana atanan görevler' : 'Görevler'}</h2>${gorev.length ? kisa(gorev.map(g1), 5, 'list chk-list') : `<p class="hint">${uye ? 'Sana atanmış açık görev yok.' : 'Bugün için açık görev yok.'}</p>`}${ekipAcik.length ? `<p class="hint">Ekipte ${ekipAcik.length} açık görev: ${esc([...new Set(ekipAcik.map(g => kimAd(g.atanan)))].join(', '))}</p>` : ''}${uye ? '' : '<p><a href="#/gorevler">Görev takvimi</a></p>'}</section>`}
+      ${!yapilan.length && !kmBugun ? '' : `<section class="card"><h2>Bugün yapılanlar</h2>${yapilan.length ? kisa(yapilan.map(z1), 5) : '<p class="hint">Henüz ziyaret kaydı yok.</p>'}${kmBugun ? `<p class="hint">Ziyaret noktalarına göre yaklaşık ${kmBugun} km.${kmYazildi(t) ? ' Masraflara yazıldı.' : ` <button type="button" class="linkbtn" data-kmyaz="${t}">Masrafa yaz</button>`}</p>` : ''}</section>`}
+      ${!zg.length ? '' : `<section class="card"><h2>Zamanı gelen projeler <span class="muted">${zg.length}</span></h2>
+        ${zg.length ? kisa(zg.map(x => `<li><a href="#/proje/${x.p.id}"><b>${esc(x.p.ad)}</b><span class="muted">${esc(x.neden.join(', '))}${x.sz ? ` · son ziyaret ${tarih(x.sz)}` : ' · hiç ziyaret yok'}</span></a>${pill(x.p.durum)}</li>`), 5)
+        : ''}</section>`}
       <section class="card"><h2>Uzun süredir gidilmeyenler <span class="muted">${gid.length}</span></h2>
-        ${gid.length ? `<ul class="list">${gid.slice(0, 8).map(x => `<li><a href="#/firma/${x.f.id}"><b>${esc(x.f.ad)}</b><span class="muted">${x.f.segment ? `<em class="seg-r">${esc(x.f.segment)}</em> ` : ''}${x.son ? `${x.gun} gündür gidilmedi` : 'hiç ziyaret kaydı yok'}${x.proje ? ` · ${x.proje} açık proje` : ''}</span></a><button type="button" class="btn sm ghost" data-planla="${x.f.id}">Planla</button></li>`).join('')}</ul>` : '<p class="hint">Ziyaret aralığı geçen aktif firma yok. Aralık firma segmentine göre: A 30, B 60, C 90 gün, segmentsiz 45 gün.</p>'}</section>
-      <section class="card"><h2>Yarın</h2>${yarinZ.length || yarinG.length ? `<ul class="list">${yarinZ.map(z1).join('')}${yarinG.map(g => `<li><button type="button" class="linkbtn" data-gid="${g.id}">○ ${esc(g.baslik)}</button></li>`).join('')}</ul>` : '<p class="hint">Yarın için plan yok.</p>'}</section>
+        ${gid.length ? kisa(gid.map(x => `<li><a href="#/firma/${x.f.id}"><b>${esc(x.f.ad)}</b><span class="muted">${x.f.segment ? `<em class="seg-r">${esc(x.f.segment)}</em> ` : ''}${x.son ? `${x.gun} gündür gidilmedi` : 'hiç ziyaret kaydı yok'}${x.proje ? ` · ${x.proje} açık proje` : ''}</span></a><button type="button" class="btn sm ghost" data-planla="${x.f.id}">Planla</button></li>`), 5) : '<p class="hint">Ziyaret aralığı geçen aktif firma yok. Aralık firma segmentine göre: A 30, B 60, C 90 gün, segmentsiz 45 gün.</p>'}</section>
+      ${yarinZ.length || yarinG.length ? `<section class="card"><h2>Yarın</h2>${kisa([...yarinZ.map(z1), ...yarinG.map(g => `<li><button type="button" class="linkbtn" data-gid="${g.id}">○ ${esc(g.baslik)}</button></li>`)], 5)}</section>` : ''}
       ${dg.length ? `<section class="card"><h2>Doğum günleri</h2><ul class="list">${dg.map(x => `<li><span><b>${esc(x.k.ad_soyad)}</b><span class="muted"> · ${firmaAd(x.k.firma_id) ? esc(firmaAd(x.k.firma_id)) + ' · ' : ''}${x.kalan === 0 ? 'bugün' : x.kalan === 1 ? 'yarın' : x.gun.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}</span></span><button type="button" class="btn sm ghost" data-dg="${x.k.id}">Tebrik et</button></li>`).join('')}</ul></section>` : ''}
       ${kmDunEksik || ekipBitti.length || yedek || stok.yetersiz.length || stok.hareketsiz.length || numune.length || servis.length || teklif.length || gecT.length ? `<section class="card"><h2>Uyarılar</h2><ul class="list">
         ${kmDunEksik ? `<li><span><b>Dünün yolu masrafa yazılmadı</b><span class="muted"> · yaklaşık ${kmDun} km${yakitTutar(kmDun) ? ' ≈ ' + num(yakitTutar(kmDun)) + ' TL yakıt' : ''}</span></span><button type="button" class="btn sm" data-kmyaz="${dun}">Masrafa yaz</button></li>` : ''}
@@ -200,6 +212,8 @@ export function bugunView(el) {
   kartDuzeniUygula(el);
   el.querySelector('[data-kduzen]').onclick = () => kartDuzeniPaneli(el);
   el.querySelector('[data-yeni]').onclick = () => ziyaretForm({});
+  el.querySelector('[data-yeni2]')?.addEventListener('click', () => ziyaretForm({}));
+  el.querySelectorAll('[data-tumu]').forEach(b => b.onclick = () => { b.previousElementSibling.hidden = false; b.remove(); });
   el.querySelectorAll('[data-kmyaz]').forEach(b => b.onclick = () => kmMasrafa(b.dataset.kmyaz));
   el.querySelector('[data-raporac]')?.addEventListener('click', () => { const g = gunEkle(haftaBasi(today()), -7); try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} const fr = F('rapor', {}); fr.bas = g; saveFilters(); location.hash = '#/rapor'; });
   el.querySelector('[data-raporkapat]')?.addEventListener('click', e => { try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} e.target.closest('section').remove(); });

@@ -1188,3 +1188,27 @@ button.bekleyen{border:0;cursor:pointer}
   .ayar-duzen.icerik .ayar-liste { display: none; }
   .ayar-geri { display: inline-flex; grid-column: 1 / -1; justify-self: start; border: 0; background: none; color: var(--blue); font: 600 15px var(--f); padding: 4px 0; cursor: pointer; }
 }
+
+/* ===== Sürüm 30: Bugün özeti, kısa listeler ===== */
+.ozet-l li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; }
+.ozet-l li span { color: var(--ink-2, var(--muted)); }
+.linkbtn.tumu { margin-top: 6px; font-weight: 600; }
+.p-sekme { position: sticky; z-index: 4; }
+.dh-actions .vh-menu { right: auto; left: 0; }
+.dh-actions .vh-menu .btn.danger, .dh-actions .vh-menu [data-a="sil"] { color: var(--red); }
+/* Hızlı işlem sayfası (satırı sola kaydırınca) */
+.islem-sayfa { position: fixed; inset: 0; z-index: 2500; }
+.is-perde { position: absolute; inset: 0; background: rgba(16, 24, 29, .45); opacity: 0; transition: opacity .2s; }
+.is-kutu { position: absolute; left: 0; right: 0; bottom: 0; background: var(--card); border-radius: 18px 18px 0 0; padding: 14px 16px calc(16px + var(--safe-b)); display: grid; gap: 6px; transform: translateY(100%); transition: transform .22s cubic-bezier(.2, .8, .2, 1); }
+.islem-sayfa.acik .is-perde { opacity: 1; }
+.islem-sayfa.acik .is-kutu { transform: none; }
+.is-bas { margin: 0 0 6px; text-align: center; }
+.is-bas small { display: block; color: var(--muted); }
+.is-btn { display: flex; align-items: center; justify-content: space-between; min-height: 50px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: 600 16px var(--f); text-decoration: none; cursor: pointer; }
+.is-btn small { color: var(--muted); font-weight: 500; font-size: 13px; }
+.is-vaz { justify-content: center; background: var(--zemin-2); border: 0; margin-top: 4px; }
+a.row, a.pcard { touch-action: pan-y; }
+/* Aşağı çekerek yenile göstergesi */
+.cek-yenile { position: fixed; top: 0; left: 50%; transform: translate(-50%, -60px); z-index: 2400; background: var(--card); color: var(--muted); border-radius: 999px; padding: 6px 14px; font: 600 13px var(--f); box-shadow: 0 4px 14px rgba(0,0,0,.18); opacity: 0; pointer-events: none; transition: opacity .15s; }
+.cek-yenile.gor { opacity: 1; }
+.cek-yenile.hazir { background: var(--lumen); color: #10181D; }
