@@ -32,6 +32,22 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 38): hesap türleri ve yönetim paneli
+**Bir kez:** Supabase SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (şema sürüm 19). Yönetici olacağın her Supabase projesinde kendini ekle: `insert into public.uygulama_yoneticileri (eposta) values ('senin@epostan.com');`
+
+Hesap türleri:
+- **Uygulama yöneticisi:** sen. Bütün hesapları görür; kayıtları okur ama değiştiremez.
+- **Hesap (veri sahibi / firma):** kendi kaydını açan her kullanıcı. Türü Kendi kullanımım, Test ya da Müşteri olabilir; durumu Aktif ya da Askıda. Askıdaki hesapta sahibi ve ekibi kayıtlarını görür ama hiçbir şey ekleyemez, değiştiremez (sunucuda zorunlu). Paket ve deneme bitiş tarihi şimdilik bilgi amaçlı; abonelik eklendiğinde kullanılacak.
+- **Ekip üyesi:** bir hesabın içinde, sahibinin verdiği yetkilerle çalışır; ayrı hesap sayılmaz.
+
+Yönetim paneli (menüde "Yönetim", yalnızca yöneticide görünür):
+- **Hesaplar:** her hesabın firması, türü, kayıt tarihi, son girişi, son işlemi, kurulumu yapıp yapmadığı, ekip sayısı ve kayıt sayıları (proje, firma, kişi, ziyaret, teklif…). Hesaba dokununca tür, durum, paket, bitiş tarihi ve özel not düzenlenir; ekip üyeleri ve son işlemler görünür.
+- **Hesaba bak:** uygulama o hesabın kayıtlarıyla salt okunur açılır; üstteki çubuktan "Çık" ile kendi hesabına dönülür.
+- **Kim ne ekledi:** bütün hesaplarda kimin hangi kaydı eklediği, değiştirdiği, sildiği; hesap, kayıt türü, işlem ve döneme göre süzülür; kişi bazında özet tablosu.
+- **Geri bildirim, Hatalar, Test daveti** de bu panelde.
+- Kendi ekranında yalnızca kendi hesabının kayıtları görünür; yönetici olman başka hesapların verisini kendi listelerine karıştırmaz.
+- Not: yöneticinin bütün hesapların kayıtlarını görebildiği, kullanıcı sözleşmesinde ve KVKK aydınlatma metninde açıkça yazılmalıdır.
+
 ## Güncelleme notu (sürüm 37): genel sürüm, kurulum sihirbazı, geri bildirim
 **Bir kez:** Supabase SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (şema sürüm 18).
 

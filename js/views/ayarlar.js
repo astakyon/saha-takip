@@ -80,8 +80,7 @@ export async function ayarlarView(el) {
       <label class="chk"><input type="checkbox" data-gizli ${ayar('gizli_mod', false) === true ? 'checked' : ''}> <span><b>Gizli mod</b>: kayıtlarımı ve konumumu dış servislere gönderme</span></label>
       <p class="hint">Açıkken kapananlar: Google uydu/harita katmanı ve Google'da firma arama, OpenStreetMap ile adres ve il/ilçe bulma, sesle yazma (Google konuşma tanıma). Konum yine telefonda alınır, il ve sanayi bölgesi cihazda hesaplanır. Açık kalanlar: kendi Supabase veritabanın, harita görüntüsü (Esri ya da OpenStreetMap; yalnızca baktığın bölgenin görüntüsü istenir), döviz kuru.</p></section>
     <section class="card" data-tab="uygulama"><h2>Geri bildirim</h2><p class="hint">Bir şey çalışmadıysa ya da aklına bir öneri geldiyse yaz; ekran ve sürüm bilgisi otomatik eklenir. + menüsünden de açılır.</p><div class="btnrow"><button type="button" class="btn" data-geribildirim>Geri bildirim gönder</button></div></section>
-    <section class="card wide-card" data-tab="uygulama" data-yonetici hidden><h2>Gelen geri bildirimler</h2><div data-gblist></div></section>
-    <section class="card" data-tab="uygulama" data-yonetici hidden><h2>Test daveti</h2><div data-testdavet></div></section>
+    <section class="card" data-tab="uygulama" data-yonetici hidden><h2>Uygulama yöneticisi</h2><p>Bütün hesaplar, kim ne ekledi, geri bildirimler, hatalar ve test daveti Yönetim panelinde.</p><div class="btnrow"><a class="btn primary" href="#/yonetim">Yönetim paneline git</a></div></section>
     <section class="card" data-tab="uygulama"><h2>Hata günlüğü</h2><div data-hatalar></div></section>
     <section class="card" data-tab="uygulama"><h2>Uygulama sürümü</h2><p>Bu cihazda açık sürüm: <b data-surum></b></p><p class="hint">Yeni bir özellik görünmüyorsa “Şimdi güncelle”ye dokun; uygulama en son sürümü indirip yeniden açılır. Verilerin silinmez.</p><div class="btnrow"><button type="button" class="btn" data-guncelle>Şimdi güncelle</button></div></section>
     <section class="card" data-tab="uygulama"><h2>Telefona yükle</h2>
@@ -155,7 +154,7 @@ export async function ayarlarView(el) {
     kul(); m.hataGunluguKarti(el.querySelector('[data-hatalar]'));
   });
   el.querySelector('[data-geribildirim]').onclick = async () => (await import('../geribildirim.js')).geriBildirimAc();
-  import('../geribildirim.js').then(async g => { if (!(await g.yoneticiMi())) return; el.querySelectorAll('[data-yonetici]').forEach(s => s.hidden = false); g.geriBildirimListesi(el.querySelector('[data-gblist]')); g.testDavetKarti(el.querySelector('[data-testdavet]')); });
+  if (app.yonetici) el.querySelectorAll('[data-yonetici]').forEach(s => s.hidden = false);
   if (menuAc) el.querySelector('.menu-d')?.setAttribute('open', '');
   import('../guvenlik.js').then(m => m.guvenlikAyarlari(el.querySelector('[data-guvenlik]')));
   hesapGirisAyarlari(el.querySelector('[data-girisayar]'));

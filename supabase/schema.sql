@@ -1,5 +1,5 @@
 -- =====================================================================
---  Saha Satış Takip — Supabase şeması (sürüm 18)
+--  Saha Satış Takip — Supabase şeması (sürüm 19)
 --  Supabase panelinde: SQL Editor → New query → bu dosyanın tamamını
 --  yapıştır → Run. Tekrar çalıştırmak güvenlidir.
 -- =====================================================================
@@ -700,3 +700,129 @@ begin
 exception when others then return false;
 end $f$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 18 $f$;
+
+-- ---------- Sürüm 19: hesap türleri ve yönetim paneli ----------
+-- Hesap = verinin sahibi olan kullanıcı (firma). Ekip üyeleri sahibin hesabında çalışır, ayrı hesap sayılmaz.
+-- tur: 'ic' (kendi kullanımım), 'test', 'musteri'. durum: 'aktif' ya da 'askida' (askıdaki hesap salt okunurdur).
+create table if not exists public.hesaplar (
+  owner uuid primary key references auth.users(id) on delete cascade,
+  eposta text, firma text,
+  tur text not null default 'test' check (tur in ('ic', 'test', 'musteri')),
+  durum text not null default 'aktif' check (durum in ('aktif', 'askida')),
+  paket text, deneme_bitis date, notlar text,
+  son_gorulme timestamptz,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+alter table public.uygulama_yoneticileri add column if not exists rol text not null default 'yonetici';
+alter table public.hesaplar enable row level security;
+drop policy if exists "hesap_oku" on public.hesaplar;
+drop policy if exists "hesap_yonet" on public.hesaplar;
+create policy "hesap_oku" on public.hesaplar for select to authenticated using (owner = auth.uid() or public.yonetici_mi());
+create policy "hesap_yonet" on public.hesaplar for update to authenticated using (public.yonetici_mi()) with check (public.yonetici_mi());
+drop trigger if exists touch on public.hesaplar;
+create trigger touch before update on public.hesaplar for each row execute function public.touch_updated_at();
+-- Uygulama her açılışta çağırır: hesap kaydını oluşturur, firma adını ve son görülmeyi günceller (yalnızca veri sahibi için)
+create or replace function public.hesap_kaydol(p_firma text default null) returns jsonb language plpgsql security definer set search_path = public as $f$
+declare r public.hesaplar;
+begin
+  if auth.uid() is null or public.veri_sahibi() <> auth.uid() then return null; end if;
+  insert into public.hesaplar (owner, eposta, firma, son_gorulme) values (auth.uid(), public.benim_epostam(), nullif(trim(p_firma), ''), now())
+  on conflict (owner) do update set eposta = excluded.eposta, firma = coalesce(excluded.firma, public.hesaplar.firma), son_gorulme = now()
+  returning * into r;
+  return jsonb_build_object('tur', r.tur, 'durum', r.durum, 'paket', r.paket, 'deneme_bitis', r.deneme_bitis);
+end $f$;
+revoke all on function public.hesap_kaydol(text) from public, anon;
+grant execute on function public.hesap_kaydol(text) to authenticated;
+create or replace function public.hesap_askida(sahip uuid) returns boolean language sql stable security definer set search_path = public as $f$
+  select exists (select 1 from public.hesaplar h where h.owner = sahip and h.durum = 'askida')
+$f$;
+-- Yazma yetkisi: askıdaki hesapta kimse (sahibi dahil) değişiklik yapamaz, okuma serbest
+create or replace function public.yetki(sahip uuid, tablo text, islem text) returns boolean language sql stable security definer set search_path = public as $f$
+  select (sahip = auth.uid() or exists (
+    select 1 from public.ekip_uyeleri u
+    where u.owner = sahip and u.aktif and lower(u.eposta) = public.benim_epostam()
+      and (u.yetkiler ->> tablo = 'yaz' or (islem = 'oku' and u.yetkiler ->> tablo = 'oku'))))
+    and (islem = 'oku' or not public.hesap_askida(sahip))
+$f$;
+
+-- Yönetici bütün hesapların kayıtlarını OKUR (değiştiremez): "hesaba bak" ve "kim ne ekledi"
+do $$
+declare t text;
+begin
+  foreach t in array array['firmalar','kisiler','projeler','proje_gecmis','ziyaretler','gorevler',
+                           'urunler','stok_gecmis','rakip_fiyatlar','siparisler','hedefler','bolgeler',
+                           'teklifler','numuneler','servis_kayitlari','masraflar','urun_aileleri',
+                           'tahsilatlar','belgeler','ayarlar','yorumlar','ekip_uyeleri','degisiklikler'] loop
+    execute format('drop policy if exists "yonetici_oku" on public.%I', t);
+    execute format('create policy "yonetici_oku" on public.%I for select to authenticated using (public.yonetici_mi())', t);
+  end loop;
+end $$;
+-- Yönetici bütün dosyaları da açabilir (hesaba bakarken fotoğraf ve belgeler)
+create or replace function public.foto_izinli(yol text) returns boolean language plpgsql stable security definer set search_path = public as $f$
+declare s text := split_part(yol, '/', 1); o uuid; y text;
+begin
+  if s = auth.uid()::text then return true; end if;
+  if public.yonetici_mi() then return true; end if;
+  if split_part(yol, '/', 2) = 'geri' then return false; end if;
+  if not public.ekipte(s) then return false; end if;
+  if split_part(yol, '/', 2) = 'yedek' then return false; end if;
+  o := s::uuid;
+  y := regexp_replace(yol, '_k\.jpg$', '.jpg');
+  if public.yetki(o, 'belgeler', 'oku') and exists (select 1 from public.belgeler b where b.owner = o and b.yol = y) then return true; end if;
+  if split_part(yol, '/', 2) = 'belge' then return false; end if;
+  if public.yetki(o, 'projeler', 'oku') and exists (select 1 from public.projeler t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'firmalar', 'oku') and exists (select 1 from public.firmalar t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'kisiler', 'oku') and exists (select 1 from public.kisiler t where t.owner = o and (t.kartvizit_on = y or t.kartvizit_arka = y)) then return true; end if;
+  if public.yetki(o, 'ziyaretler', 'oku') and exists (select 1 from public.ziyaretler t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'servis_kayitlari', 'oku') and exists (select 1 from public.servis_kayitlari t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'urun_aileleri', 'oku') and exists (select 1 from public.urun_aileleri t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'masraflar', 'oku') and exists (select 1 from public.masraflar t where t.owner = o and t.fis = y) then return true; end if;
+  return false;
+exception when others then return false;
+end $f$;
+
+-- Yönetim paneli: bütün hesaplar, kayıt sayıları, son giriş ve son işlem (yalnızca yönetici çağırabilir)
+create or replace function public.yonetim_hesaplar() returns table (
+  owner uuid, eposta text, firma text, tur text, durum text, paket text, deneme_bitis date, notlar text,
+  kayit timestamptz, son_giris timestamptz, son_islem timestamptz, kurulum boolean, ekip int,
+  projeler int, firmalar int, kisiler int, ziyaretler int, gorevler int, teklifler int, siparisler int, belgeler int)
+language plpgsql stable security definer set search_path = public, auth as $f$
+begin
+  if not public.yonetici_mi() then raise exception 'yetkisiz'; end if;
+  return query
+  select u.id, lower(u.email)::text, coalesce(h.firma, (select a.deger ->> 'firma' from public.ayarlar a where a.owner = u.id and a.anahtar = 'firma_profil' limit 1))::text,
+    coalesce(h.tur, 'test')::text, coalesce(h.durum, 'aktif')::text, h.paket, h.deneme_bitis, h.notlar,
+    u.created_at, u.last_sign_in_at,
+    (select max(d.zaman) from public.degisiklikler d where d.owner = u.id),
+    exists (select 1 from public.ayarlar a where a.owner = u.id and a.anahtar = 'firma_profil'),
+    (select count(*)::int from public.ekip_uyeleri e where e.owner = u.id and e.aktif),
+    (select count(*)::int from public.projeler x where x.owner = u.id),
+    (select count(*)::int from public.firmalar x where x.owner = u.id),
+    (select count(*)::int from public.kisiler x where x.owner = u.id),
+    (select count(*)::int from public.ziyaretler x where x.owner = u.id),
+    (select count(*)::int from public.gorevler x where x.owner = u.id),
+    (select count(*)::int from public.teklifler x where x.owner = u.id),
+    (select count(*)::int from public.siparisler x where x.owner = u.id),
+    (select count(*)::int from public.belgeler x where x.owner = u.id)
+  from auth.users u
+  left join public.hesaplar h on h.owner = u.id
+  where not exists (select 1 from public.ekip_uyeleri e where e.aktif and lower(e.eposta) = lower(u.email) and e.owner <> u.id)
+  order by coalesce(h.son_gorulme, u.last_sign_in_at, u.created_at) desc nulls last;
+end $f$;
+revoke all on function public.yonetim_hesaplar() from public, anon;
+grant execute on function public.yonetim_hesaplar() to authenticated;
+-- Bir hesabın ekip üyeleri ve son girişleri (yönetici)
+create or replace function public.yonetim_ekip(p_owner uuid) returns table (eposta text, ad text, aktif boolean, rol text, son_giris timestamptz, son_gorulme timestamptz)
+language plpgsql stable security definer set search_path = public, auth as $f$
+begin
+  if not public.yonetici_mi() then raise exception 'yetkisiz'; end if;
+  return query select e.eposta, e.ad, e.aktif, (e.yetkiler ->> '_rol')::text, u.last_sign_in_at, e.son_gorulme
+    from public.ekip_uyeleri e left join auth.users u on lower(u.email) = lower(e.eposta) where e.owner = p_owner order by e.created_at;
+end $f$;
+revoke all on function public.yonetim_ekip(uuid) from public, anon;
+grant execute on function public.yonetim_ekip(uuid) to authenticated;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 19 $f$;
+drop policy if exists "hesap_yonet_ekle" on public.hesaplar;
+create policy "hesap_yonet_ekle" on public.hesaplar for insert to authenticated with check (public.yonetici_mi());
+drop policy if exists "hata_sil" on public.hata_gunlugu;
+create policy "hata_sil" on public.hata_gunlugu for delete to authenticated using (owner = auth.uid() or public.yonetici_mi());

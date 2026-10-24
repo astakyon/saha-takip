@@ -31,12 +31,12 @@ export async function hataGonder() {
 }
 window.addEventListener('online', () => setTimeout(hataGonder, 3000));
 
-export async function hataGunluguKarti(kok) {
+export async function hataGunluguKarti(kok, { tum = false } = {}) {
   if (!kok) return;
   if (app.db.mode !== 'supabase') { const q = lsAl(KUYRUK, []); kok.innerHTML = `<p class="hint">Deneme modunda hatalar yalnızca bu cihazda tutulur (${q.length}).</p>`; return; }
   if (!sahipMi()) { kok.innerHTML = '<p class="hint">Uygulamada bir hata olursa, düzeltilebilmesi için kısa bir kayıt veri sahibine otomatik iletilir (hata metni, ekran, sürüm, telefon türü). Kayıtlarının içeriği gönderilmez.</p>'; return; }
   kok.innerHTML = '<p class="hint">Yükleniyor…</p>';
-  const { data, error } = await app.db.c.from('hata_gunlugu').select('*').order('zaman', { ascending: false }).limit(300);
+  const { data, error } = await (tum ? app.db.c.from('hata_gunlugu').select('*') : app.db.c.from('hata_gunlugu').select('*').eq('owner', app.db.sahip)).order('zaman', { ascending: false }).limit(300);
   if (error) { kok.innerHTML = '<p class="warn">Hata günlüğü için Supabase\'de güncel <b>schema.sql</b> dosyasını çalıştır (sürüm 17).</p>'; return; }
   const gruplar = new Map();
   for (const h of data || []) { const k = h.mesaj + '|' + (h.yer || ''); const g = gruplar.get(k) || { ...h, toplam: 0, kisiler: new Set(), surumler: new Set(), ilk: h.zaman }; g.toplam += h.adet || 1; g.kisiler.add(h.kim || '?'); g.surumler.add(h.surum); if (h.zaman < g.ilk) g.ilk = h.zaman; gruplar.set(k, g); }
@@ -47,7 +47,7 @@ export async function hataGunluguKarti(kok) {
       <div class="btnrow"><button type="button" class="btn sm" data-hkopya>Kopyala (bildirmek için)</button><button type="button" class="btn sm ghost danger" data-htemizle>Günlüğü temizle</button></div>`
     : '<p>Kayıtlı hata yok. 👍</p>'}`;
   kok.querySelector('[data-hkopya]')?.addEventListener('click', async () => { const t = l.map(g => `${g.toplam}× ${g.mesaj} ${g.yer || ''} [ekran ${g.ekran}, sürüm ${[...g.surumler].join('/')}, ${g.tarayici || ''}]`).join('\n'); try { await navigator.clipboard.writeText(t); toast('Kopyalandı.'); } catch { toast('Kopyalanamadı.', 'err'); } });
-  kok.querySelector('[data-htemizle]')?.addEventListener('click', async () => { if (!confirmBox('Hata günlüğü temizlensin mi?')) return; const { error: e } = await app.db.c.from('hata_gunlugu').delete().gte('id', 0); toast(e ? 'Temizlenemedi: ' + e.message : 'Temizlendi.', e ? 'err' : ''); hataGunluguKarti(kok); });
+  kok.querySelector('[data-htemizle]')?.addEventListener('click', async () => { if (!confirmBox('Hata günlüğü temizlensin mi?')) return; const { error: e } = await app.db.c.from('hata_gunlugu').delete().gte('id', 0); toast(e ? 'Temizlenemedi: ' + e.message : 'Temizlendi.', e ? 'err' : ''); hataGunluguKarti(kok, { tum }); });
 }
 
 // ---------- Kullanım ölçümü (yalnızca bu cihazda; hiçbir yere gönderilmez) ----------

@@ -1309,3 +1309,14 @@ body.sihirbaz-acik { overflow: hidden; }
 .profil-dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 4px 0 12px; }
 .profil-dl dt { color: var(--muted); }
 .profil-dl dd { margin: 0; font-weight: 600; }
+
+/* ---------- Sürüm 38: yönetim paneli ---------- */
+.yon-sekme { margin: 4px 0 12px; overflow-x: auto; max-width: 100%; }
+.yon-say { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--muted); margin: 4px 0; }
+.yon-say b { color: var(--ink); font-weight: 700; margin-right: 2px; }
+.yon-say.buyuk { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 0 8px; }
+.yon-say.buyuk span { background: var(--zemin-2); border-radius: 8px; padding: 8px; display: grid; text-align: center; }
+.yon-say.buyuk b { font: 700 20px var(--fc); margin: 0; }
+.yon-hesap .cb-top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.yon-gun { margin: 14px 0 4px; font-size: 15px; }
+.yon-akis li { display: grid; grid-template-columns: 48px 1fr; gap: 8px; }

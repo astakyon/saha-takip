@@ -42,6 +42,7 @@ const ROUTES = {
   siparisler:{ t: 'Siparişler', ico: 'receipt', v: yukle('views/panel.js', 'siparislerView'), g: 'Rapor' },
   urunler:   { t: 'Stok ve fiyat', ico: 'box', v: yukle('views/urunler.js', 'urunlerView'), g: 'Rapor' },
   rakip:     { t: 'Rakip fiyatları', ico: 'tag', v: yukle('views/urunler.js', 'rakipView'), g: 'Rapor' },
+  yonetim:   { t: 'Yönetim', ico: 'building', v: yukle('views/yonetim.js', 'yonetimView'), g: 'Rapor' },
   ayarlar:   { t: 'Ayarlar', ico: 'gear', v: yukle('views/ayarlar.js', 'ayarlarView'), g: 'Rapor' },
 };
 const detay = (yol, ad) => async (...a) => (await import('./' + yol))[ad](...a);
@@ -108,7 +109,7 @@ function renderNav(cur) {
 }
 
 let lastView = null, lastShown = null; const kayKonum = {};
-const saltOku = k => document.body.classList.toggle('salt-oku', !sahipMi() && !rotaYazilabilir(k));
+const saltOku = k => document.body.classList.toggle('salt-oku', !!app.db?.bakilan || (!sahipMi() && !rotaYazilabilir(k)));
 async function route() {
   const parts = (location.hash.replace(/^#\/?/, '') || 'bugun').split('/');
   const [k, id] = parts;
@@ -116,7 +117,7 @@ async function route() {
   if (DETAIL[k] && !izin(dt)) { location.hash = '#/bugun'; return; }
   if (DETAIL[k]) {
     if (!lastView) await show('bugun');
-    document.body.classList.toggle('salt-oku', !sahipMi() && (onizlemede() || izin(dt) !== 'yaz'));
+    document.body.classList.toggle('salt-oku', !!app.db?.bakilan || (!sahipMi() && (onizlemede() || izin(dt) !== 'yaz')));
     DETAIL[k](id);
     return;
   }
@@ -171,6 +172,19 @@ function davetAl() {
   history.replaceState(null, '', location.pathname + location.hash);
 }
 let otoKuruldu = false;
+// Yönetici bir hesaba salt okunur bakarken üstte duran çubuk
+function bakisCubugu() {
+  if (document.getElementById('onizleme-bar')) return;
+  const b = document.createElement('div'); b.id = 'onizleme-bar'; b.setAttribute('role', 'status');
+  b.innerHTML = `<span><b>${esc(app.db.bakilanAd || 'Hesap')}</b> hesabına bakıyorsun · salt okunur</span><button type="button" class="btn sm">Çık</button>`;
+  b.querySelector('button').onclick = async () => (await import('./views/yonetim.js')).bakmayiBitir();
+  document.body.appendChild(b); document.body.classList.add('onizlemede', 'salt-oku');
+}
+function askidaCubugu() {
+  const b = document.createElement('div'); b.id = 'onizleme-bar'; b.setAttribute('role', 'status');
+  b.innerHTML = '<span><b>Hesabın askıya alındı.</b> Kayıtlarını görebilirsin ama değişiklik yapamazsın. Bilgi için uygulama yöneticisine yaz.</span>';
+  document.body.appendChild(b);
+}
 // E-postadaki bağlantıdan dönüş (giriş bağlantısı, şifre yenileme, hesap onayı): adres #access_token=… taşır
 const AUTH_DONUS = /access_token=|error_description=|type=(recovery|magiclink|signup)/.test(location.hash);
 let kurtarma = /type=recovery/.test(location.hash);
@@ -212,11 +226,16 @@ async function boot() {
     }
     await app.db.loadAll({ hizli: true });
     yetkiUygula(); gerekIzle(); setTimeout(hataGonder, 8000);
+    if (app.db.mode === 'supabase') {
+      try { const { data } = await Promise.race([app.db.c.rpc('yonetici_mi'), new Promise(r => setTimeout(() => r({}), 4000))]); app.yonetici = data === true; } catch { app.yonetici = false; }
+      if (app.db.bakilan) bakisCubugu();
+      else if (sahipMi()) import('./profil.js').then(m => app.db.c.rpc('hesap_kaydol', { p_firma: m.profilVar() ? m.profil().firma : null })).then(r => { app.hesap = r?.data || null; if (app.hesap?.durum === 'askida') askidaCubugu(); }).catch(() => {});
+    }
     listeleriUygula();
     if (app.db.mode === 'supabase') import('./guvenlik.js').then(g => g.gorundum());
     temaUygula(); yaziUygula();
     app.ekip = [];
-    if (app.db.mode === 'supabase' && sahipMi()) app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif,yetkiler').then(({ data }) => { app.ekip = (data || []).filter(u => u.aktif); if (app.ekip.length && ['gorevler', 'bugun'].includes(lastView) && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});
+    if (app.db.mode === 'supabase' && sahipMi()) app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif,yetkiler').eq('owner', app.db.user().id).then(({ data }) => { app.ekip = (data || []).filter(u => u.aktif); if (app.ekip.length && ['gorevler', 'bugun'].includes(lastView) && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});
     if (app.db.offline) toast('Çevrimdışısın: son kaydedilen veriler gösteriliyor.');
   } catch (e) {
     view.innerHTML = `<div class="empty"><h2>Veriler yüklenemedi</h2><p>${esc(e.message)}</p><p><a class="btn" href="#/ayarlar">Bağlantı ayarlarını aç</a></p></div>`;
@@ -227,7 +246,7 @@ async function boot() {
   const act = kisayolAl();
   const pay = paylasimAl();
   const empty = Object.values(S).every(a => !a.length);
-  const sz = await import('./sihirbaz.js'), kurulum = sz.sihirbazGerekli();
+  const sz = await import('./sihirbaz.js'), kurulum = !app.db.bakilan && sz.sihirbazGerekli();
   if (kurulum) { if (!location.hash || /^#\/ayarlar/.test(location.hash)) location.hash = '#/bugun'; }
   else if (empty && !location.hash) location.hash = '#/ayarlar';
   filtreIzle(document.getElementById('view'), () => lastView);

@@ -36,7 +36,7 @@ export function kayitGecmisi(kutu, tablo, id) {
   kutu.innerHTML = `<h3>Değişiklik geçmişi</h3><button type="button" class="btn sm ghost" data-gyukle>Kim, ne zaman değiştirdi?</button>`;
   kutu.querySelector('[data-gyukle]').onclick = async () => {
     kutu.innerHTML = '<h3>Değişiklik geçmişi</h3><p class="hint">Yükleniyor…</p>';
-    const { data, error } = await app.db.c.from('degisiklikler').select('*').eq('tablo', tablo).eq('kayit_id', id).order('zaman', { ascending: false }).limit(30);
+    const { data, error } = await app.db.c.from('degisiklikler').select('*').eq('owner', app.db.sahip).eq('tablo', tablo).eq('kayit_id', id).order('zaman', { ascending: false }).limit(30);
     gecmisBagla(kutu, data);
     kutu.innerHTML = `<h3>Değişiklik geçmişi</h3>${error ? '<p class="hint">Geçmiş tablosu yok; güncel schema.sql dosyasını çalıştır.</p>' : data.length ? `<ul class="list gecmis">${data.map(d => satir(d, false)).join('')}</ul>` : '<p class="hint">Bu kayıt için kayıtlı değişiklik yok (geçmiş, sürüm 14 SQL güncellemesinden sonra tutuluyor).</p>'}`;
   };
@@ -46,7 +46,7 @@ export async function sonDegisiklikler(kutu) {
   if (!gecmisVar() || !kutu) return;
   let kim = '';
   const ciz = async () => {
-    let q = app.db.c.from('degisiklikler').select('*').order('zaman', { ascending: false }).limit(60);
+    let q = app.db.c.from('degisiklikler').select('*').eq('owner', app.db.sahip).order('zaman', { ascending: false }).limit(60);
     if (kim) q = q.eq('kim', kim);
     const { data, error } = await q;
     const kisiler = [['', 'Herkes'], [(app.db.user()?.email || '').toLowerCase(), 'Sen'], ...(app.ekip || []).map(u => [u.eposta, u.ad || u.eposta])];

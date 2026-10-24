@@ -82,6 +82,7 @@ function eskiRota(k) {
   return m ? modulIzni(m) : null;
 }
 export function rotaIzinli(k) {
+  if (k === 'yonetim') return !!app.yonetici && !onizlemede();
   if (sahipMi() || HER_ZAMAN.includes(k)) return true;
   if (SAHIBE_OZEL.includes(k)) return false;
   const e = ekranlar();
@@ -150,7 +151,7 @@ export function yetkiUygula() {
   if (on && sahip && app.db?.mode !== 'local') {
     app.yetki = { ben_sahip: false, onizleme: true, sahip: gercek?.sahip, yetkiler: on.yetkiler, ad: on.ad, eposta: on.eposta };
   } else { if (on) { try { sessionStorage.removeItem(ON); } catch {} } app.yetki = gercek; }
-  if (app.db) app.db.onizleme = onizlemede();
+  if (app.db) app.db.onizleme = onizlemede() || !!app.db.bakilan;
   document.documentElement.dataset.tutar = gizliBolum('tutar') ? 'gizli' : '';
   if (app.db) app.db.gizliAlan = gizliBolum('iletisim') ? { kisiler: ILETISIM } : null;
   if (sahipMi()) return;

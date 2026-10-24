@@ -152,7 +152,18 @@ async function upsertSafe(c, t, rows) {
 class SupaAdapter {
   mode = 'supabase';
   urlCache = new Map();
-  constructor(url, key) { this.c = window.supabase.createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true } }); }
+  constructor(url, key) {
+    this.c = window.supabase.createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true } });
+    // Yönetici "hesaba bak": başka bir hesabın kayıtları salt okunur yüklenir, telefondaki kopyaya yazılmaz
+    try { const b = JSON.parse(sessionStorage.getItem('saha-bak') || 'null'); if (b?.owner) { this.bakilan = b.owner; this.bakilanAd = b.firma || b.eposta || ''; this.onizleme = true; } } catch {}
+  }
+  // Her sorgu yalnızca çalışılan hesabın kayıtlarını ister (yönetici ve ekip üyesi başka hesap verisi görebilse de karışmaz)
+  kapsam(t, q) {
+    const s = this.sahip || this.user()?.id, ben = this.user()?.id;
+    if (!s) return q;
+    if (t === 'ayarlar' && !this.bakilan && ben && ben !== s) return q.in('owner', [s, ben]);
+    return q.eq('owner', s);
+  }
   async init() {
     const { data } = await this.c.auth.getSession();
     this.session = data.session;
@@ -168,13 +179,14 @@ class SupaAdapter {
   async yetkiYukle() {
     try { const { data, error } = await this.c.rpc('benim_yetkilerim'); if (error) throw error; this.yetki = data || { ben_sahip: true }; }
     catch { this.yetki = { ben_sahip: true }; }
-    this.sahip = this.yetki?.sahip || this.user()?.id;
+    this.sahip = this.bakilan || this.yetki?.sahip || this.user()?.id;
     return this.yetki;
   }
   // ---------- Yükleme ve eşitleme ----------
   // hizli: telefondaki kopya varsa onu hemen gösterir, buluttaki yenisi arkada iner ("veri-tazelendi" olayı)
   async loadAll({ hizli = false } = {}) {
     const uid = this.user()?.id;
+    if (this.bakilan) { for (const t of Object.keys(TABLES)) S[t] = []; this.senk = {}; await this.tazeYukle(); return; }
     const [cached, senk, yt] = await Promise.all([idbGet('cache:' + uid), idbGet('senk:' + uid), idbGet('yetki:' + uid)]).catch(() => [null, null, null]);
     if (hizli && cached && yt) {
       for (const t of Object.keys(TABLES)) S[t] = cached[t] || [];
@@ -207,7 +219,7 @@ class SupaAdapter {
           else {
             const deg = await this.tablo(t, q => q.gt('updated_at', senk[t]));
             if (deg.length) { const m = new Map(S[t].map(r => [r.id, r])); for (const r of deg) m.set(r.id, r); S[t] = [...m.values()]; }
-            const { count, error } = await this.c.from(t).select('id', { count: 'exact', head: true });
+            const { count, error } = await this.kapsam(t, this.c.from(t).select('id', { count: 'exact', head: true }));
             if (!error && count != null && count !== S[t].filter(r => !bekleyen.has(r.id) || r.updated_at).length) {
               const ids = new Set((await this.tablo(t, null, 'id')).map(r => r.id));
               const eksik = [...ids].filter(id => !S[t].some(r => r.id === id));
@@ -223,14 +235,14 @@ class SupaAdapter {
       }));
       this.senk = senk; DB_DURUM.surum++;
       if (!this.onizleme) await Promise.all([idbSet('cache:' + uid, S), idbSet('senk:' + uid, senk)]);
-      await this.flush();
+      if (!this.onizleme) await this.flush();
     })();
     try { return await this._tazeleniyor; } finally { this._tazeleniyor = null; }
   }
   async tablo(t, filtre, alanlar = '*') {
     let all = [], from = 0;
     for (;;) {
-      let q = this.c.from(t).select(alanlar); if (filtre) q = filtre(q);
+      let q = this.kapsam(t, this.c.from(t).select(alanlar)); if (filtre) q = filtre(q);
       const { data, error } = await q.range(from, from + 999);
       if (error) throw error;
       all = all.concat(data); if (data.length < 1000) break; from += 1000;
@@ -256,7 +268,7 @@ class SupaAdapter {
   async bekleyenler() { return (await idbGet('outbox')) || []; }
   async bekleyenSil(i) { const q = (await idbGet('outbox')) || []; q.splice(i, 1); await idbSet('outbox', q); window.dispatchEvent(new CustomEvent('outbox', { detail: 0 })); }
   async save(t, obj) {
-    if (this.yazamaz(t, obj)) throw new Error(this.onizleme ? 'Önizlemedesin: değişiklik kaydedilmez.' : 'Bu bölümde düzenleme yetkin yok. Veri sahibinden yetki iste.');
+    if (this.yazamaz(t, obj)) throw new Error(this.onizleme ? (this.bakilan ? 'Bu hesaba salt okunur bakıyorsun; değişiklik kaydedilmez.' : 'Önizlemedesin: değişiklik kaydedilmez.') : 'Bu bölümde düzenleme yetkin yok. Veri sahibinden yetki iste.');
     const row = pick(t, obj); if (!row.id) row.id = uuid();
     const i = S[t].findIndex(x => x.id === row.id), onceki = i >= 0 ? S[t][i] : null;
     // Ekleme yetkisi olmayan ekip üyesi (ör. kendisine atanan görev) yalnızca var olan kaydı günceller; upsert ekleme izni de ister
@@ -310,13 +322,13 @@ class SupaAdapter {
     return true;
   }
   async del(t, id) {
-    if (this.yazamaz(t)) throw new Error(this.onizleme ? 'Önizlemedesin: değişiklik kaydedilmez.' : 'Bu bölümde silme yetkin yok.');
+    if (this.yazamaz(t)) throw new Error(this.onizleme ? (this.bakilan ? 'Bu hesaba salt okunur bakıyorsun; değişiklik kaydedilmez.' : 'Önizlemedesin: değişiklik kaydedilmez.') : 'Bu bölümde silme yetkin yok.');
     S[t] = S[t].filter(x => x.id !== id); this.cache();
     const { error } = await this.c.from(t).delete().eq('id', id);
     if (error) { if (/fetch|network/i.test(error.message)) await this.queue({ op: 'del', t, id }); else throw error; }
   }
   async bulk(t, rows, onProgress) {
-    if (this.yazamaz(t)) throw new Error(this.onizleme ? 'Önizlemedesin: değişiklik kaydedilmez.' : 'Bu bölümde düzenleme yetkin yok.');
+    if (this.yazamaz(t)) throw new Error(this.onizleme ? (this.bakilan ? 'Bu hesaba salt okunur bakıyorsun; değişiklik kaydedilmez.' : 'Önizlemedesin: değişiklik kaydedilmez.') : 'Bu bölümde düzenleme yetkin yok.');
     for (let i = 0; i < rows.length; i += 400) {
       const chunk = rows.slice(i, i + 400).map(r => pick(t, r));
       try { await upsertSafe(this.c, t, chunk); } catch (error) { throw schemaErr(error, t); }
@@ -327,7 +339,7 @@ class SupaAdapter {
     S[t] = [...byId.values()]; this.cache();
   }
   async upload(file) {
-    if (this.onizleme) throw new Error('Önizlemedesin: dosya yüklenmez.');
+    if (this.onizleme) throw new Error(this.bakilan ? 'Bu hesaba salt okunur bakıyorsun; dosya yüklenmez.' : 'Önizlemedesin: dosya yüklenmez.');
     if (!navigator.onLine) throw new Error('Fotoğraf yüklemek için internet bağlantısı gerekiyor.');
     const blob = await shrink(file);
     const path = `${this.sahip || this.user().id}/${uuid()}.jpg`;
@@ -338,7 +350,7 @@ class SupaAdapter {
     return path;
   }
   async uploadFile(file) {
-    if (this.onizleme) throw new Error('Önizlemedesin: dosya yüklenmez.');
+    if (this.onizleme) throw new Error(this.bakilan ? 'Bu hesaba salt okunur bakıyorsun; dosya yüklenmez.' : 'Önizlemedesin: dosya yüklenmez.');
     if (!navigator.onLine) throw new Error('Belge yüklemek için internet bağlantısı gerekiyor.');
     if (file.size > 45 * 1024 * 1024) throw new Error('Dosya 45 MB\'tan büyük.');
     const path = `${this.sahip || this.user().id}/belge/${uuid()}-${guvenliAd(file.name)}`;

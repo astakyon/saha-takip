@@ -164,6 +164,26 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 8) Yönetici: bütün hesaplar, kim ne ekledi, hesaba salt okunur bakma; kendi verisi karışmaz ----------
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`localStorage.setItem('__YONETICI', '1'); localStorage.setItem('__DB', JSON.stringify({
+    projeler: [{ id: 'p1', owner: 'u1', ad: 'KENDI_PROJEM', durum: 'Teklif', updated_at: '2026-10-23T08:00:00Z' }, { id: 'p9', owner: 'u9', ad: 'MUSTERI_PROJESI', durum: 'Proje', updated_at: '2026-10-23T08:01:00Z' }],
+    degisiklikler: [{ id: 1, owner: 'u9', tablo: 'projeler', islem: 'ekleme', kim: 'ali@ornek.com', zaman: new Date().toISOString(), ozet: 'MUSTERI_PROJESI' }] }));`) });
+  await p.goto(U + '#/projeler'); await w(1500);
+  kontrol('Yöneticinin kendi ekranında başka hesabın verisi yok', JSON.stringify(await p.evaluate(async () => (await import('./js/db.js')).S.projeler.map(x => x.id))) === '["p1"]');
+  await p.goto(U + '#/yonetim'); await w(1000);
+  kontrol('Yönetim panelinde hesaplar listeleniyor', (await p.locator('.yon-hesap [data-h]').count()) === 2);
+  await p.click('[data-ys="akis"]'); await w(700);
+  kontrol('Kim ne ekledi akışı görünüyor', /ali@ornek\.com/.test(await p.textContent('[data-yicerik]')));
+  await p.click('[data-ys="hesaplar"]'); await w(300); await p.click('[data-h="u9"]'); await w(500); await p.click('[data-bak]'); await w(2000);
+  const bak = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const { app } = await import('./js/state.js'); let k; try { await app.db.save('projeler', { id: 'p9', ad: 'x' }); k = 'kaydetti'; } catch (e) { k = e.message; } return { p: S.projeler.map(x => x.id), k }; });
+  kontrol('Hesaba bakınca yalnızca o hesabın verisi, değişiklik yapılamıyor', JSON.stringify(bak.p) === '["p9"]' && bak.k !== 'kaydetti' && await p.isVisible('#onizleme-bar'), JSON.stringify(bak));
+  await p.click('#onizleme-bar button'); await w(1800);
+  kontrol('Bakıştan çıkınca kendi verisine dönüyor', JSON.stringify(await p.evaluate(async () => (await import('./js/db.js')).S.projeler.map(x => x.id))) === '["p1"]');
+  kontrol('Yönetim panelinde hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
 await tarayici.close(); sunucu.close();
 console.log(sonuc.join('\n'));
 console.log(basarisiz ? `\n${basarisiz} test başarısız.` : `\nTüm testler geçti (${sonuc.length}).`);

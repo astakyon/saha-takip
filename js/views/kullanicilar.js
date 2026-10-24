@@ -32,7 +32,7 @@ export function davetLinki(eposta) {
 export async function kullaniciAyarlari(root) {
   if (app.db.mode !== 'supabase') { root.innerHTML = '<p class="hint">Başka kişilere yetki vermek için önce Genel sekmesinden bulut (Supabase) bağlantısını kur.</p>'; return; }
   root.innerHTML = '<p class="hint">Yükleniyor…</p>';
-  const { data, error } = await app.db.c.from('ekip_uyeleri').select('*').order('created_at');
+  const { data, error } = await app.db.c.from('ekip_uyeleri').select('*').eq('owner', app.db.user().id).order('created_at');
   if (error) { root.innerHTML = `<p class="warn">Kullanıcı tablosu bulunamadı. Supabase SQL Editor'de güncel <b>schema.sql</b> dosyasını çalıştır.</p>`; return; }
   const uyeler = data || [];
   const KAD = new Map(); let kadVar = true;

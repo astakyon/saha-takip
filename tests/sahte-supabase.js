@@ -12,6 +12,7 @@
     constructor(t) { this.t = t; this.f = []; this.op = 'select'; this.alan = '*'; this.r = null; this.cnt = null; }
     select(a = '*', o) { if (this.op === 'select') this.alan = a; else this.donus = a; if (o?.count) { this.cnt = true; this.head = o.head; } return this; }
     gt(k, v) { this.f.push(r => r[k] > v); return this; }
+    gte(k, v) { this.f.push(r => r[k] >= v); return this; }
     eq(k, v) { this.f.push(r => r[k] === v); return this; }
     in(k, v) { this.f.push(r => v.includes(r[k])); return this; }
     not() { return this; }
@@ -41,7 +42,7 @@
       }
       if (this.op === 'upsert') {
         const out = [];
-        for (const row of [].concat(this.rows)) { const i = T.findIndex(r => r.id === row.id); const n = { ...(i >= 0 ? T[i] : { created_at: simdi() }), ...row }; if (UPD(this.t)) n.updated_at = simdi(); if (i >= 0) T[i] = n; else T.push(n); out.push(n); }
+        for (const row of [].concat(this.rows)) { const i = T.findIndex(r => r.id === row.id); const n = { ...(i >= 0 ? T[i] : { created_at: simdi(), owner: (JSON.parse(localStorage.getItem('__YETKI') || 'null')?.sahip) || (localStorage.getItem('__YETKI') ? 'u2' : 'u1') }), ...row }; if (UPD(this.t)) n.updated_at = simdi(); if (i >= 0) T[i] = n; else T.push(n); out.push(n); }
         kaydet(); return { data: this.donus ? out.map(r => ({ updated_at: r.updated_at })) : null, error: null };
       }
       if (this.op === 'update') {
@@ -60,7 +61,10 @@
       signUp: async o => { (window.__auth ||= []).push(['kayit', o.email]); return { data: { user: { identities: [{}] }, session: null }, error: null }; },
       updateUser: async o => { (window.__auth ||= []).push(['sifre', o.password]); return { data: {}, error: null }; }, onAuthStateChange: () => {}, mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: 'aal1', nextLevel: 'aal1' } }), listFactors: async () => ({ data: { totp: [], all: [] } }) }, signOut: async () => ({}) },
     from: t => new Q(t),
-    rpc: async (n, a) => n === 'benim_yetkilerim' ? { data: JSON.parse(localStorage.getItem('__YETKI') || 'null') || { sahip: 'u1', ben_sahip: true }, error: null } : n === 'yetki_surum' ? { data: 15, error: null } : n === 'giris_epostasi' ? { data: a?.ad === 'burak' ? 'sahip@x.com' : null, error: null } : n === 'yedek_guvenli' ? { data: true, error: null } : { data: [], error: null },
+    rpc: async (n, a) => n === 'yonetici_mi' ? { data: !!localStorage.getItem('__YONETICI'), error: null }
+      : n === 'yonetim_hesaplar' ? { data: [...new Set(Object.values(DB).flat().map(r => r?.owner).filter(Boolean))].map(o => ({ owner: o, eposta: o + '@x.com', firma: o === 'u1' ? 'Sahip Firma' : 'Firma ' + o, tur: 'test', durum: 'aktif', kayit: '2026-10-01', son_giris: '2026-10-23', son_islem: '2026-10-23', kurulum: true, ekip: 0, projeler: (DB.projeler || []).filter(r => r.owner === o).length, firmalar: (DB.firmalar || []).filter(r => r.owner === o).length, kisiler: 0, ziyaretler: (DB.ziyaretler || []).filter(r => r.owner === o).length, gorevler: 0, teklifler: 0, siparisler: 0, belgeler: 0 })), error: null }
+      : n === 'yonetim_ekip' ? { data: [], error: null }
+      : n === 'hesap_kaydol' ? { data: { tur: 'test', durum: localStorage.getItem('__ASKIDA') ? 'askida' : 'aktif' }, error: null } : n === 'benim_yetkilerim' ? { data: JSON.parse(localStorage.getItem('__YETKI') || 'null') || { sahip: 'u1', ben_sahip: true }, error: null } : n === 'yetki_surum' ? { data: 15, error: null } : n === 'giris_epostasi' ? { data: a?.ad === 'burak' ? 'sahip@x.com' : null, error: null } : n === 'yedek_guvenli' ? { data: true, error: null } : { data: [], error: null },
     storage: { from: () => ({ upload: async () => ({ error: null }), createSignedUrl: async () => ({ data: null, error: { message: 'yok' } }), list: async () => ({ data: [], error: null }), remove: async () => ({}) }) },
     functions: { invoke: async () => ({ data: null }) },
   }) };
