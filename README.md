@@ -32,6 +32,11 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 39): günlük yedek
+
+- **Uygulama içi otomatik yedek artık her gün** alınabiliyor (Ayarlar → Veri ve yedek → Otomatik yedek → “Her gün” / “Haftada bir”). Günlükte son 30 gün tutulur. Yedek, gün içinde uygulama ilk açıldığında alınır.
+- **Sunucudan günlük yedek (Supabase'den bağımsız kopya):** `araclar/yedek-deposu/` klasöründeki iş akışı gizli bir GitHub deposunda her gece 04:17'de veritabanının tamamını şifreli olarak saklar; uygulamayı kimse açmasa da çalışır. Kurulum ve geri yükleme: `araclar/yedek-deposu/KURULUM.md`. Bu dosya bu (herkese açık) depoda çalışmaz; veritabanı adresi asla bu depoya yazılmaz.
+
 ## Güncelleme notu (sürüm 38): hesap türleri ve yönetim paneli
 **Bir kez:** Supabase SQL Editor'de güncel `supabase/schema.sql` dosyasını çalıştır (şema sürüm 19). Yönetici olacağın her Supabase projesinde kendini ekle: `insert into public.uygulama_yoneticileri (eposta) values ('senin@epostan.com');`
 

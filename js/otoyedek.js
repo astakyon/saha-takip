@@ -1,5 +1,6 @@
-// Otomatik yedek: veri sahibi açtıysa, uygulama açıldığında son yedek 7 günden eskiyse bütün kayıtlar
-// Supabase depolamasına (yalnızca sahibin görebildiği yedek klasörüne) JSON olarak yazılır; son 8 yedek tutulur.
+// Otomatik yedek: veri sahibi açtıysa, uygulama açıldığında son yedek seçilen süreden (günlük ya da haftalık) eskiyse
+// bütün kayıtlar Supabase depolamasına (yalnızca sahibin görebildiği yedek klasörüne) JSON olarak yazılır.
+// Günlükte son 30, haftalıkta son 8 yedek tutulur.
 import { S, TABLES } from './db.js';
 import { app } from './state.js';
 import { esc, toast, today, download } from './ui.js';
@@ -9,6 +10,9 @@ import { sahipMi } from './yetki.js';
 const KLASOR = () => `${app.db.user().id}/yedek`;
 const guvenliMi = async () => { try { const { data, error } = await app.db.c.rpc('yedek_guvenli'); return !error && data === true; } catch { return false; } };
 const gun = d => d ? Math.floor((Date.now() - new Date(d)) / 864e5) : null;
+const siklik = () => ayar('oto_yedek_siklik') === 'haftalik' ? 'haftalik' : 'gunluk';
+const TUT = () => siklik() === 'gunluk' ? 30 : 8;
+const yerelGun = d => { const x = new Date(d); return `${x.getFullYear()}-${x.getMonth() + 1}-${x.getDate()}`; };
 
 export async function yedekAl() {
   const veri = { version: 2, tarih: new Date().toISOString(), uygulama: 'Saha Takip', ...Object.fromEntries(Object.keys(TABLES).map(t => [t, S[t]])) };
@@ -17,7 +21,7 @@ export async function yedekAl() {
   if (error) throw error;
   await ayarYaz('oto_yedek_son', new Date().toISOString());
   const l = await yedekler();
-  const fazla = l.slice(8).map(x => `${KLASOR()}/${x.name}`);
+  const fazla = l.slice(TUT()).map(x => `${KLASOR()}/${x.name}`);
   if (fazla.length) await app.db.c.storage.from('fotograflar').remove(fazla).catch(() => {});
   return ad;
 }
@@ -29,20 +33,23 @@ export async function yedekler() {
 // Açılışta (sessiz)
 export async function otoYedekKontrol() {
   if (app.db?.mode !== 'supabase' || !sahipMi() || !navigator.onLine || ayar('oto_yedek') !== true) return;
-  const g = gun(ayar('oto_yedek_son')); if (g != null && g < 7) return;
+  const son = ayar('oto_yedek_son');
+  if (son && (siklik() === 'gunluk' ? yerelGun(son) === yerelGun(Date.now()) : gun(son) < 7)) return;
   if (!(await guvenliMi())) return;
-  try { await yedekAl(); toast('Haftalık otomatik yedek alındı.'); } catch (e) { console.warn('Otomatik yedek', e); }
+  try { await yedekAl(); toast(siklik() === 'gunluk' ? 'Günlük otomatik yedek alındı.' : 'Haftalık otomatik yedek alındı.'); } catch (e) { console.warn('Otomatik yedek', e); }
 }
 export async function otoYedekAyarlari(kutu) {
   if (!kutu) return;
   if (app.db?.mode !== 'supabase') { kutu.innerHTML = '<p class="hint">Otomatik yedek bulut bağlantısıyla çalışır. Deneme modunda “Tam yedek indir (ZIP)” kullan.</p>'; return; }
   const guvenli = await guvenliMi();
   const acik = ayar('oto_yedek') === true, son = ayar('oto_yedek_son');
-  kutu.innerHTML = `<label class="chk"><input type="checkbox" data-oto ${acik ? 'checked' : ''} ${guvenli ? '' : 'disabled'}> <span>Haftada bir kendiliğinden yedek al</span></label>
-    <p class="hint">${guvenli ? `Uygulamayı açtığında son yedek 7 günden eskiyse bütün kayıtlar Supabase'deki, yalnızca senin görebildiğin yedek klasörüne yazılır; son 8 yedek tutulur. Fotoğraflar zaten Supabase'de durduğu için yedeğe girmez.` : 'Açmak için önce Supabase SQL Editor\'de güncel <b>schema.sql</b> dosyasını çalıştır (sürüm 13): yedek klasörünü ekip üyelerine kapatır.'}</p>
+  kutu.innerHTML = `<label class="chk"><input type="checkbox" data-oto ${acik ? 'checked' : ''} ${guvenli ? '' : 'disabled'}> <span>Kendiliğinden yedek al</span></label>
+    <div class="seg" data-siklik ${acik ? '' : 'hidden'}><button type="button" data-s="gunluk" class="${siklik() === 'gunluk' ? 'on' : ''}">Her gün</button><button type="button" data-s="haftalik" class="${siklik() === 'haftalik' ? 'on' : ''}">Haftada bir</button></div>
+    <p class="hint">${guvenli ? `${siklik() === 'gunluk' ? 'Gün içinde uygulamayı ilk açtığında' : 'Uygulamayı açtığında son yedek 7 günden eskiyse'} bütün kayıtlar Supabase'deki, yalnızca senin görebildiğin yedek klasörüne yazılır; ${siklik() === 'gunluk' ? 'son 30 gün' : 'son 8 yedek'} tutulur. Supabase'den bağımsız ikinci bir kopya için README'deki “Sunucudan günlük yedek” adımlarına bak. Fotoğraflar zaten Supabase'de durduğu için yedeğe girmez.` : 'Açmak için önce Supabase SQL Editor\'de güncel <b>schema.sql</b> dosyasını çalıştır (sürüm 13): yedek klasörünü ekip üyelerine kapatır.'}</p>
     <p>${son ? `Son otomatik yedek: <b>${new Date(son).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</b>` : 'Henüz otomatik yedek alınmadı.'}</p>
     <div class="btnrow"><button type="button" class="btn sm" data-simdi ${guvenli ? '' : 'disabled'}>Şimdi yedekle</button></div><div data-liste></div>`;
-  kutu.querySelector('[data-oto]').onchange = async e => { await ayarYaz('oto_yedek', e.target.checked); toast(e.target.checked ? 'Otomatik yedek açıldı.' : 'Otomatik yedek kapatıldı.'); if (e.target.checked) otoYedekKontrol().then(() => otoYedekAyarlari(kutu)); };
+  kutu.querySelector('[data-oto]').onchange = async e => { await ayarYaz('oto_yedek', e.target.checked); toast(e.target.checked ? 'Otomatik yedek açıldı.' : 'Otomatik yedek kapatıldı.'); if (e.target.checked) otoYedekKontrol().then(() => otoYedekAyarlari(kutu)); else otoYedekAyarlari(kutu); };
+  kutu.querySelectorAll('[data-siklik] button').forEach(b => b.onclick = async () => { await ayarYaz('oto_yedek_siklik', b.dataset.s); toast(b.dataset.s === 'gunluk' ? 'Her gün yedek alınacak.' : 'Haftada bir yedek alınacak.'); otoYedekAyarlari(kutu); });
   kutu.querySelector('[data-simdi]').onclick = async e => { e.target.disabled = true; try { const ad = await yedekAl(); toast(ad + ' kaydedildi.'); otoYedekAyarlari(kutu); } catch (err) { e.target.disabled = false; toast('Yedek alınamadı: ' + err.message, 'err'); } };
   if (!guvenli) return;
   try {

@@ -1,0 +1,66 @@
+# Saha Takip — sunucudan günlük yedek
+# Bu dosya BU DEPODA ÇALIŞMAZ (bu depo herkese açık). Kendi GİZLİ (private) yedek deponda
+# .github/workflows/gunluk-yedek.yml olarak kopyala. Kurulum: araclar/yedek-deposu/KURULUM.md
+#
+# Her gece 04:17'de (Türkiye saati) Supabase veritabanının tamamını (roller, şema, veriler) alır,
+# şifreler ve deponun "Actions → Artifacts" bölümüne koyar. Pazar yedekleri 90 gün, diğerleri 30 gün tutulur.
+# Yedek alınamazsa GitHub sana e-posta gönderir.
+
+name: Günlük yedek
+
+on:
+  schedule:
+    - cron: '17 1 * * *'   # UTC 01:17 = Türkiye 04:17
+  workflow_dispatch: {}    # Actions sekmesinden elle de çalıştırılabilir
+
+permissions:
+  contents: read
+
+jobs:
+  yedek:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Ayarları denetle
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SIFRE: ${{ secrets.YEDEK_SIFRE }}
+        run: |
+          [ -n "$DB_URL" ] || { echo "SUPABASE_DB_URL tanımlı değil"; exit 1; }
+          [ ${#SIFRE} -ge 16 ] || { echo "YEDEK_SIFRE en az 16 karakter olmalı"; exit 1; }
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Veritabanını al
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          mkdir yedek
+          supabase db dump --db-url "$DB_URL" -f yedek/roles.sql --role-only
+          supabase db dump --db-url "$DB_URL" -f yedek/schema.sql
+          supabase db dump --db-url "$DB_URL" -f yedek/data.sql --use-copy --data-only
+          test -s yedek/data.sql
+          ls -la yedek
+
+      - name: Şifrele
+        id: paket
+        env:
+          SIFRE: ${{ secrets.YEDEK_SIFRE }}
+        run: |
+          AD="saha-yedek-$(TZ=Europe/Istanbul date +%Y-%m-%d)"
+          tar -czf "$AD.tar.gz" -C yedek .
+          gpg --batch --yes --pinentry-mode loopback --symmetric --cipher-algo AES256 \
+              --passphrase "$SIFRE" -o "$AD.tar.gz.gpg" "$AD.tar.gz"
+          rm -rf yedek "$AD.tar.gz"
+          echo "ad=$AD" >> "$GITHUB_OUTPUT"
+          echo "gun=$(TZ=Europe/Istanbul date +%u)" >> "$GITHUB_OUTPUT"
+          ls -la "$AD.tar.gz.gpg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.paket.outputs.ad }}
+          path: ${{ steps.paket.outputs.ad }}.tar.gz.gpg
+          retention-days: ${{ steps.paket.outputs.gun == '7' && 90 || 30 }}
+          if-no-files-found: error
