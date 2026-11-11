@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 41): ad ve soyad ayrı, kartvizit köşeleri daha iyi bulunuyor
+
+- **Kişilerde ad ve soyad ayrı alan.** Eski kayıtlarda son kelime soyad, öncesi ad sayılır (“Mehmet Ali Yılmaz” → Ad: Mehmet Ali, Soyad: Yılmaz). Listeler, arama ve Excel tam adı kullanmaya devam eder; Excel'e Ad ve Soyad ayrı sütun olarak çıkar, rehbere kaydetmede soyad doğru alana yazılır, mesaj şablonlarına {soyad} eklendi. Supabase'de güncel **schema.sql** çalıştırılmalı (sürüm 20); çalıştırılana kadar uygulama yalnızca tam adı kaydeder.
+- **Kartvizit köşeleri çok daha güvenilir bulunuyor.** Kartın düz kenarları çizgi olarak aranıyor (Hough), adaylar dört kenarın gerçekten kenar olup olmadığına, kartvizit oranına ve ortaya yakınlığa göre puanlanıyor, sonra kenarlar hassas olarak oturtuluyor. Dağınık masada, perspektifli çekimde, koyu renk kartta, beyaz masada beyaz kartta, parmak bir köşeyi kapatınca ve kart fotoğrafın kenarından taştığında da buluyor.
+- **Köşe düzeltmek kolaylaştı:** sürüklerken parmağın altını gösteren büyüteç çıkar; köşe parmağa zıplamaz, olduğu yerden kayar; kenar ortasındaki noktalarla bütün kenar kaydırılır; “Otomatik çerçeveye dön” ile bulunan çerçeveye geri dönülür.
+
 ## Güncelleme notu (sürüm 40): kartvizit kırpma ve daha iyi okuma
 
 - **Kartvizit fotoğrafı artık yalnızca kartı kaydeder.** Fotoğraf çekilince ya da galeriden seçilince kartın köşeleri kendiliğinden bulunur; gerekirse köşeler parmakla sürüklenir. Kart düzleştirilir (eğik çekimde perspektif düzeltilir), zemin kesilip atılır ve yatay olarak kaydedilir.

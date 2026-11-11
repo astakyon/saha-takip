@@ -826,3 +826,13 @@ drop policy if exists "hesap_yonet_ekle" on public.hesaplar;
 create policy "hesap_yonet_ekle" on public.hesaplar for insert to authenticated with check (public.yonetici_mi());
 drop policy if exists "hata_sil" on public.hata_gunlugu;
 create policy "hata_sil" on public.hata_gunlugu for delete to authenticated using (owner = auth.uid() or public.yonetici_mi());
+
+-- ===================== Sürüm 20: kişilerde ad ve soyad ayrı =====================
+alter table public.kisiler add column if not exists ad text;
+alter table public.kisiler add column if not exists soyad text;
+-- Eski kayıtlar: son kelime soyad, öncesi ad
+update public.kisiler set
+  ad = case when position(' ' in btrim(ad_soyad)) > 0 then regexp_replace(btrim(ad_soyad), '\s+\S+$', '') else btrim(ad_soyad) end,
+  soyad = case when position(' ' in btrim(ad_soyad)) > 0 then substring(btrim(ad_soyad) from '\S+$') else null end
+where ad is null and soyad is null and ad_soyad is not null;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 20 $f$;

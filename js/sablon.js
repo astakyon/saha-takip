@@ -16,10 +16,10 @@ export const sablonlar = () => { const s = ayar('wa_sablonlar'); return Array.is
 export const benimAdim = () => ayar('benim_adim') || '';
 
 export function doldur(metin, { kisi, firma, proje, alanlar = {} } = {}) {
-  const ilk = (kisi?.ad_soyad || '').replace(/\s*(Bey|Hanım)$/i, '').split(/\s+/)[0] || '';
+  const ilk = (kisi?.ad || (kisi?.ad_soyad || '').replace(/\s*(Bey|Hanım)$/i, '').split(/\s+/)[0] || '').trim();
   if (!ilk) metin = String(metin).replace(/\s*\{ad\}\s*Bey\/Hanım/g, '').replace(/\{ad\}\s*/g, '');
   return String(metin)
-    .replace(/\{ad\}/g, ilk).replace(/\{adsoyad\}/g, kisi?.ad_soyad || '')
+    .replace(/\{ad\}/g, ilk).replace(/\{adsoyad\}/g, kisi?.ad_soyad || '').replace(/\{soyad\}/g, kisi?.soyad || (kisi?.ad_soyad || '').split(/\s+/).slice(1).pop() || '')
     .replace(/\{firma\}/g, firma?.ad || '').replace(/\{proje\}/g, proje?.ad || 'projeniz')
     .replace(/\{tarih\}/g, tarih(today())).replace(/\{benim\}/g, benimAdim())
     .replace(/\{(\w+)\}/g, (m, k) => alanlar[k] != null ? alanlar[k] : m)
@@ -56,7 +56,7 @@ export function sablonDuzenleyici(root) {
   const ciz = () => {
     root.innerHTML = `<div class="fld"><label for="benim">İmzan (mesajların sonunda {benim} yerine geçer)</label><input id="benim" value="${esc(benimAdim())}" placeholder="Örn. Ali Yılmaz · Yıldız Elektrik"></div>
       ${list.map((s, i) => `<div class="sab"><div class="sab-h"><input data-ad="${i}" value="${esc(s.ad)}" aria-label="Şablon adı"><button type="button" class="x" data-sil="${i}" aria-label="Şablonu sil">×</button></div><textarea data-metin="${i}" rows="3">${esc(s.metin)}</textarea></div>`).join('')}
-      <p class="hint">Kullanılabilir alanlar: {ad} kişinin adı, {adsoyad}, {firma}, {proje}, {tarih}, {benim}.</p>
+      <p class="hint">Kullanılabilir alanlar: {ad} kişinin adı, {soyad}, {adsoyad}, {firma}, {proje}, {tarih}, {benim}.</p>
       <div class="btnrow"><button type="button" class="btn" data-ekle>Şablon ekle</button><button type="button" class="btn primary" data-kaydet>Kaydet</button><button type="button" class="btn ghost" data-sifirla>Varsayılanlara dön</button></div>`;
     root.querySelectorAll('[data-ad]').forEach(x => x.oninput = () => list[+x.dataset.ad].ad = x.value);
     root.querySelectorAll('[data-metin]').forEach(x => x.oninput = () => list[+x.dataset.metin].metin = x.value);

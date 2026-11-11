@@ -1,4 +1,4 @@
-import { S, TABLES, getConfig, setConfig, idbGet } from '../db.js';
+import { S, TABLES, getConfig, setConfig, idbGet, adBol } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, toast, download, exportXlsx, today, confirmBox, pickFiles, firmaAd } from '../ui.js';
 import { projeSatiri } from './projeler.js';
@@ -172,7 +172,7 @@ export async function ayarlarView(el) {
     exportXlsx(`saha-takip-${today()}.xlsx`, {
       'Projeler': S.projeler.map(projeSatiri),
       'Firmalar': S.firmalar.map(f => ({ Firma: f.ad, Tip: (f.tipler || []).join(', '), İl: f.il, İlçe: f.ilce, Telefon: f.telefon, 'E-posta': f.eposta, Notlar: f.notlar })),
-      'Kişiler': S.kisiler.map(k => ({ 'Ad soyad': k.ad_soyad, Firma: firmaAd(k.firma_id), Unvan: k.unvan, Telefon: k.telefon, 'E-posta': k.eposta })),
+      'Kişiler': S.kisiler.map(k => ({ 'Ad': k.ad || adBol(k.ad_soyad).ad, 'Soyad': k.soyad ?? adBol(k.ad_soyad).soyad, Firma: firmaAd(k.firma_id), Unvan: k.unvan, Telefon: k.telefon, 'E-posta': k.eposta })),
       'Ziyaretler': S.ziyaretler.map(z => ({ Tarih: z.tarih, Firma: firmaAd(z.firma_id), Not: z.notlar })),
       'Siparişler': S.siparisler.map(s => ({ Tarih: s.tarih, Müşteri: s.musteri_adi, Referans: s.referans, Proje: s.proje_tanimi, 'Net değer': s.net_deger, 'Para birimi': s.para_birimi })),
       'Stok': S.urunler.map(u => ({ Kod: u.kod, Açıklama: u.aciklama, Aile: u.aile, Stok: u.stok, 'Birim fiyat': u.birim_fiyat_usd })),

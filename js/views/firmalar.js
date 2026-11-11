@@ -1,4 +1,4 @@
-import { S, uuid } from '../db.js';
+import { S, uuid, adBol, adBirlestir } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, usd, num, pill, tarih, today, ILLER, ILCELER, OSBLER, FIRMA_TIPLERI, SEKTORLER, byId, firmaAd, match, toast, openDrawer, closeDrawer,
   exportXlsx, directionsUrl, confirmBox, download, ACIK, parcali, gorununce, fold } from '../ui.js';
@@ -42,7 +42,7 @@ const FIRMA_FORM = [
 
 const KISI_FORM = [
   { title: 'Kişi', fields: [
-    { k: 'ad_soyad', l: 'Ad soyad', auto: true, req: true, full: true },
+    { k: 'ad', l: 'Ad', auto: true, req: true }, { k: 'soyad', l: 'Soyad' },
     { k: 'firma_id', l: 'Firma', t: 'ref', ref: 'firmalar' },
     { k: 'unvan', l: 'Unvan / görev', t: 'combo', opts: ['Genel Müdür', 'Satınalma Müdürü', 'Satınalma', 'Proje Müdürü', 'Elektrik Mühendisi', 'Şantiye Şefi', 'Teknik Müdür', 'Firma Sahibi', 'Satış'] },
     { k: 'telefon', l: 'Cep telefonu', t: 'tel' }, { k: 'eposta', l: 'E-posta', t: 'email' },
@@ -91,7 +91,7 @@ export function firmalarView(el) {
   el.querySelector('[data-exp]').onclick = () => {
     exportXlsx(`firmalar-${today()}.xlsx`, {
       'Firmalar': list().map(x => ({ 'Firma': x.ad, 'Tip': (x.tipler || []).join(', '), 'İl': x.il, 'İlçe': x.ilce, 'Telefon': x.telefon, 'E-posta': x.eposta, 'Segment': x.segment, 'Key account': x.key_account ? 'Evet' : '', 'Proje': stats.get(x.id).p, 'Sipariş': stats.get(x.id).k, 'Kayıp': stats.get(x.id).s, 'Son ziyaret': stats.get(x.id).z, 'Notlar': x.notlar })),
-      'Kişiler': S.kisiler.map(k => ({ 'Ad soyad': k.ad_soyad, 'Firma': firmaAd(k.firma_id), 'Unvan': k.unvan, 'Rol': k.rol, 'Telefon': k.telefon, 'E-posta': k.eposta })),
+      'Kişiler': S.kisiler.map(k => ({ 'Ad': k.ad || adBol(k.ad_soyad).ad, 'Soyad': k.soyad ?? adBol(k.ad_soyad).soyad, 'Firma': firmaAd(k.firma_id), 'Unvan': k.unvan, 'Rol': k.rol, 'Telefon': k.telefon, 'E-posta': k.eposta })),
     });
   };
   draw();
@@ -179,7 +179,8 @@ async function kartvizitPaneli(panel, form, yol, hazir) {
     }
   } catch (e) { console.error(e); kutu.innerHTML = `<p class="warn">Kartvizit okunamadı: ${esc(e.message)}</p>`; return; }
   if (r.donus && yol) { const box = panel.querySelector('[data-kvs="kartvizit_on"]'); if (box?.dataset.val === yol) { const aci = r.donus; r = { ...r, donus: 0 }; kvDondur(box, aci).then(() => toast('Kartvizit fotoğrafı düz çevrildi.')).catch(() => {}); } }
-  const alan = [['ad_soyad', 'Ad soyad', r.ad_soyad], ['unvan', 'Unvan', r.unvan], ['telefon', 'Telefon', r.telefon], ['eposta', 'E-posta', r.eposta], ['firma_id', 'Firma', r.firma],
+  const ab = adBol(r.ad_soyad);
+  const alan = [['ad', 'Ad', ab.ad], ['soyad', 'Soyad', ab.soyad], ['unvan', 'Unvan', r.unvan], ['telefon', 'Telefon', r.telefon], ['eposta', 'E-posta', r.eposta], ['firma_id', 'Firma', r.firma],
     ['_ek', 'Notlara ekle', [r.sabit && r.sabit !== r.telefon ? 'Sabit tel: ' + r.sabit : '', r.web ? 'Web: ' + r.web : '', r.adres ? 'Adres: ' + r.adres : ''].filter(Boolean).join(' · ')]].filter(x => x[2]);
   kutu.innerHTML = `<div class="ocr-box"><h3>Kartvizitten okunanlar</h3>${alan.length ? `<p class="hint">Kontrol et, gerekirse düzelt; işaretli olanlar forma yazılır.</p>
     ${alan.map(([k, l, v]) => `<label class="ocr-row"><input type="checkbox" data-ok="${k}" checked><span>${l}</span><input data-ov="${k}" value="${esc(v)}" aria-label="${l}"></label>`).join('')}
@@ -230,7 +231,7 @@ export function kisilerView(el) {
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelector('[data-new]').onclick = () => kisiDetay(null, {});
-  el.querySelector('[data-xls]').onclick = () => exportXlsx(`kisiler-${today()}.xlsx`, { 'Kişiler': S.kisiler.slice().sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr')).map(k => ({ 'Ad soyad': k.ad_soyad, 'Firma': firmaAd(k.firma_id), 'Unvan': k.unvan, 'Rol': k.rol, 'Telefon': k.telefon, 'E-posta': k.eposta, 'Doğum günü': k.dogum_gunu, 'Notlar': k.notlar })) });
+  el.querySelector('[data-xls]').onclick = () => exportXlsx(`kisiler-${today()}.xlsx`, { 'Kişiler': S.kisiler.slice().sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr')).map(k => ({ 'Ad': k.ad || adBol(k.ad_soyad).ad, 'Soyad': k.soyad ?? adBol(k.ad_soyad).soyad, 'Firma': firmaAd(k.firma_id), 'Unvan': k.unvan, 'Rol': k.rol, 'Telefon': k.telefon, 'E-posta': k.eposta, 'Doğum günü': k.dogum_gunu, 'Notlar': k.notlar })) });
   el.querySelector('[data-kv]').onclick = kartvizittenKisi;
   draw();
 }
@@ -239,6 +240,7 @@ export function kisiDetay(id, init) {
   const k0 = id ? byId('kisiler', id) : { id: uuid(), ...init, _new: true };
   if (!k0) { toast('Kişi bulunamadı.', 'err'); return backToList(); }
   const k = { ...k0 };
+  if (!k.ad && !k.soyad && k.ad_soyad) Object.assign(k, adBol(k.ad_soyad));
   const projeler = S.projeler.filter(p => p.ilgili_kisi_id === k.id);
   const ziy = S.ziyaretler.filter(z => z.kisi_id === k.id).sort((a, b) => b.tarih.localeCompare(a.tarih));
   const panel = openDrawer(`
@@ -286,7 +288,7 @@ export function kisiDetay(id, init) {
     if (b.dataset.a === 'wa') waGonder({ kisi: k });
     if (b.dataset.a === 'vcf') {
       const fa = firmaAd(k.firma_id);
-      const v = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${k.ad_soyad}`, `N:${k.ad_soyad.split(' ').slice(-1)};${k.ad_soyad.split(' ').slice(0, -1).join(' ')};;;`, fa && `ORG:${fa}`, k.unvan && `TITLE:${k.unvan}`, k.telefon && `TEL;TYPE=CELL:${k.telefon}`, k.eposta && `EMAIL:${k.eposta}`, 'END:VCARD'].filter(Boolean).join('\r\n');
+      const v = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${k.ad_soyad}`, `N:${k.soyad || adBol(k.ad_soyad).soyad};${k.ad || adBol(k.ad_soyad).ad};;;`, fa && `ORG:${fa}`, k.unvan && `TITLE:${k.unvan}`, k.telefon && `TEL;TYPE=CELL:${k.telefon}`, k.eposta && `EMAIL:${k.eposta}`, 'END:VCARD'].filter(Boolean).join('\r\n');
       download(`${k.ad_soyad}.vcf`, v, 'text/vcard');
     }
     if (b.dataset.a === 'sil' && confirmBox(`${k.ad_soyad} silinsin mi?`)) { await app.db.del('kisiler', k.id); toast('Kişi silindi.'); closeDrawer(); app.refresh(); }
@@ -295,7 +297,8 @@ export function kisiDetay(id, init) {
     e.preventDefault();
     try {
       const o = await readForm(form, KISI_FORM, k);
-      if (!o.ad_soyad) return toast('Ad soyad yaz.', 'err');
+      o.ad = (o.ad || '').trim(); o.soyad = (o.soyad || '').trim(); o.ad_soyad = adBirlestir(o.ad, o.soyad);
+      if (!o.ad) return toast('Ad yaz.', 'err');
       panel.querySelectorAll('[data-kvs]').forEach(b => o[b.dataset.kvs] = b.dataset.val || null);
       // Kayıt anında mükerrer uyarısı: aynı firmada aynı ad ya da aynı telefon
       if (k._new) {

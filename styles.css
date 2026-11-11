@@ -1330,7 +1330,13 @@ body.kirp-acik { overflow: hidden; }
 .kirp-sahne canvas, .kirp-sahne svg { grid-area: 1 / 1; max-width: 100%; max-height: 100%; }
 .kirp-sahne svg { touch-action: none; overflow: visible; }
 .kirp-sahne polygon { fill: rgba(255, 196, 0, .12); stroke: #FFC400; stroke-width: 2; }
-.kirp-sahne circle { fill: rgba(255, 196, 0, .35); stroke: #FFC400; stroke-width: 2.5; cursor: grab; }
+.kirp-kose circle { fill: rgba(255, 196, 0, .25); stroke: #FFC400; stroke-width: 3; cursor: grab; }
+.kirp-kose circle.nokta { fill: #FFC400; stroke: none; }
+.kirp-orta circle { fill: #FFC400; stroke: #10181E; stroke-width: 2; cursor: grab; }
+.kirp-kose.etkin circle:first-child { fill: rgba(255, 196, 0, .08); stroke-width: 2; }
+.kirp-lup { position: absolute; top: 8px; width: 130px; height: 130px; border-radius: 50%; border: 3px solid #FFC400; box-shadow: 0 4px 16px rgba(0, 0, 0, .5); pointer-events: none; z-index: 2; }
+.kirp-ust .linkbtn { color: #FFC400; align-self: flex-start; padding: 2px 0; }
 .kirp-alt { display: flex; gap: 8px; justify-content: space-between; padding: 12px 16px 16px; }
 .kirp-alt .btn { flex: 1; } .kirp-alt .btn.ghost { color: #fff; border-color: #4A5A66; background: transparent; }
 .kirp-alt .btn.primary { background: #FFC400; border-color: #FFC400; color: #10181E; }
+.kirp-ust .linkbtn[hidden] { display: block; visibility: hidden; }   /* yer kaplasın: sürüklerken görüntü kaymasın */

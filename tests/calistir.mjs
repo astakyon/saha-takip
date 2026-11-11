@@ -216,6 +216,12 @@ const DB = () => {
   await p.waitForSelector('.kirp [data-kes]'); await p.click('[data-kes]'); await w(200); await p.click('[data-kul]'); await w(1500);
   const kv = await p.evaluate(() => ({ yol: document.querySelector('[data-kvs="kartvizit_on"]')?.dataset.val, don: document.querySelector('[data-kvs="kartvizit_on"] [data-kv-don]')?.hidden, ocr: !!document.querySelector('[data-ocr] .warn, [data-ocr] .ocr-box') }));
   kontrol('Kişi formunda kırpılan kartvizit kaydediliyor ve okumaya gönderiliyor', !!kv.yol && kv.don === false && kv.ocr, JSON.stringify(kv));
+  // Ad ve soyad ayrı: eski kayıt bölünüyor, kaydedince tam ad ikisinden oluşuyor
+  await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800);
+  const ad0 = await p.evaluate(() => [document.querySelector('.drawer.open [name=ad]')?.value, document.querySelector('.drawer.open [name=soyad]')?.value]);
+  await p.fill('.drawer.open [name=ad]', 'Ayşe Nur'); await p.fill('.drawer.open [name=soyad]', 'Kaya'); await p.click('.drawer.open [type=submit]'); await w(800);
+  const ad1 = await p.evaluate(async () => { const k = (await import('./js/db.js')).S.kisiler.find(x => x.id === 'k1'); return [k.ad, k.soyad, k.ad_soyad]; });
+  kontrol('Ad ve soyad ayrı alanlarda; tam ad ikisinden oluşuyor', JSON.stringify(ad0) === '["Deneme","Kişi"]' && JSON.stringify(ad1) === '["Ayşe Nur","Kaya","Ayşe Nur Kaya"]', JSON.stringify([ad0, ad1]));
   kontrol('Kırpmada hata yok', !hatalar.filter(h => !/Okuma motoru indirilemedi/.test(h)).length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
