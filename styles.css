@@ -1351,3 +1351,5 @@ body.kirp-acik { overflow: hidden; }
 .kam-alt [data-isik] { justify-self: end; } .kam-alt [data-isik].on { background: #FFC400; color: #10181E; border-color: #FFC400; }
 .kam-dek { width: 74px; height: 74px; border-radius: 50%; border: 5px solid #fff; background: rgba(255, 255, 255, .25); cursor: pointer; }
 .kam-dek:active { background: #fff; }
+.kirp-ust-bar { display: flex; justify-content: space-between; gap: 8px; padding: 10px 16px 0; }
+.kirp-ust-bar .btn.ghost { color: #fff; border-color: #4A5A66; background: transparent; }

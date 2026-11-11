@@ -225,12 +225,20 @@ const DB = () => {
     navigator.mediaDevices.getUserMedia = async k => { istekler.push(k.video.facingMode); return cv.captureStream(15); };
     const K = await import('./js/kirp.js'); const s = K.kartvizitFotografi(true);
     const t0 = Date.now(); while (!document.querySelector('.kirp [data-kul]:not([hidden])') && Date.now() - t0 < 12000) await new Promise(r => setTimeout(r, 200));
-    const kamKapandi = !document.querySelector('.kam');
+    const bekle = async f => { const t = Date.now(); while (!f() && Date.now() - t < 12000) await new Promise(r => setTimeout(r, 200)); return f(); };
+    // Yeniden çek: kamera tekrar açılır, ikinci çekim kullanılır
+    document.querySelector('.kirp [data-tekrar]')?.click();
+    const yenidenAcildi = await bekle(() => document.querySelector('.kam'));
+    await bekle(() => document.querySelector('.kirp [data-kul]:not([hidden])'));
+    const kamKapandi = !!yenidenAcildi && !document.querySelector('.kam');
     document.querySelector('.kirp [data-kul]')?.click();
-    const r = await s; clearInterval(zam); const i = r && await createImageBitmap(r.dosya);
+    const r = await s; window.__zam = zam; const i = r && await createImageBitmap(r.dosya);
     return { istek: JSON.stringify(istekler[0]), kamKapandi, boyut: i ? [i.width, i.height] : null };
   });
-  kontrol('Kamera yalnızca arka kamerayı istiyor, kartı kendiliğinden çekip kırpıyor', kam.istek === '{"exact":"environment"}' && kam.kamKapandi && kam.boyut && Math.abs(kam.boyut[0] / kam.boyut[1] - 600 / 380) < 0.12, JSON.stringify(kam));
+  const iptal = await p.evaluate(async () => { const K = await import('./js/kirp.js'); const s = K.kartvizitFotografi(true); const t = Date.now(); while (!document.querySelector('.kirp [data-iptal]') && Date.now() - t < 12000) await new Promise(r => setTimeout(r, 200)); document.querySelector('.kirp [data-iptal]')?.click(); return { sonuc: await s, acik: !!document.querySelector('.kirp, .kam') }; });
+  kontrol('Önizlemede İptal hiçbir şey kaydetmeden kapatıyor', iptal.sonuc === null && !iptal.acik, JSON.stringify(iptal));
+  await p.evaluate(() => clearInterval(window.__zam));
+  kontrol('Kamera yalnızca arka kamerayı istiyor, kartı kendiliğinden çekip kırpıyor, yeniden çekilebiliyor', kam.istek === '{"exact":"environment"}' && kam.kamKapandi && kam.boyut && Math.abs(kam.boyut[0] / kam.boyut[1] - 600 / 380) < 0.12, JSON.stringify(kam));
   // Ad ve soyad ayrı: eski kayıt bölünüyor, kaydedince tam ad ikisinden oluşuyor
   await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800);
   const ad0 = await p.evaluate(() => [document.querySelector('.drawer.open [name=ad]')?.value, document.querySelector('.drawer.open [name=soyad]')?.value]);

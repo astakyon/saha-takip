@@ -32,6 +32,10 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 43): kartvizitte iptal ve yeniden çek
+
+- Kartvizit çekildikten sonra açılan ekranın üstünde **“✕ İptal”** (hiçbir şey kaydetmeden kapatır) ve **“↺ Yeniden çek”** (kamerayı tekrar açar) düğmeleri var. Galeriden seçince ikincisi **“Başka fotoğraf”** olur.
+
 ## Güncelleme notu (sürüm 42): uygulama içi kartvizit kamerası
 
 - **“Çek” artık uygulamanın kendi kamerasını açar ve yalnızca arka kamerayı kullanır** (telefonun kamera uygulaması ve ön kamera açılmaz). Ekranda kartvizit biçiminde bir çerçeve görünür.

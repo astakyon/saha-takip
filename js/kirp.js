@@ -313,13 +313,13 @@ export function kartiKes(kaynak, koseler) {
 // Döner: { blob } (kırpılmış kart), ya da null (vazgeçildi)
 // Köşeler parmağın altında kalmasın diye sürüklerken büyüteç gösterilir; köşe parmağa zıplamaz, olduğu yerden kayar.
 // Kenarların ortasındaki tutamaçlarla bütün bir kenar birlikte kaydırılabilir.
-export async function kartvizitKirp(girdi, { koseler: verilen = null, onizle = false, kilavuz = false } = {}) {
+export async function kartvizitKirp(girdi, { koseler: verilen = null, onizle = false, kilavuz = false, tekrar = '' } = {}) {
   const kaynak = girdi instanceof HTMLCanvasElement ? girdi : await gorselYukle(girdi);
   let bulunan = verilen; if (!bulunan) try { bulunan = koseBul(kaynak); } catch (e) { console.warn('Köşe bulma', e); }
   let koseler = (bulunan || icKoseler(kaynak)).map(p => [...p]);
   return new Promise(res => {
     const kap = document.createElement('div'); kap.className = 'kirp'; kap.setAttribute('role', 'dialog'); kap.setAttribute('aria-modal', 'true'); kap.setAttribute('aria-label', 'Kartviziti çerçevele');
-    kap.innerHTML = `<div class="kirp-ust"><b data-baslik>Kartı çerçevele</b><small data-ipucu>${bulunan ? 'Kart bulundu. Çerçeve doğruysa “Kırp”a dokun.' : 'Kart bulunamadı. Sarı köşeleri kartın köşelerine sürükle.'}</small>${bulunan ? '<button type="button" class="linkbtn" data-yeniden hidden>Otomatik çerçeveye dön</button>' : ''}</div>
+    kap.innerHTML = `<div class="kirp-ust-bar"><button type="button" class="btn sm ghost" data-iptal aria-label="İptal et">✕ İptal</button>${tekrar ? `<button type="button" class="btn sm ghost" data-tekrar>↺ ${tekrar}</button>` : ''}</div><div class="kirp-ust"><b data-baslik>Kartı çerçevele</b><small data-ipucu>${bulunan ? 'Kart bulundu. Çerçeve doğruysa “Kırp”a dokun.' : 'Kart bulunamadı. Sarı köşeleri kartın köşelerine sürükle.'}</small>${bulunan ? '<button type="button" class="linkbtn" data-yeniden hidden>Otomatik çerçeveye dön</button>' : ''}</div>
       <div class="kirp-sahne" data-sahne><canvas data-c></canvas><svg data-svg><polygon data-poli></polygon>${[0, 1, 2, 3].map(i => `<g data-o="${i}" class="kirp-orta"><circle r="9"></circle></g>`).join('')}${[0, 1, 2, 3].map(i => `<g data-k="${i}" class="kirp-kose"><circle r="18"></circle><circle r="3" class="nokta"></circle></g>`).join('')}</svg><canvas class="kirp-lup" data-lup width="260" height="260" hidden></canvas></div>
       <div class="kirp-alt" data-adim1><button type="button" class="btn ghost" data-vaz>Vazgeç</button><button type="button" class="btn ghost" data-tum>Tüm fotoğraf</button><button type="button" class="btn primary" data-kes>Kırp</button></div>
       <div class="kirp-alt" data-adim2 hidden><button type="button" class="btn ghost" data-geri>Köşeleri düzelt</button><button type="button" class="btn ghost" data-don aria-label="90 derece döndür">↻ Döndür</button><button type="button" class="btn primary" data-kul>Kullan</button></div>`;
@@ -382,6 +382,8 @@ export async function kartvizitKirp(girdi, { koseler: verilen = null, onizle = f
       kap.querySelector('[data-ipucu]').textContent = n === 1 ? 'Sarı köşeleri kartın köşelerine sürükle. Kenar ortasındaki noktalar bütün kenarı kaydırır.' : 'Yazılar ters ya da yan duruyorsa “Döndür”e dokun.'; };
     kap.querySelector('[data-yeniden]')?.addEventListener('click', e => { koseler = bulunan.map(p => [...p]); e.target.hidden = true; cerceve(); });
     kap.querySelector('[data-vaz]').onclick = () => kapat(null);
+    kap.querySelector('[data-iptal]').onclick = () => kapat(null);
+    kap.querySelector('[data-tekrar]')?.addEventListener('click', () => kapat({ tekrar: true }));
     kap.querySelector('[data-tum]').onclick = () => { koseler = tumKoseler(kaynak); cerceve(); const y = kap.querySelector('[data-yeniden]'); if (y) y.hidden = false; };
     kap.querySelector('[data-kes]').onclick = () => { sonuc = kartiKes(kaynak, koseler); aci = 0; goster = sonuc; adim(2); ciz(); };
     kap.querySelector('[data-geri]').onclick = () => { goster = kaynak; adim(1); ciz(); };
@@ -397,22 +399,29 @@ export async function kartvizitKirp(girdi, { koseler: verilen = null, onizle = f
 export async function kartvizitFotografi(capture) {
   const { pickFiles, toast } = await import('./ui.js');
   const dosyaYap = r => r && { dosya: new File([r.blob], 'kartvizit.jpg', { type: 'image/jpeg' }), elle: r.elle };
-  // Çek: uygulamanın kendi kamerası (yalnızca arka kamera, kart çerçevesi, kendiliğinden çekim)
+  // Çek: uygulamanın kendi kamerası (yalnızca arka kamera, kart çerçevesi, kendiliğinden çekim).
+  // Önizlemede “Yeniden çek” kameraya geri döner, “İptal” hiçbir şey kaydetmeden kapatır.
   if (capture) {
     const { kameraVarMi, kartvizitCek } = await import('./kamera.js');
     if (kameraVarMi()) {
-      let c = null;
-      try { c = await kartvizitCek(); }
-      catch (e) {
-        document.querySelector('.kam')?.remove(); document.body.classList.remove('kirp-acik');
-        toast(e?.name === 'NotAllowedError' ? 'Kamera izni verilmedi; telefonun kamerası açılıyor. İzni tarayıcı ayarlarından açabilirsin.' : 'Kamera açılamadı; telefonun kamerası kullanılacak.', 'err');
-        c = undefined;
+      for (;;) {
+        let c = null;
+        try { c = await kartvizitCek(); }
+        catch (e) {
+          document.querySelector('.kam')?.remove(); document.body.classList.remove('kirp-acik');
+          toast(e?.name === 'NotAllowedError' ? 'Kamera izni verilmedi; telefonun kamerası açılıyor. İzni tarayıcı ayarlarından açabilirsin.' : 'Kamera açılamadı; telefonun kamerası kullanılacak.', 'err');
+          break;
+        }
+        if (!c) return null;
+        const r = await kartvizitKirp(c.tuval, { koseler: c.koseler, onizle: true, kilavuz: c.kilavuz, tekrar: 'Yeniden çek' });
+        if (r?.tekrar) continue;
+        return dosyaYap(r);
       }
-      if (c === null) return null;
-      if (c) return dosyaYap(await kartvizitKirp(c.tuval, { koseler: c.koseler, onizle: true, kilavuz: c.kilavuz }));
     }
   }
-  const [file] = await pickFiles({ capture, multiple: false }); if (!file) return null;
-  try { return dosyaYap(await kartvizitKirp(file)); }
-  catch (e) { toast('Kırpılamadı, fotoğraf olduğu gibi kullanılacak: ' + e.message, 'err'); return { dosya: file, elle: false }; }
+  for (;;) {
+    const [file] = await pickFiles({ capture, multiple: false }); if (!file) return null;
+    try { const r = await kartvizitKirp(file, { tekrar: capture ? 'Yeniden çek' : 'Başka fotoğraf' }); if (r?.tekrar) continue; return dosyaYap(r); }
+    catch (e) { toast('Kırpılamadı, fotoğraf olduğu gibi kullanılacak: ' + e.message, 'err'); return { dosya: file, elle: false }; }
+  }
 }
