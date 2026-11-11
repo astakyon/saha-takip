@@ -16,17 +16,20 @@ export const blobYap = (c, q = 0.9) => new Promise(r => c.toBlob(r, 'image/jpeg'
 // İki yoldan aday dörtgenler çıkarılır: (1) Hough ile bulunan düz kenar çizgilerinin oluşturduğu dörtgenler,
 // (2) kenarlardan arka planı doldurup kalan en büyük parça. Her aday, dört kenarı boyunca fotoğrafta gerçekten
 // bir kenar olup olmadığına, oranına (kartvizit ~1,6), büyüklüğüne ve ortaya yakınlığına göre puanlanır.
-export function koseBul(kaynak) {
-  const M = 480, sc = Math.min(1, M / Math.max(kaynak.width, kaynak.height));
+export function koseBul(kaynak, { M = 480 } = {}) {
+  const sc = Math.min(1, M / Math.max(kaynak.width, kaynak.height));
   const w = Math.max(8, Math.round(kaynak.width * sc)), h = Math.max(8, Math.round(kaynak.height * sc));
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(kaynak, 0, 0, w, h);
   const g = egim(x.getImageData(0, 0, w, h).data, w, h);
   const adaylar = [];
   for (const kat of [1, 0.55, 0.3]) { const q = dortgenBul(kenarHaritasi(g, w, h, kat), w, h); if (q) adaylar.push(q); }
-  adaylar.push(...houghAdaylari(g, w, h));
+  adaylar.push(...houghAdaylari(g, w, h, 0.7));
   let en = null;
-  for (const q of adaylar) { const p = puanla(q, g, w, h); if (p > (en ? en.p : 0)) en = { q, p }; }
+  const dene = l => { for (const q of l) { const p = puanla(q, g, w, h); if (p > (en ? en.p : 0)) en = { q, p }; } };
+  dene(adaylar);
+  // Kartın kenarı yazılardan zayıfsa (soluk kenar, desenli zemin) daha hassas çizgi aramasıyla tekrar dene
+  if (!en || en.p < 0.55) { const ek = houghAdaylari(g, w, h, 0.35); adaylar.push(...ek); dene(ek); }
   koseBul.son = { aday: adaylar.length, puan: en ? +en.p.toFixed(3) : 0 };
   if (!en || en.p < 0.3) return null;
   return inceAyar(siraliKoseler(en.q), g, w, h).map(([a, b]) => [Math.max(0, Math.min(kaynak.width, a / sc)), Math.max(0, Math.min(kaynak.height, b / sc))]);
@@ -132,8 +135,8 @@ function puanla(q0, g, w, h) {
 }
 
 // Hough dönüşümü: güçlü düz çizgiler → karşılıklı paralele yakın iki çift → dörtgen adayları
-function houghAdaylari(g, w, h) {
-  const esik = Math.max(g.otsu * 0.7, 12), T = 180, R = Math.ceil(Math.hypot(w, h)), RB = 2 * R + 1;
+function houghAdaylari(g, w, h, kat = 0.7) {
+  const esik = Math.max(g.otsu * kat, 10), T = 180, R = Math.ceil(Math.hypot(w, h)), RB = 2 * R + 1;
   const cs = new Float32Array(T), sn = new Float32Array(T);
   for (let t = 0; t < T; t++) { cs[t] = Math.cos(t * Math.PI / T); sn[t] = Math.sin(t * Math.PI / T); }
   const acc = new Uint16Array(T * RB);
@@ -310,16 +313,16 @@ export function kartiKes(kaynak, koseler) {
 // Döner: { blob } (kırpılmış kart), ya da null (vazgeçildi)
 // Köşeler parmağın altında kalmasın diye sürüklerken büyüteç gösterilir; köşe parmağa zıplamaz, olduğu yerden kayar.
 // Kenarların ortasındaki tutamaçlarla bütün bir kenar birlikte kaydırılabilir.
-export async function kartvizitKirp(dosya) {
-  const kaynak = await gorselYukle(dosya);
-  let bulunan = null; try { bulunan = koseBul(kaynak); } catch (e) { console.warn('Köşe bulma', e); }
+export async function kartvizitKirp(girdi, { koseler: verilen = null, onizle = false, kilavuz = false } = {}) {
+  const kaynak = girdi instanceof HTMLCanvasElement ? girdi : await gorselYukle(girdi);
+  let bulunan = verilen; if (!bulunan) try { bulunan = koseBul(kaynak); } catch (e) { console.warn('Köşe bulma', e); }
   let koseler = (bulunan || icKoseler(kaynak)).map(p => [...p]);
   return new Promise(res => {
     const kap = document.createElement('div'); kap.className = 'kirp'; kap.setAttribute('role', 'dialog'); kap.setAttribute('aria-modal', 'true'); kap.setAttribute('aria-label', 'Kartviziti çerçevele');
     kap.innerHTML = `<div class="kirp-ust"><b data-baslik>Kartı çerçevele</b><small data-ipucu>${bulunan ? 'Kart bulundu. Çerçeve doğruysa “Kırp”a dokun.' : 'Kart bulunamadı. Sarı köşeleri kartın köşelerine sürükle.'}</small>${bulunan ? '<button type="button" class="linkbtn" data-yeniden hidden>Otomatik çerçeveye dön</button>' : ''}</div>
       <div class="kirp-sahne" data-sahne><canvas data-c></canvas><svg data-svg><polygon data-poli></polygon>${[0, 1, 2, 3].map(i => `<g data-o="${i}" class="kirp-orta"><circle r="9"></circle></g>`).join('')}${[0, 1, 2, 3].map(i => `<g data-k="${i}" class="kirp-kose"><circle r="18"></circle><circle r="3" class="nokta"></circle></g>`).join('')}</svg><canvas class="kirp-lup" data-lup width="260" height="260" hidden></canvas></div>
       <div class="kirp-alt" data-adim1><button type="button" class="btn ghost" data-vaz>Vazgeç</button><button type="button" class="btn ghost" data-tum>Tüm fotoğraf</button><button type="button" class="btn primary" data-kes>Kırp</button></div>
-      <div class="kirp-alt" data-adim2 hidden><button type="button" class="btn ghost" data-geri>Geri</button><button type="button" class="btn ghost" data-don aria-label="90 derece döndür">↻ Döndür</button><button type="button" class="btn primary" data-kul>Kullan</button></div>`;
+      <div class="kirp-alt" data-adim2 hidden><button type="button" class="btn ghost" data-geri>Köşeleri düzelt</button><button type="button" class="btn ghost" data-don aria-label="90 derece döndür">↻ Döndür</button><button type="button" class="btn primary" data-kul>Kullan</button></div>`;
     document.body.appendChild(kap); document.body.classList.add('kirp-acik');
     const cv = kap.querySelector('[data-c]'), svg = kap.querySelector('[data-svg]'), sahne = kap.querySelector('[data-sahne]'), lup = kap.querySelector('[data-lup]');
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -386,14 +389,30 @@ export async function kartvizitKirp(dosya) {
     kap.querySelector('[data-kul]').onclick = async e => { e.target.disabled = true; const blob = await blobYap(goster); kapat({ blob, elle: aci !== 0 }); };
     kap.addEventListener('keydown', e => { if (e.key === 'Escape') kapat(null); });
     window.addEventListener('resize', ciz);
-    requestAnimationFrame(ciz);
+    requestAnimationFrame(() => { ciz(); if (onizle) { kap.querySelector('[data-kes]').click(); if (kilavuz) kap.querySelector('[data-ipucu]').textContent = 'Kartın kenarları bulunamadı, çerçevenin içi kesildi. Gerekirse “Köşeleri düzelt”e dokun.'; } });
     kap.querySelector('[data-kes]').focus();
   });
 }
 // Fotoğraf seç/çek → kırp → yüklenecek dosya (vazgeçilirse null)
 export async function kartvizitFotografi(capture) {
   const { pickFiles, toast } = await import('./ui.js');
+  const dosyaYap = r => r && { dosya: new File([r.blob], 'kartvizit.jpg', { type: 'image/jpeg' }), elle: r.elle };
+  // Çek: uygulamanın kendi kamerası (yalnızca arka kamera, kart çerçevesi, kendiliğinden çekim)
+  if (capture) {
+    const { kameraVarMi, kartvizitCek } = await import('./kamera.js');
+    if (kameraVarMi()) {
+      let c = null;
+      try { c = await kartvizitCek(); }
+      catch (e) {
+        document.querySelector('.kam')?.remove(); document.body.classList.remove('kirp-acik');
+        toast(e?.name === 'NotAllowedError' ? 'Kamera izni verilmedi; telefonun kamerası açılıyor. İzni tarayıcı ayarlarından açabilirsin.' : 'Kamera açılamadı; telefonun kamerası kullanılacak.', 'err');
+        c = undefined;
+      }
+      if (c === null) return null;
+      if (c) return dosyaYap(await kartvizitKirp(c.tuval, { koseler: c.koseler, onizle: true, kilavuz: c.kilavuz }));
+    }
+  }
   const [file] = await pickFiles({ capture, multiple: false }); if (!file) return null;
-  try { const r = await kartvizitKirp(file); return r && { dosya: new File([r.blob], 'kartvizit.jpg', { type: 'image/jpeg' }), elle: r.elle }; }
+  try { return dosyaYap(await kartvizitKirp(file)); }
   catch (e) { toast('Kırpılamadı, fotoğraf olduğu gibi kullanılacak: ' + e.message, 'err'); return { dosya: file, elle: false }; }
 }

@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 42): uygulama içi kartvizit kamerası
+
+- **“Çek” artık uygulamanın kendi kamerasını açar ve yalnızca arka kamerayı kullanır** (telefonun kamera uygulaması ve ön kamera açılmaz). Ekranda kartvizit biçiminde bir çerçeve görünür.
+- **Kart canlı aranır:** bulununca yeşil çerçeveyle gösterilir, kart bir saniye kıpırdamazsa kendiliğinden çekilir (beklemeden çekmek için deklanşöre dokunulabilir). Karanlıkta “Işık” düğmesi flaşı yakar (destekleyen telefonlarda).
+- Çekimden sonra doğrudan **kesilmiş kart** gösterilir; köşeler gerekirse “Köşeleri düzelt” ile düzeltilir. Kartın kenarları bulunamazsa ekrandaki çerçevenin içi kesilir, yani kart çerçeveye yerleştirildiyse yine düzgün çıkar.
+- Kamera izni verilmezse ya da açılamazsa telefonun kendi kamerasına dönülür. “Galeri” eskisi gibi çalışır.
+- Köşe bulmaya ikinci, daha hassas bir çizgi araması eklendi (soluk kenarlı, bulanık, yuvarlak köşeli kartlar ve desenli zemin için).
+
 ## Güncelleme notu (sürüm 41): ad ve soyad ayrı, kartvizit köşeleri daha iyi bulunuyor
 
 - **Kişilerde ad ve soyad ayrı alan.** Eski kayıtlarda son kelime soyad, öncesi ad sayılır (“Mehmet Ali Yılmaz” → Ad: Mehmet Ali, Soyad: Yılmaz). Listeler, arama ve Excel tam adı kullanmaya devam eder; Excel'e Ad ve Soyad ayrı sütun olarak çıkar, rehbere kaydetmede soyad doğru alana yazılır, mesaj şablonlarına {soyad} eklendi. Supabase'de güncel **schema.sql** çalıştırılmalı (sürüm 20); çalıştırılana kadar uygulama yalnızca tam adı kaydeder.

@@ -216,6 +216,21 @@ const DB = () => {
   await p.waitForSelector('.kirp [data-kes]'); await p.click('[data-kes]'); await w(200); await p.click('[data-kul]'); await w(1500);
   const kv = await p.evaluate(() => ({ yol: document.querySelector('[data-kvs="kartvizit_on"]')?.dataset.val, don: document.querySelector('[data-kvs="kartvizit_on"] [data-kv-don]')?.hidden, ocr: !!document.querySelector('[data-ocr] .warn, [data-ocr] .ocr-box') }));
   kontrol('Kişi formunda kırpılan kartvizit kaydediliyor ve okumaya gönderiliyor', !!kv.yol && kv.don === false && kv.ocr, JSON.stringify(kv));
+  // Uygulama içi kamera: yalnızca arka kamera istenir, kart canlı bulunup kendiliğinden çekilir, kırpılmış kart döner
+  const kam = await p.evaluate(async () => {
+    const cv = document.createElement('canvas'); cv.width = 720; cv.height = 1280; const x = cv.getContext('2d');
+    const boya = () => { x.fillStyle = '#6b4a2e'; x.fillRect(0, 0, 720, 1280); x.save(); x.translate(360, 640); x.rotate(0.06); x.fillStyle = '#f7f7f2'; x.fillRect(-300, -190, 600, 380); x.fillStyle = '#222'; x.fillRect(-240, -100, 330, 30); x.restore(); };
+    boya(); const zam = setInterval(boya, 100);
+    const istekler = [];
+    navigator.mediaDevices.getUserMedia = async k => { istekler.push(k.video.facingMode); return cv.captureStream(15); };
+    const K = await import('./js/kirp.js'); const s = K.kartvizitFotografi(true);
+    const t0 = Date.now(); while (!document.querySelector('.kirp [data-kul]:not([hidden])') && Date.now() - t0 < 12000) await new Promise(r => setTimeout(r, 200));
+    const kamKapandi = !document.querySelector('.kam');
+    document.querySelector('.kirp [data-kul]')?.click();
+    const r = await s; clearInterval(zam); const i = r && await createImageBitmap(r.dosya);
+    return { istek: JSON.stringify(istekler[0]), kamKapandi, boyut: i ? [i.width, i.height] : null };
+  });
+  kontrol('Kamera yalnızca arka kamerayı istiyor, kartı kendiliğinden çekip kırpıyor', kam.istek === '{"exact":"environment"}' && kam.kamKapandi && kam.boyut && Math.abs(kam.boyut[0] / kam.boyut[1] - 600 / 380) < 0.12, JSON.stringify(kam));
   // Ad ve soyad ayrı: eski kayıt bölünüyor, kaydedince tam ad ikisinden oluşuyor
   await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800);
   const ad0 = await p.evaluate(() => [document.querySelector('.drawer.open [name=ad]')?.value, document.querySelector('.drawer.open [name=soyad]')?.value]);
