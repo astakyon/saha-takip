@@ -9,33 +9,63 @@ function betik(src) {
   return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Okuma motoru indirilemedi. İnternet bağlantını kontrol et.')); document.head.appendChild(s); });
 }
 async function hazirla(ilerleme) {
-  if (isci) return isci;
-  if (!window.Tesseract) await (yukleniyor ||= betik(TESS));
+  if (isci) { isci._ilerleme = ilerleme; return isci; }
+  if (!window.Tesseract) await (yukleniyor ||= betik(window.__TESS_YOL?.betik || TESS));
   if (!window.Tesseract) { yukleniyor = null; throw new Error('Okuma motoru indirilemedi. İnternet bağlantını kontrol et.'); }
-  isci = await window.Tesseract.createWorker(['tur', 'eng'], 1, { logger: m => ilerleme && m.status && ilerleme(m.status, m.progress) });
+  const yol = window.__TESS_YOL || {};   // yalnızca testlerde yerel dosyalar kullanılır
+  let w = null;
+  w = await window.Tesseract.createWorker(['tur', 'eng'], 1, { ...(yol.workerPath ? { workerPath: yol.workerPath, corePath: yol.corePath, langPath: yol.langPath } : {}), logger: m => w?._ilerleme?.(m.status, m.progress) });
+  w._ilerleme = ilerleme; isci = w;
   return isci;
 }
-// Görseli okumadan önce gri tonlama ve kontrast (telefondan çekilen kartvizitlerde sonucu belirgin iyileştirir)
-async function onIsle(blob) {
-  const img = await createImageBitmap(blob);
-  const sc = Math.min(1, 2000 / Math.max(img.width, img.height));
-  const c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
-  const x = c.getContext('2d'); x.drawImage(img, 0, 0, c.width, c.height);
-  const d = x.getImageData(0, 0, c.width, c.height), p = d.data;
-  for (let i = 0; i < p.length; i += 4) { let g = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]; g = Math.max(0, Math.min(255, (g - 128) * 1.5 + 140)); p[i] = p[i + 1] = p[i + 2] = g; }
-  x.putImageData(d, 0, 0);
-  return await new Promise(r => c.toBlob(r, 'image/png'));
+// Okumadan önce: telefonun yön bilgisi uygulanır, küçük görsel büyütülür, gri tonlama ve otomatik kontrast (yüzdelik germe)
+async function tuval(blob, uzun = 1800) {
+  const { gorselYukle } = await import('./kirp.js');
+  const k = await gorselYukle(blob, 4000);
+  const sc = uzun / Math.max(k.width, k.height);
+  if (Math.abs(sc - 1) < 0.05) return k;
+  const c = document.createElement('canvas'); c.width = Math.round(k.width * sc); c.height = Math.round(k.height * sc);
+  const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(k, 0, 0, c.width, c.height);
+  return c;
 }
-// Genel metin okuma (ürün etiketi vb.)
+function onIsle(kaynak) {
+  const c = document.createElement('canvas'); c.width = kaynak.width; c.height = kaynak.height;
+  const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(kaynak, 0, 0);
+  const d = x.getImageData(0, 0, c.width, c.height), p = d.data, hist = new Uint32Array(256), n = p.length / 4;
+  for (let i = 0; i < p.length; i += 4) { const g = Math.round(0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]); p[i] = g; hist[g]++; }
+  let alt = 0, ust = 255, s = 0; for (let i = 0; i < 256; i++) { s += hist[i]; if (s >= n * 0.01) { alt = i; break; } }
+  s = 0; for (let i = 255; i >= 0; i--) { s += hist[i]; if (s >= n * 0.02) { ust = i; break; } }
+  const ar = Math.max(40, ust - alt);
+  for (let i = 0; i < p.length; i += 4) { const g = Math.max(0, Math.min(255, (p[i] - alt) * 255 / ar)); p[i] = p[i + 1] = p[i + 2] = g; }
+  x.putImageData(d, 0, 0);
+  return c;
+}
+// Okumanın ne kadar anlamlı olduğu: güvenle okunan harf/rakam sayısı (yanlış yönde okunan metin düşük güvenle döner)
+export function okumaPuani(data) {
+  let p = 0; for (const w of data.words || []) { const t = (w.text || '').replace(/[^\p{L}\p{N}@.]/gu, ''); if (t.length >= 2 && w.confidence >= 60) p += t.length * w.confidence / 100; }
+  return p;
+}
+// Genel metin okuma (ürün etiketi, şantiye tabelası)
 export async function metinOku(blob, ilerleme) {
   const w = await hazirla(ilerleme);
-  const { data } = await w.recognize(await onIsle(blob));
+  const { data } = await w.recognize(onIsle(await tuval(blob)));
   return data.text || '';
 }
-export async function kartvizitOku(blob, ilerleme) {
+// Kartvizit: önce olduğu gibi okunur; sonuç zayıfsa 180°, 90° ve 270° döndürülerek denenir, en anlamlı okuma seçilir.
+// donus: kartın kaç derece döndürülünce düz okunduğu (kaydedilen fotoğraf da buna göre çevrilir).
+export async function kartvizitOku(blob, ilerleme, { yonDene = true } = {}) {
   const w = await hazirla(ilerleme);
-  const { data } = await w.recognize(await onIsle(blob));
-  return { metin: data.text, ...kartvizitAyristir(data.text) };
+  const { dondur } = await import('./kirp.js');
+  const temel = onIsle(await tuval(blob));
+  let en = null;
+  for (const aci of yonDene ? [0, 180, 90, 270] : [0]) {
+    if (aci) ilerleme?.('yön deneniyor', 0);
+    const { data } = await w.recognize(dondur(temel, aci));
+    const puan = okumaPuani(data);
+    if (!en || puan > en.puan) en = { data, puan, aci };
+    if (en.puan >= 40 && (data.confidence || 0) >= 70) break;
+  }
+  return { metin: en.data.text, donus: en.aci, guven: Math.round(en.data.confidence || 0), ...kartvizitAyristir(en.data.text) };
 }
 
 const UNVAN = /(genel müdür|müdür|mudur|müdürü|mühendis|muhendis|şef|sef|yönetici|yonetici|sorumlu|uzman|direktör|direktor|başkan|baskan|koordinatör|koordinator|satınalma|satin alma|satış|satis|teknik|proje|elektrik|tekniker|teknisyen|ortak|kurucu|sahibi|manager|engineer|director|sales|purchasing|ceo|cfo|coo|cto|owner|partner|specialist)/i;
@@ -66,6 +96,7 @@ export function kartvizitAyristir(metin) {
   for (const f of S.firmalar || []) { const k = fk(f.ad).split(' ').slice(0, 2).join(' '); if (k.length >= 4 && fk(tum).includes(k)) { firma = f.ad; firmaId = f.id; break; } }
   if (!firma) firma = aday.find(s => FIRMA.test(s) && !UNVAN.test(s.split(' ')[0])) || null;
   const buyuk = w => w.length > 3 && w === w.toLocaleUpperCase('tr') && /[A-ZÇĞİÖŞÜ]/.test(w);
+  if (firma && !firmaId) firma = firma.replace(/^(?:[A-ZÇĞİÖŞÜ0-9]{1,2}\s+)+(?=\S+\s+\S)/, '');   // logonun yanlış okunan harfleri
   if (firma && !firmaId) firma = firma.split(/\s+/).map(w => buyuk(w.replace(/[.,]/g, '')) ? w[0] + w.slice(1).toLocaleLowerCase('tr') : w).join(' ');
   const unvan = aday.find(s => s !== firma && UNVAN.test(s) && s.split(' ').length <= 6) || null;
   // Ad soyad: 2-4 kelime, harflerden oluşan, unvan/firma olmayan; büyük harfle başlayan ilk aday

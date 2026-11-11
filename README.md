@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 40): kartvizit kırpma ve daha iyi okuma
+
+- **Kartvizit fotoğrafı artık yalnızca kartı kaydeder.** Fotoğraf çekilince ya da galeriden seçilince kartın köşeleri kendiliğinden bulunur; gerekirse köşeler parmakla sürüklenir. Kart düzleştirilir (eğik çekimde perspektif düzeltilir), zemin kesilip atılır ve yatay olarak kaydedilir.
+- **Yön sorunu çözüldü.** Kart yan ya da ters çekildiyse okuma sırasında kart döndürülerek denenir; en iyi okunan yön seçilir ve kayıtlı fotoğraf da o yöne çevrilir. Kayıtlı eski kartvizitler kişi ekranındaki **↻** düğmesiyle döndürülebilir.
+- **Okuma iyileşti:** telefonun yön bilgisi uygulanıyor, küçük fotoğraflar büyütülüyor, kontrast otomatik ayarlanıyor; logonun yanlış okunan harfleri firma adından ayıklanıyor.
+
 ## Güncelleme notu (sürüm 39): günlük yedek
 
 - **Uygulama içi otomatik yedek artık her gün** alınabiliyor (Ayarlar → Veri ve yedek → Otomatik yedek → “Her gün” / “Haftada bir”). Günlükte son 30 gün tutulur. Yedek, gün içinde uygulama ilk açıldığında alınır.

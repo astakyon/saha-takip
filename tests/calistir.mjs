@@ -184,6 +184,42 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 9) Kartvizit kırpma: kart bulunuyor, düz ve yatay kesiliyor; kırpma ekranı çalışıyor ----------
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB });
+  await p.goto(U + '#/kisiler'); await w(1000);
+  const r = await p.evaluate(async () => {
+    const K = await import('./js/kirp.js'), out = [];
+    for (const [aci, zemin, dikey] of [[7, '#7a5534', 0], [-20, '#2b3138', 0], [93, '#7a5534', 1], [3, '#e4e2dc', 0]]) {
+      const W = dikey ? 1500 : 2000, H = dikey ? 2000 : 1500, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d');
+      x.fillStyle = zemin; x.fillRect(0, 0, W, H); x.save(); x.translate(W / 2, H / 2); x.rotate(aci * Math.PI / 180);
+      x.fillStyle = '#fbfbf8'; x.fillRect(-680, -440, 1360, 880); x.fillStyle = '#222'; x.font = 'bold 90px Arial'; x.fillText('Deneme Kişi', -560, -60); x.restore();
+      const k = K.koseBul(cv), kes = K.kartiKes(cv, k || K.icKoseler(cv));
+      const rr = aci * Math.PI / 180, ger = K.siraliKoseler([[-680, -440], [680, -440], [680, 440], [-680, 440]].map(([a, b]) => [W / 2 + a * Math.cos(rr) - b * Math.sin(rr), H / 2 + a * Math.sin(rr) + b * Math.cos(rr)]));
+      out.push({ bulundu: !!k, hata: k ? Math.max(...k.map((q, i) => Math.hypot(q[0] - ger[i][0], q[1] - ger[i][1]))) / W : 1, oran: kes.width / kes.height });
+    }
+    return out;
+  });
+  kontrol('Kartvizitin köşeleri bulunuyor (eğik, yan duran, beyaz zeminde)', r.every(x => x.bulundu && x.hata < 0.03), JSON.stringify(r));
+  kontrol('Kart yatay ve doğru oranda kesiliyor', r.every(x => x.oran > 1.4 && x.oran < 1.7), JSON.stringify(r.map(x => x.oran.toFixed(2))));
+  await p.evaluate(async () => { const cv = document.createElement('canvas'); cv.width = 1200; cv.height = 900; const x = cv.getContext('2d'); x.fillStyle = '#444'; x.fillRect(0, 0, 1200, 900); x.fillStyle = '#fff'; x.fillRect(200, 200, 800, 500);
+    const b = await new Promise(r => cv.toBlob(r, 'image/jpeg')); window.__kirp = (await import('./js/kirp.js')).kartvizitKirp(b); });
+  await p.waitForSelector('.kirp [data-kes]'); await p.click('[data-kes]'); await w(200); await p.click('[data-don]'); await p.click('[data-kul]');
+  const son = await p.evaluate(async () => { const v = await window.__kirp; const i = await createImageBitmap(v.blob); return { w: i.width, h: i.height, acik: !!document.querySelector('.kirp') }; });
+  kontrol('Kırpma ekranı kartı döndürüp veriyor', son.h > son.w && !son.acik, JSON.stringify(son));
+  // Kişi formunda: galeriden seç → kırp → kart kutuya yükleniyor
+  await p.evaluate(() => { window.__TESS_YOL = { betik: '/yok.js' }; });   // okuma motoru testte indirilmez
+  await p.click('[data-new]'); await w(500);
+  const kart = await p.evaluate(async () => { const cv = document.createElement('canvas'); cv.width = 1200; cv.height = 900; const x = cv.getContext('2d'); x.fillStyle = '#444'; x.fillRect(0, 0, 1200, 900); x.fillStyle = '#fff'; x.fillRect(200, 200, 800, 500); return cv.toDataURL('image/jpeg'); });
+  const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.click('[data-kv-hizli="gal"]')]);
+  await fc.setFiles({ name: 'kart.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(kart.split(',')[1], 'base64') });
+  await p.waitForSelector('.kirp [data-kes]'); await p.click('[data-kes]'); await w(200); await p.click('[data-kul]'); await w(1500);
+  const kv = await p.evaluate(() => ({ yol: document.querySelector('[data-kvs="kartvizit_on"]')?.dataset.val, don: document.querySelector('[data-kvs="kartvizit_on"] [data-kv-don]')?.hidden, ocr: !!document.querySelector('[data-ocr] .warn, [data-ocr] .ocr-box') }));
+  kontrol('Kişi formunda kırpılan kartvizit kaydediliyor ve okumaya gönderiliyor', !!kv.yol && kv.don === false && kv.ocr, JSON.stringify(kv));
+  kontrol('Kırpmada hata yok', !hatalar.filter(h => !/Okuma motoru indirilemedi/.test(h)).length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
 await tarayici.close(); sunucu.close();
 console.log(sonuc.join('\n'));
 console.log(basarisiz ? `\n${basarisiz} test başarısız.` : `\nTüm testler geçti (${sonuc.length}).`);

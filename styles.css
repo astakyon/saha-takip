@@ -251,7 +251,7 @@ a.row:hover, button.row:hover { background: var(--zemin-2); box-shadow: inset 3p
 .loc-txt { font-size: 13.5px; color: var(--muted); margin-right: auto; font-variant-numeric: tabular-nums; }
 .calc { background: var(--lumen-soft); border: 1px solid #F1DE94; border-radius: var(--r); padding: 10px 14px; margin-bottom: 12px; }
 .kv-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.kv-img { aspect-ratio: 1.75; border-radius: 8px; border: 1.5px dashed #B9C4CB; display: grid; place-items: center; color: var(--muted); background: var(--paper) center/cover no-repeat; margin-bottom: 8px; font-size: 13.5px; }
+.kv-img { aspect-ratio: 1.75; border-radius: 8px; border: 1.5px dashed #B9C4CB; display: grid; place-items: center; color: var(--muted); background: var(--paper) center/contain no-repeat; margin-bottom: 8px; font-size: 13.5px; }
 .kv-img.has { border-style: solid; cursor: zoom-in; }
 .kv-img.has span { display: none; }
 @media (max-width: 560px) { .kv-pair { grid-template-columns: 1fr; } }
@@ -1320,3 +1320,17 @@ body.sihirbaz-acik { overflow: hidden; }
 .yon-hesap .cb-top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .yon-gun { margin: 14px 0 4px; font-size: 15px; }
 .yon-akis li { display: grid; grid-template-columns: 48px 1fr; gap: 8px; }
+
+/* ---------- Sürüm 40: kartvizit kırpma ---------- */
+.kirp { position: fixed; inset: 0; z-index: 2000; background: #10181E; color: #fff; display: flex; flex-direction: column; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+body.kirp-acik { overflow: hidden; }
+.kirp-ust { padding: 14px 16px 10px; display: flex; flex-direction: column; gap: 2px; }
+.kirp-ust b { font: 600 17px var(--fc); } .kirp-ust small { color: #B9C4CB; font-size: 13.5px; }
+.kirp-sahne { flex: 1; min-height: 0; position: relative; display: grid; place-items: center; margin: 0 16px; }
+.kirp-sahne canvas, .kirp-sahne svg { grid-area: 1 / 1; max-width: 100%; max-height: 100%; }
+.kirp-sahne svg { touch-action: none; overflow: visible; }
+.kirp-sahne polygon { fill: rgba(255, 196, 0, .12); stroke: #FFC400; stroke-width: 2; }
+.kirp-sahne circle { fill: rgba(255, 196, 0, .35); stroke: #FFC400; stroke-width: 2.5; cursor: grab; }
+.kirp-alt { display: flex; gap: 8px; justify-content: space-between; padding: 12px 16px 16px; }
+.kirp-alt .btn { flex: 1; } .kirp-alt .btn.ghost { color: #fff; border-color: #4A5A66; background: transparent; }
+.kirp-alt .btn.primary { background: #FFC400; border-color: #FFC400; color: #10181E; }

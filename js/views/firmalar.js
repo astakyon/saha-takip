@@ -174,10 +174,11 @@ async function kartvizitPaneli(panel, form, yol, hazir) {
     if (!r) {
       const { kartvizitOku } = await import('../ocr.js');
       const u = await app.db.url(yol); const blob = await (await fetch(u)).blob();
-      const AD = { 'loading tesseract core': 'Okuma motoru indiriliyor', 'initializing tesseract': 'Hazırlanıyor', 'loading language traineddata': 'Türkçe dil verisi indiriliyor', 'initializing api': 'Hazırlanıyor', 'recognizing text': 'Kartvizit okunuyor' };
+      const AD = { 'loading tesseract core': 'Okuma motoru indiriliyor', 'initializing tesseract': 'Hazırlanıyor', 'loading language traineddata': 'Türkçe dil verisi indiriliyor', 'initializing api': 'Hazırlanıyor', 'recognizing text': 'Kartvizit okunuyor', 'yön deneniyor': 'Yazı düz okunamadı, kart döndürülerek deneniyor' };
       r = await kartvizitOku(blob, (st, pr) => { d.textContent = (AD[st] || st) + '…'; bar.style.width = Math.round((pr || 0) * 100) + '%'; });
     }
   } catch (e) { console.error(e); kutu.innerHTML = `<p class="warn">Kartvizit okunamadı: ${esc(e.message)}</p>`; return; }
+  if (r.donus && yol) { const box = panel.querySelector('[data-kvs="kartvizit_on"]'); if (box?.dataset.val === yol) { const aci = r.donus; r = { ...r, donus: 0 }; kvDondur(box, aci).then(() => toast('Kartvizit fotoğrafı düz çevrildi.')).catch(() => {}); } }
   const alan = [['ad_soyad', 'Ad soyad', r.ad_soyad], ['unvan', 'Unvan', r.unvan], ['telefon', 'Telefon', r.telefon], ['eposta', 'E-posta', r.eposta], ['firma_id', 'Firma', r.firma],
     ['_ek', 'Notlara ekle', [r.sabit && r.sabit !== r.telefon ? 'Sabit tel: ' + r.sabit : '', r.web ? 'Web: ' + r.web : '', r.adres ? 'Adres: ' + r.adres : ''].filter(Boolean).join(' · ')]].filter(x => x[2]);
   kutu.innerHTML = `<div class="ocr-box"><h3>Kartvizitten okunanlar</h3>${alan.length ? `<p class="hint">Kontrol et, gerekirse düzelt; işaretli olanlar forma yazılır.</p>
@@ -193,13 +194,22 @@ async function kartvizitPaneli(panel, form, yol, hazir) {
     form.dispatchEvent(new Event('change')); toast('Bilgiler forma yazıldı. Kontrol edip kaydet.'); kutu.innerHTML = '';
   });
 }
+// Kayıtlı kartvizit fotoğrafını döndürüp yeniden yükler (yeni dosya yolu kutuya yazılır; kişi kaydedilince kalıcı olur)
+async function kvDondur(box, aci) {
+  const yol = box.dataset.val; if (!yol) return;
+  const { gorselYukle, dondur, blobYap } = await import('../kirp.js');
+  const blob = await (await fetch(await app.db.url(yol))).blob();
+  const yeni = await blobYap(dondur(await gorselYukle(blob), aci));
+  box.dataset.val = await app.db.upload(new File([yeni], 'kartvizit.jpg', { type: 'image/jpeg' }));
+  box.dispatchEvent(new Event('kv-yenile'));
+}
 // Kişiler ekranından: kartvizit fotoğrafı çek → oku → yeni kişi formu
 export async function kartvizittenKisi() {
-  const { pickFiles } = await import('../ui.js');
-  const [file] = await pickFiles({ capture: true, multiple: false }); if (!file) return;
+  const { kartvizitFotografi } = await import('../kirp.js');
+  const f = await kartvizitFotografi(true); if (!f) return;
   try {
     toast('Kartvizit yükleniyor…');
-    const yol = await app.db.upload(file);
+    const yol = await app.db.upload(f.dosya);
     kisiDetay(null, { kartvizit_on: yol });
   } catch (e) { toast(e.message, 'err'); }
 }
@@ -243,7 +253,7 @@ export function kisiDetay(id, init) {
       ${renderForm(KISI_FORM, k)}
       <details class="fs fs-d kv-d" ${!k._new && (k.kartvizit_on || k.kartvizit_arka) ? 'open' : ''}><summary><b>Kartvizit fotoğrafı</b><span class="muted">${k.kartvizit_on ? 'ön yüz' + (k.kartvizit_arka ? ' ve arka yüz' : '') + ' var' : 'yok'}</span></summary>
         <div class="kv-pair">${['kartvizit_on', 'kartvizit_arka'].map(s => `<div class="kv" data-kvs="${s}" data-val="${esc(k[s] || '')}"><div class="kv-img" role="img" aria-label="${s === 'kartvizit_on' ? 'Ön yüz' : 'Arka yüz'}"><span>${s === 'kartvizit_on' ? 'Ön yüz' : 'Arka yüz'}</span></div>
-          <div class="ph-btns"><button type="button" class="btn sm" data-kv-cam>Çek</button><button type="button" class="btn sm ghost" data-kv-gal>Galeri</button><button type="button" class="btn sm ghost" data-kv-del hidden>Kaldır</button></div></div>`).join('')}</div>
+          <div class="ph-btns"><button type="button" class="btn sm" data-kv-cam>Çek</button><button type="button" class="btn sm ghost" data-kv-gal>Galeri</button><button type="button" class="btn sm ghost" data-kv-don hidden aria-label="Fotoğrafı 90 derece döndür">↻</button><button type="button" class="btn sm ghost" data-kv-del hidden>Kaldır</button></div></div>`).join('')}</div>
         <div class="btnrow"><button type="button" class="btn sm" data-ocr-btn ${k.kartvizit_on ? '' : 'hidden'}>Kartviziti oku ve formu doldur</button></div>
       </details>
       ${projeler.length || ziy.length ? `<section class="rel"><h3>Projeler</h3><ul class="list">${projeler.map(p => `<li><a href="#/proje/${p.id}">${esc(p.ad)}</a>${pill(p.durum)}</li>`).join('') || '<li class="muted">—</li>'}</ul>
@@ -254,16 +264,18 @@ export function kisiDetay(id, init) {
   bindForm(form, KISI_FORM, k);
   panel.querySelectorAll('[data-kvs]').forEach(box => {
     const img = box.querySelector('.kv-img'), del = box.querySelector('[data-kv-del]');
-    let show = async () => { const p = box.dataset.val; del.hidden = !p; if (!p) { img.style.backgroundImage = ''; img.classList.remove('has'); return; } const u = await app.db.url(p); if (u) { img.style.backgroundImage = `url("${u}")`; img.classList.add('has'); img.onclick = () => window.open(u, '_blank'); } };
+    let show = async () => { const p = box.dataset.val; del.hidden = !p; box.querySelector('[data-kv-don]').hidden = !p; if (!p) { img.style.backgroundImage = ''; img.classList.remove('has'); return; } const u = await app.db.url(p); if (u) { img.style.backgroundImage = `url("${u}")`; img.classList.add('has'); img.onclick = () => window.open(u, '_blank'); } };
     const add = async cap => {
-      const { pickFiles } = await import('../ui.js');
-      const [file] = await pickFiles({ capture: cap, multiple: false }); if (!file) return;
-      try { toast('Kartvizit yükleniyor…'); box.dataset.val = await app.db.upload(file); await show(); toast('Kartvizit eklendi. Kaydetmeyi unutma.');
+      const { kartvizitFotografi } = await import('../kirp.js');
+      const f = await kartvizitFotografi(cap); if (!f) return;
+      try { toast('Kartvizit yükleniyor…'); box.dataset.val = await app.db.upload(f.dosya); await show(); toast('Kartvizit eklendi. Kaydetmeyi unutma.');
         if (box.dataset.kvs === 'kartvizit_on') { panel.querySelector('.kv-cta-row')?.remove(); kartvizitPaneli(panel, form, box.dataset.val); panel.querySelector('[data-ocr]').scrollIntoView({ block: 'nearest' }); } } catch (e) { toast(e.message, 'err'); }
     };
     box.querySelector('[data-kv-cam]').onclick = () => add(true);
     box.querySelector('[data-kv-gal]').onclick = () => add(false);
     del.onclick = () => { box.dataset.val = ''; show(); };
+    box.querySelector('[data-kv-don]').onclick = async e => { e.target.disabled = true; try { await kvDondur(box, 90); } catch (err) { toast('Döndürülemedi: ' + err.message, 'err'); } e.target.disabled = false; };
+    box.addEventListener('kv-yenile', () => show());
     const eskiShow = show; show = async () => { await eskiShow(); if (box.dataset.kvs === 'kartvizit_on') panel.querySelector('[data-ocr-btn]').hidden = !box.dataset.val; };
     show();
   });
