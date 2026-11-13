@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 44): net kartvizit fotoğrafı
+
+- Fotoğraf artık video görüntüsünden değil, **kameranın asıl fotoğraf modundan** alınıyor (tam çözünürlük, odaklanarak çekim). Bunu desteklemeyen telefonlarda art arda birkaç kare alınıp **en keskini** seçiliyor.
+- Kamera netleşirken kendiliğinden çekim yapılmıyor (“Netleşiyor…”); görüntü net olunca çekiyor. Destekleyen telefonlarda sürekli otomatik odak açılıyor.
+- Ekrandaki çerçeve küçültüldü: telefon karta çok yaklaştırılınca kamera odaklayamıyordu; artık ~20 cm uzaktan çekiliyor, yüksek çözünürlük sayesinde kart yine büyük çıkıyor.
+
 ## Güncelleme notu (sürüm 43): kartvizitte iptal ve yeniden çek
 
 - Kartvizit çekildikten sonra açılan ekranın üstünde **“✕ İptal”** (hiçbir şey kaydetmeden kapatır) ve **“↺ Yeniden çek”** (kamerayı tekrar açar) düğmeleri var. Galeriden seçince ikincisi **“Başka fotoğraf”** olur.
