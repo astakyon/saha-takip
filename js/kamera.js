@@ -2,6 +2,7 @@
 // Kart canlı olarak aranır; bulununca çerçeve yeşile döner ve kart sabit durunca kendiliğinden çekilir.
 // Kartın kenarları bulunamazsa çerçevenin içi kesilir. Kamera açılamazsa telefonun kendi kamerasına dönülür.
 import { koseBul, gorselYukle, dondur } from './kirp.js';
+import { toast } from './ui.js';
 
 const ORAN = 1.6;   // kartvizit en/boy (85 × 55 mm)
 
@@ -23,6 +24,8 @@ export async function kartvizitCek() {
     const kap = document.createElement('div'); kap.className = 'kam'; kap.setAttribute('role', 'dialog'); kap.setAttribute('aria-modal', 'true'); kap.setAttribute('aria-label', 'Kartvizit çek');
     kap.innerHTML = `<video playsinline muted autoplay></video><canvas class="kam-ust" data-ust></canvas>
       <div class="kam-ipucu" data-ipucu aria-live="polite">Kartı çerçeveye yerleştir · telefonu ~20 cm uzak tut</div>
+      <div class="kam-halka" data-halka hidden></div>
+      <div class="kam-arac"><button type="button" class="btn sm ghost" data-zum hidden>2×</button><button type="button" class="btn sm ghost" data-yerli>Telefonun kamerası</button></div>
       <div class="kam-alt"><button type="button" class="btn ghost" data-vaz>Vazgeç</button><button type="button" class="kam-dek" data-cek aria-label="Fotoğraf çek"></button><button type="button" class="btn ghost" data-isik hidden aria-label="Işık">Işık</button></div>`;
     document.body.appendChild(kap); document.body.classList.add('kirp-acik');
     const v = kap.querySelector('video'), ust = kap.querySelector('[data-ust]'), ipucu = kap.querySelector('[data-ipucu]');
@@ -79,6 +82,33 @@ export async function kartvizitCek() {
     };
     kap.querySelector('[data-cek]').onclick = cek;
     kap.querySelector('[data-vaz]').onclick = () => kapat(null);
+    kap.querySelector('[data-yerli]').onclick = () => kapat({ yerli: true });
+    // Ekrana dokununca o noktaya odaklan
+    const yet = (() => { try { return iz.getCapabilities?.() || {}; } catch { return {}; } })(), modlar = yet.focusMode || [];
+    let odakDestek = true;
+    const odakla = async (cx, cy) => {
+      const m = eslem(), r = kap.getBoundingClientRect();
+      const px = Math.max(0, Math.min(1, (cx - r.left - m.ox) / m.s / v.videoWidth)), py = Math.max(0, Math.min(1, (cy - r.top - m.oy) / m.s / v.videoHeight));
+      const h = kap.querySelector('[data-halka]'); h.hidden = false; h.style.left = (cx - r.left) + 'px'; h.style.top = (cy - r.top) + 'px'; h.classList.remove('oynat'); void h.offsetWidth; h.classList.add('oynat');
+      clearTimeout(h._z); h._z = setTimeout(() => { h.hidden = true; }, 1400);
+      sabit = 0; netler.length = 0;
+      const mod = modlar.includes('single-shot') ? 'single-shot' : modlar.includes('continuous') ? 'continuous' : modlar.includes('manual') ? null : null;
+      try {
+        await iz.applyConstraints({ advanced: [{ pointsOfInterest: [{ x: px, y: py }], ...(mod ? { focusMode: mod } : {}) }] });
+        const ayar = iz.getSettings?.() || {};
+        if (!ayar.pointsOfInterest && !modlar.length) throw new Error('desteklenmiyor');
+        // Tek seferlik odaktan sonra sürekli odağa dön (kart kıpırdarsa yine netleşsin)
+        if (mod === 'single-shot' && modlar.includes('continuous')) setTimeout(() => iz.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {}), 2500);
+      } catch {
+        if (odakDestek) { odakDestek = false; toast('Bu telefon tarayıcıda dokunarak odaklamaya izin vermiyor. Bulanıksa “Telefonun kamerası”na dokun.'); }
+      }
+    };
+    kap.addEventListener('click', e => { if (e.target.closest('button')) return; odakla(e.clientX, e.clientY); });
+    // Yakınlaştırma: telefonu uzak tutup 2× ile çekmek, yakın odaklamayan kameralarda netliği artırır
+    if (yet.zoom && yet.zoom.max >= 1.5) {
+      const b = kap.querySelector('[data-zum]'), hedef = Math.min(2, yet.zoom.max); let acik = false; b.hidden = false; b.textContent = hedef.toFixed(hedef % 1 ? 1 : 0) + '×';
+      b.onclick = async () => { acik = !acik; try { await iz.applyConstraints({ advanced: [{ zoom: acik ? hedef : Math.max(1, yet.zoom.min || 1) }] }); b.classList.toggle('on', acik); sabit = 0; netler.length = 0; } catch { acik = !acik; } };
+    }
     kap.addEventListener('keydown', e => { if (e.key === 'Escape') kapat(null); });
     // Canlı arama: kart bulunup ~1 saniye kıpırdamazsa kendiliğinden çek
     const ara = () => {

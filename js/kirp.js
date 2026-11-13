@@ -413,6 +413,7 @@ export async function kartvizitFotografi(capture) {
           break;
         }
         if (!c) return null;
+        if (c.yerli) break;   // telefonun kendi kamera uygulamasıyla çek
         const r = await kartvizitKirp(c.tuval, { koseler: c.koseler, onizle: true, kilavuz: c.kilavuz, tekrar: 'Yeniden çek' });
         if (r?.tekrar) continue;
         return dosyaYap(r);

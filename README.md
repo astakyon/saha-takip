@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 45): dokununca odak, yakınlaştırma, telefonun kamerası
+
+- Kartvizit kamerasında **ekrana dokunulan noktaya odaklanılır** (sarı halka görünür). Tarayıcısı buna izin vermeyen telefonlarda uyarı çıkar.
+- Destekleyen telefonlarda **2×** düğmesi: telefonu uzak tutup yakınlaştırarak çekmek, yakına odaklanamayan kameralarda netliği artırır.
+- **“Telefonun kamerası”** düğmesi telefonun kendi kamera uygulamasını açar (en iyi odak); çekilen fotoğraf yine kırpma ekranına gelir.
+
 ## Güncelleme notu (sürüm 44): net kartvizit fotoğrafı
 
 - Fotoğraf artık video görüntüsünden değil, **kameranın asıl fotoğraf modundan** alınıyor (tam çözünürlük, odaklanarak çekim). Bunu desteklemeyen telefonlarda art arda birkaç kare alınıp **en keskini** seçiliyor.
