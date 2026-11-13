@@ -32,6 +32,17 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 49): benzer kayıtlar (karşılaştır, birleştir, düzelt)
+
+- **Benzer kişiler:** aynı telefon, aynı e-posta ya da aynı ad soyad. **Benzer firmalar:** benzer ad (Ltd., Şti., Elektrik, Aydınlatma gibi ekler yok sayılır), aynı telefon, aynı vergi no, aynı web/e-posta alan adı, aynı Google kaydı.
+- Nerede görünür: Kişiler ve Firmalar listesinde **“Benzer kayıtlar (n)”** düğmesi; kişi ya da firma kartının üstünde sarı **“Benzer kayıt: … Karşılaştır”** uyarısı; Veri kontrolü ekranında.
+- **Karşılaştır** ekranı iki kaydı alan alan gösterir: farklı alanlarda kalacak değere dokunulur ya da kutudaki değer elle düzeltilir. Sonra:
+  - **Birleştir:** seçilen değerler kalır, 2 numaralı kaydın bağlı kayıtları (ziyaret, görev, teklif, proje, kişi, sipariş, belge…) 1 numaraya taşınır, notlar, kartvizitler/fotoğraflar birleşir, seçilmeyen farklı telefon notlara eklenir, 2 numara silinir.
+  - **Yalnız 1'i güncelle:** seçilen değerleri 1 numaraya yazar, iki kayıt da kalır.
+  - **Farklı kayıtlar:** bu ikili bir daha benzer olarak gösterilmez (ekiple paylaşılır).
+  - **Kartı aç:** kaydı açıp normal şekilde düzenlemek için.
+- Supabase'de güncel **schema.sql** çalıştırılmalı (sürüm 22; “Farklı kayıtlar” listesinin ekiple paylaşılması için).
+
 ## Güncelleme notu (sürüm 48): kişide adres ve internet sitesi, firmaya kişi atama
 
 - Kişi kartında **İnternet sitesi** ve **Adres** alanları var; kartvizitten okunan web ve adres artık notlara değil bu alanlara yazılır. Kişi ekranında “İnternet sitesi” ve “Adresi haritada aç” düğmeleri çıkar; rehbere kaydederken de eklenir, Excel'e çıkar. Supabase'de güncel **schema.sql** çalıştırılmalı (sürüm 21).

@@ -62,7 +62,7 @@ export function firmalarView(el) {
   const f = F('firmalar', { q: '', tip: 'Tümü', il: 'Tümü', key: false, sort: 'Ada göre' });
   el.innerHTML = `
   <header class="vh"><div><h1>Firmalar</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><button class="btn ghost" data-duyuru>Toplu duyuru</button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Yeni firma</button></div></header>
+    <div class="vh-act"><button class="btn ghost" data-duyuru>Toplu duyuru</button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn ghost" data-benzer hidden>Benzer kayıtlar</button><button class="btn primary" data-new>Yeni firma</button></div></header>
   <div class="filters">
     <input type="search" data-q placeholder="Firma adı, not ara" value="${esc(f.q)}" aria-label="Firmalarda ara">
     <div class="chips" role="group" aria-label="Firma tipi">${['Tümü', ...FIRMA_TIPLERI].map(t => `<button type="button" class="chip ${f.tip === t ? 'on' : ''}" data-t="${t}" style="--c:#1D2B36">${t}</button>`).join('')}</div>
@@ -90,6 +90,7 @@ export function firmalarView(el) {
   el.querySelectorAll('[data-b]').forEach(s => s.onchange = () => { f[s.dataset.b] = s.checked; saveFilters(); draw(); });
   el.querySelector('[data-new]').onclick = () => yeniFirma({});
   el.querySelector('[data-duyuru]').onclick = async () => (await import('../duyuru.js')).topluDuyuru();
+  benzerDugmesi(el, 'firmalar');
   el.querySelector('[data-exp]').onclick = () => {
     exportXlsx(`firmalar-${today()}.xlsx`, {
       'Firmalar': list().map(x => ({ 'Firma': x.ad, 'Tip': (x.tipler || []).join(', '), 'İl': x.il, 'İlçe': x.ilce, 'Telefon': x.telefon, 'E-posta': x.eposta, 'Segment': x.segment, 'Key account': x.key_account ? 'Evet' : '', 'Proje': stats.get(x.id).p, 'Sipariş': stats.get(x.id).k, 'Kayıp': stats.get(x.id).s, 'Son ziyaret': stats.get(x.id).z, 'Notlar': x.notlar })),
@@ -116,6 +117,7 @@ export function firmaDetay(id, init) {
     <header class="dh"><div><p class="muted">${x._new ? 'Yeni firma' : esc((x.tipler || []).join(', ') || 'Firma')}</p><h2 id="drawer-title">${esc(x.ad || 'Yeni firma')}</h2>
       ${x._new ? '' : (() => { const acik = projeler.filter(p => ACIK.includes(p.durum)), acikT = acik.reduce((a, p) => a + (+p.tutar_usd || 0), 0); const sonZ = ziy.find(z => (z.durum || 'Yapıldı') === 'Yapıldı'); const gun = sonZ ? Math.round((new Date(today()) - new Date(sonZ.tarih)) / 864e5) : null; const tah = S.tahsilatlar.filter(t => t.firma_id === x.id && (+t.tutar || 0) > (+t.odenen || 0)); return `<div class="dh-meta"><span data-gerek="projeler">${acik.length} açık proje${acikT ? ' · ' + usd(acikT) : ''}</span><span data-gerek="projeler">${won} sipariş · ${lost} kayıp</span>${sip.length ? `<span>${usd(sipT)} SAP sipariş</span>` : ''}<span data-gerek="ziyaretler" class="${gun == null || gun > 60 ? 'neg' : ''}">${gun == null ? 'hiç ziyaret yok' : gun === 0 ? 'bugün ziyaret edildi' : `son ziyaret ${gun} gün önce`}</span>${tah.length ? `<span class="neg">${tah.length} açık fatura</span>` : ''}${x.segment ? `<span>Segment ${esc(x.segment)}</span>` : ''}</div>`; })()}</div>
       <button class="x" data-close aria-label="Kapat">×</button></header>
+    <div data-cift></div>
     ${x._new ? '' : `<div class="dh-actions"><button class="btn sm" data-a="kisi" data-gerek="yaz:kisiler">Kişi ekle</button><button class="btn sm" data-a="ziyaret" data-gerek="yaz:ziyaretler">Ziyaret ekle</button><button class="btn sm ghost" data-a="google" data-gerek="yaz:firmalar">Google'dan bilgi al</button>${x.google_url ? `<a class="btn sm ghost" href="${esc(x.google_url)}" target="_blank" rel="noopener">Google Haritalar</a>` : ''}
       <button class="btn sm ghost" data-a="wa">WhatsApp</button><button class="btn sm ghost" data-a="teklif" data-gerek="yaz:teklifler">Teklif</button><button class="btn sm ghost" data-a="numune" data-gerek="yaz:numuneler">Numune</button><button class="btn sm ghost" data-a="servis" data-gerek="yaz:servis_kayitlari">Servis kaydı</button>
       ${x.telefon ? `<a class="btn sm ghost" href="tel:${esc(x.telefon)}">Ara</a>` : ''}
@@ -139,6 +141,7 @@ export function firmaDetay(id, init) {
     </form>`, { wide: true, onClose: () => backToList() });
   const form = panel.querySelector('form');
   bindForm(form, FIRMA_FORM, x);
+  ciftUyarisi(panel, 'firmalar', x);
   if (!x._new) { belgeBolumu(panel.querySelector('[data-belgeler]'), { firma_id: x.id }); tahsilatOzeti(panel.querySelector('[data-tahsilat]'), x); kayitGecmisi(panel.querySelector('[data-gecmis]'), 'firmalar', x.id); import('../yorum.js').then(m => m.yorumBolumu(panel.querySelector('[data-yorumlar]'), 'firmalar', x)); import('../iliski.js').then(m => m.iliskiBolumu(panel.querySelector('[data-iliski]'), x)); }
   panel.querySelectorAll('.avatar[data-kv]').forEach(async a => { if (a.dataset.kv) { const u = await app.db.url(a.dataset.kv, true); if (u) { a.style.backgroundImage = `url("${u}")`; a.textContent = ''; } } });
   // Kayıtlı bir kişiyi bu firmaya ata / firmadan ayır
@@ -240,7 +243,7 @@ export async function kartvizittenKisi() {
 export function kisilerView(el) {
   const f = F('kisiler', { q: '' });
   el.innerHTML = `<header class="vh"><div><h1>Kişiler</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><button class="btn ghost" data-xls>Excel</button><button class="btn" data-kv>Kartvizitten ekle</button><button class="btn primary" data-new>Yeni kişi</button></div></header>
+    <div class="vh-act"><button class="btn ghost" data-xls>Excel</button><button class="btn ghost" data-benzer hidden>Benzer kayıtlar</button><button class="btn" data-kv>Kartvizitten ekle</button><button class="btn primary" data-new>Yeni kişi</button></div></header>
     <div class="filters"><input type="search" data-q placeholder="Ad, firma, telefon ara" value="${esc(f.q)}" aria-label="Kişilerde ara"></div>
     <ul class="cards grid-cards" data-rows></ul>`;
   const draw = () => {
@@ -252,6 +255,7 @@ export function kisilerView(el) {
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelector('[data-new]').onclick = () => kisiDetay(null, {});
+  benzerDugmesi(el, 'kisiler');
   el.querySelector('[data-xls]').onclick = () => exportXlsx(`kisiler-${today()}.xlsx`, { 'Kişiler': S.kisiler.slice().sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr')).map(k => ({ 'Ad': k.ad || adBol(k.ad_soyad).ad, 'Soyad': k.soyad ?? adBol(k.ad_soyad).soyad, 'Firma': firmaAd(k.firma_id), 'Unvan': k.unvan, 'Rol': k.rol, 'Telefon': k.telefon, 'E-posta': k.eposta, 'İnternet sitesi': k.web, 'Adres': k.adres, 'Doğum günü': k.dogum_gunu, 'Notlar': k.notlar })) });
   el.querySelector('[data-kv]').onclick = kartvizittenKisi;
   draw();
@@ -267,6 +271,7 @@ export function kisiDetay(id, init) {
   const panel = openDrawer(`
     <header class="dh"><div><p class="muted">${k._new ? 'Yeni kişi' : esc(firmaAd(k.firma_id) || 'Kişi')}</p><h2 id="drawer-title">${esc(k.ad_soyad || 'Yeni kişi')}</h2></div>
       <button class="x" data-close aria-label="Kapat">×</button></header>
+    <div data-cift></div>
     ${k._new ? '' : `<div class="dh-actions">${k.telefon ? `<a class="btn sm" href="tel:${esc(k.telefon)}">Ara</a><button type="button" class="btn sm ghost" data-a="wa">WhatsApp</button>` : ''}
       ${k.eposta ? `<a class="btn sm ghost" href="mailto:${esc(k.eposta)}">E-posta</a>` : ''}${k.web ? `<a class="btn sm ghost" href="${esc(/^https?:\/\//i.test(k.web) ? k.web : 'https://' + k.web)}" target="_blank" rel="noopener">İnternet sitesi</a>` : ''}${k.adres ? `<a class="btn sm ghost" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(k.adres)}" target="_blank" rel="noopener">Adresi haritada aç</a>` : ''}<button class="btn sm ghost" data-a="vcf">Rehbere kaydet</button>
       <button class="btn sm ghost danger" data-a="sil">Sil</button></div>`}
@@ -285,6 +290,7 @@ export function kisiDetay(id, init) {
     </form>`, { onClose: () => backToList() });
   const form = panel.querySelector('form');
   bindForm(form, KISI_FORM, k);
+  ciftUyarisi(panel, 'kisiler', k);
   panel.querySelectorAll('[data-kvs]').forEach(box => {
     const img = box.querySelector('.kv-img'), del = box.querySelector('[data-kv-del]');
     let show = async () => { const p = box.dataset.val; del.hidden = !p; box.querySelector('[data-kv-don]').hidden = !p; if (!p) { img.style.backgroundImage = ''; img.classList.remove('has'); return; } const u = await app.db.url(p); if (u) { img.style.backgroundImage = `url("${u}")`; img.classList.add('has'); img.onclick = () => window.open(u, '_blank'); } };
@@ -330,4 +336,20 @@ export function kisiDetay(id, init) {
       await app.db.save('kisiler', o); toast(`${o.ad_soyad} kaydedildi.`); closeDrawer(); app.refresh();
     } catch (err) { toast('Kaydedilemedi: ' + err.message, 'err'); }
   };
+}
+
+// Benzer kayıt uyarısı (detayın üstünde) ve listelerdeki "Benzer kayıtlar" düğmesi
+function ciftUyarisi(panel, tablo, r) {
+  if (r._new || !r.id) return;
+  import('../cift.js').then(({ benzerleri, karsilastir }) => {
+    const kok = panel.querySelector('[data-cift]'); if (!kok) return;
+    const l = benzerleri(tablo, r.id); if (!l.length) return;
+    const ad = x => tablo === 'kisiler' ? x.ad_soyad : x.ad;
+    kok.innerHTML = `<div class="cift-uyari" data-gerek="yaz:${tablo}">${l.slice(0, 3).map(b => `<div><span class="grow">Benzer kayıt: <b>${esc(ad(b.diger))}</b> <small>${esc(b.nedenler.join(', '))}</small></span><button type="button" class="btn sm" data-karsi="${b.diger.id}">Karşılaştır</button></div>`).join('')}</div>`;
+    kok.querySelectorAll('[data-karsi]').forEach(b => b.onclick = () => karsilastir(tablo, r.id, b.dataset.karsi, () => app.refresh?.()));
+  });
+}
+function benzerDugmesi(el, tablo) {
+  const b = el.querySelector('[data-benzer]'); if (!b) return;
+  import('../cift.js').then(({ benzerSayisi, benzerListesi }) => { const n = benzerSayisi(tablo); if (!n) return; b.hidden = false; b.textContent = `Benzer kayıtlar (${n})`; b.onclick = () => benzerListesi(tablo); });
 }

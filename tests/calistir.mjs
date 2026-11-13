@@ -278,6 +278,21 @@ const DB = () => {
   await p.fill('.drawer.open [name=web]', 'www.ornek.com'); await p.fill('.drawer.open [name=adres]', 'Örnek Mah. 1. Sok. No:2 Mersin'); await p.click('.drawer.open [type=submit]'); await w(800);
   const wa = await p.evaluate(async () => { const k = (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1'); return [k.web, k.adres]; });
   kontrol('Kişide internet sitesi ve adres kaydediliyor', wa[0] === 'www.ornek.com' && /Mersin/.test(wa[1]), JSON.stringify(wa));
+  // Benzer kayıtlar: aynı telefonlu ikinci kişi bulunuyor, karşılaştırılıp birleştiriliyor; "Farklı kayıtlar" bir daha göstermiyor
+  await p.evaluate(async () => { const { app } = await import('./js/state.js'); await app.db.save('kisiler', { id: 'k9', ad_soyad: 'Deneme KİŞİ', ad: 'Deneme', soyad: 'KİŞİ', telefon: '0532 000 00 00', unvan: 'Satınalma' }); await app.db.save('kisiler', { id: 'k8', ad_soyad: 'Başka Biri', telefon: '0555 111 22 33' }); await app.db.save('kisiler', { id: 'k7', ad_soyad: 'Başka Biri', telefon: '0555 999 88 77' }); });
+  await p.goto(U + '#/kisiler'); await p.reload(); await w(1500);
+  const dug = await p.textContent('[data-benzer]');
+  await p.evaluate(() => document.querySelector('[data-benzer]').click()); await w(400);
+  await p.click('.drawer.open [data-kars="k1|k9"], .drawer.open [data-kars="k9|k1"]'); await w(400);
+  await p.screenshot({ path: 'tests/cikti/benzer.png' });
+  await p.click('.drawer.open .cift-alan[data-alan="soyad"] [data-v="a"]').catch(() => {});
+  await p.click('.drawer.open [data-birlestir]'); await w(1200);
+  const bir = await p.evaluate(async () => { const S = (await import('./js/db.js')).S; return { k9: !!S.kisiler.find(k => k.id === 'k9'), k1: S.kisiler.find(k => k.id === 'k1') }; });
+  await p.evaluate(() => document.querySelector('[data-benzer]').click()); await w(400);
+  await p.click('.drawer.open [data-kars="k7|k8"], .drawer.open [data-kars="k8|k7"]'); await w(400);
+  await p.click('.drawer.open [data-farkli]'); await w(600);
+  const kalan = await p.evaluate(async () => (await import('./js/cift.js')).benzerSayisi('kisiler'));
+  kontrol('Benzer kişiler bulunuyor, alan seçilerek birleştiriliyor, “Farklı kayıtlar” bir daha gösterilmiyor', /Benzer kayıtlar \(2\)/.test(dug) && !bir.k9 && bir.k1 && bir.k1.unvan === 'Satınalma' && kalan === 0, JSON.stringify({ dug, bir, kalan }));
   kontrol('Kırpmada hata yok', !hatalar.filter(h => !/Okuma motoru indirilemedi/.test(h)).length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }

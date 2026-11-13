@@ -5,6 +5,7 @@ import { esc, usd, num, tarih, today, gunEkle, byId, firmaAd, toast, confirmBox,
 import { siparisForm, projeBul } from './panel.js';
 import { durumDegistir } from './projeler.js';
 import { ceyrekGercek } from '../ceyrek.js';
+import { kisiCiftleri, firmaCiftleri, karsilastir } from '../cift.js';
 
 const cekirdek = s => fold(s || '').replace(/\b(ltd|sti|şti|san|tic|ve|a ?s|aş|elk|elektrik|insaat|inşaat|muhendislik|mühendislik|enerji|proje|taahhut|taahhüt|limited|sirketi|şirketi|ithalat|ihracat|malz|ins)\b\.?/g, ' ').replace(/[^a-z0-9]/g, '');
 const ROL = ['yatirimci_id', 'projeci_id', 'danisman_id', 'gemut_id', 'emut_id', 'alici_id', 'bayi_id'];
@@ -60,22 +61,12 @@ export function kontroller() {
   ekle('ceyrek', 'Çeyrekler', 'Resmi rakamı girilmemiş geçmiş çeyrekler', 'Siparişler ekranı → Çeyrek özeti. Resmi rakam girilince raporlar onu kullanır; girilmezse siparişlerden hesaplanır.',
     [1, 2, 3, 4].filter(c => c < bu).map(c => ({ c, ...ceyrekGercek(Y, c) })).filter(g => g.resmi == null), g => `<a href="#/siparisler" data-cozet="${g.c}"><b>${Y} ${g.c}. çeyrek</b></a><span class="muted">siparişlerden ${usd(g.siparis)}</span>`);
   // Firmalar
-  const gr = new Map(); for (const f of S.firmalar) { const c = cekirdek(f.ad); if (c.length >= 3) (gr.get(c) || gr.set(c, []).get(c)).push(f); }
-  ekle('firma-cift', 'Firmalar', 'Aynı firma iki kez kayıtlı olabilir', 'Adları benziyor. Aynı firmaysa birleştir: projeler, kişiler, ziyaretler ve siparişler tek kayda taşınır.',
-    [...gr.values()].filter(l => l.length > 1), l => `<span class="grow">${l.map(f => `<a href="#/firma/${f.id}">${esc(f.ad)}</a>`).join(' · ')}</span><button type="button" class="btn sm" data-birlestir="${l.map(f => f.id).join(',')}">Birleştir</button>`);
+  ekle('firma-cift', 'Firmalar', 'Aynı firma iki kez kayıtlı olabilir', 'Adı, telefonu, vergi numarası ya da web adresi aynı. Karşılaştır: alan alan hangisinin kalacağını seç ve birleştir, ya da “Farklı kayıtlar” de.',
+    firmaCiftleri().flatMap(g => g.ciftler), c => `<span class="grow"><a href="#/firma/${c.a.id}">${esc(c.a.ad)}</a> · <a href="#/firma/${c.b.id}">${esc(c.b.ad)}</a><small class="muted"> ${esc(c.nedenler.join(', '))}</small></span><button type="button" class="btn sm" data-kars="firmalar|${c.a.id}|${c.b.id}">Karşılaştır</button>`);
   ekle('konum', 'Firmalar', 'Haritada yeri işaretli olmayan aktif firmalar', 'Rota ve Yakınımdakiler için konum gerekir. Harita → Google\'da ara ile hızlıca eklenebilir.',
     S.firmalar.filter(f => f.lat == null && P.some(p => ACIK.includes(p.durum) && ROL.some(r => p[r] === f.id))), f => `<a href="#/firma/${f.id}"><b>${esc(f.ad)}</b></a>`);
-  // Kişiler: aynı ad (aynı firmada ya da firmasız) ya da aynı telefon
-  const tel = s => String(s || '').replace(/\D/g, '').slice(-10);
-  const kAd = k => fold(k.ad_soyad || '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
-  const kg = new Map(), ekleG = (anahtar, k) => { if (!anahtar) return; (kg.get(anahtar) || kg.set(anahtar, new Set()).get(anahtar)).add(k); };
-  for (const x of S.kisiler) { const a = kAd(x); if (a.length >= 5) ekleG('ad:' + a + '|' + (x.firma_id || '-'), x); if (tel(x.telefon).length === 10) ekleG('tel:' + tel(x.telefon), x); }
-  // firmasız kişi aynı adlı firmalı kişiyle de eşleşir
-  for (const x of S.kisiler.filter(x => !x.firma_id)) for (const y of S.kisiler) if (y !== x && y.firma_id && kAd(y) === kAd(x) && kAd(x).length >= 5) ekleG('ad:' + kAd(x) + '|' + y.firma_id, x);
-  const gorulen = new Set(), kGruplar = [];
-  for (const set of kg.values()) { const l = [...set]; if (l.length < 2) continue; const anahtar = l.map(k => k.id).sort().join(','); if (gorulen.has(anahtar)) continue; gorulen.add(anahtar); kGruplar.push(l); }
-  ekle('kisi-cift', 'Kişiler', 'Aynı kişi iki kez kayıtlı olabilir', 'Adı (aynı firmada) ya da telefonu aynı. Aynı kişiyse birleştir: ziyaretler, görevler, teklifler, numuneler tek kayda taşınır, eksik bilgiler tamamlanır.',
-    kGruplar, l => `<span class="grow">${l.map(x => `<a href="#/kisi/${x.id}">${esc(x.ad_soyad)}</a><small class="muted"> ${esc([firmaAd(x.firma_id), x.telefon].filter(Boolean).join(' · '))}</small>`).join(' · ')}</span><button type="button" class="btn sm" data-kbirlestir="${l.map(x => x.id).join(',')}">Birleştir</button>`);
+  ekle('kisi-cift', 'Kişiler', 'Aynı kişi iki kez kayıtlı olabilir', 'Telefonu, e-postası ya da adı soyadı aynı. Karşılaştır: alan alan hangisinin kalacağını seç ve birleştir, ya da “Farklı kayıtlar” de.',
+    kisiCiftleri().flatMap(g => g.ciftler), c => `<span class="grow">${[c.a, c.b].map(x => `<a href="#/kisi/${x.id}">${esc(x.ad_soyad)}</a><small class="muted"> ${esc([firmaAd(x.firma_id), x.telefon].filter(Boolean).join(' · '))}</small>`).join(' · ')}<small class="cift-neden"> ${esc(c.nedenler.join(', '))}</small></span><button type="button" class="btn sm" data-kars="kisiler|${c.a.id}|${c.b.id}">Karşılaştır</button>`);
   return k;
 }
 
@@ -123,6 +114,7 @@ export function kontrolView(el) {
   el.querySelectorAll('[data-bagla]').forEach(b => b.onclick = async () => { const [sid, pid] = b.dataset.bagla.split(':'); await app.db.save('siparisler', { ...byId('siparisler', sid), proje_id: pid }); toast('Sipariş projeye bağlandı.'); kontrolView(el); });
   el.querySelectorAll('[data-disi]').forEach(b => b.onclick = async () => { await app.db.save('siparisler', { ...byId('siparisler', b.dataset.disi), rapor_disi: true }); toast('Sipariş rapor dışı bırakıldı.'); kontrolView(el); });
   el.querySelectorAll('[data-cozet]').forEach(a => a.onclick = () => { const fs = F('siparisler', {}); fs.gor = 'ceyrek'; fs.yil = new Date().getFullYear(); saveFilters(); });
+  el.querySelectorAll('[data-kars]').forEach(b => b.onclick = () => { const [t, x, y] = b.dataset.kars.split('|'); karsilastir(t, x, y, () => kontrolView(el)); });
   el.querySelectorAll('[data-kbirlestir]').forEach(b => b.onclick = async () => {
     const ks = b.dataset.kbirlestir.split(',').map(i => byId('kisiler', i)).filter(Boolean);
     const say = x => ['ziyaretler', 'gorevler', 'teklifler'].reduce((a, t) => a + S[t].filter(r => r.kisi_id === x.id).length, 0) + (x.telefon ? 1 : 0) + (x.eposta ? 1 : 0) + (x.firma_id ? 1 : 0);
