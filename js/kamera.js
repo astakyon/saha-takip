@@ -8,13 +8,37 @@ const ORAN = 1.6;   // kartvizit en/boy (85 × 55 mm)
 
 export const kameraVarMi = () => !!navigator.mediaDevices?.getUserMedia && window.isSecureContext;
 
+const LENS = 'saha-kam-lens';
+const lsAl = () => { try { return localStorage.getItem(LENS) || ''; } catch { return ''; } };
+const boyut = { width: { ideal: 3840 }, height: { ideal: 2160 } };
+let arkaKameralar = [];
+// Çok kameralı telefonlarda (Samsung vb.) "arka kamera" istenince çoğu zaman geniş açı lensi açılır; o lensin odağı
+// sabittir ve yakından bulanık çeker. Bu yüzden arka kameralar arasından ana kamera (otomatik odaklı olan) seçilir.
+const odakli = iz => { try { const y = iz.getCapabilities?.() || {}; return (y.focusMode || []).some(m => m === 'continuous' || m === 'single-shot') || !!y.focusDistance; } catch { return false; } };
 async function akisAc() {
-  const istek = ex => ({ audio: false, video: { facingMode: ex ? { exact: 'environment' } : 'environment', width: { ideal: 3840 }, height: { ideal: 2160 } } });
-  try { return await navigator.mediaDevices.getUserMedia(istek(true)); }
+  const istek = ex => ({ audio: false, video: { facingMode: ex ? { exact: 'environment' } : 'environment', ...boyut } });
+  let akis;
+  try { akis = await navigator.mediaDevices.getUserMedia(istek(true)); }
   catch (e) {
     if (e?.name === 'NotAllowedError' || e?.name === 'SecurityError') throw e;
     return await navigator.mediaDevices.getUserMedia(istek(false));   // arka kamerası olmayan cihaz (bilgisayar)
   }
+  try {
+    const cihaz = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    arkaKameralar = cihaz.filter(d => /back|rear|arka|environment/i.test(d.label));
+    const simdiki = akis.getVideoTracks()[0].getSettings?.().deviceId;
+    const ac = async id => { akis.getTracks().forEach(t => t.stop()); akis = await navigator.mediaDevices.getUserMedia({ audio: false, video: { deviceId: { exact: id }, ...boyut } }); };
+    const secili = arkaKameralar.find(d => d.deviceId === lsAl());
+    if (secili) { if (secili.deviceId !== simdiki) await ac(secili.deviceId); return akis; }
+    // Android'de ana arka kamera genelde "camera2 0, facing back"
+    const ana = arkaKameralar.find(d => /camera2 0\b/.test(d.label));
+    if (ana) { if (ana.deviceId !== simdiki) await ac(ana.deviceId); return akis; }
+    if (!odakli(akis.getVideoTracks()[0])) {
+      for (const d of arkaKameralar) { if (d.deviceId === simdiki) continue; await ac(d.deviceId); if (odakli(akis.getVideoTracks()[0])) return akis; }
+      await ac(simdiki);
+    }
+  } catch (e) { console.warn('Kamera seçimi', e); if (!akis.active) akis = await navigator.mediaDevices.getUserMedia(istek(false)); }
+  return akis;
 }
 
 // Döner: { tuval, koseler, kilavuz } ya da null (vazgeçildi). Kamera açılamazsa hata fırlatır (çağıran yedek yola geçer).
@@ -25,7 +49,7 @@ export async function kartvizitCek() {
     kap.innerHTML = `<video playsinline muted autoplay></video><canvas class="kam-ust" data-ust></canvas>
       <div class="kam-ipucu" data-ipucu aria-live="polite">Kartı çerçeveye yerleştir · telefonu ~20 cm uzak tut</div>
       <div class="kam-halka" data-halka hidden></div>
-      <div class="kam-arac"><button type="button" class="btn sm ghost" data-zum hidden>2×</button><button type="button" class="btn sm ghost" data-yerli>Telefonun kamerası</button></div>
+      <div class="kam-arac"><button type="button" class="btn sm ghost" data-lens hidden>Lens</button><button type="button" class="btn sm ghost" data-zum hidden>2×</button><button type="button" class="btn sm ghost" data-yerli>Telefonun kamerası</button></div>
       <div class="kam-alt"><button type="button" class="btn ghost" data-vaz>Vazgeç</button><button type="button" class="kam-dek" data-cek aria-label="Fotoğraf çek"></button><button type="button" class="btn ghost" data-isik hidden aria-label="Işık">Işık</button></div>`;
     document.body.appendChild(kap); document.body.classList.add('kirp-acik');
     const v = kap.querySelector('video'), ust = kap.querySelector('[data-ust]'), ipucu = kap.querySelector('[data-ipucu]');
@@ -83,6 +107,12 @@ export async function kartvizitCek() {
     kap.querySelector('[data-cek]').onclick = cek;
     kap.querySelector('[data-vaz]').onclick = () => kapat(null);
     kap.querySelector('[data-yerli]').onclick = () => kapat({ yerli: true });
+    // Lens değiştir: arka kameralar arasında sırayla geçer, seçim hatırlanır
+    if (arkaKameralar.length > 1) {
+      const b = kap.querySelector('[data-lens]'), simdi = iz.getSettings?.().deviceId, sira = arkaKameralar.findIndex(d => d.deviceId === simdi);
+      b.hidden = false; b.textContent = `Lens ${sira + 1}/${arkaKameralar.length}`;
+      b.onclick = () => { const sonraki = arkaKameralar[(sira + 1) % arkaKameralar.length]; try { localStorage.setItem(LENS, sonraki.deviceId); } catch {} kapat({ lens: true }); };
+    }
     // Ekrana dokununca o noktaya odaklan
     const yet = (() => { try { return iz.getCapabilities?.() || {}; } catch { return {}; } })(), modlar = yet.focusMode || [];
     let odakDestek = true;

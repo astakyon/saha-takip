@@ -235,6 +235,21 @@ const DB = () => {
     const r = await s; window.__zam = zam; const i = r && await createImageBitmap(r.dosya);
     return { istek: JSON.stringify(istekler[0]), kamKapandi, boyut: i ? [i.width, i.height] : null };
   });
+  // Çok kameralı telefonda ana (odaklı) arka kamera seçiliyor, geniş açı lensi değil
+  const lens = await p.evaluate(async () => {
+    const eskiG = navigator.mediaDevices.getUserMedia, eskiE = navigator.mediaDevices.enumerateDevices, istek = [];
+    const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64;
+    navigator.mediaDevices.enumerateDevices = async () => [{ kind: 'videoinput', deviceId: 'gen', label: 'camera2 2, facing back' }, { kind: 'videoinput', deviceId: 'on', label: 'camera2 1, facing front' }, { kind: 'videoinput', deviceId: 'ana', label: 'camera2 0, facing back' }];
+    navigator.mediaDevices.getUserMedia = async k => { istek.push(k.video.deviceId?.exact || 'facing'); const st = cv.captureStream(); const t = st.getVideoTracks()[0]; const id = k.video.deviceId?.exact || 'gen'; t.getSettings = () => ({ deviceId: id }); return st; };
+    try { localStorage.removeItem('saha-kam-lens'); } catch {}
+    const K = await import('./js/kirp.js'); const s = K.kartvizitFotografi(true);
+    const t = Date.now(); while (!document.querySelector('.kam') && Date.now() - t < 5000) await new Promise(r => setTimeout(r, 100));
+    const lensDugme = document.querySelector('.kam [data-lens]')?.textContent;
+    document.querySelector('.kam [data-vaz]')?.click(); await s;
+    navigator.mediaDevices.getUserMedia = eskiG; navigator.mediaDevices.enumerateDevices = eskiE;
+    return { istek, lensDugme };
+  });
+  kontrol('Ana arka kamera (camera2 0) seçiliyor, lens değiştirilebiliyor', lens.istek.join(',') === 'facing,ana' && lens.lensDugme === 'Lens 2/2', JSON.stringify(lens));
   const iptal = await p.evaluate(async () => { const K = await import('./js/kirp.js'); const s = K.kartvizitFotografi(true); const t = Date.now(); while (!document.querySelector('.kirp [data-iptal]') && Date.now() - t < 12000) await new Promise(r => setTimeout(r, 200)); document.querySelector('.kirp [data-iptal]')?.click(); return { sonuc: await s, acik: !!document.querySelector('.kirp, .kam') }; });
   kontrol('Önizlemede İptal hiçbir şey kaydetmeden kapatıyor', iptal.sonuc === null && !iptal.acik, JSON.stringify(iptal));
   await p.evaluate(() => clearInterval(window.__zam));

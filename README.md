@@ -32,6 +32,11 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 46): doğru lens seçimi
+
+- Çok kameralı telefonlarda (Samsung vb.) tarayıcı “arka kamera” isteyince çoğu zaman **geniş açı lensini** açıyordu; bu lensin odağı sabit olduğu için kartvizit yakından hep bulanık çıkıyordu. Artık **ana arka kamera** (otomatik odaklı olan) seçiliyor.
+- Kamerada **“Lens 1/3”** düğmesi arka lensler arasında geçer; seçilen lens hatırlanır.
+
 ## Güncelleme notu (sürüm 45): dokununca odak, yakınlaştırma, telefonun kamerası
 
 - Kartvizit kamerasında **ekrana dokunulan noktaya odaklanılır** (sarı halka görünür). Tarayıcısı buna izin vermeyen telefonlarda uyarı çıkar.
