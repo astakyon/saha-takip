@@ -265,6 +265,19 @@ const DB = () => {
   await p.fill('.drawer.open [name=ad]', 'Ayşe Nur'); await p.fill('.drawer.open [name=soyad]', 'Kaya'); await p.click('.drawer.open [type=submit]'); await w(800);
   const ad1 = await p.evaluate(async () => { const k = (await import('./js/db.js')).S.kisiler.find(x => x.id === 'k1'); return [k.ad, k.soyad, k.ad_soyad]; });
   kontrol('Ad ve soyad ayrı alanlarda; tam ad ikisinden oluşuyor', JSON.stringify(ad0) === '["Deneme","Kişi"]' && JSON.stringify(ad1) === '["Ayşe Nur","Kaya","Ayşe Nur Kaya"]', JSON.stringify([ad0, ad1]));
+  // Firmaya kayıtlı kişi atama ve ayırma
+  await p.goto(U + '#/firmalar'); await p.reload(); await w(1500); await p.click('a[href="#/firma/f1"]'); await w(800);
+  await p.click('.drawer.open [data-a="bagla"]'); await p.fill('.drawer.open [data-kisi-ara]', 'Ayşe'); await w(200);
+  await p.click('.drawer.open [data-ata="k1"]'); await w(800);
+  const atandi = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1').firma_id);
+  await p.click('.drawer.open [data-ayir="k1"]'); await w(800);
+  const ayrildi = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1').firma_id);
+  kontrol('Firmaya kayıtlı kişi atanıyor ve ayrılabiliyor', atandi === 'f1' && !ayrildi, JSON.stringify([atandi, ayrildi]));
+  // Kişide internet sitesi ve adres
+  await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800);
+  await p.fill('.drawer.open [name=web]', 'www.ornek.com'); await p.fill('.drawer.open [name=adres]', 'Örnek Mah. 1. Sok. No:2 Mersin'); await p.click('.drawer.open [type=submit]'); await w(800);
+  const wa = await p.evaluate(async () => { const k = (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1'); return [k.web, k.adres]; });
+  kontrol('Kişide internet sitesi ve adres kaydediliyor', wa[0] === 'www.ornek.com' && /Mersin/.test(wa[1]), JSON.stringify(wa));
   kontrol('Kırpmada hata yok', !hatalar.filter(h => !/Okuma motoru indirilemedi/.test(h)).length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }

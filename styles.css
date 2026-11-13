@@ -1361,3 +1361,7 @@ body.kirp-acik { overflow: hidden; }
 .kam-halka.oynat { animation: kamHalka .6s ease-out; }
 @keyframes kamHalka { from { transform: scale(1.5); opacity: .3; } to { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .kam-halka.oynat { animation: none; } }
+
+/* ---------- Sürüm 48: firmaya kişi atama ---------- */
+.kisi-bag { display: flex; align-items: center; gap: 6px; } .kisi-bag .pcard { flex: 1; min-width: 0; }
+.kisi-sec { margin-top: 8px; display: grid; gap: 6px; } .kisi-sec .list li { padding: 8px 4px; }

@@ -32,6 +32,11 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 48): kişide adres ve internet sitesi, firmaya kişi atama
+
+- Kişi kartında **İnternet sitesi** ve **Adres** alanları var; kartvizitten okunan web ve adres artık notlara değil bu alanlara yazılır. Kişi ekranında “İnternet sitesi” ve “Adresi haritada aç” düğmeleri çıkar; rehbere kaydederken de eklenir, Excel'e çıkar. Supabase'de güncel **schema.sql** çalıştırılmalı (sürüm 21).
+- **Firmaya kişi atama:** firma ekranındaki Kişiler bölümünde “Kayıtlı kişiyi bu firmaya ata” ile mevcut bir kişi aranıp atanır (başka firmadaysa taşınması sorulur); her kişinin yanındaki “Ayır” ile firmadan ayrılır (kişi silinmez). “Yeni kişi” bu firmaya bağlı yeni kişi açar.
+
 ## Güncelleme notu (sürüm 47): kartvizit okuma iyileştirmesi
 
 - Kart **dağınık yazı düzeninde** okunuyor: kartın bir köşesindeki büyük isim, logo ve iletişim blokları artık atlanmıyor.

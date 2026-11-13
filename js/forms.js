@@ -64,7 +64,7 @@ function control(f, v, obj) {
         <button type="button" class="btn sm ghost" data-loc-clear>Temizle</button></div>
         <p class="hint loc-det" aria-live="polite">Haritaya dokunarak raptiyeyi yerleştir, sürükleyerek düzelt. İl, ilçe, belde ve sanayi bölgesi otomatik algılanır.</p></div>`];
     }
-    default: return [id, `<input ${name} type="${f.t === 'tel' ? 'tel' : f.t === 'email' ? 'email' : 'text'}" value="${esc(v)}" ${ph} ${f.auto && obj._new ? 'autofocus' : ''}>`];
+    default: return [id, `<input ${name} type="${f.t === 'tel' ? 'tel' : f.t === 'email' ? 'email' : 'text'}"${f.t === 'url' ? ' inputmode="url" autocapitalize="off"' : ''} value="${esc(v)}" ${ph} ${f.auto && obj._new ? 'autofocus' : ''}>`];
   }
 }
 

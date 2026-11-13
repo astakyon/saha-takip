@@ -836,3 +836,8 @@ update public.kisiler set
   soyad = case when position(' ' in btrim(ad_soyad)) > 0 then substring(btrim(ad_soyad) from '\S+$') else null end
 where ad is null and soyad is null and ad_soyad is not null;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 20 $f$;
+
+-- ===================== Sürüm 21: kişilerde internet sitesi ve adres =====================
+alter table public.kisiler add column if not exists web text;
+alter table public.kisiler add column if not exists adres text;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 21 $f$;
