@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 47): kartvizit okuma iyileştirmesi
+
+- Kart **dağınık yazı düzeninde** okunuyor: kartın bir köşesindeki büyük isim, logo ve iletişim blokları artık atlanmıyor.
+- QR kod, logo ve desenden çıkan anlamsız harfler (düşük güvenli kelimeler) ayıklanıyor.
+- **Ad soyad, kartta en büyük yazılan uygun satırdan** alınıyor.
+- Logonun alt yazısı (“Elektrik | Mühendislik” gibi) artık unvan sanılmıyor; unvan yalnızca Müdür, Mühendis, Sorumlu, Uzman, Tekniker… gibi görev sözcüklerinden çıkıyor.
+- Soyaddaki “TAŞ” gibi harfler şirket eki (A.Ş.) sanılmıyor; firma adında yasal ekler düzgün yazılıyor (San. ve Tic. Ltd. Şti.).
+
 ## Güncelleme notu (sürüm 46): doğru lens seçimi
 
 - Çok kameralı telefonlarda (Samsung vb.) tarayıcı “arka kamera” isteyince çoğu zaman **geniş açı lensini** açıyordu; bu lensin odağı sabit olduğu için kartvizit yakından hep bulanık çıkıyordu. Artık **ana arka kamera** (otomatik odaklı olan) seçiliyor.

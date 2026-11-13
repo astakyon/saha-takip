@@ -254,6 +254,11 @@ const DB = () => {
   kontrol('Önizlemede İptal hiçbir şey kaydetmeden kapatıyor', iptal.sonuc === null && !iptal.acik, JSON.stringify(iptal));
   await p.evaluate(() => clearInterval(window.__zam));
   kontrol('Kamera yalnızca arka kamerayı istiyor, kartı kendiliğinden çekip kırpıyor, yeniden çekilebiliyor', kam.istek === '{"exact":"environment"}' && kam.kamKapandi && kam.boyut && Math.abs(kam.boyut[0] / kam.boyut[1] - 600 / 380) < 0.12, JSON.stringify(kam));
+  // Kartvizit ayrıştırma: büyük yazılan satır ad; logo alt yazısı unvan sayılmaz; soyaddaki "TAŞ" şirket eki sanılmaz
+  const ayr = await p.evaluate(async () => { const O = await import('./js/ocr.js');
+    const sat = [{ metin: 'Ahmet KARTAŞ', boy: 52 }, { metin: 'Elektrik | Mühendislik', boy: 19 }, { metin: 'ÖRNEKKENT AYDINLATMA ELEKTRİK SAN. VE TİC.LTD. ŞTİ.', boy: 26 }, { metin: 'Telefon: 0507 000 1122', boy: 20 }];
+    return O.kartvizitAyristir(sat.map(x => x.metin).join('\n'), sat); });
+  kontrol('Kartvizitte ad, firma ve unvan doğru ayrılıyor', ayr.ad_soyad === 'Ahmet Kartaş' && ayr.unvan === null && ayr.firma === 'Örnekkent Aydınlatma Elektrik San. ve Tic. Ltd. Şti.' && ayr.telefon === '0507 000 11 22', JSON.stringify(ayr));
   // Ad ve soyad ayrı: eski kayıt bölünüyor, kaydedince tam ad ikisinden oluşuyor
   await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800);
   const ad0 = await p.evaluate(() => [document.querySelector('.drawer.open [name=ad]')?.value, document.querySelector('.drawer.open [name=soyad]')?.value]);

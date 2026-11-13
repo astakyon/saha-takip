@@ -46,34 +46,45 @@ export function okumaPuani(data) {
   return p;
 }
 // Genel metin okuma (ürün etiketi, şantiye tabelası)
+async function tani(w, c, psm) { await w.setParameters({ tessedit_pageseg_mode: psm }); return (await w.recognize(c)).data; }
 export async function metinOku(blob, ilerleme) {
   const w = await hazirla(ilerleme);
-  const { data } = await w.recognize(onIsle(await tuval(blob)));
-  return data.text || '';
+  return (await tani(w, onIsle(await tuval(blob)), '3')).text || '';
 }
-// Kartvizit: önce olduğu gibi okunur; sonuç zayıfsa 180°, 90° ve 270° döndürülerek denenir, en anlamlı okuma seçilir.
+// Okunan satırlar: düşük güvenli satırlar ve kelimeler (QR kod, logo, desen) atılır; her satırın yazı yüksekliği tutulur
+export function satirlariAl(data) {
+  const ort = a => { const b = [...a].sort((x, y) => x - y); return b.length ? b[b.length >> 1] : 0; };
+  return (data.lines || []).map(l => {
+    const ws = (l.words || []).filter(w => w.confidence >= 45 && /[\p{L}\p{N}@]/u.test(w.text));
+    return { metin: ws.map(w => w.text).join(' ').replace(/\s{2,}/g, ' ').trim(), boy: ort(ws.map(w => w.bbox.y1 - w.bbox.y0)), guven: l.confidence };
+  }).filter(x => x.metin.replace(/[^\p{L}\p{N}]/gu, '').length >= 2 && x.guven >= 50);
+}
+// Kartvizit: dağınık yazı düzeninde okunur (isim, logo ve iletişim blokları ayrı yerlerde olduğu için).
+// Sonuç zayıfsa 180°, 90° ve 270° döndürülerek denenir, en anlamlı okuma seçilir.
 // donus: kartın kaç derece döndürülünce düz okunduğu (kaydedilen fotoğraf da buna göre çevrilir).
 export async function kartvizitOku(blob, ilerleme, { yonDene = true } = {}) {
   const w = await hazirla(ilerleme);
   const { dondur } = await import('./kirp.js');
-  const temel = onIsle(await tuval(blob));
+  const temel = await tuval(blob);
   let en = null;
   for (const aci of yonDene ? [0, 180, 90, 270] : [0]) {
     if (aci) ilerleme?.('yön deneniyor', 0);
-    const { data } = await w.recognize(dondur(temel, aci));
+    const data = await tani(w, dondur(temel, aci), '11');
     const puan = okumaPuani(data);
     if (!en || puan > en.puan) en = { data, puan, aci };
-    if (en.puan >= 40 && (data.confidence || 0) >= 70) break;
+    if (en.puan >= 40 && (data.confidence || 0) >= 65) break;
   }
-  return { metin: en.data.text, donus: en.aci, guven: Math.round(en.data.confidence || 0), ...kartvizitAyristir(en.data.text) };
+  const satir = satirlariAl(en.data);
+  return { metin: satir.map(x => x.metin).join('\n'), donus: en.aci, guven: Math.round(en.data.confidence || 0), ...kartvizitAyristir(satir.map(x => x.metin).join('\n'), satir) };
 }
 
-const UNVAN = /(genel müdür|müdür|mudur|müdürü|mühendis|muhendis|şef|sef|yönetici|yonetici|sorumlu|uzman|direktör|direktor|başkan|baskan|koordinatör|koordinator|satınalma|satin alma|satış|satis|teknik|proje|elektrik|tekniker|teknisyen|ortak|kurucu|sahibi|manager|engineer|director|sales|purchasing|ceo|cfo|coo|cto|owner|partner|specialist)/i;
-const FIRMA = /(ltd|şti|sti|a\.?ş\.?|a\.s\.|inc|gmbh|san\.|tic\.|sanayi|ticaret|elektrik|elektronik|inşaat|insaat|mühendislik|muhendislik|enerji|yapı|yapi|holding|grup|group|aydınlatma|aydinlatma|otomasyon|taahhüt|taahhut|mimarlık|mimarlik|proje)/i;
+// Unvan: kişinin görevini anlatan sözcükler (\"Mühendislik\", \"Elektrik\" gibi firma sözcükleri tek başına unvan sayılmaz)
+const UNVAN = /(genel müdür|müdür|mudur|mühendis(?!lik)|muhendis(?!lik)|\bşef\b|\bsef\b|yönetici|yonetici|sorumlu|uzman|direktör|direktor|başkan|baskan|koordinatör|koordinator|tekniker|teknisyen|\bortak\b|kurucu|sahibi|temsilci|danışman|danisman|asistan|manager|engineer|director|purchasing|\bceo\b|\bcfo\b|\bcoo\b|\bcto\b|owner|partner|specialist|representative)/i;
+const FIRMA = /((?<!\p{L})(?:ltd|şti|sti|a\.?ş|a\.s|inc|gmbh|san\.|tic\.)(?!\p{L})|sanayi|ticaret|elektrik|elektronik|inşaat|insaat|mühendislik|muhendislik|enerji|yapı|yapi|holding|grup|group|aydınlatma|aydinlatma|otomasyon|taahhüt|taahhut|mimarlık|mimarlik|proje)/iu;
 const ADRES = /(mah\.?|mahalle|cad\.?|cadde|sok\.?|sokak|bulv|blv|no ?:|no\.|kat|osb|organize|sanayi sitesi|\/ ?(adana|mersin|hatay|osmaniye|istanbul|ankara|izmir)|\b\d{5}\b)/i;
 
 // Kartvizit metnini alanlara ayırır
-export function kartvizitAyristir(metin) {
+export function kartvizitAyristir(metin, satirBilgi = null) {
   const satirlar = String(metin || '').split(/\n+/).map(s => s.replace(/[|_~•·]+/g, ' ').replace(/\s{2,}/g, ' ').trim()).filter(s => s.length > 1);
   const tum = satirlar.join('\n');
   const eposta = (/[A-Za-z0-9._%+-]+\s?@\s?[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.exec(tum) || [''])[0].replace(/\s/g, '').toLowerCase() || null;
@@ -94,14 +105,19 @@ export function kartvizitAyristir(metin) {
   let firma = null, firmaId = null;
   const fk = s => fold(s).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   for (const f of S.firmalar || []) { const k = fk(f.ad).split(' ').slice(0, 2).join(' '); if (k.length >= 4 && fk(tum).includes(k)) { firma = f.ad; firmaId = f.id; break; } }
-  if (!firma) firma = aday.find(s => FIRMA.test(s) && !UNVAN.test(s.split(' ')[0])) || null;
+  const YASAL = /(?<!\p{L})(ltd|şti|sti|a\.?ş|a\.s|inc|gmbh|san\.|tic\.|sanayi|ticaret)(?!\p{L})/iu;
+  if (!firma) firma = aday.find(s => YASAL.test(s)) || [...aday].filter(s => FIRMA.test(s) && !UNVAN.test(s)).sort((a, b) => b.length - a.length)[0] || null;
   const buyuk = w => w.length > 3 && w === w.toLocaleUpperCase('tr') && /[A-ZÇĞİÖŞÜ]/.test(w);
   if (firma && !firmaId) firma = firma.replace(/^(?:[A-ZÇĞİÖŞÜ0-9]{1,2}\s+)+(?=\S+\s+\S)/, '');   // logonun yanlış okunan harfleri
   if (firma && !firmaId) firma = firma.split(/\s+/).map(w => buyuk(w.replace(/[.,]/g, '')) ? w[0] + w.slice(1).toLocaleLowerCase('tr') : w).join(' ');
+  if (firma && !firmaId) firma = firma.replace(/(?<!\p{L})tic\.?\s*ltd\.?/giu, 'Tic. Ltd.').replace(/(?<!\p{L})san\.?(?!\p{L})/giu, 'San.').replace(/(?<!\p{L})ve(?!\p{L})/giu, 've')
+    .replace(/(?<!\p{L})tic\.?(?!\p{L})/giu, 'Tic.').replace(/(?<!\p{L})ltd\.?(?!\p{L})/giu, 'Ltd.').replace(/(?<!\p{L})şt[iİı]\.?(?!\p{L})/giu, 'Şti.').replace(/(?<!\p{L})a\.?ş\.?(?!\p{L})/giu, 'A.Ş.').replace(/\s{2,}/g, ' ').trim();
   const unvan = aday.find(s => s !== firma && UNVAN.test(s) && s.split(' ').length <= 6) || null;
   // Ad soyad: 2-4 kelime, harflerden oluşan, unvan/firma olmayan; büyük harfle başlayan ilk aday
   const adAday = aday.filter(s => s !== firma && s !== unvan && !FIRMA.test(s) && !UNVAN.test(s) && /^[A-Za-zÇĞİÖŞÜçğıöşü.'\s-]+$/.test(s) && s.split(/\s+/).length >= 2 && s.split(/\s+/).length <= 4);
-  let ad = adAday[0] || null;
+  // Kartta en büyük yazılan uygun satır genellikle kişinin adıdır
+  const boyu = s => satirBilgi?.find(x => x.metin === s)?.boy || 0;
+  let ad = (satirBilgi ? [...adAday].sort((a, b) => boyu(b) - boyu(a)) : adAday)[0] || null;
   if (ad) ad = ad.split(/\s+/).map(w => w.length > 1 && w === w.toLocaleUpperCase('tr') ? w[0] + w.slice(1).toLocaleLowerCase('tr') : w).join(' ');
   const adres = satirlar.filter(s => ADRES.test(s) && !/@|www\./.test(s)).map(temiz).join(', ') || null;
   const cep = telefonlar.find(t => t.tur === 'cep'), sabit = telefonlar.find(t => t.tur === 'sabit');
