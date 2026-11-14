@@ -216,13 +216,14 @@ export function firmaSayfa(el, id, sekme0) {
 // Organizasyon şeması (Kişiler ve şema sekmesi)
 function orgKur(el, x, kisiler, eskiler) {
   const orgKok = el.querySelector('[data-org]'); if (!orgKok) return;
-  return import('../orgsema.js').then(({ orgSemasi, orgSurukle, orgYakinlastir, orgHizliDuzen }) => {
+  return import('../orgsema.js').then(({ orgSemasi, orgSurukle, orgYakinlastir, orgHizliDuzen, orgIndir }) => {
     const o = orgSemasi(kisiler, { firmaAd: x.ad, eskiler, firmaId: x.id, firmaAdiOf: firmaAd });
     const yazar = rotaYazilabilir('kisiler');
     orgKok.insertAdjacentHTML('beforeend', o.ozet + o.html + `<p class="hint">${yazar ? 'Kişiye dokun: unvanını, bölümünü ve kime bağlı olduğunu değiştir. Bir kişiyi başka bir kişinin üstüne sürükle (telefonda basılı tutup sürükle): o kişiye bağlanır. Bir yöneticinin altındaki bölüm etiketine bırakınca o bölüme geçer. Ctrl ile tıklayınca kişi kartı açılır.' : 'Kişi kartında “Bağlı olduğu kişi” seçilerek ağaç kurulur.'}</p>`);
     requestAnimationFrame(() => { const k = orgKok.querySelector('.org-kaydir'); if (k && k.scrollWidth > k.clientWidth) k.scrollLeft = (k.scrollWidth - k.clientWidth) / 2; });
     const kaydetK = async (id, d) => { const k = byId('kisiler', id); if (!k) return; try { await app.db.save('kisiler', { ...k, ...d }); toast('ust_kisi_id' in d && Object.keys(d).length <= 2 && d.ust_kisi_id ? `${k.ad_soyad} → ${byId('kisiler', d.ust_kisi_id)?.ad_soyad} altına bağlandı.` : `${k.ad_soyad} güncellendi.`); app.refresh(); } catch (e) { toast(e.message, 'err'); } };
     orgYakinlastir(orgKok, { anahtar: 'org-zoom-' + x.id });
+    orgIndir(orgKok, { baslik: x.ad });
     if (yazar) orgSurukle(orgKok, { kisiler, kaydet: kaydetK, duzenle: id => orgHizliDuzen(byId('kisiler', id), { kisiler, POZ: POZISYONLAR, kaydet: kaydetK, kartiAc: kid => { location.hash = '#/kisi/' + kid; } }) });
   });
 }

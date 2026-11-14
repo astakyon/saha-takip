@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 65): Organizasyon şemasını resim ya da PDF olarak indir
+
+- Firma sayfası → Kişiler ve şema → şemanın üstünde **Resim indir** ve **PDF** düğmeleri.
+- Resim: başlıkta firma adı ve tarih, kutular, bağlantı çizgileri, bölüm etiketleri, karar verici ve son temas rozetleri; altta firmadan ayrılanlar. Yüksek çözünürlüklü PNG, WhatsApp'tan ya da e-postayla paylaşılabilir.
+- PDF: yazdırma penceresi açılır, "PDF olarak kaydet" seçilir. Şema genişse sayfa kendiliğinden yatay olur ve sayfaya sığdırılır.
+- Ekrandaki yakınlaştırma ne olursa olsun indirilen şema tam boyutta çizilir.
+
 ## Güncelleme notu (sürüm 64): Satış haritası (projenin karar grubu)
 
 **Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 29: projelere `karar_grubu` sütunu).** Çalıştırılmazsa harita yalnızca bu cihazda kalır.

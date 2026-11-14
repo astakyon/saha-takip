@@ -1636,3 +1636,4 @@ a.org-kutu:hover, a.org-kutu:focus-visible { border-color: #E0B93E; }
 .ps-kisiler li { display: flex; gap: 6px; align-items: center; } .ps-kisiler li .pcard { flex: 1; min-width: 0; }
 @media (max-width: 900px) { .sh-pano { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .sh-pano { grid-template-columns: minmax(0, 1fr); } .sh-sutun { min-height: 0; } }
+.org-arac .grow { flex: 1; }

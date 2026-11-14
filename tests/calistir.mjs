@@ -400,6 +400,11 @@ const DB = () => {
   const z0 = await p.textContent('.fs-sayfa [data-zoomyuzde]'); await p.click('.fs-sayfa [data-zoom="+"]'); const z1 = await p.textContent('.fs-sayfa [data-zoomyuzde]');
   const kb = await p.locator('.fs-sayfa .org-kaydir').boundingBox(); await p.mouse.move(kb.x + 20, kb.y + 20); await p.mouse.wheel(0, 200); await w(200); const z2 = await p.textContent('.fs-sayfa [data-zoomyuzde]');
   await p.click('.fs-sayfa [data-zoom="sigdir"]');
+  const [indirme] = await Promise.all([p.waitForEvent('download', { timeout: 8000 }).catch(() => null), p.click('.fs-sayfa [data-indir="png"]')]);
+  let pngBoyut = 0; if (indirme) { await indirme.saveAs('tests/cikti/sema-indir.png'); pngBoyut = (await import('node:fs')).statSync('tests/cikti/sema-indir.png').size; }
+  await p.click('.fs-sayfa [data-indir="pdf"]'); await w(500);
+  const pdf = await p.evaluate(() => { const f = [...document.querySelectorAll('iframe')].find(f => /<svg/.test(f.srcdoc || '')); return f ? { svg: (f.srcdoc.match(/<rect/g) || []).length, ad: /Ahmet Yılmaz/.test(f.srcdoc), baslik: /Organizasyon şeması/.test(f.srcdoc) } : null; });
+  kontrol('Şema resim (PNG) ve PDF olarak indiriliyor', indirme && /organizasyon\.png$/.test(indirme.suggestedFilename()) && pngBoyut > 5000 && pdf?.svg >= 5 && pdf.ad && pdf.baslik, JSON.stringify({ ad: indirme?.suggestedFilename(), pngBoyut, pdf }));
   kontrol('Şemada yönetici altında bölümler, kişiye tıklayınca görev değişiyor, yakınlaştırma çalışıyor', bolum && dlg && k4[0] === 'Mühendis / Teknik' && k4[1] === 'Elektrik Mühendisi' && parseInt(z1) > parseInt(z0) && parseInt(z2) < parseInt(z1), JSON.stringify({ bolum, dlg, k4, z0, z1, z2 }));
   // Telefonda: basılı tut (0,3 sn) ve sürükle — Ece Su'yu Ahmet Yılmaz'ın altına
   await p.setViewportSize({ width: 820, height: 1000 }); await p.goto(U + '#/firmalar'); await p.reload(); await w(1800); await p.click('a[href="#/firma/f2"]'); await w(1200); await p.click('[data-fsk="kisiler"]'); await w(500);
