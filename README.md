@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 55): Roller (K2)
+
+- Ayarlar → Ekip ve yetkiler'de **Roller** bölümü: şirket kendi rollerini tanımlar. “Hazır rolleri ekle” ile Muhasebe, Satış, Satış destek, Proje ve Bayi rolleri tek dokunuşla gelir; her rol açılıp ekran ağacıyla (Kapalı / Görür / Düzenler), gizlenen alanlarla ve Excel izniyle düzenlenir. “Yeni rol” ile istenen ad verilir (ör. “Satış Adana”).
+- **Rol değişince o roldeki herkes birlikte güncellenir** (sunucuda tetikleyiciyle; uygulama da ayrıca yazar). Rol kartında kaç kişinin etkileneceği sorulur.
+- **Kullanıcı kartı:** “Rol” seçilir; rol seçiliyse ekran ağacı gizlenir ve rolün yetkileri özetlenir. “Bu kişiye özel ayar yap” işaretlenirse ağaç açılır ve o kişi rol değişikliklerinden etkilenmez. Rol yoksa eskisi gibi kişiye özel ayar.
+- **Bu rol gibi gör:** rolün gördüğü uygulamayı kendi telefonunda önizler.
+- Rol silinirse o roldeki kişiler şimdiki yetkilerini korur, kişiye özel olarak kalır.
+- **Taşıma:** şema çalıştırılınca rolü olmayan mevcut kullanıcıların yetkileri role çevrilir; aynı yetkilere sahip olanlar aynı rolü paylaşır (rol adı eski rol etiketinden gelir).
+- Supabase'de güncel **schema.sql** çalıştırılmalı (sürüm 27).
+
 ## Güncelleme notu (sürüm 54): şirket profili kendi sayfasında
 
 - Firma profili ayarlardan çıktı; **Şirket profili** artık geniş, ayrı bir sayfa (`#/sirket`). Menüde logonun altındaki firma kartına dokununca açılır; Ayarlar'daki “Firma profili” de buraya götürür.

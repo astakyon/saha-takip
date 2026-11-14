@@ -1018,3 +1018,65 @@ create or replace function public.yetki_surum() returns int language sql stable 
 -- ===================== Sürüm 26: kişinin bağlı olduğu kişi (firma organizasyon şeması) =====================
 alter table public.kisiler add column if not exists ust_kisi_id uuid references public.kisiler(id) on delete set null;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 26 $f$;
+
+-- ===================== Sürüm 27: Roller (K2) =====================
+-- Şirket kendi rollerini tanımlar (Muhasebe, Satış, Satış destek, Proje, Bayi…). Kullanıcı bir rol alır;
+-- rolün ekran yetkileri değişince o roldeki herkes güncellenir. "Kişiye özel" işaretli kullanıcı kendi ayarını korur.
+create table if not exists public.roller (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default public.veri_sahibi(),
+  ad text not null, aciklama text,
+  yetkiler jsonb not null default '{}'::jsonb,
+  sira int not null default 0,
+  created_at timestamptz default now(), updated_at timestamptz default now(),
+  unique (owner, ad)
+);
+create index if not exists roller_owner_idx on public.roller (owner);
+alter table public.roller enable row level security;
+drop policy if exists "rol_yonet" on public.roller;
+create policy "rol_yonet" on public.roller for all to authenticated using (public.sirket_yetkilisi(owner)) with check (public.sirket_yetkilisi(owner));
+drop policy if exists "yonetici_oku" on public.roller;
+create policy "yonetici_oku" on public.roller for select to authenticated using (public.yonetici_mi());
+drop trigger if exists touch on public.roller;
+create trigger touch before update on public.roller for each row execute function public.touch_updated_at();
+
+alter table public.ekip_uyeleri add column if not exists rol_id uuid references public.roller(id) on delete set null;
+alter table public.ekip_uyeleri add column if not exists ozel boolean not null default false;
+
+-- Kullanıcıya rol verilince (kişiye özel değilse) yetkileri rolden gelir
+create or replace function public.uye_rolden() returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if new.rol_id is not null and not new.ozel then
+    select r.yetkiler || jsonb_build_object('_rol', r.ad) into new.yetkiler from public.roller r where r.id = new.rol_id and r.owner = new.owner;
+    if new.yetkiler is null then new.yetkiler := '{}'::jsonb; end if;
+  end if;
+  return new;
+end $f$;
+drop trigger if exists uye_rolden on public.ekip_uyeleri;
+create trigger uye_rolden before insert or update on public.ekip_uyeleri for each row execute function public.uye_rolden();
+-- Rol değişince o roldeki herkes güncellenir
+create or replace function public.rol_yay() returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  update public.ekip_uyeleri set yetkiler = new.yetkiler || jsonb_build_object('_rol', new.ad)
+  where rol_id = new.id and not ozel and owner = new.owner;
+  return new;
+end $f$;
+drop trigger if exists rol_yay on public.roller;
+create trigger rol_yay after insert or update on public.roller for each row execute function public.rol_yay();
+
+-- Taşıma: rolü olmayan kullanıcıların bugünkü yetkileri role çevrilir; aynı yetkilere sahip olanlar aynı rolü paylaşır
+do $$
+declare u record; r_id uuid; y jsonb; ad0 text; ad1 text; n int;
+begin
+  for u in select * from public.ekip_uyeleri where rol_id is null and not ozel and not yonetici and yetkiler <> '{}'::jsonb order by owner, created_at loop
+    y := u.yetkiler - '_rol';
+    select id into r_id from public.roller where owner = u.owner and yetkiler = y limit 1;
+    if r_id is null then
+      ad0 := coalesce(nullif(btrim(u.yetkiler ->> '_rol'), ''), 'Rol'); ad1 := ad0; n := 1;
+      while exists (select 1 from public.roller where owner = u.owner and ad = ad1) loop n := n + 1; ad1 := ad0 || ' ' || n; end loop;
+      insert into public.roller (owner, ad, yetkiler) values (u.owner, ad1, y) returning id into r_id;
+    end if;
+    update public.ekip_uyeleri set rol_id = r_id where id = u.id;
+  end loop;
+end $$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 27 $f$;

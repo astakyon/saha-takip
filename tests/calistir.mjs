@@ -332,6 +332,22 @@ const DB = () => {
   const yon = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).ekip_uyeleri[0].yonetici);
   const etiket = await p.isVisible('[data-uye="ali@x.com"] .yon-r');
   kontrol('Şirket kartı görünüyor, şirket adı kaydediliyor, kullanıcı şirket yöneticisi yapılabiliyor', kart && ad === 'Yeni Şirket AŞ' && yon === true && etiket, JSON.stringify({ kart, ad, yon, etiket }));
+  // K2: hazır roller eklenir, kullanıcıya rol verilir, rol değişince kullanıcı güncellenir
+  await p.click('[data-hazirrol]'); await w(1200);
+  const roller = await p.evaluate(() => (JSON.parse(localStorage.getItem('__DB')).roller || []).map(r => r.ad));
+  await p.click('[data-uye="ali@x.com"] summary').catch(() => {}); await w(200);
+  const satisId = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).roller.find(r => r.ad === 'Satış').id);
+  await p.uncheck('[data-uye="ali@x.com"] [data-yonetici]');
+  await p.selectOption('[data-uye="ali@x.com"] [data-uyerol]', satisId); await w(200);
+  const agacGizli = await p.isHidden('[data-uye="ali@x.com"] [data-agac]');
+  await p.click('[data-uye="ali@x.com"] [data-kaydet]'); await w(800);
+  const ali1 = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).ekip_uyeleri[0]);
+  await p.click(`.rol-k[data-rol="${satisId}"] summary`); await w(200);
+  await p.evaluate(id => document.querySelector(`.rol-k[data-rol="${id}"] [data-ek="harita"] [data-v=""]`).click(), satisId);
+  await p.click(`.rol-k[data-rol="${satisId}"] [data-rolkaydet]`); await w(1200);
+  await p.locator('.roller-bol').screenshot({ path: 'tests/cikti/roller.png' }).catch(() => {});
+  const ali2 = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).ekip_uyeleri[0].yetkiler);
+  kontrol('Hazır roller ekleniyor, kullanıcı rol alıyor, rol değişince kullanıcı da değişiyor', roller.length === 5 && ali1.rol_id === satisId && ali1.yetkiler._rol === 'Satış' && ali1.yetkiler.projeler === 'yaz' && agacGizli && ali1.yetkiler._ekran?.harita === 'oku' && !ali2._ekran?.harita, JSON.stringify({ roller, agacGizli, ali1: { rol: ali1.rol_id === satisId, y: ali1.yetkiler._rol }, h2: ali2._ekran?.harita }));
   kontrol('Şirket ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
