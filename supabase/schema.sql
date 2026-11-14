@@ -1423,7 +1423,82 @@ create or replace function public.dis_bilgim() returns jsonb language sql stable
 $f$;
 revoke all on function public.dis_bilgim() from public, anon;
 grant execute on function public.dis_bilgim() to authenticated;
-create or replace function public.yetki_surum() returns int language sql stable as $f$ select 31 $f$;
+-- ===================== Sürüm 32: çok şirketli kişi — şirketler arası geçiş (K5) =====================
+-- Aynı e-postayla birden fazla şirketin ekibinde olan kişi çalışacağı şirketi seçer; seçim kişiye özel saklanır.
+create table if not exists public.secili_sirket (
+  user_id uuid primary key default auth.uid() references auth.users(id) on delete cascade,
+  owner uuid not null, updated_at timestamptz default now()
+);
+alter table public.secili_sirket enable row level security;
+drop policy if exists "kendi_secimim" on public.secili_sirket;
+create policy "kendi_secimim" on public.secili_sirket for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+-- Bu şirkete erişimim var mı: kurucusu (ayrılmadıysa), yöneticisi ya da aktif üyesi
+create or replace function public.sirkete_erisim(sahip uuid) returns boolean language sql stable security definer set search_path = public as $f$
+  select public.sirket_yetkilisi(sahip) or exists (select 1 from public.ekip_uyeleri u where u.owner = sahip and u.aktif and lower(u.eposta) = public.benim_epostam())
+$f$;
+revoke all on function public.sirkete_erisim(uuid) from public, anon;
+grant execute on function public.sirkete_erisim(uuid) to authenticated;
+-- Çalıştığım şirket: önce seçtiğim (hâlâ erişimim varsa), sonra eski kural
+create or replace function public.veri_sahibi() returns uuid language sql stable security definer set search_path = public as $f$
+  select coalesce(
+    (select s.owner from public.secili_sirket s where s.user_id = auth.uid() and public.sirkete_erisim(s.owner)),
+    (select u.owner from public.ekip_uyeleri u where u.aktif and u.yonetici and lower(u.eposta) = public.benim_epostam() and u.owner <> auth.uid() order by u.created_at limit 1),
+    (select u.owner from public.ekip_uyeleri u where u.aktif and lower(u.eposta) = public.benim_epostam() and u.owner <> auth.uid() order by u.created_at limit 1),
+    auth.uid())
+$f$;
+-- Erişebildiğim şirketler (geçiş listesi)
+create or replace function public.sirketlerim() returns jsonb language sql stable security definer set search_path = public, auth as $f$
+  with s as (
+    select auth.uid() as owner where public.sirket_yetkilisi(auth.uid()) and exists (select 1 from public.hesaplar h where h.owner = auth.uid())
+    union select u.owner from public.ekip_uyeleri u where u.aktif and lower(u.eposta) = public.benim_epostam()
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'owner', s.owner,
+    'ad', coalesce((select h.firma from public.hesaplar h where h.owner = s.owner), (select lower(x.email) from auth.users x where x.id = s.owner)),
+    'rol', case when s.owner = auth.uid() then 'Kurucu' when public.sirket_yetkilisi(s.owner) then 'Şirket yöneticisi'
+               when (select u.dis_firma_id from public.ekip_uyeleri u where u.owner = s.owner and lower(u.eposta) = public.benim_epostam() limit 1) is not null then 'Dış kullanıcı'
+               else coalesce((select nullif(u.yetkiler ->> '_rol', '') from public.ekip_uyeleri u where u.owner = s.owner and lower(u.eposta) = public.benim_epostam() limit 1), 'Ekip üyesi') end,
+    'secili', s.owner = public.veri_sahibi()) order by (s.owner = public.veri_sahibi()) desc), '[]'::jsonb)
+  from s
+$f$;
+revoke all on function public.sirketlerim() from public, anon;
+grant execute on function public.sirketlerim() to authenticated;
+create or replace function public.sirket_sec(p_owner uuid) returns void language plpgsql security definer set search_path = public as $f$
+begin
+  if p_owner <> auth.uid() and not public.sirkete_erisim(p_owner) then raise exception 'Bu şirkete erişimin yok.'; end if;
+  insert into public.secili_sirket (user_id, owner) values (auth.uid(), p_owner)
+  on conflict (user_id) do update set owner = excluded.owner, updated_at = now();
+end $f$;
+revoke all on function public.sirket_sec(uuid) from public, anon;
+grant execute on function public.sirket_sec(uuid) to authenticated;
+-- Kapsam her şirket için ayrı hesaplanır (önceden yalnızca çalışılan şirket için)
+create or replace function public.kapsam_of(sahip uuid) returns text language sql stable security definer set search_path = public as $f$
+  select case when public.sirket_yetkilisi(sahip) then 'tum'
+    else coalesce((select nullif(u.yetkiler ->> '_kapsam', '') from public.ekip_uyeleri u where u.owner = sahip and u.aktif and lower(u.eposta) = public.benim_epostam() limit 1), 'tum') end
+$f$;
+create or replace function public.ekiplerim_of(sahip uuid) returns uuid[] language sql stable security definer set search_path = public as $f$
+  with recursive bas as (
+    select u.ekip_id as id from public.ekip_uyeleri u where u.owner = sahip and u.aktif and lower(u.eposta) = public.benim_epostam() and u.ekip_id is not null
+    union select e.id from public.ekipler e where e.owner = sahip and lower(e.yonetici_eposta) = public.benim_epostam()
+  ), agac as (select id from bas union select e.id from public.ekipler e join agac a on e.ust_ekip_id = a.id)
+  select coalesce(array_agg(id), '{}') from agac
+$f$;
+create or replace function public.yonettigim_of(sahip uuid) returns uuid[] language sql stable security definer set search_path = public as $f$
+  with recursive agac as (
+    select e.id from public.ekipler e where e.owner = sahip and lower(e.yonetici_eposta) = public.benim_epostam()
+    union select e.id from public.ekipler e join agac a on e.ust_ekip_id = a.id
+  ) select coalesce(array_agg(id), '{}') from agac
+$f$;
+create or replace function public.kapsamda(sahip uuid, sorumlu text, ekip uuid) returns boolean language sql stable security definer set search_path = public as $f$
+  select public.kapsam_of(sahip) = 'tum'
+    or lower(coalesce(sorumlu, '')) = public.benim_epostam()
+    or (ekip is not null and ekip = any(public.yonettigim_of(sahip)))
+    or (public.kapsam_of(sahip) = 'ekip' and ekip is not null and ekip = any(public.ekiplerim_of(sahip)))
+    or public.dis_firmam(sahip) is not null
+$f$;
+revoke all on function public.kapsamda(uuid, text, uuid) from public, anon;
+grant execute on function public.kapsamda(uuid, text, uuid) to authenticated;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 32 $f$;
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

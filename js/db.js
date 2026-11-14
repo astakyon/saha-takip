@@ -229,6 +229,8 @@ class SupaAdapter {
   async yetkiYukle() {
     try { const { data, error } = await this.c.rpc('benim_yetkilerim'); if (error) throw error; this.yetki = data || { ben_sahip: true }; }
     catch { this.yetki = { ben_sahip: true }; }
+    // K5: erişebildiği şirketler (birden çoksa menüde şirket değiştirme çıkar)
+    try { const { data, error } = await this.c.rpc('sirketlerim'); this.sirketler = !error && Array.isArray(data) ? data : null; } catch { this.sirketler = null; }
     // K5: dış kullanıcı (bayi / proje firması) ise firması
     if (this.yetki?.ben_sahip === false) try { const { data, error } = await this.c.rpc('dis_bilgim'); if (!error && data?.firma_id) this.yetki = { ...this.yetki, dis: data }; } catch {}
     this.sahip = this.bakilan || this.yetki?.sahip || this.user()?.id;

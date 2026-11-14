@@ -32,6 +32,15 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 69): Çok şirketli kişi, şirketler arası geçiş (K5)
+
+**Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 32).**
+
+- Aynı e-postayla birden fazla şirketin ekibinde olan (ya da kendi şirketi de olan) kişinin menüsünde, şirket adının yanında **⇄ Şirket değiştir** düğmesi çıkar; telefonda Şirket profili sayfasının üstünde.
+- Listede her şirketin adı ve oradaki rolü (Kurucu, Şirket yöneticisi, Satış, Dış kullanıcı…) görünür. Seçilen şirket sunucuda kişiye özel saklanır; bir sonraki girişte de o şirket açılır.
+- Geçişte önceki şirketin telefondaki kopyası silinir, yeni şirketin kayıtları baştan yüklenir. Buluta gönderilmemiş değişiklik varsa önce sorulur.
+- Kayıt kapsamı (Kendi / Ekibi / Tüm şirket) artık her şirket için ayrı hesaplanır: bir şirketteki "yalnızca kendi kayıtları" kısıtı, o şirket seçili olmasa da geçerlidir.
+
 ## Güncelleme notu (sürüm 68): Dış kullanıcı: bayi ve proje firması (K5)
 
 **Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 31).**

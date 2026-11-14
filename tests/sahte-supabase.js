@@ -67,7 +67,9 @@
     // K4 sahte sunucu: localStorage.__HASSAS varsa projelerde tutar sütunları sunucuda gizli
     rpc(n, a) { const H = localStorage.getItem('__HASSAS'), Y = JSON.parse(localStorage.getItem('__YETKI') || 'null'), acik = !(Y && Y.ben_sahip === false && (Y.yetkiler?._gizli || []).includes('tutar')), HK = ['tutar_usd', 'siparis_tutari_usd', 'bizim_teklif_usd', 'rakip_birim_fiyat', 'rakip_toplam_usd'];
       let p;
-      if (n === 'dis_bilgim') p = Promise.resolve({ data: Y?.dis || null, error: null });
+      if (n === 'sirketlerim') p = Promise.resolve({ data: JSON.parse(localStorage.getItem('__SIRKETLER') || 'null') || [], error: null });
+      else if (n === 'sirket_sec') { localStorage.setItem('__SECILI', a.p_owner); p = Promise.resolve({ data: null, error: null }); }
+      else if (n === 'dis_bilgim') p = Promise.resolve({ data: Y?.dis || null, error: null });
       else if (H && n === 'hassas_semasi') p = Promise.resolve({ data: { projeler: { grup: 'tutar', hassas: HK, okunur: ['id', 'owner', 'ad', 'durum', 'il', 'ilce', 'emut_id', 'ilgili_kisi_id', 'karar_grubu', 'notlar', 'updated_at', 'created_at', 'sorumlu'] } }, error: null });
       else if (H && n === 'hassas_degerler') p = Promise.resolve({ data: acik ? (DB[a.p_tablo] || []).filter(r => !a.p_idler || a.p_idler.includes(r.id)).map(r => ({ id: r.id, deger: Object.fromEntries(HK.map(k => [k, r[k] ?? null])) })) : [], error: null });
       else if (H && n === 'kaydet_toplu') { const T = DB[a.p_tablo] ||= []; const out = []; for (const row of a.p_satirlar) { const i = T.findIndex(r => r.id === row.id); const yeni = { ...row }; if (!acik && i >= 0) for (const k of HK) delete yeni[k]; const r = { ...(i >= 0 ? T[i] : { created_at: simdi(), owner: Y?.sahip || 'u1' }), ...yeni, updated_at: simdi() }; if (i >= 0) T[i] = r; else T.push(r); out.push({ id: r.id, updated_at: r.updated_at }); } kaydet(); p = Promise.resolve({ data: out, error: null }); }

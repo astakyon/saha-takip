@@ -412,6 +412,23 @@ const DB = () => {
   kontrol('K5: kullanıcı kartında dış kullanıcının firması seçilip kaydediliyor', secVar && kayit === 'f1', JSON.stringify({ secVar, kayit }));
   await c.close();
 }
+// ---------- 15) K5: çok şirketli kişi şirket değiştirir ----------
+{
+  const DB8 = new Function('(' + DB.toString() + ')(); localStorage.setItem("saha-ayar-firma_profil", "1"); localStorage.setItem("__SIRKETLER", JSON.stringify([{ owner: "u1", ad: "EAE Bölge", rol: "Satış", secili: true }, { owner: "u9", ad: "Kendi Şirketim", rol: "Kurucu", secili: false }]));');
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB8 });
+  await p.setViewportSize({ width: 1280, height: 900 });
+  await p.goto(U + '#/bugun'); await w(1800);
+  const dug = await p.isVisible('#nav [data-sirketsec]');
+  await p.click('#nav [data-sirketsec]'); await w(300);
+  const liste = await p.evaluate(() => [...document.querySelectorAll('dialog.sirket-dlg [data-sirket]')].map(b => b.textContent.replace(/\s+/g, ' ').trim()));
+  await Promise.all([p.waitForNavigation({ timeout: 8000 }).catch(() => null), p.click('dialog.sirket-dlg [data-sirket="u9"]')]); await w(1500);
+  const secili = await p.evaluate(() => localStorage.getItem('__SECILI'));
+  await p.setViewportSize({ width: 390, height: 844 }); await p.goto(U + '#/sirket'); await w(1500);
+  const telDug = await p.isVisible('[data-sirketsec]');
+  kontrol('K5: birden çok şirkete erişen kişi menüden (telefonda şirket profilinden) şirket değiştiriyor', dug && liste.length === 2 && /EAE Bölge.*şu an açık/.test(liste[0]) && secili === 'u9' && telDug, JSON.stringify({ dug, liste, secili, telDug }));
+  kontrol('Şirket değiştirmede hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
 {
   const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');
