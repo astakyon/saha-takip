@@ -324,7 +324,11 @@ const DB = () => {
   const DB2 = new Function('(' + DB.toString() + ')(); const d = JSON.parse(localStorage.getItem("__DB")); d.ekip_uyeleri = [{ id: "e1", owner: "u1", eposta: "ali@x.com", ad: "Ali", aktif: true, yetkiler: { projeler: "oku" }, yonetici: false, created_at: "2026-10-01" }]; localStorage.setItem("__DB", JSON.stringify(d));');
   const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB2 });
   await p.goto(U + '#/ayarlar'); await w(1200);
-  await p.click('[data-sekme="ekip"]'); await w(1200);
+  const ayarEkipYok = await p.evaluate(() => !document.querySelector('[data-sekme="ekip"], [data-sekme="mesaj"], [data-sekme="profil"]') && !!document.querySelector('[data-sekme="bildirim"]') && !/Döviz kuru|Araç/.test([...document.querySelectorAll('[data-tab="baglanti"] h2, [data-tab="uygulama"] h2')].map(h => h.textContent).join('|')));
+  await p.goto(U + '#/sirket/ekip'); await w(1500);
+  const sekmeEkip = await p.evaluate(() => ({ h: location.hash, on: document.querySelector('[data-fsk].on')?.dataset.fsk, sek: [...document.querySelectorAll('[data-fsk]')].map(b => b.dataset.fsk).join(',') }));
+  await p.screenshot({ path: 'tests/cikti/sirket-ekip.png', fullPage: true });
+  kontrol('Ayarlar sadeleşti (Ekip, Mesaj, Firma profili, Döviz kuru, Araç çıktı; Bildirimler ayrı); Ekip ve yetkiler şirket profilinde', ayarEkipYok && sekmeEkip.h === '#/sirket/ekip' && sekmeEkip.on === 'ekip' && sekmeEkip.sek === 'genel,ekip,sablon,kur', JSON.stringify({ ayarEkipYok, sekmeEkip }));
   const kart = await p.isVisible('.sirket-kart');
   await p.fill('#sk-ad', 'Yeni Şirket AŞ'); await p.click('[data-sk-ad]'); await w(300);
   const ad = await p.evaluate(() => localStorage.getItem('__SIRKET_AD'));
@@ -400,11 +404,13 @@ const DB = () => {
   const z0 = await p.textContent('.fs-sayfa [data-zoomyuzde]'); await p.click('.fs-sayfa [data-zoom="+"]'); const z1 = await p.textContent('.fs-sayfa [data-zoomyuzde]');
   const kb = await p.locator('.fs-sayfa .org-kaydir').boundingBox(); await p.mouse.move(kb.x + 20, kb.y + 20); await p.mouse.wheel(0, 200); await w(200); const z2 = await p.textContent('.fs-sayfa [data-zoomyuzde]');
   await p.click('.fs-sayfa [data-zoom="sigdir"]');
-  const [indirme] = await Promise.all([p.waitForEvent('download', { timeout: 8000 }).catch(() => null), p.click('.fs-sayfa [data-indir="png"]')]);
+  await p.click('.fs-sayfa [data-indir]'); await w(300);
+  const indirDlg = await p.evaluate(() => ({ ayr: !!document.querySelector('dialog.org-dlg [data-ayr]') }));
+  const [indirme] = await Promise.all([p.waitForEvent('download', { timeout: 8000 }).catch(() => null), p.click('dialog.org-dlg [data-indirgit]')]);
   let pngBoyut = 0; if (indirme) { await indirme.saveAs('tests/cikti/sema-indir.png'); pngBoyut = (await import('node:fs')).statSync('tests/cikti/sema-indir.png').size; }
-  await p.click('.fs-sayfa [data-indir="pdf"]'); await w(500);
-  const pdf = await p.evaluate(() => { const f = [...document.querySelectorAll('iframe')].find(f => /<svg/.test(f.srcdoc || '')); return f ? { svg: (f.srcdoc.match(/<rect/g) || []).length, ad: /Ahmet Yılmaz/.test(f.srcdoc), baslik: /Organizasyon şeması/.test(f.srcdoc) } : null; });
-  kontrol('Şema resim (PNG) ve PDF olarak indiriliyor', indirme && /organizasyon\.png$/.test(indirme.suggestedFilename()) && pngBoyut > 5000 && pdf?.svg >= 5 && pdf.ad && pdf.baslik, JSON.stringify({ ad: indirme?.suggestedFilename(), pngBoyut, pdf }));
+  await p.click('.fs-sayfa [data-indir]'); await w(300); await p.click('dialog.org-dlg [data-bc="pdf"]'); await p.check('dialog.org-dlg [data-ayr]'); await p.click('dialog.org-dlg [data-indirgit]'); await w(500);
+  const pdf = await p.evaluate(() => { const f = [...document.querySelectorAll('iframe')].find(f => /<svg/.test(f.srcdoc || '')); return f ? { svg: (f.srcdoc.match(/<rect/g) || []).length, ad: /Ahmet Yılmaz/.test(f.srcdoc), baslik: /Organizasyon şeması/.test(f.srcdoc), ayr: /Firmadan ayrılanlar/.test(f.srcdoc), temas: /temas yok|gün önce|bugün/.test(f.srcdoc) } : null; });
+  kontrol('Şema resim (PNG) ve PDF olarak indiriliyor; ayrılanlar isteğe bağlı, temas bilgisi çıktıda yok', indirDlg.ayr && indirme && /organizasyon\.png$/.test(indirme.suggestedFilename()) && pngBoyut > 5000 && pdf?.svg >= 5 && pdf.ad && pdf.baslik && pdf.ayr && !pdf.temas, JSON.stringify({ indirDlg, ad: indirme?.suggestedFilename(), pngBoyut, pdf }));
   kontrol('Şemada yönetici altında bölümler, kişiye tıklayınca görev değişiyor, yakınlaştırma çalışıyor', bolum && dlg && k4[0] === 'Mühendis / Teknik' && k4[1] === 'Elektrik Mühendisi' && parseInt(z1) > parseInt(z0) && parseInt(z2) < parseInt(z1), JSON.stringify({ bolum, dlg, k4, z0, z1, z2 }));
   // Telefonda: basılı tut (0,3 sn) ve sürükle — Ece Su'yu Ahmet Yılmaz'ın altına
   await p.setViewportSize({ width: 820, height: 1000 }); await p.goto(U + '#/firmalar'); await p.reload(); await w(1800); await p.click('a[href="#/firma/f2"]'); await w(1200); await p.click('[data-fsk="kisiler"]'); await w(500);

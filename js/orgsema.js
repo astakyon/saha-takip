@@ -70,7 +70,7 @@ export function orgSemasi(kisiler, { link = k => `#/kisi/${k.id}`, firmaAd = 'Fi
   // Ayrılanlar: ağacın yanında soluk, şimdi nerede oldukları yazılı
   const eskiHtml = eskiler.length ? `<aside class="org-eski" aria-label="Firmadan ayrılanlar"><h4>Firmadan ayrılanlar <small>${eskiler.length}</small></h4>${eskiler.map(k => { const g = (k.eski_firmalar || []).find(g => g.firma_id === firmaId) || {};
     return `<a class="org-kutu eski" href="${link(k)}"><span class="avatar sm" aria-hidden="true">${esc((k.ad_soyad || '?').slice(0, 1))}</span><span class="org-metin"><b>${esc(k.ad_soyad)}</b><small>${esc([g.unvan || g.pozisyon, g.bitis ? g.bitis.slice(0, 4) + "'te ayrıldı" : 'ayrıldı'].filter(Boolean).join(' · '))}</small><span class="org-alt"><span class="org-rozet hafif">${k.firma_id ? 'şimdi: ' + esc(firmaAdiOf(k.firma_id) || '?') : 'firması yok'}</span></span></span></a>`; }).join('')}</aside>` : '';
-  const arac = kisiler.length ? `<div class="org-arac" role="toolbar" aria-label="Şema yakınlaştırma"><button type="button" class="btn sm ghost" data-zoom="-" aria-label="Uzaklaştır">−</button><span data-zoomyuzde>100%</span><button type="button" class="btn sm ghost" data-zoom="+" aria-label="Yakınlaştır">+</button><button type="button" class="btn sm ghost" data-zoom="sigdir">Sığdır</button><small class="muted">Fare tekerleğiyle yakınlaştır, boş yerden tutup kaydır</small><span class="grow"></span><button type="button" class="btn sm ghost" data-indir="png">Resim indir</button><button type="button" class="btn sm ghost" data-indir="pdf">PDF</button></div>` : '';
+  const arac = kisiler.length ? `<div class="org-arac" role="toolbar" aria-label="Şema yakınlaştırma"><button type="button" class="btn sm ghost" data-zoom="-" aria-label="Uzaklaştır">−</button><span data-zoomyuzde>100%</span><button type="button" class="btn sm ghost" data-zoom="+" aria-label="Yakınlaştır">+</button><button type="button" class="btn sm ghost" data-zoom="sigdir">Sığdır</button><small class="muted">Fare tekerleğiyle yakınlaştır, boş yerden tutup kaydır</small><span class="grow"></span><button type="button" class="btn sm ghost" data-indir>İndir (resim / PDF)</button></div>` : '';
   return { html: `<div class="org-yan">${arac}<div class="org-kaydir" tabindex="0" aria-label="Organizasyon şeması">${kisiler.length ? `<ul class="org">${agac}</ul>` : '<p class="hint">Firmada kayıtlı kişi yok.</p>'}</div>${eskiHtml}</div>`, ozet };
 }
 
@@ -183,7 +183,7 @@ export function orgHizliDuzen(k, { kisiler, POZ, kaydet, kartiAc }) {
 // ---------- Şemayı resim (PNG) ya da PDF olarak indir ----------
 // Ekrandaki ağacın kutularının yerleri ölçülür, temiz bir SVG çizilir (bağlantı çizgileri, isim, görev, rozetler).
 // PNG: SVG tuvale çizilir. PDF: yazdırma penceresi açılır ("PDF olarak kaydet").
-function semaSvg(kok, { baslik = '', alt = '' } = {}) {
+function semaSvg(kok, { baslik = '', alt = '', ayrilanlar = true } = {}) {
   const agac = kok.querySelector('.org'); if (!agac) return null;
   const eskiZoom = agac.style.zoom; agac.style.zoom = 1;
   const k0 = agac.getBoundingClientRect();
@@ -194,13 +194,16 @@ function semaSvg(kok, { baslik = '', alt = '' } = {}) {
     const el = ana(li); if (!el) continue;
     const r = yer(el), tur = el.classList.contains('org-kutu') ? 'kisi' : el.classList.contains('org-firma') ? 'firma' : 'grup';
     const b = el.querySelector('b')?.textContent || el.childNodes[0]?.textContent?.trim() || '', sm = el.querySelector('.org-metin > small, :scope > small')?.textContent || '';
-    const rozet = [...el.querySelectorAll('.org-rozet, .org-temas')].map(x => x.textContent.trim()).filter(Boolean);
-    kutular.push({ ...r, tur, b, sm, rozet, harf: el.querySelector('.avatar')?.textContent || '' });
+    const rozet = [...el.querySelectorAll('.org-rozet')].map(x => x.textContent.trim()).filter(Boolean);   // son temas ("temas yok", "26 gün önce") çıktıya girmez
+    const kayit = { ...r, tur, b, sm, rozet, harf: el.querySelector('.avatar')?.textContent || '' };
+    if (tur === 'kisi') kayit.h = Math.min(r.h, rozet.length ? 62 : 46);   // temas satırı yok: kutu kısalır
+    kutular.push(kayit); el._svgK = kayit;
     const ust = li.parentElement?.closest('li'), ue = ust && ana(ust);
-    if (ue) { const u = yer(ue); cizgiler.push([u.x + u.w / 2, u.y + u.h, r.x + r.w / 2, r.y]); }
+    if (ue?._svgK) { const u = ue._svgK; cizgiler.push([u.x + u.w / 2, u.y + u.h, r.x + r.w / 2, r.y]); }
   }
+  agac.querySelectorAll('.org-kutu, .org-grup, .org-firma').forEach(e => delete e._svgK);
   agac.style.zoom = eskiZoom;
-  const eskiler = [...kok.querySelectorAll('.org-eski .org-kutu')].map(el => ({ b: el.querySelector('b')?.textContent || '', sm: el.querySelector('small')?.textContent || '', rozet: [...el.querySelectorAll('.org-rozet')].map(x => x.textContent.trim()) }));
+  const eskiler = !ayrilanlar ? [] : [...kok.querySelectorAll('.org-eski .org-kutu')].map(el => ({ b: el.querySelector('b')?.textContent || '', sm: el.querySelector('small')?.textContent || '', rozet: [...el.querySelectorAll('.org-rozet')].map(x => x.textContent.trim()) }));
   const P = 32, UST = baslik ? 70 : 20;
   const gen = Math.max(...kutular.map(k => k.x + k.w), 300), yuk = Math.max(...kutular.map(k => k.y + k.h), 100);
   const eskiY = UST + yuk + 40, eskiYuk = eskiler.length ? 34 + Math.ceil(eskiler.length / Math.max(1, Math.floor(gen / 230))) * 74 : 0;
@@ -235,10 +238,26 @@ function semaSvg(kok, { baslik = '', alt = '' } = {}) {
 const dosyaAdi = s => (s || 'sema').toLocaleLowerCase('tr').replace(/[çğıöşü]/g, c => ({ ç: 'c', ğ: 'g', ı: 'i', ö: 'o', ş: 's', ü: 'u' }[c])).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'sema';
 export function orgIndir(kok, { baslik = '' } = {}) {
   const tarihStr = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-  kok.querySelectorAll('[data-indir]').forEach(b => b.onclick = async () => {
-    const s = semaSvg(kok, { baslik: baslik ? baslik + ' · Organizasyon şeması' : 'Organizasyon şeması', alt: tarihStr + ' · Saha Takip' }); if (!s) return;
+  const btn = kok.querySelector('[data-indir]'); if (!btn) return;
+  btn.onclick = () => {
+    const eskiN = kok.querySelectorAll('.org-eski .org-kutu').length;
+    const d = document.createElement('dialog'); d.className = 'org-dlg';
+    d.innerHTML = `<form method="dialog" class="form"><h3>Şemayı indir</h3>
+      <div class="fld"><label>Biçim</label><div class="seg" role="group" aria-label="Biçim"><button type="button" data-bc="png" class="on">Resim (PNG)</button><button type="button" data-bc="pdf">PDF</button></div></div>
+      ${eskiN ? `<label class="chk"><input type="checkbox" data-ayr> <span>Firmadan ayrılanlar da çıksın (${eskiN} kişi)</span></label>` : ''}
+      <p class="hint">Son görüşme bilgisi (temas yok, … gün önce) çıktıya girmez; isim, görev ve karar rolü görünür.</p>
+      <div class="btnrow"><span class="grow"></span><button type="button" class="btn ghost" data-vaz>Vazgeç</button><button type="submit" class="btn primary" data-indirgit>İndir</button></div></form>`;
+    document.body.appendChild(d); d.showModal(); d.addEventListener('close', () => d.remove());
+    d.querySelectorAll('[data-bc]').forEach(b => b.onclick = () => d.querySelectorAll('[data-bc]').forEach(x => x.classList.toggle('on', x === b)));
+    d.querySelector('[data-vaz]').onclick = () => d.close();
+    d.querySelector('form').onsubmit = e => { e.preventDefault();
+      const bicim = d.querySelector('[data-bc].on').dataset.bc, ayrilanlar = !!d.querySelector('[data-ayr]')?.checked; d.close();
+      indir(bicim, ayrilanlar); };
+  };
+  const indir = (bicim, ayrilanlar) => {
+    const s = semaSvg(kok, { baslik: baslik ? baslik + ' · Organizasyon şeması' : 'Organizasyon şeması', alt: tarihStr + ' · Saha Takip', ayrilanlar }); if (!s) return;
     const ad = dosyaAdi(baslik) + '-organizasyon';
-    if (b.dataset.indir === 'png') {
+    if (bicim === 'png') {
       const img = new Image(), url = URL.createObjectURL(new Blob([s.svg], { type: 'image/svg+xml' }));
       img.onload = () => {
         const olcek = Math.min(2, 8000 / Math.max(s.W, s.H)), c = document.createElement('canvas'); c.width = Math.round(s.W * olcek); c.height = Math.round(s.H * olcek);
@@ -253,6 +272,6 @@ export function orgIndir(kok, { baslik = '' } = {}) {
       fr.onload = () => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch {} setTimeout(() => fr.remove(), 60000); };
       document.body.appendChild(fr);
     }
-  });
+  };
 }
 export const _semaSvg = semaSvg;   // test için

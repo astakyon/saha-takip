@@ -7,15 +7,11 @@ import { googleKey, anahtarFormu, anahtarBagla } from '../google.js';
 import { iceAktarPaneli } from './ice-aktar.js';
 import { openDrawer, closeDrawer } from '../ui.js';
 import { INST, isIOS, install, onInstallChange } from '../kurulum.js';
-import { sablonDuzenleyici } from '../sablon.js';
-import { teklifAyarlari } from './teklif.js';
 import { kmlIndir } from '../paylas.js';
-import { kurAyarlari } from '../kur.js';
 import { bildirimAyarlari } from '../bildirim.js';
 import { yuklemeKaydet } from '../belgeler.js';
 import { ayar, ayarYaz } from '../ayar.js';
 import { sahipMi } from '../yetki.js';
-import { kullaniciAyarlari } from './kullanicilar.js';
 import { menuAyarlari, menuDuzeni } from '../menu.js';
 import { SEKME_AD } from '../basliklar.js';
 import { connForm, bindConn, hesapGirisAyarlari } from '../giris.js';
@@ -32,20 +28,22 @@ export async function ayarlarView(el) {
   let localCount = 0;
   if (sup) for (const t of ORDER) localCount += ((await idbGet('t:' + t)) || []).length;
   const pend = sup ? await app.db.pending() : 0;
-  const f = F('ayarlar', { sekme: 'hesap' }); if (f.sekme === 'profil') f.sekme = 'hesap';
+  const f = F('ayarlar', { sekme: 'hesap' });
   const ESKI = { genel: 'hesap', kullanici: 'ekip', google: 'baglanti' };
   if (ESKI[f.sekme]) f.sekme = ESKI[f.sekme];
+  // Şirket profiline taşınanlar: Ekip ve yetkiler, Mesaj ve teklif şablonları
+  const TASINDI = { ekip: 'ekip', mesaj: 'sablon' };
+  try { const s0 = sessionStorage.getItem('ayar-sekme'); if (TASINDI[s0]) { sessionStorage.removeItem('ayar-sekme'); location.hash = '#/sirket/' + TASINDI[s0]; return; } } catch {}
+  if (TASINDI[f.sekme] || f.sekme === 'profil') f.sekme = 'hesap';
   if (!S.projeler.length && !S.firmalar.length && !f._ilk) { f.sekme = 'veri'; f._ilk = 1; }
   const BOLUM = [
-    ['profil', 'Firma profili', 'Firma, sektör, çalıştığın iller, bayi', 'building', true],
     ['hesap', 'Hesap ve güvenlik', 'Bulut bağlantısı, iki adımlı doğrulama, otomatik çıkış', 'user'],
     ['gorunum', 'Görünüm ve menü', 'Tema, yazı boyutu, menüdeki ekranlar', 'sun'],
-    ['ekip', 'Ekip ve yetkiler', 'Kullanıcılar, roller, son değişiklikler', 'building', true],
     ['listeler', 'Listeler', 'Firma tipleri, rakip markaları, kayıp nedenleri, aşamalar', 'tag', true],
     ['veri', 'Veri ve yedek', 'Yedek, geri yükleme, Excel, başlangıç verisi', 'down', true],
-    ['baglanti', 'Bağlantılar', 'Google, döviz kuru, bildirimler', 'map'],
-    ['mesaj', 'Mesaj ve teklif', 'WhatsApp şablonları, teklif bilgileri', 'doc', true],
-    ['uygulama', 'Uygulama', 'Sürüm, telefona yükle, araç bilgisi, gizli mod', 'gear'],
+    ['bildirim', 'Bildirimler', 'Telefona bildirim, hatırlatmalar', 'cal'],
+    ['baglanti', 'Bağlantılar', 'Google anahtarı, konum aktarma, Google Haritalar paylaşımı', 'map', true],
+    ['uygulama', 'Uygulama', 'Sürüm, telefona yükle, gizli mod, geri bildirim', 'gear'],
     ['dikkat', 'Dikkat', 'Tüm verileri silme', 'wrench', true],
   ].filter(b => !b[4] || sahipMi());
   let menuAc = false; try { menuAc = !!sessionStorage.getItem('menu-ac'); sessionStorage.removeItem('menu-ac'); } catch {}
@@ -61,21 +59,17 @@ export async function ayarlarView(el) {
   <div class="settings">
     <button type="button" class="ayar-geri" data-geri>‹ Ayarlar</button>
     <h2 class="ayar-bolum-bas" data-bolumbas></h2>
-    <section class="card" data-tab="profil"><h2>Firma profili</h2><p>Firma profili kendi sayfasında.</p><a class="btn primary" href="#/sirket">Şirket profilini aç</a></section>
     <section class="card" data-tab="hesap"><h2>Hesap</h2>
       ${sup ? `<p>Bulut hesabına bağlısın; telefonda ve bilgisayarda aynı verileri görürsün.</p><div class="btnrow"><button class="btn ghost" data-out>Çıkış yap</button></div><details class="gelismis"><summary>Bağlantı bilgileri (Supabase)</summary>${connForm(cfg)}</details>`
       : `<p>Şu an <b>deneme modundasın</b>: veriler yalnızca bu tarayıcıda durur. Telefon ve bilgisayarda ortak kullanmak için Supabase bilgilerini gir.</p>${connForm(cfg)}`}
     </section>
     ${sahipMi() ? '' : `<section class="card" data-tab="hesap"><h2>Ekip üyesi</h2><p>Bu hesapla veri sahibinin sana açtığı bölümleri görüyorsun. Yeni bölüm için veri sahibinden yetki iste.</p></section>`}
-    <section class="card wide-card" data-tab="ekip"><h2>Kullanıcılar ve yetkiler</h2><div data-kullanici></div></section>
-    <section class="card wide-card" data-tab="ekip" data-sondeg></section>
     ${sup ? '<section class="card" data-tab="hesap"><h2>Giriş bilgileri</h2><div data-girisayar><p class="hint">Yükleniyor…</p></div></section>' : ''}
     <section class="card" data-tab="hesap"><h2>Güvenlik</h2><div data-guvenlik></div></section>
     <section class="card wide-card" data-tab="listeler"><h2>Seçim listeleri</h2><div data-listeler></div></section>
     <section class="card" data-tab="gorunum" id="menu-karti"><h2>Menü</h2><div data-menu></div></section>
     <section class="card" data-tab="gorunum"><h2>Kullanım</h2><div data-kullanim></div></section>
     <section class="card" data-tab="gorunum"><h2>Görünüm</h2><div class="seg" role="group" aria-label="Tema" data-tema>${[['acik', 'Açık'], ['koyu', 'Koyu'], ['oto', 'Cihaza göre']].map(([k, t]) => `<button type="button" data-tm="${k}" class="${(ayar('tema', 'acik') || 'acik') === k ? 'on' : ''}">${t}</button>`).join('')}</div><p class="hint">Koyu tema akşam ve gece kullanımında gözü daha az yorar. “Cihaza göre” telefonun gece/gündüz ayarını izler.</p><h3>Yazı boyutu</h3><div class="seg" role="group" aria-label="Yazı boyutu">${[['normal', 'Normal'], ['buyuk', 'Büyük'], ['cokbuyuk', 'Çok büyük']].map(([k, t]) => `<button type="button" data-yz="${k}" class="${(ayar('yazi', 'normal') || 'normal') === k ? 'on' : ''}">${t}</button>`).join('')}</div></section>
-    <section class="card" data-tab="uygulama"><h2>Araç</h2><p class="hint">Günlük km'yi masrafa yazarken yakıt tutarı buna göre hesaplanır.</p><div class="grid"><div class="fld"><label for="a-l">Tüketim (litre / 100 km)</label><input id="a-l" type="number" step="0.1" inputmode="decimal" data-yakit="yakit_lt100" value="${ayar('yakit_lt100', '') || ''}" placeholder="örn. 6,5"></div><div class="fld"><label for="a-f">Yakıt litre fiyatı (TL)</label><input id="a-f" type="number" step="0.01" inputmode="decimal" data-yakit="yakit_tl" value="${ayar('yakit_tl', '') || ''}" placeholder="örn. 52,40"></div></div></section>
     <section class="card" data-tab="uygulama"><h2>Gizlilik</h2>
       <label class="chk"><input type="checkbox" data-gizli ${ayar('gizli_mod', false) === true ? 'checked' : ''}> <span><b>Gizli mod</b>: kayıtlarımı ve konumumu dış servislere gönderme</span></label>
       <p class="hint">Açıkken kapananlar: Google uydu/harita katmanı ve Google'da firma arama, OpenStreetMap ile adres ve il/ilçe bulma, sesle yazma (Google konuşma tanıma). Konum yine telefonda alınır, il ve sanayi bölgesi cihazda hesaplanır. Açık kalanlar: kendi Supabase veritabanın, harita görüntüsü (Esri ya da OpenStreetMap; yalnızca baktığın bölgenin görüntüsü istenir), döviz kuru.</p></section>
@@ -87,8 +81,7 @@ export async function ayarlarView(el) {
       ${INST.standalone ? '<p><b>Uygulama yüklü.</b> Simgeye uzun basınca Ziyaret kaydet, Harita, Takvim ve Projeler kısayolları çıkar.</p>' : `<p>Ana ekrana Saha Takip simgesi eklenir, tam ekran açılır ve internet yokken de çalışır.</p><div class="btnrow"><button class="btn primary" data-install>Uygulamayı yükle</button></div>
       <p class="hint">${INST.evt ? 'Düğmeye basınca telefon onay ister.' : isIOS ? 'iPhone: Safari Paylaş düğmesi → “Ana Ekrana Ekle”.' : 'Düğme çalışmazsa Chrome menüsü (⋮) → “Uygulamayı yükle”.'}</p>`}
     </section>
-    <section class="card" data-tab="baglanti"><h2>Bildirimler</h2><div data-bildirim></div></section>
-    <section class="card" data-tab="baglanti"><h2>Döviz kuru</h2><div data-kur></div></section>
+    <section class="card" data-tab="bildirim"><h2>Bildirimler</h2><div data-bildirim></div></section>
 
     <section class="card" data-tab="veri"><h2>Kayıtlar</h2>
       ${counts.length ? `<p><b>${toplam}</b> kayıt</p><ul class="counts">${counts.map(([t, n]) => `<li><b>${n}</b> ${ETIKET[t]}</li>`).join('')}</ul>` : '<p class="hint">Henüz kayıt yok. Aşağıdan başlangıç verisini yükleyebilirsin.</p>'}
@@ -125,28 +118,24 @@ export async function ayarlarView(el) {
         <p class="hint">Google çoğu zaman <code>maps.app.goo.gl</code> kısa bağlantısı gönderir. Konumu tam okumak için Supabase'e bir kez küçük bir fonksiyon eklenir: Supabase paneli → <b>Edge Functions</b> → <b>Deploy a new function</b> → <b>Via Editor</b> → adı <code>kisa-link</code> → depodaki <code>supabase/functions/kisa-link/index.ts</code> içeriğini yapıştır → <b>Deploy</b>. Eklenmezse konum ad ve adresten bulunur.</p></details>
     </section>
 
-    <section class="card" data-tab="mesaj"><h2>WhatsApp mesaj şablonları</h2><p class="hint">Kişi ve firma kartındaki WhatsApp düğmesi bu şablonları kullanır.</p><div data-sablon></div></section>
-    <section class="card" data-tab="mesaj"><h2>Teklif bilgileri</h2><p class="hint">PDF teklifin üst bilgisi ve alt koşulları.</p><div data-teklifb></div></section>
   </div></div>`;
-  let kulYuklendi = false, listeYuklendi = false;
+  let listeYuklendi = false;
   const sekmeGoster = k => {
     if (k === 'veri' && !el._otoYuklendi) { el._otoYuklendi = true; import('../otoyedek.js').then(m => m.otoYedekAyarlari(el.querySelector('[data-otoyedek]'))); }
     if (k === 'listeler' && !listeYuklendi) { listeYuklendi = true; import('../listeler.js').then(m => m.listeAyarlari(el.querySelector('[data-listeler]'))); }
-    if (k === 'ekip' && !kulYuklendi) { kulYuklendi = true; kullaniciAyarlari(el.querySelector('[data-kullanici]')); import('../gecmis.js').then(m => m.sonDegisiklikler(el.querySelector('[data-sondeg]'))); } el.querySelectorAll('[data-tab]').forEach(x => x.hidden = x.dataset.tab !== k || (x.hasAttribute('data-sahip') && !sahipMi()));
+    el.querySelectorAll('[data-tab]').forEach(x => x.hidden = x.dataset.tab !== k || (x.hasAttribute('data-sahip') && !sahipMi()));
     el.querySelectorAll('[data-sekme]').forEach(b => { b.classList.toggle('on', b.dataset.sekme === k); b.setAttribute('aria-current', b.dataset.sekme === k); });
     el.querySelector('[data-bolumbas]').textContent = BOLUM.find(b => b[0] === k)?.[1] || '';
   };
   // Telefonda önce bölüm listesi, dokununca bölüm; bilgisayarda solda liste, sağda bölüm
   const duzen = el.querySelector('[data-duzen]');
   const ac = k => { f.sekme = k; saveFilters(); sekmeGoster(k); duzen.classList.add('icerik'); if (innerWidth < 900) window.scrollTo(0, 0); };
-  el.querySelectorAll('[data-sekme]').forEach(b => b.onclick = () => b.dataset.sekme === 'profil' ? (location.hash = '#/sirket') : ac(b.dataset.sekme));
+  el.querySelectorAll('[data-sekme]').forEach(b => b.onclick = () => ac(b.dataset.sekme));
   el.querySelector('[data-geri]').onclick = () => { duzen.classList.remove('icerik'); window.scrollTo(0, 0); };
   sekmeGoster(f.sekme);
   duzen.classList.toggle('icerik', innerWidth >= 900 || dogrudan);
   bindConn(el);
   anahtarBagla(el, () => ayarlarView(el));
-  sablonDuzenleyici(el.querySelector('[data-sablon]'));
-  kurAyarlari(el.querySelector('[data-kur]'));
   menuAyarlari(el.querySelector('[data-menu]'));
   import('../saglik.js').then(m => {
     const kul = () => { const { gizli } = menuDuzeni(app.rotalar); m.kullanimKarti(el.querySelector('[data-kullanim]'), { rotalar: app.rotalar, gizli, ad: r => SEKME_AD[r] || app.rotalar[r]?.t || r,
@@ -160,7 +149,6 @@ export async function ayarlarView(el) {
   hesapGirisAyarlari(el.querySelector('[data-girisayar]'));
   if (menuAc) setTimeout(() => el.querySelector('#menu-karti')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   bildirimAyarlari(el.querySelector('[data-bildirim]'));
-  teklifAyarlari(el.querySelector('[data-teklifb]'));
   el.querySelector('[data-kml]').onclick = () => kmlIndir();
   el.querySelector('[data-gimport]').onclick = () => iceAktarPaneli(() => ayarlarView(el));
   el.querySelector('[data-install]')?.addEventListener('click', install);
@@ -192,7 +180,6 @@ export async function ayarlarView(el) {
   };
   el.querySelectorAll('[data-yz]').forEach(b => b.onclick = async () => { const { yaziSec } = await import('../tema.js'); await yaziSec(b.dataset.yz); el.querySelectorAll('[data-yz]').forEach(x => x.classList.toggle('on', x === b)); });
   el.querySelectorAll('[data-tm]').forEach(b => b.onclick = async () => { const { temaSec } = await import('../tema.js'); await temaSec(b.dataset.tm); el.querySelectorAll('[data-tm]').forEach(x => x.classList.toggle('on', x === b)); });
-  el.querySelectorAll('[data-yakit]').forEach(i => i.onchange = async () => { await ayarYaz(i.dataset.yakit, i.value ? +i.value : null); toast('Kaydedildi.'); });
   el.querySelector('[data-cikti]').onchange = e => ayarYaz('cikti_sakla', e.target.checked);
   el.querySelector('[data-eslesifirla]')?.addEventListener('click', async () => { await ayarYaz('excel_esle', null); toast('Excel sütun eşleştirmeleri sıfırlandı; bir sonraki yüklemede yeniden sorulur.'); });
   el.querySelector('[data-gizli]').onchange = async e => { await ayarYaz('gizli_mod', e.target.checked); toast(e.target.checked ? 'Gizli mod açık: Google ve adres servisleri kapatıldı.' : 'Gizli mod kapalı.'); };

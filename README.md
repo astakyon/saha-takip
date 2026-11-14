@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 66): Bugün ve Takvim tek başlıkta, şirket profili sekmeli, Ayarlar sadeleşti
+
+- **Bugün ve Takvim birleşti:** menüde tek "Bugün" başlığı; üstte sekmeler Bugün · Takvim · Ziyaretler · Görevler. Menüde bir yer boşaldı (varsayılan ana menüye Satış geldi).
+- **Şirket profili** tam genişlikte, sekmeli: **Genel** (bilgiler, kayıt sayıları, ekip ağacı) · **Ekip ve yetkiler** (kullanıcılar, roller, ekipler, son değişiklikler; Ayarlar'dan taşındı) · **Mesaj ve teklif şablonları** (WhatsApp şablonları ve teklif PDF bilgileri; Ayarlar'dan taşındı) · **Döviz kuru** (Bağlantılar'dan taşındı). Seçili sekme adreste: `#/sirket/ekip`.
+- **Ayarlar:** "Firma profili", "Ekip ve yetkiler", "Mesaj ve teklif" kalktı. **Bildirimler** kendi bölümünde. Bağlantılar'da yalnızca Google anahtarı ve konum aktarma kaldı.
+- **Araç bilgisi** (yakıt tüketimi ve litre fiyatı) Ayarlar → Uygulama'dan **Masraf ve km** ekranına taşındı (açılır kutu, kapalıyken özeti görünür).
+- **Şema indirme:** tek "İndir" düğmesi; açılan pencerede biçim (Resim / PDF) ve "Firmadan ayrılanlar da çıksın" seçimi. Son görüşme bilgisi (temas yok, … gün önce) çıktıya artık girmez; kutular kısaldı.
+
 ## Güncelleme notu (sürüm 65): Organizasyon şemasını resim ya da PDF olarak indir
 
 - Firma sayfası → Kişiler ve şema → şemanın üstünde **Resim indir** ve **PDF** düğmeleri.

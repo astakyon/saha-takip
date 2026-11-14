@@ -1637,3 +1637,12 @@ a.org-kutu:hover, a.org-kutu:focus-visible { border-color: #E0B93E; }
 @media (max-width: 900px) { .sh-pano { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .sh-pano { grid-template-columns: minmax(0, 1fr); } .sh-sutun { min-height: 0; } }
 .org-arac .grow { flex: 1; }
+
+/* Sürüm 66: şirket profili sekmeli, araç bilgisi masrafta */
+.sk-sayfa .sk-izgara { align-items: stretch; }
+.sk-sayfa .fs-ic > .card + .card { margin-top: 16px; }
+.sk-kur { max-width: 640px; }
+.arac-kart { margin: 0 0 14px; padding: 0; }
+.arac-kart > summary { display: flex; gap: 10px; align-items: baseline; padding: 12px 16px; cursor: pointer; flex-wrap: wrap; }
+.arac-kart > :not(summary) { margin-left: 16px; margin-right: 16px; }
+.arac-kart > .grid { margin-bottom: 14px; }

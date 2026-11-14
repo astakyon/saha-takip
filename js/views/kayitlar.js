@@ -5,6 +5,7 @@ import { esc, num, tarih, today, gunEkle, byId, firmaAd, match, toast, openDrawe
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { waGonder } from '../sablon.js';
 import { gunKm } from './bugun.js';
+import { ayar, ayarYaz } from '../ayar.js';
 
 const para = v => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
 const rpill = (d, renk) => `<span class="pill" style="--c:${renk[d] || '#64748B'}">${esc(d)}</span>`;
@@ -136,7 +137,12 @@ export function masraflarView(el) {
   const aylar = [...new Set([today().slice(0, 7), ...S.masraflar.map(m => (m.tarih || '').slice(0, 7)).filter(Boolean)])].sort().reverse();
   el.innerHTML = `<header class="vh"><div><h1>Masraf ve kilometre</h1><p class="sum" data-sum></p></div><div class="vh-act"><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn primary" data-new>Masraf ekle</button></div></header>
     <div class="filters"><div class="frow"><label>Ay <select data-ay>${aylar.map(a => `<option value="${a}" ${a === f.ay ? 'selected' : ''}>${new Date(a + '-01T00:00').toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}</option>`).join('')}</select></label></div></div>
-    <section class="ledger" data-ledger></section><div data-rows></div>`;
+    <section class="ledger" data-ledger></section>
+    <details class="card arac-kart"><summary><b>Araç bilgisi</b><span class="muted" data-aracozet></span></summary><p class="hint">Günlük km'yi masrafa yazarken yakıt tutarı buna göre hesaplanır.</p><div class="grid"><div class="fld"><label for="a-l">Tüketim (litre / 100 km)</label><input id="a-l" type="number" step="0.1" inputmode="decimal" data-yakit="yakit_lt100" value="${ayar('yakit_lt100', '') || ''}" placeholder="örn. 6,5"></div><div class="fld"><label for="a-f">Yakıt litre fiyatı (TL)</label><input id="a-f" type="number" step="0.01" inputmode="decimal" data-yakit="yakit_tl" value="${ayar('yakit_tl', '') || ''}" placeholder="örn. 52,40"></div></div></details>
+    <div data-rows></div>`;
+  const aracOzet = () => { const l = ayar('yakit_lt100', ''), t = ayar('yakit_tl', ''); el.querySelector('[data-aracozet]').textContent = l && t ? `${num(l)} lt / 100 km · ${num(t)} TL / lt` : 'girilmemiş: km\'den yakıt tutarı hesaplanmaz'; };
+  aracOzet();
+  el.querySelectorAll('[data-yakit]').forEach(i => i.onchange = async () => { await ayarYaz(i.dataset.yakit, i.value ? +i.value : null); aracOzet(); toast('Kaydedildi.'); });
   const list = () => S.masraflar.filter(m => (m.tarih || '').startsWith(f.ay)).sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
   const draw = () => {
     const l = list();

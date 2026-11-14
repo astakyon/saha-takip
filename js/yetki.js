@@ -140,7 +140,7 @@ export const modulSecimi = yetkiler => Object.fromEntries(MODULLER.map(m => { co
 // ---------- Önizleme: veri sahibi, bir kişinin ne gördüğünü kendi telefonunda dener (değişiklik yapılamaz) ----------
 const ON = 'saha-onizleme';
 export function onizlemeBaslat(u) { try { sessionStorage.setItem(ON, JSON.stringify({ eposta: u.eposta, ad: u.ad || '', yetkiler: u.yetkiler || {} })); } catch {} location.hash = '#/bugun'; location.reload(); }
-export function onizlemeBitir() { try { sessionStorage.removeItem(ON); } catch {} location.hash = '#/ayarlar/ekip'; location.reload(); }
+export function onizlemeBitir() { try { sessionStorage.removeItem(ON); } catch {} location.hash = '#/sirket/ekip'; location.reload(); }
 const onizlemeOku = () => { try { return JSON.parse(sessionStorage.getItem(ON) || 'null'); } catch { return null; } };
 
 // Açılışta ve her tazelemede çağrılır: yetkiyi belirler, yetkisi olmayan tabloların telefondaki kopyasını ekrandan siler
