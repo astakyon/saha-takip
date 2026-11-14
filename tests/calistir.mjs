@@ -392,7 +392,7 @@ const DB = () => {
   await p.mouse.move(kaynak.x + 30, kaynak.y + 20); await p.mouse.down(); await p.mouse.move(kaynak.x + 60, kaynak.y + 10, { steps: 4 }); await p.mouse.move(hedef.x + 40, hedef.y + 20, { steps: 8 }); await p.mouse.up(); await w(1000);
   const bag = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k4').ust_kisi_id);
   // Telefonda: basılı tut (0,3 sn) ve sürükle — Ece Su'yu Ahmet Yılmaz'ın altına
-  await p.setViewportSize({ width: 390, height: 844 }); await p.goto(U + '#/firmalar'); await p.reload(); await w(1800); await p.click('a[href="#/firma/f2"]'); await w(1200);
+  await p.setViewportSize({ width: 820, height: 1000 }); await p.goto(U + '#/firmalar'); await p.reload(); await w(1800); await p.click('a[href="#/firma/f2"]'); await w(1200);
   await p.evaluate(() => document.querySelector('.drawer.open [data-org]').scrollIntoView({ block: 'start' })); await w(300);
   const tk = await p.locator('.drawer.open .org [data-kid="k5"]').boundingBox(), th = await p.locator('.drawer.open .org [data-kid="k2"]').boundingBox();
   const cdp = await c.newCDPSession(p), nokta = (x, y) => [{ x: Math.round(x), y: Math.round(y), id: 1 }];
