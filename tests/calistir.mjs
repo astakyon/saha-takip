@@ -467,14 +467,25 @@ const DB = () => {
   await p.click('[data-asama="Kayıp"]'); await w(700);
   const ps3 = await p.evaluate(() => ({ drawer: !!document.querySelector('.drawer.open'), durum: document.querySelector('.drawer.open [name=durum]')?.value, kayip: !document.querySelector('.drawer.open [data-show="kayip"]')?.hidden }));
   await p.click('.drawer.open .x[data-close]'); await w(500);
-  await p.click('[data-fsk="firmalar"]'); await w(300);
-  const ps4 = await p.evaluate(() => ({ h: location.hash, kisi: !!document.querySelector('[data-fs="firmalar"] a[href="#/kisi/k2"]') }));
+  await p.click('[data-fsk="harita"]'); await w(400);
+  const ps4 = await p.evaluate(() => ({ h: location.hash, kisi: !!document.querySelector('[data-fs="harita"] a[href="#/kisi/k2"]'), bos: /Satış haritası boş/.test(document.querySelector('[data-harita]')?.textContent || '') }));
+  // Satış haritası: kişi ekle (karar verici → Onaylayan), uyarı, tutum değiştir
+  await p.click('[data-shekle1="k2"]'); await w(300);
+  const shSecili = await p.evaluate(() => !!document.querySelector('dialog.sh-dlg input[value="k2"]:checked'));
+  await p.click('dialog.sh-dlg [type=submit]'); await w(900);
+  const sh1 = await p.evaluate(async () => ({ g: (await import('./js/db.js')).S.projeler.find(x => x.id === 'pq').karar_grubu, uyari: document.querySelector('.sh-uyarilar')?.textContent || '', bil: document.querySelector('[data-sht="Bilinmiyor"] [data-shk="k2"]') ? 1 : 0 }));
+  await p.screenshot({ path: 'tests/cikti/satis-haritasi.png', fullPage: true });
+  await p.click('[data-shk="k2"]'); await w(300); await p.click('dialog.sh-dlg [data-tt="Destekliyor"]'); await p.fill('dialog.sh-dlg #sh-n', 'EAE istiyor'); await p.click('dialog.sh-dlg [data-kay]'); await w(900);
+  const sh2 = await p.evaluate(async () => ({ g: (await import('./js/db.js')).S.projeler.find(x => x.id === 'pq').karar_grubu?.[0], des: !!document.querySelector('[data-sht="Destekliyor"] [data-shk="k2"]') }));
+  await p.click('[data-fsk="ozet"]'); await w(200); const shOzet = await p.textContent('.sh-ozet');
+  kontrol('Satış haritası: kişi ekleniyor (karar verici Onaylayan olur), "karar vericiye ulaşılmadı" uyarısı, tutum değişiyor, özette sayaç', ps4.bos && shSecili && sh1.g?.[0]?.kisi_id === 'k2' && sh1.g[0].rol === 'Onaylayan' && sh1.g[0].etki === 'Yüksek' && /Karar vericiye ulaşılmadı/.test(sh1.uyari) && sh1.bil && sh2.g?.tutum === 'Destekliyor' && sh2.g?.not === 'EAE istiyor' && sh2.des && /1\s*Destekliyor/.test(shOzet), JSON.stringify({ ps4, shSecili, sh1, sh2, shOzet }));
+  await p.click('[data-fsk="harita"]'); await w(200);
   await p.setViewportSize({ width: 390, height: 844 }); await w(300);
   const ptasma = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   await p.screenshot({ path: 'tests/cikti/proje-sayfa-tel.png' });
   await p.setViewportSize({ width: 1280, height: 900 });
   await p.click('[data-geri]'); await w(700); const ph = await p.evaluate(() => location.hash);
-  kontrol('Proje kendi sayfasında: projedeki firmalar, aşama şeridiyle durum değişiyor (kayıpta form açılıyor), sekme adreste, geri listeye', ps1.sayfa && /#\/firma\/f2/.test(ps1.pay) && /#\/kisi\/k2/.test(ps1.pay) && ps1.on === 'İhale' && /Projeler/.test(ps1.geri) && ps2.durum === 'Sıcak' && ps2.gec && ps2.on === 'Sıcak' && ps2.gecti === 3 && ps3.drawer && ps3.durum === 'Kayıp' && ps3.kayip && ps4.h === '#/proje/pq/firmalar' && ps4.kisi && ptasma <= 1 && ph === '#/projeler', JSON.stringify({ ps1, ps2, ps3, ps4, ptasma, ph }));
+  kontrol('Proje kendi sayfasında: projedeki firmalar, aşama şeridiyle durum değişiyor (kayıpta form açılıyor), sekme adreste, geri listeye', ps1.sayfa && /#\/firma\/f2/.test(ps1.pay) && /#\/kisi\/k2/.test(ps1.pay) && ps1.on === 'İhale' && /Projeler/.test(ps1.geri) && ps2.durum === 'Sıcak' && ps2.gec && ps2.on === 'Sıcak' && ps2.gecti === 3 && ps3.drawer && ps3.durum === 'Kayıp' && ps3.kayip && ps4.h === '#/proje/pq/harita' && ps4.kisi && ptasma <= 1 && ph === '#/projeler', JSON.stringify({ ps1, ps2, ps3, ps4, ptasma, ph }));
   const surum = await p.textContent('#nav .surum-rozet').catch(() => null);
   await p.screenshot({ path: 'tests/cikti/nav.png' });
   kontrol('Firmanın organizasyon şeması çiziliyor (genel müdür üstte, bağlı kişiler altında)', org && org.kutu === 5 && org.ust === 'Ahmet Yılmaz' && org.ic, JSON.stringify(org));

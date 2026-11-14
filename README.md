@@ -32,6 +32,17 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 64): Satış haritası (projenin karar grubu)
+
+**Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 29: projelere `karar_grubu` sütunu).** Çalıştırılmazsa harita yalnızca bu cihazda kalır.
+
+- Proje sayfasında **Satış haritası** sekmesi ("Firmalar ve kişiler"in yerine): projedeki kişiler, hangi firmadan olursa olsun, tutumlarına göre dört sütunda: **Destekliyor · Tarafsız · Bilinmiyor · Rakipçi**.
+- Her kişinin bu projedeki **rolü** (Onaylayan, Teknik değerlendiren, Satınalma, Etkileyici, Kullanıcı / saha), **etkisi** (Yüksek / Orta / Düşük, üç çubuk), son görüşme tarihi ve kısa not. Karta dokununca değiştirilir; masaüstünde sütunlar arasında sürüklenebilir.
+- **Kişi ekle:** projedeki firmaların kişileri işaretlenip topluca eklenir; başka kişiler de aranabilir. Kişi kartında rolü "Karar verici" olan Onaylayan ve yüksek etkili gelir.
+- **Uyarılar:** karar verici yok · karar vericiye ulaşılmadı (hiç görüşme kaydı yok) · karar vericiyle 90 günden uzun süredir görüşülmedi · karar verici ya da yüksek etkili biri rakipçi · seni destekleyen kimse yok · teknik değerlendiren eklenmemiş.
+- Özet sekmesinde kısa kart: tutuma göre sayılar ve en önemli uyarı.
+- Kişi sayfasının Projeler sekmesinde, kişinin haritada yer aldığı projeler o projedeki rolü ve tutumuyla görünür.
+
 ## Güncelleme notu (sürüm 63): Proje kartı kendi sayfasında
 
 - Projeye dokununca firma ve kişi gibi **kendi sayfası** açılır; üstte projenin aşama renginde ince şerit, "←" ile gelinen yere dönülür.

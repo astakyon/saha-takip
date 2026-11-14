@@ -1601,3 +1601,38 @@ a.org-kutu:hover, a.org-kutu:focus-visible { border-color: #E0B93E; }
   .ps-serit { flex: none; }
   .ps-serit button { flex: none; padding: 8px 10px; }
 }
+
+/* Sürüm 64: satış haritası (projenin karar grubu) */
+.sh-sayac { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.sh-sayac span { display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: color-mix(in srgb, var(--c) 12%, transparent); color: var(--c); }
+.sh-sayac span b { font-size: 16px; } .sh-sayac span.sifir { opacity: .5; }
+.sh-uyari { margin: 0; padding: 8px 10px; border-radius: 8px; font-size: 14px; background: var(--line-2, #EEF2F4); }
+.sh-uyari.kirmizi { background: color-mix(in srgb, var(--red) 10%, transparent); color: var(--red); font-weight: 600; }
+.sh-uyari.sari { background: #FFF4D1; color: #7A5600; }
+.sh-uyari.yesil { background: color-mix(in srgb, var(--green) 10%, transparent); color: var(--green); }
+.sh-uyari a { color: inherit; font-weight: 600; margin-left: 4px; }
+.sh-uyarilar { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 6px; }
+.sh-pano { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.sh-sutun { background: var(--paper); border-radius: 12px; padding: 10px; border-top: 4px solid var(--c); min-height: 120px; transition: background .15s; }
+.sh-sutun.hedef { background: color-mix(in srgb, var(--c) 12%, var(--paper)); }
+.sh-sutun h3 { margin: 0; color: var(--c); font-size: 16px; } .sh-sutun > small { display: block; margin-bottom: 8px; font-size: 12px; }
+.sh-sutun ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.sh-kart { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; min-width: 0; }
+.sh-kart:hover, .sh-kart:focus-visible { border-color: var(--c); outline: none; }
+.sh-kart.surukle { opacity: .5; }
+.sh-kart small { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; }
+.sh-alt { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 3px 0 1px; }
+.sh-rol { font-size: 12px; font-weight: 700; background: var(--line-2, #EEF2F4); border-radius: 6px; padding: 1px 7px; }
+.sh-rol.onay { background: var(--koyu); color: #fff; } .sh-rol.bos { color: var(--muted); font-weight: 500; border: 1px dashed var(--line); background: none; }
+.sh-etki { display: inline-flex; gap: 2px; } .sh-etki i { width: 6px; height: 12px; border-radius: 2px; background: var(--line); } .sh-etki i.on { background: var(--ink); }
+.sh-not { color: var(--ink); font-style: italic; }
+.sh-seg button.on { background: var(--c); border-color: var(--c); color: #fff; }
+.sh-sec { max-height: 240px; overflow-y: auto; margin-bottom: 8px; }
+.sh-sec .chk { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.sh-tutum { font-size: 12px; font-weight: 700; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); border-radius: 999px; padding: 1px 8px; flex: none; }
+.sh-var { font-size: 12px; flex: none; }
+.ps-ara-baslik { margin: 22px 0 10px; font-size: 18px; }
+.ps-kisiler { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.ps-kisiler li { display: flex; gap: 6px; align-items: center; } .ps-kisiler li .pcard { flex: 1; min-width: 0; }
+@media (max-width: 900px) { .sh-pano { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .sh-pano { grid-template-columns: minmax(0, 1fr); } .sh-sutun { min-height: 0; } }

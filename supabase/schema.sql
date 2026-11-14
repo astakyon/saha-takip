@@ -1224,3 +1224,9 @@ end $f$;
 drop trigger if exists firma_sorumlu_yay on public.firmalar;
 create trigger firma_sorumlu_yay after update of sorumlu on public.firmalar for each row execute function public.firma_sorumlu_yay();
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 28 $f$;
+
+-- ===================== Sürüm 29: projede satış haritası (karar grubu) =====================
+-- [{ kisi_id, rol, tutum, etki, not }] — rol: Onaylayan / Teknik değerlendiren / Satınalma / Etkileyici / Kullanıcı;
+-- tutum: Destekliyor / Tarafsız / Bilinmiyor / Rakipçi; etki: Yüksek / Orta / Düşük
+alter table public.projeler add column if not exists karar_grubu jsonb;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 29 $f$;

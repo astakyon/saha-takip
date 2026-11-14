@@ -11,6 +11,7 @@ import { ziyaretForm, gorevForm } from './ziyaret.js';
 import { waGonder } from '../sablon.js';
 import { teklifForm } from './teklif.js';
 import { numuneForm, servisForm } from './kayitlar.js';
+import { kisininProjeleri, tutumRenk } from '../satisharitasi.js';
 
 const SEKMELER = [
   ['ozet', 'Özet', ''],
@@ -27,7 +28,8 @@ export function kisiSayfa(el, id) {
   document.title = k.ad_soyad + ' · Saha Takip'; app.sayfaAd = k.ad_soyad;
   const firma = byId('firmalar', k.firma_id), ust = byId('kisiler', k.ust_kisi_id);
   const altlar = S.kisiler.filter(x => x.ust_kisi_id === k.id).sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr'));
-  const projeler = S.projeler.filter(p => p.ilgili_kisi_id === k.id).sort((a, b) => (['Sipariş', 'Kayıp', 'İptal'].includes(a.durum) - ['Sipariş', 'Kayıp', 'İptal'].includes(b.durum)) || (+b.tutar_usd || 0) - (+a.tutar_usd || 0));
+  const kp = new Map(kisininProjeleri(k.id).map(x => [x.p.id, x]));
+  const projeler = S.projeler.filter(p => p.ilgili_kisi_id === k.id || kp.has(p.id)).sort((a, b) => (['Sipariş', 'Kayıp', 'İptal'].includes(a.durum) - ['Sipariş', 'Kayıp', 'İptal'].includes(b.durum)) || (+b.tutar_usd || 0) - (+a.tutar_usd || 0));
   const ziy = S.ziyaretler.filter(z => z.kisi_id === k.id).sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
   const yapilan = ziy.filter(z => (z.durum || 'Yapıldı') === 'Yapıldı'), planli = ziy.filter(z => z.durum === 'Planlandı').sort((a, b) => (a.tarih || '').localeCompare(b.tarih || ''));
   const gor = (S.gorevler || []).filter(g => g.kisi_id === k.id).sort((a, b) => (a.durum === 'Tamam') - (b.durum === 'Tamam') || (a.son_tarih || '9').localeCompare(b.son_tarih || '9'));
@@ -40,7 +42,7 @@ export function kisiSayfa(el, id) {
   const onceki = sayfaOncesiAd();
   const dlk = ic => ic.trim() ? `<dl class="profil-dl">${ic}</dl>` : '';
   const dd = (ad, v) => v ? `<dt>${ad}</dt><dd>${v}</dd>` : '';
-  const projeSatir = p => `<li><a href="#/proje/${p.id}"><b>${esc(p.ad)}</b><span class="muted">${esc(firmaAd(p.yatirimci_id) || '')} · ${usd(p.tutar_usd)}</span></a>${pill(p.durum)}</li>`;
+  const projeSatir = p => { const h = kp.get(p.id); return `<li><a href="#/proje/${p.id}"><b>${esc(p.ad)}</b><span class="muted">${esc([firmaAd(p.yatirimci_id), usd(p.tutar_usd), h?.rol].filter(Boolean).join(' · '))}</span></a>${h ? `<span class="sh-tutum" style="--c:${tutumRenk(h.tutum || 'Bilinmiyor')}">${esc(h.tutum || 'Bilinmiyor')}</span>` : ''}${pill(p.durum)}</li>`; };
   const ziySatir = z => `<li><span class="muted">${tarih(z.tarih)}${z.durum === 'Planlandı' ? ' · planlı' : ''}</span><button type="button" class="linkrow" data-zid="${z.id}"><span>${esc([z.firma_id !== k.firma_id ? firmaAd(z.firma_id) : '', z.amac].filter(Boolean).join(' · ') || 'Ziyaret')}${z.notlar ? ` <span class="muted">${esc(z.notlar.slice(0, 140))}</span>` : ''}</span></button></li>`;
   const gorSatir = g => `<li><button type="button" class="linkrow" data-gid="${g.id}"><span>${g.durum === 'Tamam' ? '✓' : '○'} ${esc(g.baslik)}</span></button><span class="muted ${g.durum !== 'Tamam' && g.son_tarih && g.son_tarih < today() ? 'neg' : ''}">${tarih(g.son_tarih)}</span></li>`;
   const kisiLink = x => `<li><a href="#/kisi/${x.id}"><b>${esc(x.ad_soyad)}</b><span class="muted">${esc(x.unvan || x.pozisyon || '')}</span></a></li>`;
@@ -91,7 +93,7 @@ export function kisiSayfa(el, id) {
     </div></div>
 
     <div class="fs-ic" data-fs="projeler" role="tabpanel" hidden>
-      <section class="card" data-gerek="projeler"><h2>Projeler <span class="muted">${projeler.length}</span></h2><p class="hint">Bu kişinin ilgili kişi olarak seçildiği projeler.</p>
+      <section class="card" data-gerek="projeler"><h2>Projeler <span class="muted">${projeler.length}</span></h2><p class="hint">İlgili kişi olarak seçildiği ya da satış haritasında yer aldığı projeler; yanında o projedeki tutumu.</p>
         ${projeler.length ? `<ul class="list" data-projeler>${sirali(projeler, projeSatir)}</ul>${projeler.length > 10 ? `<button type="button" class="btn sm ghost fs-devam" data-devam>Devamını göster (${projeler.length - 10} proje daha)</button>` : ''}` : '<p class="hint">Proje yok.</p>'}</section>
     </div>
 
