@@ -32,6 +32,15 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 71): Ziyarette giriş-çıkış
+
+**Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 33: ziyaretlere giriş, çıkış ve mesafe sütunları).**
+
+- Firma sayfasında **Giriş yap** (Düzenle'nin yanında) ve Bugün ekranındaki planlı ziyaretlerde **Giriş** düğmesi. Girişte saat ve konum kaydedilir, firmanın kayıtlı konumuna uzaklık ölçülür (1 km'den uzaksa sorulur). O gün o firmaya planlı ziyaret varsa yeni kayıt açılmaz, planlı ziyaret kullanılır.
+- İçerideyken her ekranın üstünde yeşil bant: firma adı, giriş saati, geçen süre ve **Çıkış yap**. Bant firmaya dokununca firma sayfasını açar.
+- Çıkışta saat ve konum kaydedilir, ziyaret formu açılır (sonuç ve notlar için). Ziyaretlerde "10:05–10:48 · 43 dk · firmaya 80 m" görünür.
+- Başka bir firmaya giriş yapmadan önce çıkış yapılmamış ziyaret varsa önce oradan çıkılması önerilir.
+
 ## Güncelleme notu (sürüm 70): Excel'den ilk yükleme ve örnek veriler
 
 - **Excel'den yükle (firmalar, kişiler, projeler):** Bugün ekranında (hesap boşken) ve Ayarlar → Veri ve yedek'te. Excel ya da CSV seçilir; sütunlar başlık adından tanınır, ilk seferde kontrol için sorulur ve hatırlanır. Önizlemede kaç yeni, kaç güncellenecek ve kaç değişmeyecek kayıt olduğu görünür.

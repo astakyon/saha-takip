@@ -114,6 +114,7 @@ function renderNav(cur) {
   // Bekleyen kayıt rozeti menüden bağımsız (telefonda menü başlığı gizli olduğu için)
   if (!document.getElementById('bekleyen')) { const b = document.createElement('button'); b.type = 'button'; b.id = 'bekleyen'; b.className = 'bekleyen'; b.hidden = true; b.title = 'Buluta gönderilmeyi bekleyen kayıtlar'; b.onclick = async () => (await import('./bekleyen.js')).bekleyenPaneli(); document.body.appendChild(b); }
   bekleyenGuncelle();
+  import('./giriscikis.js').then(m => m.girisBandi()).catch(() => {});
   nav.querySelector('[data-menuduzen]').addEventListener('click', () => { try { sessionStorage.setItem('menu-ac', '1'); } catch {} if (location.hash === '#/ayarlar') window.dispatchEvent(new HashChangeEvent('hashchange')); });
   nav.querySelector('[data-inst]').onclick = () => { nav.classList.remove('more-open'); install(); };
   nav.querySelector('.nav-more').onclick = () => nav.classList.toggle('more-open');

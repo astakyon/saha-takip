@@ -183,7 +183,7 @@ export function bugunView(el) {
       ${ozetKarti}
       ${!planli.length ? '' : `<section class="card wide"><h2>Bugünün planı</h2>
         ${planli.length ? `<ol class="route">${sirali.map((x, i) => `<li><span class="rn">${i + 1}</span><span class="rt"><b>${x.z.saat ? esc(x.z.saat) + ' · ' : ''}${esc(firmaAd(x.z.firma_id) || 'Ziyaret')}</b><small>${esc([byId('kisiler', x.z.kisi_id)?.ad_soyad, x.z.amac, byId('projeler', x.z.proje_id)?.ad].filter(Boolean).join(' · '))}</small></span>
-          <span class="ra"><a class="btn sm ghost" href="${directionsUrl(x.p[0], x.p[1])}" target="_blank" rel="noopener">Yol</a><button type="button" class="btn sm" data-yapildi="${x.z.id}">Yapıldı</button></span></li>`).join('')}</ol>
+          <span class="ra"><a class="btn sm ghost" href="${directionsUrl(x.p[0], x.p[1])}" target="_blank" rel="noopener">Yol</a>${x.z.firma_id ? `<button type="button" class="btn sm primary" data-giris="${x.z.firma_id}" data-gerek="yaz:ziyaretler">Giriş</button>` : ''}<button type="button" class="btn sm" data-yapildi="${x.z.id}">Yapıldı</button></span></li>`).join('')}</ol>
           ${planli.length > sirali.length ? `<p class="hint">${planli.length - sirali.length} ziyaretin konumu bilinmiyor (firmanın yeri haritada işaretli değil); rotaya eklenmedi: ${planli.filter(z => !ziyaretYeri(z)).map(z => esc(firmaAd(z.firma_id) || 'Ziyaret')).join(', ')}.</p>` : ''}
           <div class="btnrow">${rota ? `<a class="btn primary" href="${rota}" target="_blank" rel="noopener">Günün rotasını Google Haritalar'da aç</a>` : ''}<a class="btn ghost" href="#/takvim">Haftalık takvim</a></div>
           ${sirali.length > 10 ? '<p class="hint">Google Haritalar tek rotada en fazla 10 durak gösterir; ilk 10 durak eklendi.</p>' : ''}`
@@ -224,6 +224,7 @@ export function bugunView(el) {
   el.querySelector('[data-yedekgit]')?.addEventListener('click', () => { try { sessionStorage.setItem('ayar-sekme', 'veri'); } catch {} });
   el.querySelector('[data-yakin]')?.addEventListener('click', () => yakinimdakiler());
   el.querySelectorAll('[data-zid]').forEach(b => b.onclick = () => ziyaretForm({ id: b.dataset.zid }));
+  el.querySelectorAll('[data-giris]').forEach(b => b.onclick = async () => (await import('../giriscikis.js')).girisYap({ firma_id: b.dataset.giris }));
   el.querySelectorAll('[data-yapildi]').forEach(b => b.onclick = () => { ziyaretForm({ id: b.dataset.yapildi }); setTimeout(() => document.querySelector('[data-done]')?.click(), 200); });
   el.querySelectorAll('[data-gid]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.gid }));
   el.querySelectorAll('[data-done]').forEach(c => c.onchange = async () => { const g = byId('gorevler', c.dataset.done); try { const y = { ...g, durum: c.checked ? 'Tamam' : 'Açık', tamamlayan: c.checked ? ben || null : null }; await app.db.save('gorevler', y); import('../push.js').then(m => m.gorevBildir(g, y)); toast(c.checked ? 'Görev tamamlandı.' : 'Görev yeniden açıldı.'); } catch (e) { c.checked = !c.checked; toast('Kaydedilemedi: ' + e.message, 'err'); } app.refresh(); });

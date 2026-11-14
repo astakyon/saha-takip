@@ -2,6 +2,7 @@ import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, fold, tarih, today, ZIYARET_AMAC, ZIYARET_DURUM, SONUC_TIPLERI, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, silGeriAl } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
+import { girisOzeti } from '../giriscikis.js';
 
 export const zDurum = z => z.durum || 'Yapıldı';
 const durumRenk = d => (ZIYARET_DURUM.find(x => x.k === d) || ZIYARET_DURUM[1]).c;
@@ -78,7 +79,7 @@ function yetkiliBagla(form) {
 export function ziyaretForm(init = {}, after) {
   const z0 = init.id ? byId('ziyaretler', init.id) || init : { id: uuid(), tarih: today(), durum: 'Yapıldı', fotolar: [], ...init, _new: true };
   const z = { ...z0, durum: zDurum(z0) };
-  const panel = openDrawer(`<header class="dh" style="--c:${durumRenk(z.durum)}"><div><p class="muted">${z._new ? 'Yeni ziyaret' : `${tarih(z.tarih)}${z.saat ? ' · ' + esc(z.saat) : ''} · ${esc(z.durum)}`}</p><h2 id="drawer-title">${esc(firmaAd(z.firma_id) || 'Ziyaret kaydı')}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+  const panel = openDrawer(`<header class="dh" style="--c:${durumRenk(z.durum)}"><div><p class="muted">${z._new ? 'Yeni ziyaret' : `${tarih(z.tarih)}${z.giris ? ' · ' + esc(girisOzeti(z)) : z.saat ? ' · ' + esc(z.saat) : ''} · ${esc(z.durum)}`}</p><h2 id="drawer-title">${esc(firmaAd(z.firma_id) || 'Ziyaret kaydı')}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     ${z._new ? '' : `<div class="dh-actions">${z.durum === 'Planlandı' ? '<button class="btn sm primary" data-done>Yapıldı olarak işaretle</button>' : ''}<button class="btn sm ghost danger" data-sil>Sil</button></div>`}
     <form class="dbody form" novalidate>${renderForm(ZIYARET_FORM, z)}
     <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`, { onClose: () => {} });

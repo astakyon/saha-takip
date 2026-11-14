@@ -1500,5 +1500,14 @@ revoke all on function public.kapsamda(uuid, text, uuid) from public, anon;
 grant execute on function public.kapsamda(uuid, text, uuid) to authenticated;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 32 $f$;
 
+-- ===================== Sürüm 33: ziyarette giriş-çıkış =====================
+-- giris / cikis: zaman damgası; giris_mesafe: girişte firmanın kayıtlı konumuna uzaklık (metre); giriş konumu lat/lng'de
+alter table public.ziyaretler add column if not exists giris timestamptz;
+alter table public.ziyaretler add column if not exists cikis timestamptz;
+alter table public.ziyaretler add column if not exists giris_mesafe numeric;
+alter table public.ziyaretler add column if not exists cikis_lat double precision;
+alter table public.ziyaretler add column if not exists cikis_lng double precision;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 33 $f$;
+
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

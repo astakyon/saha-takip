@@ -14,6 +14,7 @@ import { teklifForm } from './teklif.js';
 import { numuneForm, servisForm } from './kayitlar.js';
 import { belgeBolumu, belgeleri } from '../belgeler.js';
 import { googleBul, aramaMetni } from '../google.js';
+import { aktifZiyaret, girisYap, cikisYap, girisOzeti } from '../giriscikis.js';
 
 const SEKMELER = [
   ['ozet', 'Özet', ''],
@@ -56,7 +57,7 @@ export function firmaSayfa(el, id, sekme0) {
   const dd = (ad, v) => v ? `<dt>${ad}</dt><dd>${v}</dd>` : '';
   const kisiSatir = k => `<li class="kisi-bag"><a href="#/kisi/${k.id}" class="pcard"><span class="avatar" data-kv="${esc(k.kartvizit_on || '')}">${esc(k.ad_soyad.slice(0, 1))}</span><span><b>${esc(k.ad_soyad)}</b><small>${esc([k.unvan || k.pozisyon, k.telefon].filter(Boolean).join(' · '))}</small></span></a>`;
   const projeSatir = p => `<li><a href="#/proje/${p.id}"><b>${esc(p.ad)}</b><span class="muted">${esc(projeRolleri(p, x.id).join(', '))} · ${usd(p.tutar_usd)}</span></a>${pill(p.durum)}</li>`;
-  const ziySatir = z => `<li><span class="muted">${tarih(z.tarih)}${z.durum === 'Planlandı' ? ' · planlı' : ''}</span><button type="button" class="linkrow" data-zid="${z.id}"><span>${esc([byId('kisiler', z.kisi_id)?.ad_soyad, z.amac].filter(Boolean).join(' · '))}${z.notlar ? ` <span class="muted">${esc(z.notlar.slice(0, 140))}</span>` : ''}${!z.kisi_id && !z.amac && !z.notlar ? '<span class="muted">Ziyaret</span>' : ''}</span></button></li>`;
+  const ziySatir = z => `<li><span class="muted">${tarih(z.tarih)}${z.durum === 'Planlandı' ? ' · planlı' : ''}${z.giris ? '<br><small>' + esc(girisOzeti(z)) + '</small>' : ''}</span><button type="button" class="linkrow" data-zid="${z.id}"><span>${esc([byId('kisiler', z.kisi_id)?.ad_soyad, z.amac].filter(Boolean).join(' · '))}${z.notlar ? ` <span class="muted">${esc(z.notlar.slice(0, 140))}</span>` : ''}${!z.kisi_id && !z.amac && !z.notlar ? '<span class="muted">Ziyaret</span>' : ''}</span></button></li>`;
   const gorSatir = g => `<li><button type="button" class="linkrow" data-gid="${g.id}"><span>${g.durum === 'Tamam' ? '✓' : '○'} ${esc(g.baslik)}</span></button><span class="muted ${g.durum !== 'Tamam' && g.son_tarih && g.son_tarih < today() ? 'neg' : ''}">${tarih(g.son_tarih)}</span></li>`;
   const tumu = (k, n) => `<button type="button" class="linkbtn fs-tumu" data-git="${k}">Tümü (${n}) →</button>`;
 
@@ -77,7 +78,7 @@ export function firmaSayfa(el, id, sekme0) {
             <hr><button type="button" role="menuitem" class="fs-sil" data-a="sil" data-gerek="yaz:firmalar">${IK.sil}<span>Firmayı sil</span></button></div></div>
       </div>
     </header>
-    <div class="fs-act" data-gerek="yaz:firmalar"><button class="btn sm primary" data-a="duzenle">Düzenle</button></div>
+    <div class="fs-act"><button class="btn sm primary" data-a="duzenle" data-gerek="yaz:firmalar">Düzenle</button>${(() => { const a = aktifZiyaret(); return a && a.firma_id === x.id ? `<button class="btn sm giris-btn icerde" data-a="cikis" data-gerek="yaz:ziyaretler">Çıkış yap · ${esc(girisOzeti(a))}</button>` : `<button class="btn sm giris-btn" data-a="giris" data-gerek="yaz:ziyaretler">Giriş yap</button>`; })()}</div>
     <div data-cift></div>
     <div class="p-sekme fs-sekme" role="tablist" aria-label="Firma bölümleri">${SEKMELER.map(([k, t, g]) => `<button type="button" role="tab" data-fsk="${k}" ${g ? `data-gerek="${g}"` : ''} aria-selected="${k === sekme}" class="${k === sekme ? 'on' : ''}">${t}${sayi[k] ? ` <i>${sayi[k]}</i>` : ''}</button>`).join('')}</div>
 
@@ -195,6 +196,8 @@ export function firmaSayfa(el, id, sekme0) {
   el.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     const a = b.dataset.a;
     if (a === 'duzenle') firmaFormu(x.id);
+    if (a === 'giris') girisYap({ firma_id: x.id });
+    if (a === 'cikis') cikisYap(aktifZiyaret());
     if (a === 'not') firmaFormu(x.id, null, { odak: 'notlar' });
     if (a === 'kisi') kisiDetay(null, { firma_id: x.id });
     if (a === 'bagla') { const k = el.querySelector('[data-kisi-sec]'); k.hidden = !k.hidden; if (!k.hidden) { kisiAra(); k.querySelector('input').focus(); } }

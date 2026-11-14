@@ -453,6 +453,23 @@ const DB = () => {
   kontrol('İlk yüklemede hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// ---------- 17) Ziyarette giriş-çıkış ----------
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB });
+  await c.grantPermissions(['geolocation']); await c.setGeolocation({ latitude: 37.0005, longitude: 35.3005 });
+  await p.setViewportSize({ width: 1280, height: 900 }); await p.goto(U + '#/bugun'); await w(1500);
+  await p.evaluate(async () => { const { S } = await import('./js/db.js'); const { app } = await import('./js/state.js'); const f = S.firmalar.find(x => x.id === 'f2'); await app.db.save('firmalar', { ...f, lat: 37, lng: 35.3 }); });
+  await p.goto(U + '#/firma/f2'); await w(1500);
+  await p.click('.fs-act [data-a="giris"]'); await w(1500);
+  const g = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const z = S.ziyaretler.find(x => x.firma_id === 'f2' && x.giris && !x.cikis); return { var: !!z, mesafe: z?.giris_mesafe, bant: document.querySelector('#giris-bandi')?.textContent.replace(/\s+/g, ' ') || '', dug: document.querySelector('.fs-act [data-a="cikis"]')?.textContent || '' }; });
+  await p.goto(U + '#/projeler'); await w(800);
+  const bantBaska = await p.isVisible('#giris-bandi');
+  await p.click('#giris-bandi [data-gbcikis]'); await w(1500);
+  const cik = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const z = S.ziyaretler.find(x => x.firma_id === 'f2' && x.giris); return { cikis: !!z?.cikis, form: !!document.querySelector('.drawer.open [name=sonuc_tipi], .drawer.open [name=notlar]'), baslik: document.querySelector('.drawer.open .dh .muted')?.textContent || '', bant: !!document.querySelector('#giris-bandi') }; });
+  kontrol('Giriş-çıkış: firmada giriş (mesafe ölçülüyor), her ekranda bant, çıkışta süre ve ziyaret formu', g.var && g.mesafe > 0 && g.mesafe < 200 && /Örnek Emüt/.test(g.bant) && /Çıkış yap/.test(g.dug) && bantBaska && cik.cikis && cik.form && /içeride|dk/.test(cik.baslik) && !cik.bant, JSON.stringify({ g, bantBaska, cik }));
+  kontrol('Giriş-çıkışta hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
 {
   const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');
