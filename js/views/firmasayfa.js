@@ -5,6 +5,7 @@ import { app } from '../state.js';
 import { rotaYazilabilir, gerekUygula } from '../yetki.js';
 import { POZISYONLAR, esc, usd, num, pill, tarih, today, byId, firmaAd, match, toast, confirmBox, directionsUrl, ACIK } from '../ui.js';
 import { sayfadanDon, sayfaOncesiAd } from '../main.js';
+import { IK, acilirKur, sekmeKur, araciTemizle } from '../sayfa.js';
 import { firmaFormu, firmaProjeleri, ciftUyarisi, kisiDetay } from './firmalar.js';
 import { projeRolleri } from './projeler.js';
 import { ziyaretForm, gorevForm } from './ziyaret.js';
@@ -23,51 +24,13 @@ const SEKMELER = [
   ['belgeler', 'Belgeler', 'belgeler'],
   ['notlar', 'Notlar', ''],
 ];
-const ik = d => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-const IK = {
-  tel: ik('<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/>'),
-  wa: ik('<path d="M4 20l1.3-4A8 8 0 1 1 8 18.7L4 20Z"/><path d="M9 9.5c.5 2.5 2.5 4.5 5 5"/>'),
-  yol: ik('<path d="M12 2 20 20l-8-4-8 4 8-18Z"/>'),
-  arti: ik('<path d="M12 5v14M5 12h14"/>'),
-  pin: ik('<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>'),
-  kisi: ik('<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>'),
-  gor: ik('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>'),
-  tek: ik('<path d="M7 3h7l5 5v13H7V3Z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>'),
-  num: ik('<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 0v18m8-13.5L12 12 4 7.5"/>'),
-  srv: ik('<path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.3-1.3a4 4 0 0 0-5-5l2.6 2.6-2.1 2.1L9.6 5.8a4 4 0 0 0 5.1.5Z"/>'),
-  ara: ik('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
-  sil: ik('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'),
-};
-// Başlıktaki açılır menüler: masaüstünde düğmenin altında, telefonda alttan açılan panel
-function acilirKur(el) {
-  const kutular = [...el.querySelectorAll('[data-acilir]')];
-  let perde = null;
-  const kapat = () => { kutular.forEach(k => { const m = k._menu; m.hidden = true; if (m.parentElement !== k) k.appendChild(m); k.querySelector('[aria-haspopup]').setAttribute('aria-expanded', 'false'); }); perde?.remove(); perde = null; };
-  for (const k of kutular) {
-    const menu = k.querySelector('.fs-menu'), btn = k.querySelector('[aria-haspopup]'); k._menu = menu;
-    // Yetkiyle boşalan menü gizlenir; art arda ya da uçta kalan ayraçlar kaldırılır
-    menu.querySelectorAll('hr').forEach(h => { const o = h.previousElementSibling, s = h.nextElementSibling; if (!o || !s || o.matches('hr, .fs-menu-bas') || s.matches('hr')) h.remove(); });
-    if (!menu.querySelector('[role=menuitem]')) { k.remove(); continue; }
-    btn.onclick = e => {
-      e.stopPropagation(); const acikti = !menu.hidden; kapat(); if (acikti) return;
-      menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
-      if (matchMedia('(max-width: 760px)').matches) { perde = document.createElement('div'); perde.className = 'fs-perde'; perde.onclick = kapat; document.body.append(perde, menu); }   // alt menünün ve artı düğmesinin üstünde kalsın
-      menu.querySelector('[role=menuitem]')?.focus({ preventScroll: true });
-    };
-    menu.addEventListener('click', () => setTimeout(kapat, 0));
-  }
-  const disari = e => { if (!el.isConnected) return document.removeEventListener('click', disari); if (!e.target.closest('[data-acilir]')) kapat(); };
-  document.addEventListener('click', disari);
-  el.addEventListener('keydown', e => { if (e.key === 'Escape') kapat(); });
-  window.addEventListener('hashchange', kapat, { once: true });
-}
 const sekmeAdi = k => SEKMELER.some(s => s[0] === k) ? k : 'ozet';
 const pozSira = k => { const i = POZISYONLAR.indexOf(k.pozisyon); return (k.rol === 'Karar verici' ? -1 : 0) + (i < 0 ? 50 : i); };
 
 export function firmaSayfa(el, id, sekme0) {
   const x = byId('firmalar', id);
   if (!x) { el.innerHTML = `<div class="empty"><p>Firma bulunamadı. Silinmiş ya da görme yetkin olmayabilir.</p><p><a class="btn" href="#/firmalar">Firmalara dön</a></p></div>`; return; }
-  document.title = x.ad + ' · Saha Takip';
+  document.title = x.ad + ' · Saha Takip'; app.sayfaAd = x.ad;
   const projeler = firmaProjeleri(x.id);
   const kisiler = S.kisiler.filter(k => k.firma_id === x.id).sort((a, b) => pozSira(a) - pozSira(b) || a.ad_soyad.localeCompare(b.ad_soyad, 'tr'));
   const eskiler = S.kisiler.filter(k => k.firma_id !== x.id && (k.eski_firmalar || []).some(g => g.firma_id === x.id));
@@ -89,6 +52,7 @@ export function firmaSayfa(el, id, sekme0) {
   const sekme = sekmeAdi(sekme0 || location.hash.split('/')[3]);
   const onceki = sayfaOncesiAd();
   const web = x.web ? (/^https?:\/\//i.test(x.web) ? x.web : 'https://' + x.web) : '';
+  const dlk = ic => ic.trim() ? `<dl class="profil-dl">${ic}</dl>` : '';
   const dd = (ad, v) => v ? `<dt>${ad}</dt><dd>${v}</dd>` : '';
   const kisiSatir = k => `<li class="kisi-bag"><a href="#/kisi/${k.id}" class="pcard"><span class="avatar" data-kv="${esc(k.kartvizit_on || '')}">${esc(k.ad_soyad.slice(0, 1))}</span><span><b>${esc(k.ad_soyad)}</b><small>${esc([k.unvan || k.pozisyon, k.telefon].filter(Boolean).join(' · '))}</small></span></a>`;
   const projeSatir = p => `<li><a href="#/proje/${p.id}"><b>${esc(p.ad)}</b><span class="muted">${esc(projeRolleri(p, x.id).join(', '))} · ${usd(p.tutar_usd)}</span></a>${pill(p.durum)}</li>`;
@@ -118,11 +82,11 @@ export function firmaSayfa(el, id, sekme0) {
     <div class="p-sekme fs-sekme" role="tablist" aria-label="Firma bölümleri">${SEKMELER.map(([k, t, g]) => `<button type="button" role="tab" data-fsk="${k}" ${g ? `data-gerek="${g}"` : ''} aria-selected="${k === sekme}" class="${k === sekme ? 'on' : ''}">${t}${sayi[k] ? ` <i>${sayi[k]}</i>` : ''}</button>`).join('')}</div>
 
     <div class="fs-ic" data-fs="ozet" role="tabpanel" ${sekme === 'ozet' ? '' : 'hidden'}><div class="fs-izgara">
-      <section class="card"><h2>İletişim ve konum</h2><dl class="profil-dl">
+      <section class="card"><h2>İletişim ve konum</h2>${dlk(`
         ${dd('Telefon', x.telefon ? `<a href="tel:${esc(x.telefon)}">${esc(x.telefon)}</a>` : '')}${dd('E-posta', x.eposta ? `<a href="mailto:${esc(x.eposta)}">${esc(x.eposta)}</a>` : '')}${dd('Web', web ? `<a href="${esc(web)}" target="_blank" rel="noopener">${esc(x.web)}</a>` : '')}
         ${dd('İl / ilçe', esc([x.il, x.ilce].filter(Boolean).join(' / ')))}${dd('OSB', esc(x.osb || ''))}${dd('Belde', esc(x.belde || ''))}${dd('Adres', esc(x.adres || ''))}
         ${dd('Sektör', esc(x.sektor || ''))}${dd('Segment', esc(x.segment || ''))}${dd('Vergi no', esc(x.vergi_no || ''))}${dd('Sorumlu', esc((app.ekipTum || []).find(k => k.eposta === x.sorumlu)?.ad || x.sorumlu || ''))}
-</dl>${!x.telefon && !x.eposta && !x.il && !x.adres ? '<p class="hint">İletişim bilgisi girilmemiş.</p>' : ''}
+`)}${!x.telefon && !x.eposta && !x.il && !x.adres ? '<p class="hint">İletişim bilgisi girilmemiş.</p>' : ''}
         <div class="btnrow" data-gerek="yaz:firmalar"><button type="button" class="btn sm ghost" data-a="duzenle">Bilgileri düzenle</button></div></section>
       <section class="card" data-gerek="kisiler"><div class="fs-kb"><h2>Kişiler <span class="muted">${kisiler.length}</span></h2>${kisiler.length > 4 ? tumu('kisiler', kisiler.length) : ''}</div>
         ${kisiler.length ? `<ul class="cards">${kisiler.slice(0, 4).map(k => kisiSatir(k) + '</li>').join('')}</ul>` : '<p class="hint">Henüz kişi eklenmedi.</p>'}
@@ -184,14 +148,12 @@ export function firmaSayfa(el, id, sekme0) {
   </div>`;
 
   gerekUygula(el);
-  acilirKur(el);
-  el.querySelectorAll('.fs-grp').forEach(g => { if (!g.querySelector('a, button')) g.remove(); });
+  acilirKur(el); araciTemizle(el);
   ciftUyarisi(el, 'firmalar', x);
   el.querySelector('[data-geri]').onclick = () => sayfadanDon('firmalar');
   el.querySelectorAll('.avatar[data-kv]').forEach(async a => { if (a.dataset.kv) { const u = await app.db.url(a.dataset.kv, true); if (u) { a.style.backgroundImage = `url("${u}")`; a.textContent = ''; } } });
 
   // Sekmeler: içerik ilk açılışta kurulur (şema ve listeler görünürken ölçülsün)
-  const kuruldu = new Set();
   const KUR = {
     kisiler: () => orgKur(el, x, kisiler, eskiler),
     projeler: () => import('../iliski.js').then(m => m.iliskiBolumu(el.querySelector('[data-iliski]'), x)),
@@ -203,24 +165,8 @@ export function firmaSayfa(el, id, sekme0) {
       el.querySelectorAll('.fs-foto img[data-path]').forEach(async img => { const u = await app.db.url(img.dataset.path, true); if (u) { img.src = u; img.onclick = () => window.open(u, '_blank'); } });
     },
   };
-  const ac = (k, { kaydir = false } = {}) => {
-    k = sekmeAdi(k);
-    if (!el.querySelector(`[data-fsk="${k}"]`)) k = 'ozet';   // yetkisi olmayan sekme
-    el.querySelectorAll('[data-fsk]').forEach(b => { const on = b.dataset.fsk === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); if (on) { const s = b.parentElement; if (b.offsetLeft < s.scrollLeft || b.offsetLeft + b.offsetWidth > s.scrollLeft + s.clientWidth) s.scrollLeft = b.offsetLeft - 16; } });
-    el.querySelectorAll('[data-fs]').forEach(p => p.hidden = p.dataset.fs !== k);
-    const yol = 'firma/' + x.id + (k === 'ozet' ? '' : '/' + k);
-    if (location.hash !== '#/' + yol) history.replaceState(history.state, '', '#/' + yol);
-    app.sayfaYolu?.(yol);
-    if (!kuruldu.has(k)) { kuruldu.add(k); try { KUR[k]?.(); } catch (e) { console.error(e); } }
-    if (kaydir) { const s = el.querySelector('.fs-sekme'); if (s && s.getBoundingClientRect().top < 0) s.scrollIntoView({ block: 'start' }); }
-  };
-  app.sayfaSekme = k => ac(k || 'ozet');
-  el.querySelectorAll('[data-fsk]').forEach(b => b.onclick = () => ac(b.dataset.fsk, { kaydir: true }));
-  el.querySelectorAll('[data-git]').forEach(b => b.onclick = () => ac(b.dataset.git, { kaydir: true }));
-  ac(sekme);
+  sekmeKur(el, { taban: 'firma/' + x.id, sekme, KUR });
 
-  // Projeler: ilk 10, kalanı "Devamını göster" ile
-  el.querySelector('[data-devam]')?.addEventListener('click', e => { el.querySelectorAll('[data-fazla]').forEach(li => li.hidden = false); e.currentTarget.remove(); });
   // Kayıt bağlantıları
   el.querySelectorAll('[data-zid]').forEach(b => b.onclick = () => ziyaretForm({ id: b.dataset.zid }));
   el.querySelectorAll('[data-gid]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.gid }));

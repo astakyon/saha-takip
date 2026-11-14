@@ -32,6 +32,15 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 62): Kişi kartı kendi sayfasında
+
+- Kişiye dokununca firma gibi **kendi sayfası** açılır. "←" geri düğmesi gelinen yeri yazar: firmadan geldiysen firma adı, listeden geldiysen "Kişiler". Firma → kişi → geri → geri sırasıyla adım adım dönülür.
+- Başlıkta kartvizit fotoğrafı (yoksa baş harf), firma (dokununca firmaya gider), unvan, pozisyon, karar rolü ve son görüşme.
+- Simge çubuğu: **iletişim** (Ara, WhatsApp, E-posta) · **ekle** (Ziyaret, Görev, Teklif; firma ve kişi seçili gelir) · **⋯** (Rehbere kaydet, İnternet sitesi, Adresi haritada aç, Numune ver, Servis kaydı, Kişiyi sil).
+- Sekmeler: Özet · Projeler · Ziyaret ve görevler · Teklif ve numune · Notlar.
+- Özet: iletişim, firmadaki yeri (bağlı olduğu kişi, ona bağlı olanlar, şemaya git), kartvizit ön/arka yüz, eski firmaları, son görüşmeler ve açık görevler.
+- Düzenle pencerede açılır (kartvizit okuma, "Yeni firmaya geçti" dahil). Yeni kişi yine pencerede eklenir; Kişiler listesinden eklenince kaydettikten sonra kişinin sayfasına geçilir.
+
 ## Güncelleme notu (sürüm 61): Firma başlığında simge çubuğu
 
 - "Ekle" menüsü kaldırıldı. Firma adının sağında üç kutu: **iletişim** (Ara, WhatsApp, Yol tarifi) · **ekle** (Ziyaret, Kişi, Görev, Teklif) · **⋯** (Numune ver, Servis kaydı, Google'dan bilgi al, Google Haritalar'da aç, Firmayı sil).

@@ -124,13 +124,16 @@ async function route() {
   const [k, id] = parts;
   const dt = { proje: 'projeler', firma: 'firmalar', kisi: 'kisiler' }[k];
   if (DETAIL[k] && !izin(dt)) { location.hash = '#/bugun'; return; }
-  // Firma: kendi sayfasında (sekmeli); kişi ve proje kartları o sayfanın üstünde pencere olarak açılır
-  if (k === 'firma' && id) {
+  // Firma ve kişi: kendi sayfalarında (sekmeli); proje kartı ve formlar sayfanın üstünde pencere olarak açılır
+  if ((k === 'firma' || k === 'kisi') && id) {
     closeDrawer();
     document.body.classList.toggle('salt-oku', !!app.db?.bakilan || (!sahipMi() && (onizlemede() || izin(dt) !== 'yaz')));
-    const sayfa = 'firma/' + id;
+    const sayfa = k + '/' + id;
     if (lastShown === sayfa && app.sayfaSekme) { app.sayfaSekme(parts[2]); return; }   // yalnızca sekme değişti
-    await sayfaGoster('firmalar', sayfa, async el => (await import('./views/firmasayfa.js')).firmaSayfa(el, id));
+    const liste = k === 'kisi' && rotaIzinli('kisiler') ? 'kisiler' : 'firmalar';
+    await sayfaGoster(liste, sayfa, k === 'firma'
+      ? async el => (await import('./views/firmasayfa.js')).firmaSayfa(el, id)
+      : async el => (await import('./views/kisisayfa.js')).kisiSayfa(el, id));
     return;
   }
   if (DETAIL[k]) {
@@ -143,10 +146,18 @@ async function route() {
   if (ROUTES[k] && !rotaIzinli(k)) { location.hash = '#/bugun'; return; }
   await show(ROUTES[k] && rotaIzinli(k) ? k : 'bugun');
 }
-// Ayrı sayfa olarak açılan kart (firma): menüde ait olduğu liste seçili görünür
-let sonSayfa = null, sayfaOncesi = null;
+// Ayrı sayfa olarak açılan kartlar (firma, kişi): menüde ait olduğu liste seçili görünür.
+// "Geri" için gelinen yerler yığında tutulur: liste → firma → kişi; geri dönülünce yığından çıkar.
+let sonSayfa = null, yigin = [];
 async function sayfaGoster(k, sayfa, ciz) {
-  if (!/^(firma|proje|kisi)\//.test(lastShown || '')) sayfaOncesi = lastShown ? '#/' + lastShown : null;
+  const sayfadanmi = /^(firma|kisi)\//.test(lastShown || '');
+  if (!sayfadanmi) yigin = lastShown && ROUTES[lastShown] ? [{ yol: lastShown, hash: '#/' + lastShown, ad: ROUTES[lastShown].t }] : [];
+  else if (lastShown !== sayfa) {
+    const i = yigin.findIndex(y => y.yol === sayfa);
+    if (i >= 0) yigin = yigin.slice(0, i);
+    else { yigin.push({ yol: lastShown, hash: '#/' + (sonSayfa || lastShown), ad: app.sayfaAd || null }); if (yigin.length > 8) yigin.splice(1, 1); }
+  }
+  app.sayfaAd = null;
   lastView = k; sonSayfa = sayfa;
   renderNav(k);
   if (lastShown && lastShown !== sayfa) kayKonum[lastShown] = window.scrollY;
@@ -164,8 +175,8 @@ async function sayfaGoster(k, sayfa, ciz) {
   gerekUygula(el);
 }
 // Sayfanın "geri" düğmesi: listeden gelindiyse tarayıcı geçmişiyle, doğrudan açıldıysa listeye
-export function sayfadanDon(liste) { location.hash = sayfaOncesi || '#/' + liste; }
-export const sayfaOncesiAd = () => { const r = (sayfaOncesi || '').replace('#/', ''); return ROUTES[r]?.t || null; };
+export function sayfadanDon(liste) { location.hash = yigin.at(-1)?.hash || '#/' + liste; }
+export const sayfaOncesiAd = () => yigin.at(-1)?.ad || null;
 async function show(k) {
   lastView = k; sonSayfa = null;
   if (lastShown !== k) try { kullanimSay(k); } catch {}

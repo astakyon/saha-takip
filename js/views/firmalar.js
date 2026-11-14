@@ -1,12 +1,11 @@
 import { S, uuid, adBol, adBirlestir } from '../db.js';
 import { sahipMi } from '../yetki.js';
 import { app, F, saveFilters } from '../state.js';
-import { POZISYONLAR, pozisyonTahmin, esc, pill, tarih, today, ILLER, ILCELER, OSBLER, FIRMA_TIPLERI, SEKTORLER, byId, firmaAd, match, toast, openDrawer, closeDrawer,
-  exportXlsx, confirmBox, download, parcali, gorununce, fold } from '../ui.js';
+import { POZISYONLAR, pozisyonTahmin, esc, tarih, today, ILLER, ILCELER, OSBLER, FIRMA_TIPLERI, SEKTORLER, byId, firmaAd, match, toast, openDrawer, closeDrawer,
+  exportXlsx, confirmBox, parcali, gorununce, fold } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { backToList } from '../main.js';
 import { projeRolleri } from './projeler.js';
-import { waGonder } from '../sablon.js';
 
 const FIRMA_FORM = [
   { title: 'Firma', fields: [
@@ -223,20 +222,23 @@ export function kisilerView(el) {
   draw();
 }
 
+// Kişi kartı kendi sayfasında açılır (#/kisi/<id>, js/views/kisisayfa.js); yeni kişi ve düzenleme pencerede
 export function kisiDetay(id, init) {
+  if (!id) return kisiFormu(null, init || {});
+  if (location.hash === '#/kisi/' + id || location.hash.startsWith('#/kisi/' + id + '/')) app.refresh?.();
+  else location.hash = '#/kisi/' + id;
+}
+
+export function kisiFormu(id, init, { odak } = {}) {
   const k0 = id ? byId('kisiler', id) : { id: uuid(), ...init, _new: true };
-  if (!k0) { toast('Kişi bulunamadı.', 'err'); return backToList(); }
+  if (!k0) { toast('Kişi bulunamadı.', 'err'); return; }
+  let sonra = null;
   const k = { ...k0 };
   if (!k.ad && !k.soyad && k.ad_soyad) Object.assign(k, adBol(k.ad_soyad));
-  const projeler = S.projeler.filter(p => p.ilgili_kisi_id === k.id);
-  const ziy = S.ziyaretler.filter(z => z.kisi_id === k.id).sort((a, b) => b.tarih.localeCompare(a.tarih));
   const panel = openDrawer(`
-    <header class="dh"><div><p class="muted">${k._new ? 'Yeni kişi' : esc(firmaAd(k.firma_id) || 'Kişi')}</p><h2 id="drawer-title">${esc(k.ad_soyad || 'Yeni kişi')}</h2></div>
+    <header class="dh"><div><p class="muted">${k._new ? 'Yeni kişi' : 'Kişiyi düzenle'}</p><h2 id="drawer-title">${esc(k.ad_soyad || 'Yeni kişi')}</h2></div>
       <button class="x" data-close aria-label="Kapat">×</button></header>
     <div data-cift></div>
-    ${k._new ? '' : `<div class="dh-actions">${k.telefon ? `<a class="btn sm" href="tel:${esc(k.telefon)}">Ara</a><button type="button" class="btn sm ghost" data-a="wa">WhatsApp</button>` : ''}
-      ${k.eposta ? `<a class="btn sm ghost" href="mailto:${esc(k.eposta)}">E-posta</a>` : ''}${k.web ? `<a class="btn sm ghost" href="${esc(/^https?:\/\//i.test(k.web) ? k.web : 'https://' + k.web)}" target="_blank" rel="noopener">İnternet sitesi</a>` : ''}${k.adres ? `<a class="btn sm ghost" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(k.adres)}" target="_blank" rel="noopener">Adresi haritada aç</a>` : ''}<button class="btn sm ghost" data-a="vcf">Rehbere kaydet</button>
-      <button class="btn sm ghost danger" data-a="sil">Sil</button></div>`}
     <form class="dbody form" novalidate>
       ${k._new && !k.kartvizit_on ? `<div class="kv-cta-row"><button type="button" class="kv-cta" data-kv-hizli="cam"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span><b>Kartviziti çek</b><small>Ad, telefon, e-posta ve firma kendiliğinden dolar</small></span></button><button type="button" class="linkbtn" data-kv-hizli="gal">ya da galeriden seç</button></div>` : ''}
       <div data-ocr></div>
@@ -247,12 +249,11 @@ export function kisiDetay(id, init) {
         <div class="btnrow"><button type="button" class="btn sm" data-ocr-btn ${k.kartvizit_on ? '' : 'hidden'}>Kartviziti oku ve formu doldur</button></div>
       </details>
       ${k._new ? '' : '<section class="rel eski-firma" data-eski-firma></section>'}
-      ${projeler.length || ziy.length ? `<section class="rel"><h3>Projeler</h3><ul class="list">${projeler.map(p => `<li><a href="#/proje/${p.id}">${esc(p.ad)}</a>${pill(p.durum)}</li>`).join('') || '<li class="muted">—</li>'}</ul>
-        <h3>Ziyaretler</h3><ul class="list">${ziy.map(z => `<li><span class="muted">${tarih(z.tarih)}</span><span>${esc((z.notlar || '').slice(0, 140))}</span></li>`).join('') || '<li class="muted">—</li>'}</ul></section>` : ''}
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div>
-    </form>`, { onClose: () => backToList() });
+    </form>`, { onClose: () => { if (sonra) sonra(); else if (k._new) backToList(); } });
   const form = panel.querySelector('form');
   bindForm(form, KISI_FORM, k);
+  if (odak) setTimeout(() => { const a = panel.querySelector(`[name="${odak}"]`); if (!a) return; a.closest('details')?.setAttribute('open', ''); a.focus(); a.scrollIntoView({ block: 'center' }); }, 80);
   ciftUyarisi(panel, 'kisiler', k);
   eskiFirmaBolumu(panel, k);
   panel.querySelectorAll('[data-kvs]').forEach(box => {
@@ -275,15 +276,6 @@ export function kisiDetay(id, init) {
   panel.querySelector('[data-ocr-btn]').onclick = () => kartvizitPaneli(panel, form, panel.querySelector('[data-kvs="kartvizit_on"]').dataset.val, k._ocr);
   if (k._new && k.kartvizit_on) kartvizitPaneli(panel, form, k.kartvizit_on);
   panel.querySelectorAll('[data-kv-hizli]').forEach(b => b.onclick = () => { panel.querySelector(`[data-kvs="kartvizit_on"] ${b.dataset.kvHizli === 'cam' ? '[data-kv-cam]' : '[data-kv-gal]'}`).click(); });
-  panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
-    if (b.dataset.a === 'wa') waGonder({ kisi: k });
-    if (b.dataset.a === 'vcf') {
-      const fa = firmaAd(k.firma_id);
-      const v = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${k.ad_soyad}`, `N:${k.soyad || adBol(k.ad_soyad).soyad};${k.ad || adBol(k.ad_soyad).ad};;;`, fa && `ORG:${fa}`, k.unvan && `TITLE:${k.unvan}`, k.telefon && `TEL;TYPE=CELL:${k.telefon}`, k.eposta && `EMAIL:${k.eposta}`, k.web && `URL:${k.web}`, k.adres && `ADR;TYPE=WORK:;;${String(k.adres).replace(/[\n;]/g, ' ')};;;;`, 'END:VCARD'].filter(Boolean).join('\r\n');
-      download(`${k.ad_soyad}.vcf`, v, 'text/vcard');
-    }
-    if (b.dataset.a === 'sil' && confirmBox(`${k.ad_soyad} silinsin mi?`)) { await app.db.del('kisiler', k.id); toast('Kişi silindi.'); closeDrawer(); app.refresh(); }
-  });
   form.onsubmit = async e => {
     e.preventDefault();
     try {
@@ -299,7 +291,9 @@ export function kisiDetay(id, init) {
         const dup = S.kisiler.find(x => (fold(x.ad_soyad).replace(/\s+/g, ' ').trim() === ad && (x.firma_id || null) === (o.firma_id || null)) || (tel.length >= 10 && String(x.telefon || '').replace(/\D/g, '').slice(-10) === tel));
         if (dup && !confirmBox(`“${dup.ad_soyad}”${dup.firma_id ? ' (' + firmaAd(dup.firma_id) + ')' : ''} zaten kayıtlı görünüyor${tel.length >= 10 && String(dup.telefon || '').replace(/\D/g, '').slice(-10) === tel ? ', telefonu aynı' : ''}. Yine de yeni kişi olarak kaydedilsin mi?`)) return;
       }
-      await app.db.save('kisiler', o); toast(`${o.ad_soyad} kaydedildi.`); closeDrawer(); app.refresh();
+      await app.db.save('kisiler', o); toast(`${o.ad_soyad} kaydedildi.`);
+      sonra = k._new && location.hash === '#/kisiler' ? () => { location.hash = '#/kisi/' + o.id; } : () => app.refresh();
+      closeDrawer(true);
     } catch (err) { toast('Kaydedilemedi: ' + err.message, 'err'); }
   };
 }
@@ -321,7 +315,7 @@ function benzerDugmesi(el, tablo) {
 }
 
 // Kişinin eski firmaları: firma değişince kendiliğinden eklenir; elle eklenebilir, kaldırılabilir
-function eskiFirmaBolumu(panel, k) {
+export function eskiFirmaBolumu(panel, k) {
   const kok = panel.querySelector('[data-eski-firma]'); if (!kok) return;
   const guncel = () => byId('kisiler', k.id) || k;
   const kaydet = async liste => { try { await app.db.save('kisiler', { ...guncel(), eski_firmalar: liste.length ? liste : null, _gecmisYok: true }); ciz(); } catch (e) { toast(e.message, 'err'); } };

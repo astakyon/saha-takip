@@ -1558,3 +1558,9 @@ a.org-kutu:hover, a.org-kutu:focus-visible { border-color: #E0B93E; }
   .fs-menu svg { width: 22px; height: 22px; color: var(--ink); }
 }
 @media (max-width: 360px) { .fs-grp > a, .fs-grp > button { width: 36px; } }
+
+/* Sürüm 62: kişi kartı kendi sayfasında */
+.ks-foto.var { background-size: cover; background-position: center; color: transparent; }
+.ks-firma { color: inherit; font-weight: 600; }
+.ks-kv { display: flex; gap: 10px; flex-wrap: wrap; }
+.ks-kv-r { width: min(100%, 260px); aspect-ratio: 1.75; border: 1px solid var(--line); border-radius: 10px; background: var(--line-2) center / cover no-repeat; cursor: zoom-in; padding: 0; }

@@ -265,7 +265,7 @@ const DB = () => {
     const r = O.kartvizitAyristir(sat.map(x => x.metin).join('\n'), sat); const { pozisyonTahmin } = await import('./js/ui.js'); return { ...r, poz: pozisyonTahmin(r.unvan) }; });
   kontrol('Kartvizitte logo ad sanılmıyor, firma alan adından bulunuyor, pozisyon tahmin ediliyor', ayr2.ad_soyad === 'Ayla Korkmaz' && ayr2.firma === 'Teknova' && ayr2.unvan === 'İş Geliştirme Mühendisi' && ayr2.poz === 'Satış / Pazarlama', JSON.stringify(ayr2));
   // Ad ve soyad ayrı: eski kayıt bölünüyor, kaydedince tam ad ikisinden oluşuyor
-  await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800);
+  await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800); await p.click('.fs-act [data-a="duzenle"]'); await w(500);
   const ad0 = await p.evaluate(() => [document.querySelector('.drawer.open [name=ad]')?.value, document.querySelector('.drawer.open [name=soyad]')?.value]);
   await p.fill('.drawer.open [name=ad]', 'Ayşe Nur'); await p.fill('.drawer.open [name=soyad]', 'Kaya'); await p.click('.drawer.open [type=submit]'); await w(800);
   const ad1 = await p.evaluate(async () => { const k = (await import('./js/db.js')).S.kisiler.find(x => x.id === 'k1'); return [k.ad, k.soyad, k.ad_soyad]; });
@@ -281,13 +281,13 @@ const DB = () => {
   // Firmadan ayrılan kişinin eski firması kartında ve firmanın "Eski çalışanlar"ında görünüyor; elle eski firma eklenebiliyor
   const ef = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1').eski_firmalar);
   const eskiCalisan = await p.isVisible('.fs-sayfa .eski-baslik');
-  await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800);
+  await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800); await p.click('.fs-act [data-a="duzenle"]'); await w(500);
   const efGorunur = await p.textContent('.drawer.open [data-eski-firma]');
   await p.click('.drawer.open [data-ef-ekle]'); await p.fill('.drawer.open [data-ef-firma]', 'Eski Usta Ltd'); await p.fill('.drawer.open [data-ef-unvan]', 'Şef'); await p.fill('.drawer.open [data-ef-tarih]', '2020-05-01'); await p.click('.drawer.open [data-ef-kaydet]'); await w(600);
   const ef2 = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1').eski_firmalar.map(g => g.firma_ad));
   kontrol('Eski firmalar kişi kartında ve firmanın eski çalışanlarında görünüyor, elle eklenebiliyor', ef?.[0]?.firma_id === 'f1' && eskiCalisan && /tarihine kadar/.test(efGorunur) && ef2.includes('Eski Usta Ltd'), JSON.stringify({ ef, eskiCalisan, ef2 }));
   // Kişide internet sitesi ve adres
-  await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800);
+  await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800); await p.click('.fs-act [data-a="duzenle"]'); await w(500);
   await p.fill('.drawer.open [name=web]', 'www.ornek.com'); await p.fill('.drawer.open [name=adres]', 'Örnek Mah. 1. Sok. No:2 Mersin'); await p.click('.drawer.open [type=submit]'); await w(800);
   const wa = await p.evaluate(async () => { const k = (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1'); return [k.web, k.adres]; });
   kontrol('Kişide internet sitesi ve adres kaydediliyor', wa[0] === 'www.ornek.com' && /Mersin/.test(wa[1]), JSON.stringify(wa));
@@ -419,10 +419,15 @@ const DB = () => {
   await p.goto(U + '#/firmalar'); await p.reload(); await w(1500); await p.click('a[href="#/firma/f2"]'); await w(1000);
   const fs1 = await p.evaluate(() => ({ h: location.hash, sek: [...document.querySelectorAll('.fs-sayfa [data-fsk]')].map(b => b.dataset.fsk).join(','), ad: document.querySelector('.fs-kim h1')?.textContent, drawer: !!document.querySelector('.drawer.open') }));
   await p.screenshot({ path: 'tests/cikti/firma-sayfa.png', fullPage: true });
-  await p.click('.fs-sayfa .pcard[href="#/kisi/k2"]'); await w(600);
-  const kd = await p.evaluate(() => ({ drawer: !!document.querySelector('.drawer.open'), sayfa: !!document.querySelector('.fs-sayfa') }));
-  await p.click('.drawer.open .x[data-close]'); await w(600);
-  const kd2 = await p.evaluate(() => ({ h: location.hash, sayfa: !!document.querySelector('.fs-sayfa') }));
+  await p.click('.fs-sayfa .pcard[href="#/kisi/k2"]'); await w(800);
+  const kd = await p.evaluate(() => ({ drawer: !document.querySelector('.drawer.open'), sayfa: !!document.querySelector('.ks-sayfa'), h: location.hash, geri: document.querySelector('[data-geri]')?.textContent, ad: document.querySelector('.ks-sayfa h1')?.textContent, sek: [...document.querySelectorAll('.ks-sayfa [data-fsk]')].map(b => b.dataset.fsk).join(',') }));
+  await p.screenshot({ path: 'tests/cikti/kisi-sayfa.png', fullPage: true });
+  await p.click('.ks-sayfa [data-fsk="notlar"]'); await w(200);
+  await p.click('.ks-sayfa .fs-act [data-a="duzenle"]'); await w(500); await p.fill('.drawer.open [name=unvan]', 'Genel Müdür Yardımcısı'); await p.click('.drawer.open [type=submit]'); await w(1000);
+  const kd3 = await p.evaluate(async () => ({ unvan: (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k2').unvan, h: location.hash, drawer: !!document.querySelector('.drawer.open'), metin: document.querySelector('.ks-sayfa')?.textContent.includes('Genel Müdür Yardımcısı') }));
+  await p.click('[data-geri]'); await w(800);
+  const kd2 = await p.evaluate(() => ({ h: location.hash, sayfa: !!document.querySelector('.fs-sayfa:not(.ks-sayfa)') }));
+  kontrol('Kişi kendi sayfasında açılıyor (geri: firma adı), düzenleme pencerede, kaydedince sekmede kalıyor, geri firmaya dönüyor', kd.drawer && kd.sayfa && kd.h === '#/kisi/k2' && /Örnek Emüt/.test(kd.geri) && /Ahmet Yılmaz/.test(kd.ad) && kd.sek === 'ozet,projeler,ziyaret,satis,notlar' && kd3.unvan === 'Genel Müdür Yardımcısı' && kd3.h === '#/kisi/k2/notlar' && !kd3.drawer && kd3.metin, JSON.stringify({ kd, kd3, kd2 }));
   await p.click('[data-fsk="ziyaret"]'); await w(200); const h2 = await p.evaluate(() => location.hash);
   await p.click('.fs-act [data-a="duzenle"]'); await w(500); await p.fill('.drawer.open [name=telefon]', '0322 111 22 33'); await p.click('.drawer.open [type=submit]'); await w(1200);
   const fs2 = await p.evaluate(async () => ({ tel: (await import('./js/db.js')).S.firmalar.find(f => f.id === 'f2').telefon, h: location.hash, drawer: !!document.querySelector('.drawer.open'), sekme: document.querySelector('[data-fsk].on')?.dataset.fsk, metin: document.querySelector('.fs-sayfa')?.textContent.includes('0322 111 22 33') }));
