@@ -429,6 +429,30 @@ const DB = () => {
   kontrol('Şirket değiştirmede hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// ---------- 16) İlk yükleme: örnek veriler ve Excel/CSV'den kişiler ----------
+{
+  const BOS = new Function('localStorage.setItem("__DB", JSON.stringify({ projeler: [], firmalar: [{ id: "fx", owner: "u1", ad: "Mevcut Firma AŞ" }], kisiler: [], ziyaretler: [], gorevler: [], ayarlar: [{ id: "a1", owner: "u1", anahtar: "firma_profil", deger: { firma: "Test Firma", sektor: "aydinlatma", iller: ["Adana"], katalog: "kendi" } }] }));');
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: BOS });
+  await p.setViewportSize({ width: 1280, height: 900 });
+  await p.goto(U + '#/bugun'); await w(1800);
+  const kart1 = await p.isVisible('[data-basla] .basla-k');
+  await p.click('[data-basla] [data-ornek="yukle"]'); await w(2500);
+  const say1 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return [S.firmalar.length, S.kisiler.length, S.projeler.length, S.ziyaretler.length, S.gorevler.length].join(','); });
+  const silVar = await p.isVisible('[data-basla] [data-ornek="sil"]');
+  await p.click('[data-basla] [data-ornek="sil"]'); await w(2500);
+  const say2 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return [S.firmalar.length, S.kisiler.length, S.projeler.length].join(','); });
+  // CSV'den kişiler: bir firma mevcut, biri yeni
+  const fs = await import('node:fs'); fs.writeFileSync('tests/cikti/kisiler.csv', 'Ad Soyad,Firma,Unvan,Cep Telefonu\nAhmet Deneme,Mevcut Firma AŞ,Satınalma Müdürü,0532 111 22 33\nSelin Örnek,Yepyeni Elektrik,Elektrik Mühendisi,0533 444 55 66\n,Boş Satır Firması,,\n');
+  const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.click('[data-basla] [data-ilkyukle="kisiler"]')]);
+  await fc.setFiles('tests/cikti/kisiler.csv'); await w(1500);
+  const esle = await p.isVisible('.drawer.open .esle-tbl'); if (esle) { await p.click('.drawer.open [type=submit]'); await w(800); }
+  const onizle = await p.evaluate(() => document.querySelector('.drawer.open .onizle-say')?.textContent.replace(/\s+/g, ' ') || '');
+  await p.click('.drawer.open [data-onay]'); await w(2000);
+  const kisi = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return S.kisiler.map(k => [k.ad_soyad, S.firmalar.find(f => f.id === k.firma_id)?.ad, k.pozisyon]).sort(); });
+  kontrol('İlk yükleme: boş hesapta başlangıç kartı, örnek veriler yüklenip siliniyor, CSV\'den kişiler (yeni firma da) ekleniyor', kart1 && say1 === '7,6,6,4,2' && silVar && say2 === '1,0,0' && /2\s*yeni kayıt/.test(onizle) && /1\s*yeni firma/.test(onizle) && kisi.length === 2 && kisi[0][1] === 'Mevcut Firma AŞ' && kisi[1][1] === 'Yepyeni Elektrik' && kisi[0][2] === 'Satınalma', JSON.stringify({ kart1, say1, silVar, say2, esle, onizle, kisi }));
+  kontrol('İlk yüklemede hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
 {
   const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');

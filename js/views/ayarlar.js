@@ -95,6 +95,7 @@ export async function ayarlarView(el) {
       <label class="chk"><input type="checkbox" data-cikti ${ayar('cikti_sakla', true) !== false ? 'checked' : ''}> <span>Aldığım Excel ve PowerPoint çıktılarının bir kopyasını Dosyalar'da sakla</span></label>
     </section>
     <section class="card" data-tab="veri"><h2>Otomatik yedek</h2><div data-otoyedek></div></section>
+    <section class="card" data-tab="veri" data-ilkyukleme></section>
     <section class="card" data-tab="veri"><h2>Başlangıç verisi</h2>
       <p>Proje takip Excel'inden hazırlanan <b>baslangic-verisi.json</b> dosyası: projeler, firmalar, kişiler, siparişler, stok, rakip fiyatları ve hedefler.</p>
       <div class="btnrow"><button class="btn primary" data-seed>Dosyayı seç ve yükle</button></div><div class="progress" data-prog hidden></div>
@@ -121,7 +122,7 @@ export async function ayarlarView(el) {
   </div></div>`;
   let listeYuklendi = false;
   const sekmeGoster = k => {
-    if (k === 'veri' && !el._otoYuklendi) { el._otoYuklendi = true; import('../otoyedek.js').then(m => m.otoYedekAyarlari(el.querySelector('[data-otoyedek]'))); }
+    if (k === 'veri' && !el._otoYuklendi) { el._otoYuklendi = true; import('../otoyedek.js').then(m => m.otoYedekAyarlari(el.querySelector('[data-otoyedek]'))); import('../ilkyukleme.js').then(m => { const c = el.querySelector('[data-ilkyukleme]'); c.outerHTML = m.baslaKarti({ baslik: "Excel'den yükleme ve örnek veriler" }).replace('<section class="card basla-k">', '<section class="card basla-k" data-tab="veri" data-ilkyukleme>'); m.baslaBagla(el.querySelector('[data-ilkyukleme]'), () => ayarlarView(el)); }); }
     if (k === 'listeler' && !listeYuklendi) { listeYuklendi = true; import('../listeler.js').then(m => m.listeAyarlari(el.querySelector('[data-listeler]'))); }
     el.querySelectorAll('[data-tab]').forEach(x => x.hidden = x.dataset.tab !== k || (x.hasAttribute('data-sahip') && !sahipMi()));
     el.querySelectorAll('[data-sekme]').forEach(b => { b.classList.toggle('on', b.dataset.sekme === k); b.setAttribute('aria-current', b.dataset.sekme === k); });

@@ -176,6 +176,7 @@ export function bugunView(el) {
   const ozetKarti = bos.length ? `<section class="card ozet-k"><h2>Bugün özeti</h2><ul class="list ozet-l">${bos.join('')}</ul>${!zg.length ? '<p class="hint">Zamanı gelen proje yok. Projelere şantiye aşaması ve tahmini aydınlatma alımı girdikçe burada hatırlatılır.</p>' : ''}</section>` : '';
   el.innerHTML = `<header class="vh"><div><h1>Bugün</h1><p class="sum">${esc(gun)}<span data-gerek="ziyaretler"> · ${planli.length} planlı ziyaret</span> · ${gorev.length} görev${kmBugun ? ` · yaklaşık ${kmBugun} km yol` : ''}${kurYazi() ? `<br><span class="kur">${kurYazi()}</span>` : ''}</p></div>
     <div class="vh-act"><button class="btn ghost" data-kduzen title="Kartları sırala ve gizle">Düzenle</button><button class="btn ghost" data-yakin data-gerek="firmalar,projeler">Yakınımdakiler</button><button class="btn primary" data-yeni data-gerek="yaz:ziyaretler">Ziyaret kaydet</button></div></header>
+    <div data-basla></div>
     <div class="dash today-grid">
       ${raporKarti()}
       ${etiketKarti()}
@@ -209,6 +210,9 @@ export function bugunView(el) {
         ${teklif.length ? `<li><a href="#/teklifler"><b>${teklif.length} teklifin geçerliliği doluyor</b><span class="muted">${esc(teklif.slice(0, 3).map(x => byId('projeler', x.proje_id)?.ad || x.teklif_no).join(', '))}</span></a></li>` : ''}
       </ul></section>` : ''}
     </div>`;
+  // Boş hesap ya da yalnızca örnek veri: başlangıç kartı (Excel'den yükleme, örnek veriler)
+  { const bos = !S.projeler.length && !S.kisiler.length;
+    import('../ilkyukleme.js').then(m => { const k = el.querySelector('[data-basla]'); if (!k || !(bos || m.ornekVarMi()) || !(app.db?.yetki?.ben_sahip !== false)) return; k.innerHTML = m.baslaKarti({ baslik: bos ? 'Başlamak için' : 'Örnek verilerle çalışıyorsun' }); m.baslaBagla(k, () => app.refresh()); }); }
   kartDuzeniUygula(el);
   el.querySelector('[data-kduzen]').onclick = () => kartDuzeniPaneli(el);
   el.querySelector('[data-yeni]')?.addEventListener('click', () => ziyaretForm({}));

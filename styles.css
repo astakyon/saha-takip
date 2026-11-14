@@ -1654,3 +1654,9 @@ a.org-kutu:hover, a.org-kutu:focus-visible { border-color: #E0B93E; }
 .nav-sirketsec:hover, .nav-sirketsec:focus-visible { background: rgba(255,255,255,.14); }
 .sirket-liste .linkrow { padding: 10px 8px; border-radius: 8px; width: 100%; }
 .sirket-liste .linkrow.on { background: var(--lumen-soft, #FFF4D1); }
+
+/* Sürüm 70: ilk yükleme kartı */
+.basla-k { margin-bottom: 16px; border-color: color-mix(in srgb, var(--lumen) 50%, var(--line)); }
+.basla-ad { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line-2, #EEF2F4); }
+.basla-ad:first-of-type { border-top: 0; }
+.basla-ad .btnrow { margin: 2px 0; }

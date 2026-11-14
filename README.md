@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 70): Excel'den ilk yükleme ve örnek veriler
+
+- **Excel'den yükle (firmalar, kişiler, projeler):** Bugün ekranında (hesap boşken) ve Ayarlar → Veri ve yedek'te. Excel ya da CSV seçilir; sütunlar başlık adından tanınır, ilk seferde kontrol için sorulur ve hatırlanır. Önizlemede kaç yeni, kaç güncellenecek ve kaç değişmeyecek kayıt olduğu görünür.
+  - Aynı adlı firma / proje ya da aynı telefonlu kişi varsa yeni kayıt açılmaz, yalnızca **boş alanları** doldurulur.
+  - Kişi ve proje listesindeki firma adları kayıtlı değilse firma olarak da eklenir (projelerde rolüne göre tipiyle: Emüt, Gemüt, Bayi…).
+  - Kişilerde ad soyad tek sütun ya da ayrı sütun olabilir; pozisyon unvandan tahmin edilir. Projelerde aşama yazısı (ör. "teklif verildi", "kaybedildi") uygulamanın aşamalarına çevrilir.
+  - Her tür için **boş şablon** (örnek satırlı Excel) indirilebilir.
+  - CSV dosyaları (noktalı virgül, virgül ya da sekme ayraçlı) internet olmadan da okunur.
+- **Örnek verilerle dene:** kurgusal 6 firma, 6 kişi, 6 proje (farklı aşamalarda), 4 ziyaret ve 2 görev eklenir; adlarında "(örnek)" yazar. **Örnek verileri sil** yalnızca bunları siler, senin eklediklerine dokunmaz.
+
 ## Güncelleme notu (sürüm 69): Çok şirketli kişi, şirketler arası geçiş (K5)
 
 **Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 32).**
