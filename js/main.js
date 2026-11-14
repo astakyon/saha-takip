@@ -96,7 +96,7 @@ function renderNav(cur) {
   navSon = cur;
   const aktif = baslikOf(cur)?.k;
   const item = b => { const r = baslikRotasi(b); return r ? `<a href="#/${r}" class="${b.k === aktif ? 'on' : ''}" ${b.k === aktif ? 'aria-current="page"' : ''}>${icon(b.ico)}<span>${b.t}</span></a>` : ''; };
-  const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : !sahipMi() ? `<span class="mode-badge">${esc(app.yetki?.yetkiler?._rol || 'Ekip üyesi')}${app.yetki?.ad ? ' · ' + esc(app.yetki.ad) : ''}</span>` : '';
+  const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : !sahipMi() ? `<span class="mode-badge">${app.yetki?.dis ? 'Dış kullanıcı · ' + esc(app.yetki.dis.firma_ad || '') : esc(app.yetki?.yetkiler?._rol || 'Ekip üyesi') + (app.yetki?.ad ? ' · ' + esc(app.yetki.ad) : '')}</span>` : '';
   const anaB = ana.map(k => BASLIKLAR.find(b => b.k === k)).filter(Boolean), digerB = BASLIKLAR.filter(b => !ana.includes(b.k) && gorunur(b));
   nav.innerHTML = `
     <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b><small class="surum-rozet" title="Uygulama sürümü">v${SURUM}</small>${mode}</div>

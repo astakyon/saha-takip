@@ -32,6 +32,20 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 68): Dış kullanıcı: bayi ve proje firması (K5)
+
+**Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 31).**
+
+- Şirket profili → Ekip ve yetkiler → kullanıcı kartında yeni alan: **Dış kullanıcı (bayi / proje firması)**. Firma seçilince o kişi:
+  - yalnızca **firmasının herhangi bir rolde** (bayi, emüt, alıcı, projeci, danışman…) yer aldığı projeleri görür;
+  - bu projelere ya da firmasına bağlı teklif, sipariş, numune, servis ve belgeleri görür;
+  - firmalardan yalnızca kendi firmasını, kişilerden yalnızca kendi firmasının kişilerini görür;
+  - ürün, stok ve katalog açıktır (ekranı rolünde açıksa);
+  - **satış haritası, ziyaretler, görevler, masraflar, hedefler, rakip fiyatları ve diğer firmalar kapalıdır.**
+- Kurallar sunucuda uygulanır (kısıtlayıcı RLS kuralı `dis_uygun`); dış kullanıcının telefonuna başka kayıt gelmez. Hangi ekranları göreceği ve tutarların gizlenip gizlenmeyeceği yine rolünden seçilir; yeni hazır şablon: **Dış kullanıcı**.
+- Dış kullanıcının menüsünde "Dış kullanıcı · Firma adı" yazar.
+- Hassas alanlar artık gruplu: projelerde satış haritası (karar grubu) ayrı bir grup; dış kullanıcıya hiç gönderilmez.
+
 ## Güncelleme notu (sürüm 67): Hassas alanlar sunucuda (K4)
 
 **Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 30).**

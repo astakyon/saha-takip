@@ -41,7 +41,7 @@ export function projeSayfa(el, id) {
   const gun = yapilan[0] ? Math.round((new Date(today()) - new Date(yapilan[0].tarih)) / 864e5) : null;
   const kg = grubu(p);
   const sayi = { harita: kg.length, ziyaret: ziy.length + acikGor.length, satis: tek.length + sip.length, belgeler: belgeN, yorum: yorumN, gecmis: gec.length };
-  const SEKMELER = [['ozet', 'Özet', ''], ['harita', 'Satış haritası', 'kisiler'], ['ziyaret', 'Ziyaret ve görevler', 'ziyaretler,gorevler'], ['satis', 'Teklif ve sipariş', 'teklifler,siparisler'],
+  const SEKMELER = [['ozet', 'Özet', ''], ['harita', 'Satış haritası', 'kisiler !harita'], ['ziyaret', 'Ziyaret ve görevler', 'ziyaretler,gorevler'], ['satis', 'Teklif ve sipariş', 'teklifler,siparisler'],
     ...(eaeKatalog() ? [['urun', 'Ürün ve şartname', 'teklifler']] : []), ['belgeler', 'Belgeler ve şantiye', ''], ['yorum', 'Yorumlar', 'yorumlar'], ['gecmis', 'Geçmiş', '']];
   const onceki = sayfaOncesiAd();
   const yazar = rotaYazilabilir('projeler');
@@ -82,7 +82,7 @@ export function projeSayfa(el, id) {
           ${ilgili ? `<a href="#/kisi/${ilgili.id}"><small>İlgili kişi</small><b>${esc(ilgili.ad_soyad)}</b>${ilgili.firma_id ? `<span class="muted">${esc(firmaAd(ilgili.firma_id))}</span>` : ''}</a>` : ''}</div>
         ${!roller.length ? `<p class="hint">Projeye firma eklenmemiş. <button type="button" class="linkbtn" data-a="duzenle">Düzenle</button> ile Emüt, alıcı, bayi… seç.</p>` : ''}</section>
       <div class="ps-sag">
-        <section class="card sh-ozet" data-gerek="kisiler"><div class="fs-kb"><h2>Satış haritası</h2><button type="button" class="linkbtn fs-tumu" data-git="harita">Haritayı aç →</button></div>${haritaOzeti(p)}</section>
+        <section class="card sh-ozet" data-gerek="kisiler !harita"><div class="fs-kb"><h2>Satış haritası</h2><button type="button" class="linkbtn fs-tumu" data-git="harita">Haritayı aç →</button></div>${haritaOzeti(p)}</section>
         <section class="card"><h2>Konum</h2>${dlk(dd('İl / ilçe', esc([p.il, p.ilce].filter(Boolean).join(' / '))) + dd('OSB', esc(p.osb || '')) + dd('Belde', esc(p.belde || '')) + dd('Adres', esc(p.adres || '')) + dd('Not', esc(p.lokasyon || '')))}
           ${p.lat != null ? `<div class="btnrow"><a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}">Yol tarifi</a><a class="btn sm ghost" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}">Haritada gör</a></div>${p.konum_yaklasik ? '<p class="hint">Konum yaklaşık.</p>' : ''}` : `<p class="hint">Haritada yeri işaretlenmemiş.</p>`}</section>
         <section class="card"><h2>Sıradaki</h2><ul class="list">

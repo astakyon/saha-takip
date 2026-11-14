@@ -34,6 +34,8 @@
         let l = T.filter(r => this.f.every(f => f(r)));
         const Y = JSON.parse(localStorage.getItem('__YETKI') || 'null');
         if (Y && Y.ben_sahip === false && !['ayarlar', 'yorumlar', 'ekip_uyeleri'].includes(this.t) && !Y.yetkiler?.[this.t]) l = this.t === 'gorevler' ? l.filter(r => r.atanan === 'uye@x.com') : [];
+        if (Y?.dis) { const f = Y.dis.firma_id, R = ['yatirimci_id', 'projeci_id', 'danisman_id', 'gemut_id', 'emut_id', 'alici_id', 'bayi_id'], pr = new Set((DB.projeler || []).filter(x => R.some(r => x[r] === f)).map(x => x.id));
+          l = this.t === 'projeler' ? l.filter(x => pr.has(x.id)) : this.t === 'firmalar' ? l.filter(x => x.id === f) : this.t === 'kisiler' ? l.filter(x => x.firma_id === f) : ['teklifler', 'siparisler', 'numuneler'].includes(this.t) ? l.filter(x => x.firma_id === f || pr.has(x.proje_id)) : ['urunler', 'stok_gecmis', 'urun_aileleri', 'ayarlar', 'yorumlar', 'ekip_uyeleri'].includes(this.t) ? l : []; }
         if (this.cnt) return { data: this.head ? null : l, count: l.length, error: null };
         if (this.tek) return { data: l[0] || null, error: null };
         if (this.r) l = l.slice(this.r[0], this.r[1] + 1);
@@ -65,7 +67,8 @@
     // K4 sahte sunucu: localStorage.__HASSAS varsa projelerde tutar sütunları sunucuda gizli
     rpc(n, a) { const H = localStorage.getItem('__HASSAS'), Y = JSON.parse(localStorage.getItem('__YETKI') || 'null'), acik = !(Y && Y.ben_sahip === false && (Y.yetkiler?._gizli || []).includes('tutar')), HK = ['tutar_usd', 'siparis_tutari_usd', 'bizim_teklif_usd', 'rakip_birim_fiyat', 'rakip_toplam_usd'];
       let p;
-      if (H && n === 'hassas_semasi') p = Promise.resolve({ data: { projeler: { grup: 'tutar', hassas: HK, okunur: ['id', 'owner', 'ad', 'durum', 'il', 'ilce', 'emut_id', 'ilgili_kisi_id', 'karar_grubu', 'notlar', 'updated_at', 'created_at', 'sorumlu'] } }, error: null });
+      if (n === 'dis_bilgim') p = Promise.resolve({ data: Y?.dis || null, error: null });
+      else if (H && n === 'hassas_semasi') p = Promise.resolve({ data: { projeler: { grup: 'tutar', hassas: HK, okunur: ['id', 'owner', 'ad', 'durum', 'il', 'ilce', 'emut_id', 'ilgili_kisi_id', 'karar_grubu', 'notlar', 'updated_at', 'created_at', 'sorumlu'] } }, error: null });
       else if (H && n === 'hassas_degerler') p = Promise.resolve({ data: acik ? (DB[a.p_tablo] || []).filter(r => !a.p_idler || a.p_idler.includes(r.id)).map(r => ({ id: r.id, deger: Object.fromEntries(HK.map(k => [k, r[k] ?? null])) })) : [], error: null });
       else if (H && n === 'kaydet_toplu') { const T = DB[a.p_tablo] ||= []; const out = []; for (const row of a.p_satirlar) { const i = T.findIndex(r => r.id === row.id); const yeni = { ...row }; if (!acik && i >= 0) for (const k of HK) delete yeni[k]; const r = { ...(i >= 0 ? T[i] : { created_at: simdi(), owner: Y?.sahip || 'u1' }), ...yeni, updated_at: simdi() }; if (i >= 0) T[i] = r; else T.push(r); out.push({ id: r.id, updated_at: r.updated_at }); } kaydet(); p = Promise.resolve({ data: out, error: null }); }
       else p = this._eskiRpc(n, a);

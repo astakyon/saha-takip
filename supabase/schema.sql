@@ -1232,83 +1232,154 @@ alter table public.projeler add column if not exists karar_grubu jsonb;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 29 $f$;
 
 -- ===================== Sürüm 30: hassas alanlar sunucuda (K4) =====================
--- Rolünde "Tutar, fiyat ve hedefler" ya da "Kişilerin telefon ve e-postası" gizli olan ekip üyesine bu sütunlar
+-- Rolünde "Tutar, fiyat, cari ve hedefler" ya da "Kişilerin telefon ve e-postası" gizli olan ekip üyesine bu sütunlar
 -- hiç gönderilmez. Sütunların doğrudan okunması kapatılır (sütun izni); değerler yalnızca hassas_degerler()
 -- üzerinden ve yalnızca görme hakkı olana döner. Gizli alanı göremeyen kişi kaydı değiştirirken o alanlar korunur.
+-- Biçim: { tablo: [ { grup, kol: [...] }, ... ] }  (bir tabloda birden çok grup olabilir)
 create or replace function public.hassas_kolonlar() returns jsonb language sql immutable as $f$
   select '{
-    "projeler":       {"grup": "tutar",    "kol": ["tutar_usd", "siparis_tutari_usd", "bizim_teklif_usd", "rakip_birim_fiyat", "rakip_toplam_usd"]},
-    "teklifler":      {"grup": "tutar",    "kol": ["kalemler", "toplam", "iskonto"]},
-    "siparisler":     {"grup": "tutar",    "kol": ["net_deger"]},
-    "urunler":        {"grup": "tutar",    "kol": ["birim_fiyat_usd"]},
-    "stok_gecmis":    {"grup": "tutar",    "kol": ["birim_fiyat_usd"]},
-    "hedefler":       {"grup": "tutar",    "kol": ["tutar_usd", "resmi_usd", "resmi_tl"]},
-    "rakip_fiyatlar": {"grup": "tutar",    "kol": ["birim_fiyat", "fiyat_metin"]},
-    "tahsilatlar":    {"grup": "tutar",    "kol": ["tutar", "odenen"]},
-    "kisiler":        {"grup": "iletisim", "kol": ["telefon", "eposta", "kartvizit_on", "kartvizit_arka", "dogum_gunu"]}
+    "projeler":       [{"grup": "tutar", "kol": ["tutar_usd", "siparis_tutari_usd", "bizim_teklif_usd", "rakip_birim_fiyat", "rakip_toplam_usd"]},
+                       {"grup": "harita", "kol": ["karar_grubu"]}],
+    "teklifler":      [{"grup": "tutar", "kol": ["kalemler", "toplam", "iskonto"]}],
+    "siparisler":     [{"grup": "tutar", "kol": ["net_deger"]}],
+    "urunler":        [{"grup": "tutar", "kol": ["birim_fiyat_usd"]}],
+    "stok_gecmis":    [{"grup": "tutar", "kol": ["birim_fiyat_usd"]}],
+    "hedefler":       [{"grup": "tutar", "kol": ["tutar_usd", "resmi_usd", "resmi_tl"]}],
+    "rakip_fiyatlar": [{"grup": "tutar", "kol": ["birim_fiyat", "fiyat_metin"]}],
+    "tahsilatlar":    [{"grup": "tutar", "kol": ["tutar", "odenen"]}],
+    "kisiler":        [{"grup": "iletisim", "kol": ["telefon", "eposta", "kartvizit_on", "kartvizit_arka", "dogum_gunu"]}]
   }'::jsonb
 $f$;
 grant execute on function public.hassas_kolonlar() to authenticated;
+-- Bir tablonun bütün hassas sütunları
+create or replace function public.hassas_tum(p_tablo text) returns text[] language sql immutable as $f$
+  select coalesce(array_agg(k), '{}') from jsonb_array_elements(public.hassas_kolonlar() -> p_tablo) g, jsonb_array_elements_text(g -> 'kol') k
+$f$;
+
+-- Dış kullanıcı (K5, sürüm 31): ekip üyesi kaydında dis_firma_id doluysa o kişi bir bayi ya da proje firmasındandır
+alter table public.ekip_uyeleri add column if not exists dis_firma_id uuid;
+create or replace function public.dis_firmam(sahip uuid) returns uuid language sql stable security definer set search_path = public as $f$
+  select case when public.sirket_yetkilisi(sahip) then null else
+    (select u.dis_firma_id from public.ekip_uyeleri u where u.owner = sahip and u.aktif and lower(u.eposta) = public.benim_epostam() limit 1) end
+$f$;
+revoke all on function public.dis_firmam(uuid) from public, anon;
+grant execute on function public.dis_firmam(uuid) to authenticated;
 
 -- Kullanıcı bu şirketin bu gruptaki hassas alanlarını görebilir mi (kurucu ve şirket yöneticisi her zaman)
 create or replace function public.hassas_acik(sahip uuid, grup text) returns boolean language sql stable security definer set search_path = public as $f$
   select public.sirket_yetkilisi(sahip) or exists (
     select 1 from public.ekip_uyeleri u where u.owner = sahip and u.aktif and lower(u.eposta) = public.benim_epostam()
-      and not coalesce(u.yetkiler -> '_gizli', '[]'::jsonb) ? grup)
+      and not coalesce(u.yetkiler -> '_gizli', '[]'::jsonb) ? grup
+      and not (grup = 'harita' and u.dis_firma_id is not null))
 $f$;
 revoke all on function public.hassas_acik(uuid, text) from public, anon;
 grant execute on function public.hassas_acik(uuid, text) to authenticated;
 
--- Sütun izinleri: hassas sütunlar dışındaki her sütun okunabilir. Sonradan sütun eklenince yeniden çağrılır
--- (schema.sql her çalıştırıldığında en sonda çağrılır).
+-- Sütun izinleri: hassas sütunlar dışındaki her sütun okunabilir (schema.sql her çalıştırıldığında en sonda yenilenir)
 create or replace function public.hassas_izinleri_yenile() returns void language plpgsql security definer set search_path = public as $f$
-declare t text; h jsonb := public.hassas_kolonlar(); kols text;
+declare t text; kols text;
 begin
-  for t in select jsonb_object_keys(h) loop
+  for t in select jsonb_object_keys(public.hassas_kolonlar()) loop
     if to_regclass('public.' || t) is null then continue; end if;
     execute format('revoke select on public.%I from authenticated, anon', t);
     select string_agg(quote_ident(c.column_name), ', ' order by c.ordinal_position) into kols
-      from information_schema.columns c where c.table_schema = 'public' and c.table_name = t
-        and not (h -> t -> 'kol') ? c.column_name;
+      from information_schema.columns c where c.table_schema = 'public' and c.table_name = t and not c.column_name = any(public.hassas_tum(t));
     execute format('grant select (%s) on public.%I to authenticated', kols, t);
   end loop;
 end $f$;
 revoke all on function public.hassas_izinleri_yenile() from public, anon, authenticated;
 
--- Uygulama için: her tablonun okunabilir sütunları ve hassas sütunları
+-- Uygulama için: her tablonun okunabilir sütunları, hassas sütunları ve grupları
 create or replace function public.hassas_semasi() returns jsonb language sql stable security definer set search_path = public as $f$
-  select jsonb_object_agg(t, jsonb_build_object('grup', h -> t ->> 'grup', 'hassas', h -> t -> 'kol',
+  select jsonb_object_agg(t, jsonb_build_object(
+    'grup', h -> t -> 0 ->> 'grup',
+    'hassas', to_jsonb(public.hassas_tum(t)),
+    'gruplar', (select jsonb_object_agg(g ->> 'grup', g -> 'kol') from jsonb_array_elements(h -> t) g),
     'okunur', (select jsonb_agg(c.column_name order by c.ordinal_position) from information_schema.columns c
-               where c.table_schema = 'public' and c.table_name = t and not (h -> t -> 'kol') ? c.column_name)))
+               where c.table_schema = 'public' and c.table_name = t and not c.column_name = any(public.hassas_tum(t)))))
   from (select public.hassas_kolonlar() h) x, jsonb_object_keys(x.h) t where to_regclass('public.' || t) is not null
 $f$;
 revoke all on function public.hassas_semasi() from public, anon;
 grant execute on function public.hassas_semasi() to authenticated;
 
--- Hassas değerler: yalnızca görebildiği kayıtlar (okuma yetkisi ve kapsamı) ve grubu açık olan şirketler için
+-- Dış kullanıcı bu kaydı görebilir mi: firmasının herhangi bir rolde yer aldığı projeler ve onlara bağlı kayıtlar,
+-- firmanın kendisi ve kişileri, ürün ve stok. İç kullanıcı için her zaman evet.
+create or replace function public.dis_proje(p uuid, f uuid) returns boolean language sql stable security definer set search_path = public as $f$
+  select p is not null and exists (select 1 from public.projeler x where x.id = p and f in (x.yatirimci_id, x.projeci_id, x.danisman_id, x.gemut_id, x.emut_id, x.alici_id, x.bayi_id))
+$f$;
+create or replace function public.dis_uygun(sahip uuid, tablo text, kayit uuid) returns boolean language plpgsql stable security definer set search_path = public as $f$
+declare f uuid := public.dis_firmam(sahip);
+begin
+  if f is null then return true; end if;
+  case tablo
+    when 'projeler' then return public.dis_proje(kayit, f);
+    when 'firmalar' then return kayit = f;
+    when 'kisiler' then return exists (select 1 from public.kisiler k where k.id = kayit and k.firma_id = f);
+    when 'proje_gecmis' then return exists (select 1 from public.proje_gecmis g where g.id = kayit and public.dis_proje(g.proje_id, f));
+    when 'teklifler' then return exists (select 1 from public.teklifler x where x.id = kayit and (x.firma_id = f or public.dis_proje(x.proje_id, f)));
+    when 'siparisler' then return exists (select 1 from public.siparisler x where x.id = kayit and (x.firma_id = f or public.dis_proje(x.proje_id, f)));
+    when 'numuneler' then return exists (select 1 from public.numuneler x where x.id = kayit and (x.firma_id = f or public.dis_proje(x.proje_id, f)));
+    when 'servis_kayitlari' then return exists (select 1 from public.servis_kayitlari x where x.id = kayit and (x.firma_id = f or public.dis_proje(x.proje_id, f)));
+    when 'tahsilatlar' then return exists (select 1 from public.tahsilatlar x where x.id = kayit and x.firma_id = f);
+    when 'belgeler' then return exists (select 1 from public.belgeler x where x.id = kayit and (x.firma_id = f or public.dis_proje(x.proje_id, f)));
+    when 'urunler', 'stok_gecmis', 'urun_aileleri' then return true;
+    else return false;   -- ziyaretler, görevler, masraflar, hedefler, rakip fiyatları, bölgeler: dış kullanıcıya kapalı
+  end case;
+end $f$;
+revoke all on function public.dis_uygun(uuid, text, uuid) from public, anon;
+grant execute on function public.dis_uygun(uuid, text, uuid) to authenticated;
+-- Dış kullanıcının kapsamı: rolündeki "Kendi / Ekibi" yerine dis_uygun karar verir
+create or replace function public.kapsamda(sahip uuid, sorumlu text, ekip uuid) returns boolean language sql stable security definer set search_path = public as $f$
+  select sahip <> public.veri_sahibi() or public.benim_kapsamim() = 'tum'
+    or lower(coalesce(sorumlu, '')) = public.benim_epostam()
+    or (ekip is not null and ekip = any(public.yonettigim_ekipler()))
+    or (public.benim_kapsamim() = 'ekip' and ekip is not null and ekip = any(public.benim_ekiplerim()))
+    or public.dis_firmam(sahip) is not null
+$f$;
+-- Kısıtlayıcı kural: diğer kurallara ek olarak (VE) uygulanır
+do $$ declare t text; begin
+  foreach t in array array['firmalar','kisiler','projeler','proje_gecmis','ziyaretler','gorevler','urunler','stok_gecmis','rakip_fiyatlar','siparisler',
+                           'hedefler','bolgeler','teklifler','numuneler','servis_kayitlari','masraflar','urun_aileleri','tahsilatlar','belgeler'] loop
+    if to_regclass('public.' || t) is null then continue; end if;
+    execute format('drop policy if exists "dis_oku" on public.%I', t);
+    execute format('drop policy if exists "dis_degistir" on public.%I', t);
+    execute format('drop policy if exists "dis_sil" on public.%I', t);
+    execute format('create policy "dis_oku" on public.%I as restrictive for select to authenticated using (public.dis_uygun(owner, %L, id))', t, t);
+    execute format('create policy "dis_degistir" on public.%I as restrictive for update to authenticated using (public.dis_uygun(owner, %L, id))', t, t);
+    execute format('create policy "dis_sil" on public.%I as restrictive for delete to authenticated using (public.dis_uygun(owner, %L, id))', t, t);
+  end loop;
+end $$;
+
+-- Hassas değerler: yalnızca görebildiği kayıtlar (okuma yetkisi, kapsam, dış kullanıcı kuralı) ve açık gruplar
 create or replace function public.hassas_degerler(p_tablo text, p_sonra timestamptz default null, p_idler uuid[] default null)
 returns table(id uuid, deger jsonb) language plpgsql stable security definer set search_path = public as $f$
-declare h jsonb := public.hassas_kolonlar() -> p_tablo; kosul text; secim text;
+declare h jsonb := public.hassas_kolonlar() -> p_tablo; kosul text; secim text; herhangi text;
 begin
   if h is null then return; end if;
-  select string_agg(format('%L, t.%I', k, k), ', ') into secim from jsonb_array_elements_text(h -> 'kol') k;
-  kosul := format('public.yetki(t.owner, %L, %L) and public.hassas_acik(t.owner, %L)', p_tablo, 'oku', h ->> 'grup');
+  select string_agg(format('%L, case when public.hassas_acik(t.owner, %L) then to_jsonb(t.%I) end', k, g ->> 'grup', k), ', '),
+         string_agg(distinct format('public.hassas_acik(t.owner, %L)', g ->> 'grup'), ' or ')
+    into secim, herhangi from jsonb_array_elements(h) g, jsonb_array_elements_text(g -> 'kol') k;
+  kosul := format('public.yetki(t.owner, %L, %L) and public.dis_uygun(t.owner, %L, t.id) and (%s)', p_tablo, 'oku', p_tablo, herhangi);
   if exists (select 1 from information_schema.columns c where c.table_schema = 'public' and c.table_name = p_tablo and c.column_name = 'sorumlu') then
     kosul := kosul || ' and public.kapsamda(t.owner, t.sorumlu, t.ekip_id)'; end if;
   if p_sonra is not null and exists (select 1 from information_schema.columns c where c.table_schema = 'public' and c.table_name = p_tablo and c.column_name = 'updated_at') then
     kosul := kosul || format(' and t.updated_at > %L', p_sonra); end if;
   if p_idler is not null then kosul := kosul || format(' and t.id = any(%L::uuid[])', p_idler); end if;
-  return query execute format('select t.id, jsonb_build_object(%s) from public.%I t where %s', secim, p_tablo, kosul);
+  return query execute format('select t.id, jsonb_strip_nulls(jsonb_build_object(%s)) from public.%I t where %s', secim, p_tablo, kosul);
 end $f$;
 revoke all on function public.hassas_degerler(text, timestamptz, uuid[]) from public, anon;
 grant execute on function public.hassas_degerler(text, timestamptz, uuid[]) to authenticated;
 
--- Göremeyen kişi kaydı güncellerken hassas alanlar eski değerinde kalır
+-- Göremeyen kişi kaydı güncellerken o gruptaki hassas alanlar eski değerinde kalır
 create or replace function public.hassas_koru() returns trigger language plpgsql security definer set search_path = public as $f$
-declare h jsonb := public.hassas_kolonlar() -> tg_table_name;
+declare g jsonb;
 begin
-  if h is null or auth.uid() is null or public.hassas_acik(new.owner, h ->> 'grup') then return new; end if;
-  new := jsonb_populate_record(new, (select jsonb_object_agg(k, to_jsonb(old) -> k) from jsonb_array_elements_text(h -> 'kol') k));
+  if auth.uid() is null then return new; end if;
+  for g in select * from jsonb_array_elements(coalesce(public.hassas_kolonlar() -> tg_table_name, '[]')) loop
+    if not public.hassas_acik(new.owner, g ->> 'grup') then
+      new := jsonb_populate_record(new, (select jsonb_object_agg(k, to_jsonb(old) -> k) from jsonb_array_elements_text(g -> 'kol') k));
+    end if;
+  end loop;
   return new;
 end $f$;
 do $$ declare t text; begin
@@ -1318,6 +1389,7 @@ do $$ declare t text; begin
     execute format('create trigger hassas_koru before update on public.%I for each row execute function public.hassas_koru()', t);
   end loop;
 end $$;
+
 -- Kaydetme: hassas sütunu olan tablolarda "upsert" (ON CONFLICT DO UPDATE ... = excluded.x) sütunu okuma izni ister.
 -- Bu fonksiyon çağıranın yetkisiyle çalışır (RLS ve sütun izinleri aynen geçerli): önce günceller, kayıt yoksa ekler.
 create or replace function public.kaydet_toplu(p_tablo text, p_satirlar jsonb)
@@ -1343,7 +1415,15 @@ begin
 end $f$;
 revoke all on function public.kaydet_toplu(text, jsonb) from public, anon;
 grant execute on function public.kaydet_toplu(text, jsonb) to authenticated;
-create or replace function public.yetki_surum() returns int language sql stable as $f$ select 30 $f$;
+
+-- Uygulamaya: kullanıcı dış kullanıcıysa firması (benim_yetkilerim'e ek)
+create or replace function public.dis_bilgim() returns jsonb language sql stable security definer set search_path = public as $f$
+  select case when public.dis_firmam(public.veri_sahibi()) is null then null
+    else jsonb_build_object('firma_id', public.dis_firmam(public.veri_sahibi()), 'firma_ad', (select f.ad from public.firmalar f where f.id = public.dis_firmam(public.veri_sahibi()))) end
+$f$;
+revoke all on function public.dis_bilgim() from public, anon;
+grant execute on function public.dis_bilgim() to authenticated;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 31 $f$;
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

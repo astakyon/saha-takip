@@ -1,5 +1,5 @@
 // Kullanıcılar ve yetkiler (yalnızca veri sahibi görür): ekip üyesi ekleme, bölüm bazında yetki, davet bağlantısı
-import { getConfig } from '../db.js';
+import { getConfig, S } from '../db.js';
 import { app } from '../state.js';
 import { esc, toast, confirmBox, waLink } from '../ui.js';
 import { EKRANLAR, GIZLENEBILIR, ekranSecimi, ekranTablolari, yetkiNesnesi, onizlemeBaslat } from '../yetki.js';
@@ -15,6 +15,14 @@ const rolSecici = (deger, id = '') => { const v = deger || ''; const ozel = v &&
 const rolOku = kok => { if (kok.dataset?.rol) return kok.querySelector('[data-rolad]')?.value.trim() || ''; const r = kok.querySelector('[data-uyerol]'); if (r) return ROLLER_DB?.find(x => x.id === r.value)?.ad || ''; const s = kok.querySelector('[data-rolsec]'); if (!s) return ''; return s.value === '__baska' ? kok.querySelector('[data-rolyaz]').value.trim() : s.value; };
 // K2: şirketin rolleri (sunucuda "roller" tablosu). null = tablo yok (eski şema) → eski rol etiketi kullanılır
 let ROLLER_DB = null, EKIPLER_DB = null;
+// K5: dış kullanıcı (bayi / proje firması) — firması seçilirse yalnızca o firmanın yer aldığı projeleri görür
+let DIS_VAR = false;
+const disSecici = (u = {}) => {
+  if (!DIS_VAR) return '';
+  const fl = (S.firmalar || []).slice().sort((a, b) => ((b.tipler || []).includes('Bayi') - (a.tipler || []).includes('Bayi')) || a.ad.localeCompare(b.ad, 'tr'));
+  return `<div class="fld dis-fld"><label>Dış kullanıcı (bayi / proje firması)</label><select data-uyedis aria-label="Dış kullanıcının firması"><option value="">Hayır, şirket çalışanı</option>${fl.map(f => `<option value="${f.id}" ${u.dis_firma_id === f.id ? 'selected' : ''}>${esc(f.ad)}${(f.tipler || []).length ? ' · ' + esc(f.tipler.join(', ')) : ''}</option>`).join('')}</select><small>Firma seçilirse bu kişi yalnızca o firmanın yer aldığı projeleri (ve tekliflerini), firmanın kendisini ve kişilerini görür; satış haritası, ziyaretler ve diğer firmalar ona kapalıdır. Ekranları ve gizli bölümleri yine rolünden seçilir.</small></div>`;
+};
+const disOku = k => k.querySelector('[data-uyedis]') ? { dis_firma_id: k.querySelector('[data-uyedis]').value || null } : {};
 // Ekip seçici (kullanıcı kartı)
 const ekipSecici = (u = {}) => EKIPLER_DB?.length ? `<div class="fld"><label>Ekip</label><select data-uyeekip aria-label="Ekip"><option value="">Ekip yok</option>${ekipSecenekleri(u.ekip_id)}</select></div>` : '';
 const ekipYolu = id => { const l = []; let e = EKIPLER_DB?.find(x => x.id === id), n = 0; while (e && n++ < 20) { l.unshift(e.ad); e = EKIPLER_DB.find(x => x.id === e.ust_ekip_id); } return l.join(' › '); };
@@ -55,6 +63,7 @@ const HAZIR = {
   'Muhasebe': { e: { siparisler: 'yaz', tahsilat: 'yaz', teklifler: 'oku', firmalar: 'oku', panel: 'oku', masraflar: 'oku' }, g: [] },
   'Satış': { e: { harita: 'oku', bolgeler: 'oku', projeler: 'yaz', firmalar: 'yaz', kisiler: 'yaz', takvim: 'yaz', ziyaretler: 'yaz', gorevler: 'yaz', teklifler: 'yaz', numuneler: 'yaz', katalog: 'oku', araclar: 'oku', referanslar: 'oku', dosyalar: 'yaz' }, g: [] },
   'Satış destek': { e: { teklifler: 'yaz', projeler: 'oku', firmalar: 'oku', kisiler: 'oku', siparisler: 'oku', urunler: 'oku', katalog: 'oku', araclar: 'oku' }, g: [] },
+  'Dış kullanıcı': { e: { projeler: 'oku', firmalar: 'oku', kisiler: 'oku', teklifler: 'oku', katalog: 'oku', araclar: 'oku', urunler: 'oku' }, g: ['iliski', 'yorum'] },
   'Proje': { e: { projeler: 'yaz', dosyalar: 'yaz', takvim: 'yaz', ziyaretler: 'yaz', firmalar: 'oku', kisiler: 'oku', katalog: 'oku', araclar: 'oku' }, g: ['tutar'] },
 };
 for (const h of Object.values(HAZIR)) for (const k of Object.keys(h.e)) if (!EKRANLAR[k]) delete h.e[k];
@@ -72,6 +81,8 @@ export async function kullaniciAyarlari(root) {
   const { data, error } = await app.db.c.from('ekip_uyeleri').select('*').eq('owner', app.db.sahip || app.db.user().id).order('created_at');
   if (error) { root.innerHTML = `<p class="warn">Kullanıcı tablosu bulunamadı. Supabase SQL Editor'de güncel <b>schema.sql</b> dosyasını çalıştır.</p>`; return; }
   const uyeler = data || [];
+  // dis_firma_id sütunu sunucuda varsa (şema 31) dış kullanıcı seçimi gösterilir
+  DIS_VAR = uyeler.some(u => 'dis_firma_id' in u) || (!uyeler.length && await app.db.c.rpc('yetki_surum').then(r => (r.data || 0) >= 31, () => false));
   try { const e = await app.db.c.from('ekipler').select('*').eq('owner', app.db.sahip || app.db.user().id).order('ad'); if (e.error) throw e.error; EKIPLER_DB = e.data || []; } catch { EKIPLER_DB = null; }
   try { const r = await app.db.c.from('roller').select('*').eq('owner', app.db.sahip || app.db.user().id).order('sira').order('ad'); if (r.error) throw r.error; ROLLER_DB = r.data || []; } catch { ROLLER_DB = null; }
   const KAD = new Map(); let kadVar = true;
@@ -80,7 +91,7 @@ export async function kullaniciAyarlari(root) {
   root.innerHTML = `<p>Eklediğin kişi bu e-postayla giriş yaptığında <b>yalnızca açtığın ekranları</b> görür. Her ekran için <b>Kapalı</b>, <b>Görür</b> ya da <b>Düzenler</b> seç. Kapalı ekranın kayıtları, fotoğrafları ve belgeleri kişinin telefonuna hiç gönderilmez. Senin ayarlarını, kullanıcı listesini ve Veri kontrolünü hiçbir üye görmez. Kaydettikten sonra <b>Bu kişi gibi gör</b> ile kişinin ekranını kendi telefonunda deneyebilirsin.</p>
     ${rolBolumu(uyeler)}${ekipBolumu(uyeler)}<h3 class="kul-baslik">Kullanıcılar</h3><div class="uyeler">${uyeler.slice().sort((a, b) => rolAl(a).localeCompare(rolAl(b), 'tr') || (a.ad || a.eposta).localeCompare(b.ad || b.eposta, 'tr')).map(u => uyeKarti(u, kadVar)).join('') || '<p class="hint">Henüz kimse eklenmedi.</p>'}</div>
     <details class="card-ic" ${uyeler.length ? '' : 'open'}><summary><b>Kişi ekle</b></summary>
-      <form class="form" data-yeni><div class="grid"><div class="fld"><label for="ku-e">E-posta</label><input id="ku-e" type="email" required placeholder="ornek@firma.com"></div><div class="fld"><label for="ku-a">Ad</label><input id="ku-a" placeholder="Örn. Ali (Bayi)"></div>${kadVar ? '<div class="fld"><label for="ku-k">Kullanıcı adı (isteğe bağlı)</label><input id="ku-k" autocapitalize="none" spellcheck="false" maxlength="30" placeholder="ör. ali.drv"><small>Kişi girişte e-posta yerine bunu yazabilir.</small></div>' : ''}${ROLLER_DB ? uyeRolSecici({}) : `<div class="fld"><label for="ku-r">Rol / ünvan</label>${rolSecici('', 'ku-r')}</div>`}${ekipSecici({})}</div><div data-rolbilgi></div><div data-agac>
+      <form class="form" data-yeni><div class="grid"><div class="fld"><label for="ku-e">E-posta</label><input id="ku-e" type="email" required placeholder="ornek@firma.com"></div><div class="fld"><label for="ku-a">Ad</label><input id="ku-a" placeholder="Örn. Ali (Bayi)"></div>${kadVar ? '<div class="fld"><label for="ku-k">Kullanıcı adı (isteğe bağlı)</label><input id="ku-k" autocapitalize="none" spellcheck="false" maxlength="30" placeholder="ör. ali.drv"><small>Kişi girişte e-posta yerine bunu yazabilir.</small></div>' : ''}${ROLLER_DB ? uyeRolSecici({}) : `<div class="fld"><label for="ku-r">Rol / ünvan</label>${rolSecici('', 'ku-r')}</div>`}${ekipSecici({})}${disSecici({})}</div><div data-rolbilgi></div><div data-agac>
       <div class="fld"><label>Hazır şablon</label><div class="chips">${Object.keys(HAZIR).map(h => `<button type="button" class="chip" data-hazir="${h}">${h}</button>`).join('')}</div></div>
       ${yetkiDuzeni({})}</div>
       <div class="btnrow"><button type="submit" class="btn primary">Ekle ve davet bağlantısı oluştur</button></div></form></details>`;
@@ -100,7 +111,7 @@ export async function kullaniciAyarlari(root) {
     const eposta = yeni.querySelector('#ku-e').value.trim().toLowerCase(); if (!/^\S+@\S+\.\S+$/.test(eposta)) return toast('Geçerli bir e-posta yaz.', 'err');
     if (eposta === (app.db.user()?.email || '').toLowerCase()) return toast('Kendini ekleyemezsin; sen zaten şirket yöneticisisin.', 'err');
     const secim = secimOku(yeni), alan = uyeYetkiAlanlari(yeni, secim); if (!alan.rol_id && !Object.values(secim).some(Boolean)) return toast('Bir rol seç ya da en az bir ekranı aç (Görür ya da Düzenler).', 'err');
-    const { error } = await app.db.c.from('ekip_uyeleri').insert({ owner: app.db.sahip || app.db.user().id, eposta, ad: yeni.querySelector('#ku-a').value.trim() || null, ...alan, ...(yeni.querySelector('[data-uyeekip]') ? { ekip_id: yeni.querySelector('[data-uyeekip]').value || null } : {}), aktif: true });
+    const { error } = await app.db.c.from('ekip_uyeleri').insert({ owner: app.db.sahip || app.db.user().id, eposta, ad: yeni.querySelector('#ku-a').value.trim() || null, ...alan, ...disOku(yeni), ...(yeni.querySelector('[data-uyeekip]') ? { ekip_id: yeni.querySelector('[data-uyeekip]').value || null } : {}), aktif: true });
     if (error) return toast(/duplicate|unique/i.test(error.message) ? 'Bu e-posta zaten ekli.' : 'Eklenemedi: ' + error.message, 'err');
     const kh = await kadKaydet(eposta, yeni.querySelector('#ku-k')?.value, ''); if (kh) toast(kh, 'err');
     toast('Kişi eklendi. Davet bağlantısını gönder.'); await kullaniciAyarlari(root); root.querySelector(`[data-uye="${CSS.escape(eposta)}"] [data-davet]`)?.click();
@@ -111,7 +122,7 @@ export async function kullaniciAyarlari(root) {
       const yon = !!k.querySelector('[data-yonetici]')?.checked;
       if (yon && !u.yonetici && !confirmBox(`${u.ad || u.eposta} şirket yöneticisi olsun mu? Her şeyi görür ve düzenler, kullanıcıları ve şirket ayarlarını yönetir.`)) return;
       const aktif = k.querySelector('[data-aktif]').checked;
-      const { error } = await app.db.c.from('ekip_uyeleri').update({ ad: k.querySelector('[data-ad]').value.trim() || null, aktif, ...uyeYetkiAlanlari(k), ...(k.querySelector('[data-yonetici]') ? { yonetici: yon } : {}), ...(k.querySelector('[data-uyeekip]') ? { ekip_id: k.querySelector('[data-uyeekip]').value || null } : {}) }).eq('id', u.id);
+      const { error } = await app.db.c.from('ekip_uyeleri').update({ ad: k.querySelector('[data-ad]').value.trim() || null, aktif, ...uyeYetkiAlanlari(k), ...disOku(k), ...(k.querySelector('[data-yonetici]') ? { yonetici: yon } : {}), ...(k.querySelector('[data-uyeekip]') ? { ekip_id: k.querySelector('[data-uyeekip]').value || null } : {}) }).eq('id', u.id);
       if (!error && u.aktif && !aktif && EKIPLER_DB && confirmBox(`${u.ad || u.eposta} pasife alındı. Sorumlusu olduğu kayıtlar (firma, proje, ziyaret, teklif…) başkasına devredilsin mi? Hayır dersen kayıtlar şirkette kalır, sonra da devredebilirsin.`)) await devret(u.eposta, null);
       if (!error) u.aktif = aktif;
       if (!error) { u.yonetici = yon; k.querySelector('.yon-r').hidden = !yon; }
@@ -200,7 +211,7 @@ function uyeKarti(u, kadVar) {
   const secim = ekranSecimi(u.yetkiler);
   const ozet = Object.keys(EKRANLAR).filter(k => secim[k]).map(k => (SEKME_AD[k] || k) + (secim[k] === 'yaz' ? '' : ' (görür)')).join(', ');
   return `<details class="uye" data-uye="${esc(u.eposta)}"><summary><span class="uye-ad"><b>${esc(u.ad || u.eposta)}</b><em class="rol-r yon-r" ${u.yonetici ? '' : 'hidden'}>Şirket yöneticisi</em><em class="rol-r" ${rolAl(u) ? '' : 'hidden'}>${esc(rolAl(u))}</em><small class="muted">${esc(u.eposta)}${u.aktif ? '' : ' · pasif'} · <span data-songiris>…</span></small></span><small class="muted">${esc(ozet || 'yetki yok')}</small></summary>
-    <div class="grid"><div class="fld"><label>Ad</label><input data-ad value="${esc(u.ad || '')}"></div>${kadVar ? `<div class="fld"><label>Kullanıcı adı</label><input data-kad autocapitalize="none" spellcheck="false" maxlength="30" placeholder="ör. ali.drv" value="${esc(u._kad || '')}"></div>` : ''}${ROLLER_DB ? uyeRolSecici(u) : `<div class="fld"><label>Rol / ünvan</label>${rolSecici(rolAl(u))}</div>`}${ekipSecici(u)}<div class="fld is-chk"><label class="chk"><input type="checkbox" data-aktif ${u.aktif ? 'checked' : ''}> <span>Erişimi açık</span></label></div></div>
+    <div class="grid"><div class="fld"><label>Ad</label><input data-ad value="${esc(u.ad || '')}"></div>${kadVar ? `<div class="fld"><label>Kullanıcı adı</label><input data-kad autocapitalize="none" spellcheck="false" maxlength="30" placeholder="ör. ali.drv" value="${esc(u._kad || '')}"></div>` : ''}${ROLLER_DB ? uyeRolSecici(u) : `<div class="fld"><label>Rol / ünvan</label>${rolSecici(rolAl(u))}</div>`}${ekipSecici(u)}${disSecici(u)}<div class="fld is-chk"><label class="chk"><input type="checkbox" data-aktif ${u.aktif ? 'checked' : ''}> <span>Erişimi açık</span></label></div></div>
     ${'yonetici' in u ? `<label class="chk yon-chk"><input type="checkbox" data-yonetici ${u.yonetici ? 'checked' : ''}> <span><b>Şirket yöneticisi</b><small class="muted"> · her şeyi görür ve düzenler, kullanıcıları ve şirket ayarlarını yönetir; aşağıdaki ekran seçimi onun için geçerli olmaz</small></span></label>` : ''}
     <div data-rolbilgi></div><div data-agac><div class="fld"><label>Hazır şablon</label><div class="chips">${Object.keys(HAZIR).map(h => `<button type="button" class="chip" data-hazir="${h}">${h}</button>`).join('')}</div></div>
     ${yetkiDuzeni(u.yetkiler)}</div>

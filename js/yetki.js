@@ -67,7 +67,9 @@ const yt = () => app.yetki?.yetkiler || {};
 // Excel / sunum çıktısı: veri sahibi her zaman; ekip üyesi yalnızca izin verildiyse (yetkiler._disa)
 export const disaAktarabilir = () => sahipMi() || yt()._disa === true;
 // Ekstra bölüm gizli mi? ('tutar', 'iletisim', 'yorum', 'iliski')
-export const gizliBolum = k => !sahipMi() && (yt()._gizli || []).includes(k);
+// harita: satış haritası (dış kullanıcıya her zaman kapalı)
+export const gizliBolum = k => !sahipMi() && ((yt()._gizli || []).includes(k) || (k === 'harita' && !!app.yetki?.dis));
+export const disKullanici = () => !sahipMi() && app.yetki?.dis || null;
 // tablo için 'oku' | 'yaz' | null
 export function izin(tablo) {
   if (sahipMi()) return 'yaz';
@@ -156,7 +158,10 @@ export function yetkiUygula() {
   if (app.db) {
     // Sunucudaki hassas sütun listesi (şema 30) varsa ondan; yoksa yalnızca kişi iletişim bilgileri
     const hs = app.db.hs, g = {};
-    if (hs) { for (const [t, h] of Object.entries(hs)) if (gizliBolum(h.grup)) g[t] = h.hassas; }
+    if (hs) for (const [t, h] of Object.entries(hs)) {
+      const gr = h.gruplar || { [h.grup]: h.hassas }, kol = Object.entries(gr).filter(([k]) => gizliBolum(k)).flatMap(([, c]) => c);
+      if (kol.length) g[t] = kol;
+    }
     else if (gizliBolum('iletisim')) g.kisiler = ILETISIM;
     app.db.gizliAlan = Object.keys(g).length ? g : null;
   }

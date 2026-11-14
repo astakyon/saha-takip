@@ -387,6 +387,31 @@ const DB = () => {
   kontrol('K4 ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// ---------- 14) K5: dış kullanıcı (bayi) yalnızca firmasının projelerini görür ----------
+{
+  const DB6 = new Function('(' + DB.toString() + ')(); const d = JSON.parse(localStorage.getItem("__DB")); d.projeler.push({ id: "p9", owner: "u1", ad: "Başka Firmanın Projesi", durum: "Proje", emut_id: "f2" }); d.kisiler.push({ id: "k9", owner: "u1", ad_soyad: "Bayi Kişisi", firma_id: "f1" }); localStorage.setItem("__DB", JSON.stringify(d)); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, ad: "Bayi Ali", dis: { firma_id: "f1", firma_ad: "Örnek Bayi" }, yetkiler: { projeler: "oku", firmalar: "oku", kisiler: "oku", teklifler: "oku", _ekran: { projeler: "oku", firmalar: "oku", kisiler: "oku" } } }));');
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB6 });
+  await p.setViewportSize({ width: 1280, height: 900 });
+  await p.goto(U + '#/projeler'); await w(1800);
+  const dis = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { proje: S.projeler.map(x => x.id).sort().join(','), firma: S.firmalar.map(x => x.id).join(','), kisi: S.kisiler.map(x => x.id).join(','), rozet: document.querySelector('#nav .mode-badge')?.textContent }; });
+  await p.goto(U + '#/proje/p1'); await w(1200);
+  const sek = await p.evaluate(() => [...document.querySelectorAll('.ps-sayfa [data-fsk]')].map(b => b.dataset.fsk).join(','));
+  kontrol('K5: dış kullanıcı yalnızca firmasının projelerini, firmasını ve kişilerini görüyor; satış haritası kapalı; menüde "Dış kullanıcı"', dis.proje === 'p1' && dis.firma === 'f1' && !/k1|k2/.test(dis.kisi) && /Dış kullanıcı · Örnek Bayi/.test(dis.rozet || '') && !/harita/.test(sek), JSON.stringify({ dis, sek }));
+  kontrol('K5 ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+{
+  const DB7 = new Function('(' + DB.toString() + ')(); const d = JSON.parse(localStorage.getItem("__DB")); d.ekip_uyeleri = [{ id: "e1", owner: "u1", eposta: "ali@bayi.com", ad: "Ali", aktif: true, dis_firma_id: null, yetkiler: { projeler: "oku" } }]; localStorage.setItem("__DB", JSON.stringify(d));');
+  const { p, c } = await sayfa({ supabase: true, hazirla: DB7 });
+  await p.setViewportSize({ width: 1280, height: 900 });
+  await p.goto(U + '#/sirket/ekip'); await w(2000);
+  await p.click('[data-uye="ali@bayi.com"] summary'); await w(200);
+  const secVar = await p.isVisible('[data-uye="ali@bayi.com"] [data-uyedis]');
+  await p.selectOption('[data-uye="ali@bayi.com"] [data-uyedis]', 'f1'); await p.click('[data-uye="ali@bayi.com"] [data-kaydet]'); await w(800);
+  const kayit = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).ekip_uyeleri[0].dis_firma_id);
+  kontrol('K5: kullanıcı kartında dış kullanıcının firması seçilip kaydediliyor', secVar && kayit === 'f1', JSON.stringify({ secVar, kayit }));
+  await c.close();
+}
 // ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
 {
   const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');
