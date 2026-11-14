@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 60): Firma başlığında gruplu düğmeler, projelerde ilişki ağı üstte
+
+- **İletişim:** Ara, WhatsApp ve Yol tarifi firma adının yanında yuvarlak simgeler (telefonda adın altında).
+- **Ekle ▾:** Ziyaret, Kişi, Görev · Teklif, Numune, Servis kaydı tek menüde, simgeli. Telefonda alttan açılan büyük düğmeli panel.
+- **⋯:** Yalnızca Google'dan bilgi al, Google Haritalar'da aç ve Firmayı sil.
+- **Projeler sekmesi:** İlişki ağı en üstte, projeler altında. İlk 10 proje görünür, kalanı "Devamını göster" ile açılır.
+
 ## Güncelleme notu (sürüm 59): Firma kartı kendi sayfasında, sekmeli
 
 - Firmaya dokununca yan pencere yerine **firmanın kendi sayfası** açılır. Üstte "← Firmalar" (ya da gelinen ekranın adı) ile geri dönülür; menüde Firmalar seçili kalır.

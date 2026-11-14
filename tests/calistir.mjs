@@ -429,7 +429,26 @@ const DB = () => {
   await p.setViewportSize({ width: 390, height: 844 }); await w(300);
   const tasma = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   await p.screenshot({ path: 'tests/cikti/firma-sayfa-tel.png' });
+  await p.click('.fs-ekle'); await w(300);
+  const telMenu = await p.evaluate(() => { const m = [...document.querySelectorAll('.fs-menu')].find(m => !m.hidden); if (!m) return {}; return { acik: m.parentElement === document.body, konum: getComputedStyle(m).position, oge: m.querySelectorAll('[role=menuitem]').length, perde: !!document.querySelector('.fs-perde') }; });
+  await p.screenshot({ path: 'tests/cikti/firma-ekle-tel.png' });
+  await p.mouse.click(195, 100); await w(300);
+  const telKapandi = await p.evaluate(() => document.querySelector('[data-acilir="ekle"] .fs-menu').hidden && !document.querySelector('.fs-perde'));
+  await p.setViewportSize({ width: 1280, height: 900 }); await w(200);
+  await p.click('.fs-ekle'); await w(200); await p.screenshot({ path: 'tests/cikti/firma-ekle.png' });
+  await p.click('[data-acilir="ekle"] [data-a="ziyaret"]'); await w(600);
+  const ekleZ = await p.evaluate(() => ({ drawer: !!document.querySelector('.drawer.open'), menu: document.querySelector('[data-acilir="ekle"] .fs-menu').hidden }));
+  await p.click('.drawer.open .x[data-close]'); await w(500);
+  await p.click('.fs-daha'); await w(200);
+  const daha = await p.evaluate(() => [...document.querySelectorAll('[data-acilir="daha"] [role=menuitem]')].map(b => b.textContent.trim()));
+  await p.keyboard.press('Escape'); await w(200);
+  kontrol('Firma başlığında "Ekle" menüsü (telefonda alttan panel) ve "⋯" menüsünde yalnızca Google ve Sil', telMenu.acik && telMenu.konum === 'fixed' && telMenu.oge === 6 && telMenu.perde && telKapandi && ekleZ.drawer && ekleZ.menu && daha.length === 2 && /sil/i.test(daha[1]), JSON.stringify({ telMenu, telKapandi, ekleZ, daha }));
   await p.setViewportSize({ width: 1280, height: 900 });
+  await p.evaluate(async () => { const { app } = await import('./js/state.js'); for (let i = 0; i < 12; i++) await app.db.save('projeler', { id: 'pz' + i, ad: 'Ek proje ' + i, durum: 'Proje', emut_id: 'f2' }); app.refresh(); }); await w(600);
+  await p.click('[data-fsk="projeler"]'); await w(500);
+  const pj = await p.evaluate(() => { const c = document.querySelector('[data-fs="projeler"]'); return { ilk: c.querySelector('.card')?.matches('[data-iliski]'), gorunen: [...c.querySelectorAll('[data-projeler] li')].filter(l => !l.hidden).length, toplam: c.querySelectorAll('[data-projeler] li').length }; });
+  await p.click('[data-devam]'); const pj2 = await p.evaluate(() => [...document.querySelectorAll('[data-projeler] li')].filter(l => !l.hidden).length);
+  kontrol('Firma projeler sekmesinde ilişki ağı üstte, ilk 10 proje görünüyor, "Devamını göster" kalanı açıyor', pj.ilk && pj.gorunen === 10 && pj.toplam > 10 && pj2 === pj.toplam, JSON.stringify({ pj, pj2 }));
   await p.click('[data-geri]'); await w(800); const h3 = await p.evaluate(() => location.hash);
   kontrol('Firma kendi sayfasında sekmeli açılıyor; kişi kartı üstünde açılıp kapanıyor; düzenleme pencerede, kayıttan sonra aynı sekmede; geri listeye dönüyor',
     fs1.h === '#/firma/f2' && fs1.sek === 'ozet,kisiler,projeler,ziyaret,satis,belgeler,notlar' && fs1.ad && !fs1.drawer && kd.drawer && kd.sayfa && kd2.h === '#/firma/f2' && kd2.sayfa && h2 === '#/firma/f2/ziyaret' && fs2.tel === '0322 111 22 33' && !fs2.drawer && fs2.sekme === 'ziyaret' && fs2.metin && tasma <= 1 && h3 === '#/firmalar',
