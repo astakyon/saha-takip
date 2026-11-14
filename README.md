@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 73): Şablonlar yerinde, Excel'den proje yüklemesi genişledi
+
+- **Mesaj şablonları** Firmalar ve Kişiler ekranının üstünde ("Mesaj şablonları") ve WhatsApp penceresinde ("Şablonları düzenle"). **Teklif bilgileri** (PDF üst bilgisi ve koşullar) Teklifler ekranının üstünde. Şirket profilindeki "Mesaj ve teklif şablonları" sekmesi kalktı.
+- **Excel'den proje yüklemesi:** uygulamanın kendi proje çıktısı (Projeler → Excel'e aktar) olduğu gibi geri yüklenebiliyor. Yeni tanınan sütunlar: Malzeme alıcısı, Danışman, Kanal (bayi ya da "Direkt"), OSB, Lokasyon, Sektör, Olasılık, Takip yılı, Takip eden, Teklif no, Şantiye aşaması, Sipariş tutarı, Kayıp nedeni, İşi alan marka, Enlem ve Boylam (konum). Başlık bulma daha sıkı ("İl" artık "Takip yılı"na karışmıyor).
+- Ayarlar → Veri ve yedek'te yükleme bittikten sonra kartın kaybolması düzeltildi.
+- Silinen otomatik görev bir sonraki taramada yeniden açılmıyor.
+
 ## Güncelleme notu (sürüm 72): Yinelenen görevler ve otomasyon
 
 **Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 34: görevlere tekrar ve kaynak sütunları).**
@@ -44,7 +51,7 @@ Depoda **Settings → Pages → Build and deployment**:
   - Gönderilmiş teklifin geçerliliği bitmeden 2 gün kala "Teklif süresi doluyor".
   - Müşterideki numunenin iade günü gelince "Numuneyi geri al".
   - Vadesi 1 gün geçen açık fatura için "Tahsilat".
-- Tarih kuralları uygulama açılınca günde bir kez taranır ("Şimdi tara" ile hemen). Her otomatik görev bir kez açılır; tamamlansa da tekrar açılmaz. İstemediğin otomatik görevi silmek yerine "Tamam" yap (silinen görev bir sonraki taramada yeniden açılabilir).
+- Tarih kuralları uygulama açılınca günde bir kez taranır ("Şimdi tara" ile hemen). Her otomatik görev bir kez açılır; tamamlansa ya da silinse de tekrar açılmaz.
 
 ## Güncelleme notu (sürüm 71): Ziyarette giriş-çıkış
 

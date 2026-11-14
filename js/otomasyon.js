@@ -50,7 +50,14 @@ export function kurallar() {
   return KURALLAR.map(r => ({ ...r, acik: a[r.k]?.acik ?? true, gun: a[r.k]?.gun ?? r.gun }));
 }
 const yazabilir = () => app.db && !app.db.onizleme && !app.db.yazamaz?.('gorevler');
-const varMi = kaynak => S.gorevler.some(g => g.kaynak === kaynak);
+// Silinen otomatik görevler bir daha açılmasın: anahtarları bu cihazda ve (yöneticiyse) şirket ayarında tutulur
+const silinenler = () => { let l = []; try { l = JSON.parse(localStorage.getItem('oto-silinen') || '[]'); } catch {} return new Set([...l, ...(ayar('oto_silinen', null) || [])]); };
+export async function otoGorevSilindi(g) {
+  if (!g?.kaynak?.startsWith('oto:')) return;
+  try { const l = [...silinenler(), g.kaynak].slice(-500); localStorage.setItem('oto-silinen', JSON.stringify(l)); } catch {}
+  try { const { sahipMi } = await import('./yetki.js'); if (sahipMi()) await ayarYaz('oto_silinen', [...new Set([...(ayar('oto_silinen', null) || []), g.kaynak])].slice(-500)); } catch {}
+}
+const varMi = kaynak => S.gorevler.some(g => g.kaynak === kaynak) || silinenler().has(kaynak);
 async function ac(kaynak, g) {
   if (varMi(kaynak)) return false;
   await app.db.save('gorevler', { id: uuid(), durum: 'Açık', oncelik: 'Normal', ...g, kaynak });

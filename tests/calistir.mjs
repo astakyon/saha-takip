@@ -328,7 +328,7 @@ const DB = () => {
   await p.goto(U + '#/sirket/ekip'); await w(1500);
   const sekmeEkip = await p.evaluate(() => ({ h: location.hash, on: document.querySelector('[data-fsk].on')?.dataset.fsk, sek: [...document.querySelectorAll('[data-fsk]')].map(b => b.dataset.fsk).join(',') }));
   await p.screenshot({ path: 'tests/cikti/sirket-ekip.png', fullPage: true });
-  kontrol('Ayarlar sadeleşti (Ekip, Mesaj, Firma profili, Döviz kuru, Araç çıktı; Bildirimler ayrı); Ekip ve yetkiler şirket profilinde', ayarEkipYok && sekmeEkip.h === '#/sirket/ekip' && sekmeEkip.on === 'ekip' && sekmeEkip.sek === 'genel,ekip,sablon,otomasyon,kur', JSON.stringify({ ayarEkipYok, sekmeEkip }));
+  kontrol('Ayarlar sadeleşti (Ekip, Mesaj, Firma profili, Döviz kuru, Araç çıktı; Bildirimler ayrı); Ekip ve yetkiler şirket profilinde', ayarEkipYok && sekmeEkip.h === '#/sirket/ekip' && sekmeEkip.on === 'ekip' && sekmeEkip.sek === 'genel,ekip,otomasyon,kur', JSON.stringify({ ayarEkipYok, sekmeEkip }));
   const kart = await p.isVisible('.sirket-kart');
   await p.fill('#sk-ad', 'Yeni Şirket AŞ'); await p.click('[data-sk-ad]'); await w(300);
   const ad = await p.evaluate(() => localStorage.getItem('__SIRKET_AD'));
@@ -485,6 +485,16 @@ const DB = () => {
   const asama = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const { today, gunEkle } = await import('./js/ui.js'); const g = S.gorevler.find(x => x.kaynak === 'oto:teklif_takip:p1'); return { var: !!g, tarih: g?.son_tarih === gunEkle(today(), 3), proje: g?.proje_id }; });
   // Tarama: süresi dolmak üzere olan gönderilmiş teklif
   const tara = await p.evaluate(async () => { const { app } = await import('./js/state.js'); const { S } = await import('./js/db.js'); const { today, gunEkle } = await import('./js/ui.js'); await app.db.save('teklifler', { id: 'tk9', teklif_no: 'T-9', tarih: today(), gecerlilik: gunEkle(today(), 1), durum: 'Gönderildi', firma_id: 'f2', kalemler: [], toplam: 0 }); const m = await import('./js/otomasyon.js'); const n = await m.otomasyonTara({ zorla: true }); const n2 = await m.otomasyonTara({ zorla: true }); return { n, n2, var: S.gorevler.some(g => g.kaynak === 'oto:teklif_sure:tk9') }; });
+  // Silinen otomatik görev yeniden açılmıyor
+  const sil = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const { app } = await import('./js/state.js'); const m = await import('./js/otomasyon.js'); const g = S.gorevler.find(x => x.kaynak === 'oto:teklif_sure:tk9'); await m.otoGorevSilindi(g); await app.db.del('gorevler', g.id); const n = await m.otomasyonTara({ zorla: true }); return { n, yok: !S.gorevler.some(x => x.kaynak === 'oto:teklif_sure:tk9') }; });
+  // Şablonlar yerinde: Firmalar → Mesaj şablonları, Teklifler → Teklif bilgileri
+  await p.goto(U + '#/firmalar'); await w(1000); await p.evaluate(() => document.querySelector('[data-sablonlar]').click()); await w(400);
+  const sab = await p.evaluate(() => !!document.querySelector('.drawer.open [data-sablon] #benim'));
+  await p.click('.drawer.open .x[data-close]'); await w(400);
+  await p.goto(U + '#/teklifler'); await w(1000); await p.evaluate(() => document.querySelector('[data-teklifb]').click()); await w(400);
+  const tkb = await p.evaluate(() => !!document.querySelector('.drawer.open #tf-ad'));
+  await p.click('.drawer.open .x[data-close]'); await w(400);
+  kontrol('Silinen otomatik görev yeniden açılmıyor; mesaj şablonları Firmalar\'da, teklif bilgileri Teklifler\'de', sil.n === 0 && sil.yok && sab && tkb, JSON.stringify({ sil, sab, tkb }));
   await p.goto(U + '#/sirket/otomasyon'); await w(1500);
   const ayr = await p.evaluate(() => document.querySelectorAll('[data-otomasyon] [data-oto]').length);
   kontrol('Yinelenen görev tamamlanınca sonraki açılıyor; aşama değişince ve tarih yaklaşınca otomatik görev (bir kez); şirket profilinde kurallar', tek.var && tek.tarih && tek.acik && tek.firma === 'f1' && tek.tekrar === 'hafta' && asama.var && asama.tarih && asama.proje === 'p1' && tara.var && tara.n >= 1 && tara.n2 === 0 && ayr === 6, JSON.stringify({ tek, asama, tara, ayr }));

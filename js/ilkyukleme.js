@@ -7,7 +7,14 @@ import { esc, toast, confirmBox, pickFiles, fold, today, gunEkle, DURUMLAR, FIRM
 import { ayar, ayarYaz } from './ayar.js';
 
 const norm = s => fold(s).replace(/[^a-z0-9]+/g, ' ').trim();
-const bul = (h, ...adlar) => h.findIndex(x => { const n = norm(x); return adlar.some(a => n === a || n.startsWith(a + ' ') || n.includes(a)); });
+// Başlık bulma: önce tam eşleşme, sonra bütün kelime, sonra kelime başı (ör. "Notlar" ~ "not"); "il" "Takip yılı"na eşleşmesin
+const bul = (h, kul, ...adlar) => {
+  const H = h.map((x, i) => ({ i, n: norm(x), k: norm(x).split(' ') })).filter(x => x.n && !kul.has(x.i));
+  for (const a of adlar) { const x = H.find(x => x.n === a); if (x) return x.i; }
+  for (const a of adlar) { const x = H.find(x => (' ' + x.n + ' ').includes(' ' + a + ' ')); if (x) return x.i; }
+  for (const a of adlar.filter(a => a.length >= 3 && !a.includes(' '))) { const x = H.find(x => x.k.some(k => k.startsWith(a))); if (x) return x.i; }
+  return -1;
+};
 const metin = v => v == null ? null : (v instanceof Date ? v.toISOString().slice(0, 10) : String(v).trim() || null);
 const sayi = v => { if (v == null || v === '') return null; if (typeof v === 'number') return v; const t = String(v).replace(/[^\d,.-]/g, ''); const n = parseFloat(/,\d{1,2}$/.test(t) ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '')); return isNaN(n) ? null : n; };
 const tarih = v => v instanceof Date ? new Date(v.getTime() - v.getTimezoneOffset() * 6e4).toISOString().slice(0, 10) : typeof v === 'string' && /^\d{1,2}[./]\d{1,2}[./]\d{4}$/.test(v.trim()) ? v.trim().split(/[./]/).reverse().map(x => x.padStart(2, '0')).join('-') : typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null;
@@ -44,12 +51,18 @@ export const TURLER = {
     { k: 'telefon', l: 'Cep telefonu', s: ['cep', 'telefon', 'tel', 'gsm'] }, { k: 'eposta', l: 'E-posta', s: ['e posta', 'eposta', 'email', 'mail'] }, { k: 'notlar', l: 'Notlar', s: ['not', 'aciklama'] },
   ], ornek: [['Ali Yılmaz (örnek)', '', '', 'Yıldız Elektrik (örnek)', 'Satınalma Müdürü', '0532 000 00 00', 'ali@ornek.com', '']] },
   projeler: { ad: 'Projeler', alanlar: [
-    { k: 'ad', l: 'Proje adı', zorunlu: true, s: ['proje adi', 'proje', 'is adi', 'ad'] }, { k: 'durum', l: 'Aşama / durum', s: ['asama', 'durum', 'statu'] },
-    { k: 'tutar_usd', l: 'Tahmini tutar (USD)', s: ['tutar', 'bedel', 'deger', 'usd'] }, { k: 'il', l: 'İl', s: ['il', 'sehir'] }, { k: 'ilce', l: 'İlçe', s: ['ilce'] },
+    { k: 'ad', l: 'Proje adı', zorunlu: true, s: ['proje adi', 'proje', 'is adi'] }, { k: 'durum', l: 'Aşama / durum', s: ['durum', 'asama', 'statu'] },
+    { k: 'tutar_usd', l: 'Tahmini tutar (USD)', s: ['tutar usd', 'tutar', 'tahmini tutar', 'bedel', 'proje bedeli'] }, { k: 'il', l: 'İl', s: ['il', 'sehir'] }, { k: 'ilce', l: 'İlçe', s: ['ilce'] },
     { k: 'emut', l: 'Emüt (elektrik müteahhidi)', s: ['emut', 'elektrik muteahhidi', 'elektrik yuklenicisi'] }, { k: 'gemut', l: 'Gemüt (genel müteahhit)', s: ['gemut', 'genel muteahhit', 'yuklenici', 'muteahhit'] },
-    { k: 'yatirimci', l: 'Yatırımcı / işveren', s: ['yatirimci', 'isveren', 'mal sahibi'] }, { k: 'projeci', l: 'Projeyi çizen firma', s: ['projeci', 'proje burosu', 'tasarim'] }, { k: 'bayi', l: 'Bayi', s: ['bayi', 'distributor'] },
-    { k: 'beklenen_tarih', l: 'Beklenen sipariş tarihi', s: ['beklenen', 'tahmini tarih', 'siparis tarihi'] }, { k: 'notlar', l: 'Notlar', s: ['not', 'aciklama'] },
-  ], ornek: [['Spor Salonu (örnek)', 'Teklif Verildi', 250000, 'Mersin', 'Tarsus', 'Yıldız Elektrik (örnek)', '', 'Belediye (örnek)', '', '', '2027-03-01', '']] },
+    { k: 'yatirimci', l: 'Yatırımcı / işveren', s: ['yatirimci', 'isveren', 'mal sahibi'] }, { k: 'projeci', l: 'Projeyi çizen firma', s: ['projeci', 'proje burosu', 'tasarim'] }, { k: 'bayi', l: 'Bayi (ya da satış kanalı)', s: ['bayi', 'kanal', 'distributor'] },
+    { k: 'beklenen_tarih', l: 'Beklenen sipariş tarihi', s: ['beklenen tarih', 'beklenen', 'tahmini tarih'] }, { k: 'notlar', l: 'Notlar', s: ['notlar', 'not', 'aciklama'] },
+    { k: 'alici', l: 'Malzeme alıcısı', s: ['alici', 'malzeme alicisi'] }, { k: 'danisman', l: 'Danışman / kontrolör', s: ['danisman', 'kontrolor', 'musavir'] },
+    { k: 'osb', l: 'OSB / sanayi bölgesi', s: ['osb', 'sanayi bolgesi'] }, { k: 'lokasyon', l: 'Lokasyon notu', s: ['lokasyon', 'konum notu'] }, { k: 'sektor', l: 'Sektör', s: ['sektor'] },
+    { k: 'olasilik', l: 'Olasılık %', s: ['olasilik'] }, { k: 'takip_yili', l: 'Takip yılı', s: ['takip yili', 'yil'] }, { k: 'takipci', l: 'Takip eden', s: ['takip eden', 'takipci'] },
+    { k: 'teklif_no', l: 'Teklif no', s: ['teklif no'] }, { k: 'santiye_asamasi', l: 'Şantiye aşaması', s: ['santiye asamasi', 'santiye'] },
+    { k: 'siparis_tutari_usd', l: 'Sipariş tutarı (USD)', s: ['siparis tutari usd', 'siparis tutari'] }, { k: 'kayip_nedeni', l: 'Kayıp nedeni', s: ['kayip nedeni'] }, { k: 'rakip_marka', l: 'İşi alan marka', s: ['isi alan marka', 'rakip marka'] },
+    { k: 'lat', l: 'Enlem', s: ['enlem', 'lat', 'latitude'] }, { k: 'lng', l: 'Boylam', s: ['boylam', 'lng', 'lon', 'longitude'] },
+  ], ornek: [['Spor Salonu (örnek)', 'Teklif Verildi', 250000, 'Mersin', 'Tarsus', 'Yıldız Elektrik (örnek)', '', 'Belediye (örnek)', '', '', '2027-03-01', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']] },
 };
 
 export async function sablonIndir(tur) {
@@ -76,7 +89,7 @@ export async function excelIlkYukle(tur, sonra) {
     if (hi < 0) return toast('Dosyada başlık satırı bulunamadı.', 'err');
     const h = rows[hi].map(c => String(c ?? '').trim());
     const oto = {}; const kul = new Set();
-    for (const a of T.alanlar) { const i = bul(h, ...a.s); oto[a.k] = i >= 0 && !kul.has(i) ? (kul.add(i), i) : -1; }
+    for (const a of T.alanlar) { const i = bul(h, kul, ...a.s); oto[a.k] = i; if (i >= 0) kul.add(i); }
     const { sutunlariEsle, onizleOnay } = await import('./esle.js');
     const C = await sutunlariEsle('ilk_' + tur, `${T.ad} listesi`, h, rows.slice(hi + 1, hi + 4), T.alanlar.map(({ k, l, zorunlu }) => ({ k, l, zorunlu })), oto);
     if (!C) return toast('Yükleme iptal edildi.');
@@ -103,7 +116,12 @@ export async function excelIlkYukle(tur, sonra) {
         eski = S.kisiler.find(x => (tel.length >= 10 && String(x.telefon || '').replace(/\D/g, '').slice(-10) === tel) || (norm(x.ad_soyad) === norm(kayit.ad_soyad) && (x.firma_id || null) === kayit.firma_id));
       } else {
         const ad = metin(v(r, 'ad')); if (!ad) { atla++; continue; }
-        kayit = { ad, durum: durumBul(metin(v(r, 'durum'))) || 'Proje', tutar_usd: sayi(v(r, 'tutar_usd')), il: metin(v(r, 'il')), ilce: metin(v(r, 'ilce')), emut_id: firmaId(v(r, 'emut'), 'Emüt'), gemut_id: firmaId(v(r, 'gemut'), 'Gemüt'), yatirimci_id: firmaId(v(r, 'yatirimci'), 'Yatırımcı'), projeci_id: firmaId(v(r, 'projeci'), 'Proje Bürosu'), bayi_id: firmaId(v(r, 'bayi'), 'Bayi'), beklenen_tarih: tarih(v(r, 'beklenen_tarih')), notlar: metin(v(r, 'notlar')), takip_yili: new Date().getFullYear() };
+        kayit = { ad, durum: durumBul(metin(v(r, 'durum'))) || 'Proje', tutar_usd: sayi(v(r, 'tutar_usd')), il: metin(v(r, 'il')), ilce: metin(v(r, 'ilce')), emut_id: firmaId(v(r, 'emut'), 'Emüt'), gemut_id: firmaId(v(r, 'gemut'), 'Gemüt'), yatirimci_id: firmaId(v(r, 'yatirimci'), 'Yatırımcı'), projeci_id: firmaId(v(r, 'projeci'), 'Proje Bürosu'), alici_id: firmaId(v(r, 'alici'), 'Malzeme Alıcısı'), danisman_id: firmaId(v(r, 'danisman'), 'Danışman'),
+          bayi_id: /^direkt$/i.test(metin(v(r, 'bayi')) || '') ? null : firmaId(v(r, 'bayi'), 'Bayi'), kanal: /^direkt$/i.test(metin(v(r, 'bayi')) || '') ? 'Direkt' : metin(v(r, 'bayi')) ? 'Bayi' : null,
+          beklenen_tarih: tarih(v(r, 'beklenen_tarih')), notlar: metin(v(r, 'notlar')), takip_yili: parseInt(metin(v(r, 'takip_yili')) || '') || new Date().getFullYear(),
+          osb: metin(v(r, 'osb')), lokasyon: metin(v(r, 'lokasyon')), sektor: metin(v(r, 'sektor')), olasilik: sayi(v(r, 'olasilik')), takipci: metin(v(r, 'takipci')), teklif_no: metin(v(r, 'teklif_no')), santiye_asamasi: metin(v(r, 'santiye_asamasi')),
+          siparis_tutari_usd: sayi(v(r, 'siparis_tutari_usd')), kayip_nedeni: metin(v(r, 'kayip_nedeni')), rakip_marka: metin(v(r, 'rakip_marka')), lat: sayi(v(r, 'lat')), lng: sayi(v(r, 'lng')) };
+        if (kayit.lat != null && (kayit.lat < -90 || kayit.lat > 90 || kayit.lng == null)) { kayit.lat = null; kayit.lng = null; }
         eski = S.projeler.find(x => norm(x.ad) === norm(ad)) || out.find(x => norm(x.ad) === norm(ad));
       }
       if (eski) { const b = birlestir(eski, kayit); if (b) { const i = out.indexOf(eski); if (i >= 0) out[i] = b; else { out.push(b); guncel++; } } else ayni++; }

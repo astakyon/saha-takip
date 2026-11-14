@@ -12,7 +12,7 @@ export async function sirketView(el) {
   const bugun = new Date(), ayBasi = new Date(bugun.getFullYear(), bugun.getMonth(), 1).toISOString().slice(0, 10);
   const acik = (S.projeler || []).filter(x => !['Sipariş', 'Kayıp', 'İptal'].includes(x.durum)).length;
   const kart = (ad, deger, alt = '') => `<div class="sk-sayi"><b>${deger}</b><span>${ad}</span>${alt ? `<small>${alt}</small>` : ''}</div>`;
-  const SEKMELER = [['genel', 'Genel', true], ['ekip', 'Ekip ve yetkiler', yetkili], ['sablon', 'Mesaj ve teklif şablonları', yetkili], ['otomasyon', 'Otomasyonlar', yetkili], ['kur', 'Döviz kuru', true]].filter(x => x[2]);
+  const SEKMELER = [['genel', 'Genel', true], ['ekip', 'Ekip ve yetkiler', yetkili], ['otomasyon', 'Otomasyonlar', yetkili], ['kur', 'Döviz kuru', true]].filter(x => x[2]);
   el.innerHTML = `<div class="fs-sayfa sk-sayfa"><header class="vh sk-bas"><div class="sk-kimlik"><span class="sk-logo" aria-hidden="true">${esc((p.firma || 'Ş').slice(0, 1).toLocaleUpperCase('tr'))}</span>
       <div><p class="muted">Şirket profili</p><h1>${esc(p.firma || 'Şirketin')}</h1><p class="sum">${esc([SEKTOR[p.sektor], p.marka ? 'Temsil: ' + p.marka : '', (p.iller || []).join(', ')].filter(Boolean).join(' · '))}</p></div></div>
       <div class="vh-act">${(app.db?.sirketler || []).length > 1 ? `<button class="btn ghost" data-sirketsec>Şirket değiştir (${app.db.sirketler.length})</button>` : ''}${yetkili ? '<button class="btn primary" data-pduz>Profili düzenle</button>' : ''}</div></header>
@@ -33,11 +33,7 @@ export async function sirketView(el) {
     ${yetkili ? `<div class="fs-ic" data-fs="ekip" role="tabpanel" hidden>
       <section class="card"><h2>Kullanıcılar ve yetkiler</h2><div data-kullanici></div></section>
       <section class="card" data-sondeg></section>
-    </div>
-    <div class="fs-ic" data-fs="sablon" role="tabpanel" hidden><div class="sk-izgara">
-      <section class="card"><h2>WhatsApp mesaj şablonları</h2><p class="hint">Kişi, firma ve proje sayfasındaki WhatsApp düğmesi bu şablonları kullanır.</p><div data-sablon></div></section>
-      <section class="card"><h2>Teklif bilgileri</h2><p class="hint">PDF teklifin üst bilgisi ve alt koşulları.</p><div data-teklifb></div></section>
-    </div></div>` : ''}
+    </div>` : ''}
 
     ${yetkili ? `<div class="fs-ic" data-fs="otomasyon" role="tabpanel" hidden><section class="card sk-kur"><h2>Otomasyonlar</h2><div data-otomasyon></div></section></div>` : ''}
     <div class="fs-ic" data-fs="kur" role="tabpanel" hidden><section class="card sk-kur"><h2>Döviz kuru</h2><p class="hint">Tutarların TL ve USD karşılıkları bu kurla hesaplanır; ekipteki herkes aynı kuru görür.</p><div data-kur></div></section></div>
@@ -53,7 +49,6 @@ export async function sirketView(el) {
   sekmeKur(el, { taban: 'sirket', ilk: 'genel', sekme: location.hash.replace(/^#\/?/, '').split('/')[1], KUR: {
     genel: () => ekibim(el.querySelector('[data-ekip]'), p),
     ekip: async () => { (await import('./kullanicilar.js')).kullaniciAyarlari(el.querySelector('[data-kullanici]')); (await import('../gecmis.js')).sonDegisiklikler(el.querySelector('[data-sondeg]')); },
-    sablon: async () => { (await import('../sablon.js')).sablonDuzenleyici(el.querySelector('[data-sablon]')); (await import('./teklif.js')).teklifAyarlari(el.querySelector('[data-teklifb]')); },
     kur: async () => (await import('../kur.js')).kurAyarlari(el.querySelector('[data-kur]')),
     otomasyon: async () => (await import('../otomasyon.js')).otomasyonAyarlari(el.querySelector('[data-otomasyon]')),
   } });

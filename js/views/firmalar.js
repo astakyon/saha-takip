@@ -58,7 +58,7 @@ export function firmalarView(el) {
   const f = F('firmalar', { q: '', tip: 'Tümü', il: 'Tümü', key: false, sort: 'Ada göre' });
   el.innerHTML = `
   <header class="vh"><div><h1>Firmalar</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><button class="btn ghost" data-duyuru>Toplu duyuru</button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn ghost" data-benzer hidden>Benzer kayıtlar</button><button class="btn primary" data-new>Yeni firma</button></div></header>
+    <div class="vh-act"><button class="btn ghost" data-duyuru>Toplu duyuru</button><button class="btn ghost" data-sablonlar data-gerek="yaz:firmalar">Mesaj şablonları</button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn ghost" data-benzer hidden>Benzer kayıtlar</button><button class="btn primary" data-new>Yeni firma</button></div></header>
   <div class="filters">
     <input type="search" data-q placeholder="Firma adı, not ara" value="${esc(f.q)}" aria-label="Firmalarda ara">
     <div class="chips" role="group" aria-label="Firma tipi">${['Tümü', ...FIRMA_TIPLERI].map(t => `<button type="button" class="chip ${f.tip === t ? 'on' : ''}" data-t="${t}" style="--c:#1D2B36">${t}</button>`).join('')}</div>
@@ -95,6 +95,7 @@ export function firmalarView(el) {
   el.querySelectorAll('[data-b]').forEach(s => s.onchange = () => { f[s.dataset.b] = s.checked; saveFilters(); draw(); });
   el.querySelector('[data-new]').onclick = () => yeniFirma({});
   el.querySelector('[data-duyuru]').onclick = async () => (await import('../duyuru.js')).topluDuyuru();
+  el.querySelector('[data-sablonlar]')?.addEventListener('click', async () => (await import('../sablon.js')).sablonPenceresi());
   benzerDugmesi(el, 'firmalar');
   el.querySelector('[data-exp]').onclick = () => {
     exportXlsx(`firmalar-${today()}.xlsx`, {
@@ -199,7 +200,7 @@ export async function kartvizittenKisi() {
 export function kisilerView(el) {
   const f = F('kisiler', { q: '' });
   el.innerHTML = `<header class="vh"><div><h1>Kişiler</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act"><button class="btn ghost" data-xls>Excel</button><button class="btn ghost" data-benzer hidden>Benzer kayıtlar</button><button class="btn" data-kv>Kartvizitten ekle</button><button class="btn primary" data-new>Yeni kişi</button></div></header>
+    <div class="vh-act"><button class="btn ghost" data-xls>Excel</button><button class="btn ghost" data-sablonlar data-gerek="yaz:kisiler">Mesaj şablonları</button><button class="btn ghost" data-benzer hidden>Benzer kayıtlar</button><button class="btn" data-kv>Kartvizitten ekle</button><button class="btn primary" data-new>Yeni kişi</button></div></header>
     <div class="filters"><input type="search" data-q placeholder="Ad, firma, telefon ara" value="${esc(f.q)}" aria-label="Kişilerde ara">
       <select data-poz aria-label="Pozisyona göre süz"><option value="">Tüm pozisyonlar</option>${POZISYONLAR.map(p => `<option ${f.poz === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}<option value="-" ${f.poz === '-' ? 'selected' : ''}>Pozisyonu girilmemiş</option></select>
       <label class="chk-inline" data-eskidahil-l ${f.poz && f.poz !== '-' ? '' : 'hidden'}><input type="checkbox" data-eskidahil ${f.eski ? 'checked' : ''}> Eski firmalarındaki pozisyonlar dahil</label></div>
@@ -218,6 +219,7 @@ export function kisilerView(el) {
   el.querySelector('[data-new]').onclick = () => kisiDetay(null, {});
   benzerDugmesi(el, 'kisiler');
   el.querySelector('[data-xls]').onclick = () => exportXlsx(`kisiler-${today()}.xlsx`, { 'Kişiler': S.kisiler.slice().sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr')).map(k => ({ 'Ad': k.ad || adBol(k.ad_soyad).ad, 'Soyad': k.soyad ?? adBol(k.ad_soyad).soyad, 'Firma': firmaAd(k.firma_id), 'Unvan': k.unvan, 'Rol': k.rol, 'Pozisyon': k.pozisyon, 'Telefon': k.telefon, 'E-posta': k.eposta, 'İnternet sitesi': k.web, 'Adres': k.adres, 'Doğum günü': k.dogum_gunu, 'Notlar': k.notlar })) });
+  el.querySelector('[data-sablonlar]')?.addEventListener('click', async () => (await import('../sablon.js')).sablonPenceresi());
   el.querySelector('[data-kv]').onclick = kartvizittenKisi;
   draw();
 }

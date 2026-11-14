@@ -1518,7 +1518,7 @@ create index if not exists gorevler_kaynak on public.gorevler (owner, kaynak) wh
 -- Otomasyon kuralları şirket ayarıdır: ekip de okur
 create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) returns boolean language sql stable security definer set search_path = public as $f$
   select public.sirket_yetkilisi(sahip) or (public.ekipte(sahip::text) and (
-    anahtar in ('google_key', 'wa_sablonlar', 'teklif_firma', 'listeler', 'kataloglar_ek', 'ziyaret_siklik', 'usd_kur', 'kur_elle', 'elektrik_tl_kwh', 'firma_profil', 'cift_farkli', 'otomasyon')
+    anahtar in ('google_key', 'wa_sablonlar', 'teklif_firma', 'listeler', 'kataloglar_ek', 'ziyaret_siklik', 'usd_kur', 'kur_elle', 'elektrik_tl_kwh', 'firma_profil', 'cift_farkli', 'otomasyon', 'oto_silinen')
     or (anahtar like 'sartname:%' and public.yetki(sahip, 'projeler', 'oku'))))
 $f$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 34 $f$;

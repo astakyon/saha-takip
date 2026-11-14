@@ -32,7 +32,7 @@ export async function ayarlarView(el) {
   const ESKI = { genel: 'hesap', kullanici: 'ekip', google: 'baglanti' };
   if (ESKI[f.sekme]) f.sekme = ESKI[f.sekme];
   // Şirket profiline taşınanlar: Ekip ve yetkiler, Mesaj ve teklif şablonları
-  const TASINDI = { ekip: 'ekip', mesaj: 'sablon' };
+  const TASINDI = { ekip: 'ekip' };
   try { const s0 = sessionStorage.getItem('ayar-sekme'); if (TASINDI[s0]) { sessionStorage.removeItem('ayar-sekme'); location.hash = '#/sirket/' + TASINDI[s0]; return; } } catch {}
   if (TASINDI[f.sekme] || f.sekme === 'profil') f.sekme = 'hesap';
   if (!S.projeler.length && !S.firmalar.length && !f._ilk) { f.sekme = 'veri'; f._ilk = 1; }
@@ -122,7 +122,7 @@ export async function ayarlarView(el) {
   </div></div>`;
   let listeYuklendi = false;
   const sekmeGoster = k => {
-    if (k === 'veri' && !el._otoYuklendi) { el._otoYuklendi = true; import('../otoyedek.js').then(m => m.otoYedekAyarlari(el.querySelector('[data-otoyedek]'))); import('../ilkyukleme.js').then(m => { const c = el.querySelector('[data-ilkyukleme]'); c.outerHTML = m.baslaKarti({ baslik: "Excel'den yükleme ve örnek veriler" }).replace('<section class="card basla-k">', '<section class="card basla-k" data-tab="veri" data-ilkyukleme>'); m.baslaBagla(el.querySelector('[data-ilkyukleme]'), () => ayarlarView(el)); }); }
+    if (k === 'veri' && el.querySelector('[data-otoyedek]') && !el.querySelector('[data-otoyedek]').childElementCount) { import('../otoyedek.js').then(m => m.otoYedekAyarlari(el.querySelector('[data-otoyedek]'))); import('../ilkyukleme.js').then(m => { const c = el.querySelector('[data-ilkyukleme]'); c.outerHTML = m.baslaKarti({ baslik: "Excel'den yükleme ve örnek veriler" }).replace('<section class="card basla-k">', '<section class="card basla-k" data-tab="veri" data-ilkyukleme>'); m.baslaBagla(el.querySelector('[data-ilkyukleme]'), () => ayarlarView(el)); }); }
     if (k === 'listeler' && !listeYuklendi) { listeYuklendi = true; import('../listeler.js').then(m => m.listeAyarlari(el.querySelector('[data-listeler]'))); }
     el.querySelectorAll('[data-tab]').forEach(x => x.hidden = x.dataset.tab !== k || (x.hasAttribute('data-sahip') && !sahipMi()));
     el.querySelectorAll('[data-sekme]').forEach(b => { b.classList.toggle('on', b.dataset.sekme === k); b.setAttribute('aria-current', b.dataset.sekme === k); });

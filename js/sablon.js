@@ -37,8 +37,8 @@ export function waGonder(ctx = {}) {
       ${tel ? `<p class="hint">Numara: ${esc(tel)}</p>` : '<p class="warn">Bu kişinin telefonu kayıtlı değil. WhatsApp açılınca alıcıyı kendin seçersin.</p>'}
       <div class="fld"><label for="wa-s">Şablon</label><select id="wa-s">${list.map((s, i) => `<option value="${i}" ${s.ad === ctx.sablonAdi ? 'selected' : ''}>${esc(s.ad)}</option>`).join('')}</select></div>
       ${S.projeler.length && !proje ? `<div class="fld"><label for="wa-p">Proje (isteğe bağlı)</label><input id="wa-p" list="wa-pl" placeholder="Proje adı"><datalist id="wa-pl">${S.projeler.filter(x => !firma || [x.emut_id, x.gemut_id, x.alici_id, x.bayi_id, x.yatirimci_id, x.projeci_id].includes(firma.id)).map(x => `<option value="${esc(x.ad)}">`).join('')}</datalist></div>` : ''}
-      <div class="fld"><label for="wa-m">Mesaj</label><textarea id="wa-m" rows="6"></textarea><small>Göndermeden önce düzenleyebilirsin. ${benimAdim() ? '' : 'İmzan için Ayarlar → Mesaj şablonları bölümüne adını yaz.'}</small></div>
-      <div class="dfoot"><button type="button" class="btn ghost" data-copy>Kopyala</button><a class="btn primary" data-wa target="_blank" rel="noopener">WhatsApp'ta aç</a></div>
+      <div class="fld"><label for="wa-m">Mesaj</label><textarea id="wa-m" rows="6"></textarea><small>Göndermeden önce düzenleyebilirsin. ${benimAdim() ? '' : 'İmzan için Mesaj şablonları penceresine adını yaz.'}</small></div>
+      <div class="dfoot"><button type="button" class="btn ghost" data-sablonduz>Şablonları düzenle</button><button type="button" class="btn ghost" data-copy>Kopyala</button><a class="btn primary" data-wa target="_blank" rel="noopener">WhatsApp'ta aç</a></div>
     </div>`);
   const sel = p.querySelector('#wa-s'), ta = p.querySelector('#wa-m'), pin = p.querySelector('#wa-p'), a = p.querySelector('[data-wa]');
   const prj = () => proje || (pin && S.projeler.find(x => x.ad === pin.value)) || null;
@@ -46,6 +46,7 @@ export function waGonder(ctx = {}) {
   const link = () => { a.href = waLink(tel, ta.value); };
   sel.onchange = yaz; pin && (pin.onchange = yaz); ta.oninput = link;
   a.onclick = () => setTimeout(closeDrawer, 300);
+  p.querySelector('[data-sablonduz]').onclick = () => sablonPenceresi(() => waGonder(ctx));
   p.querySelector('[data-copy]').onclick = async () => { try { await navigator.clipboard.writeText(ta.value); toast('Mesaj kopyalandı.'); } catch { toast('Kopyalanamadı; metni seçip kopyala.', 'err'); } };
   yaz();
 }
@@ -70,4 +71,12 @@ export function sablonDuzenleyici(root) {
     };
   };
   ciz();
+}
+
+// Mesaj şablonları penceresi: Firmalar ve Kişiler ekranından, WhatsApp penceresinden açılır
+export function sablonPenceresi(sonra) {
+  const p = openDrawer(`<header class="dh"><div><p class="muted">WhatsApp</p><h2 id="drawer-title">Mesaj şablonları</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+    <div class="dbody form"><p class="hint">Firma, kişi ve proje sayfasındaki WhatsApp düğmesi bu şablonları kullanır. {kisi}, {firma}, {proje} gibi alanlar mesajda kendiliğinden doldurulur.</p><div data-sablon></div>
+    <div class="dfoot"><button type="button" class="btn primary" data-close>Bitti</button></div></div>`, { onClose: () => sonra?.() });
+  sablonDuzenleyici(p.querySelector('[data-sablon]'));
 }

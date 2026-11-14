@@ -204,7 +204,7 @@ export function gorevForm(init = {}, after) {
     ${g._new ? '' : '<div class="dh-actions"><button class="btn sm ghost danger" data-sil>Sil</button></div>'}
     <form class="dbody form" novalidate>${renderForm(GOREV_FORM, g)}<div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`);
   const form = panel.querySelector('form'); bindForm(form, GOREV_FORM, g);
-  panel.querySelector('[data-sil]')?.addEventListener('click', async () => { closeDrawer(); await silGeriAl('gorevler', g0, 'Görev', () => after ? after() : app.refresh()); });
+  panel.querySelector('[data-sil]')?.addEventListener('click', async () => { closeDrawer(); await (await import('../otomasyon.js')).otoGorevSilindi(g0); await silGeriAl('gorevler', g0, 'Görev', () => after ? after() : app.refresh()); });
   form.onsubmit = async e => {
     e.preventDefault();
     const o = await readForm(form, GOREV_FORM, g);
