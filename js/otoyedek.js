@@ -7,7 +7,7 @@ import { esc, toast, today, download } from './ui.js';
 import { ayar, ayarYaz } from './ayar.js';
 import { sahipMi } from './yetki.js';
 
-const KLASOR = () => `${app.db.user().id}/yedek`;
+const KLASOR = () => `${app.db.sahip || app.db.user().id}/yedek`;
 const guvenliMi = async () => { try { const { data, error } = await app.db.c.rpc('yedek_guvenli'); return !error && data === true; } catch { return false; } };
 const gun = d => d ? Math.floor((Date.now() - new Date(d)) / 864e5) : null;
 const siklik = () => ayar('oto_yedek_siklik') === 'haftalik' ? 'haftalik' : 'gunluk';

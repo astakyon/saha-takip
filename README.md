@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 52): Şirket (K1) — şirket kişiden bağımsız, birden fazla yönetici
+
+- Kayıtlar artık bir **şirkete** aittir (değeri kurucunun kimliğiyle aynı kalır; mevcut veriye dokunulmaz, taşıma gerekmez). Kurucunun kullanıcı hesabı silinse de şirketin kayıtları silinmez.
+- **Şirket yöneticisi:** Ayarlar → Ekip ve yetkiler'de bir kullanıcının kartında “Şirket yöneticisi” işaretlenince o kişi kurucu gibi her şeyi görür ve düzenler, kullanıcıları ekler/çıkarır, yetki verir ve şirket ayarlarını yönetir. Birden fazla yönetici olabilir.
+- **Şirket kartı** (Ekip ve yetkiler'in üstünde): şirket adı, kurucu, yöneticiler, aktif kullanıcı sayısı.
+- **Kurucu ayrılırsa:** başka bir şirket yöneticisi “Kurucu şirketten ayrıldı” der; kurucu artık şirkete giremez, kayıtlar şirkette kalır. Geri alınabilir. Kurucu kendini ayrıldı yapamaz (şirket yöneticisiz kalmasın diye).
+- Sunucu kuralları (RLS): yetki, dosyalar, ayarlar, değişiklik geçmişi, hata günlüğü ve kullanıcı adları şirket yöneticilerine de açıldı. Supabase'de güncel **schema.sql** çalıştırılmalı (sürüm 25).
+
 ## Güncelleme notu (sürüm 51): kartvizit okuma ve pozisyonlar
 
 - **Kartvizit okuma:** e-posta adresinin başı kişinin adıyla, alan adı firmayla karşılaştırılıyor; logodaki büyük firma adı (ör. MERKON) artık ad soyad sanılmıyor, firma olarak alınıyor. Logo/simgeden kalan baştaki kısa harfler atılıyor, “I$” gibi okuma hataları “İş” olarak düzeltiliyor. Kayıtlı firma, web ya da e-posta alan adından da eşleştiriliyor.

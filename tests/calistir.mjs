@@ -319,6 +319,23 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 10) Şirket: şirket kartı, ad değiştirme, kullanıcıyı şirket yöneticisi yapma ----------
+{
+  const DB2 = new Function('(' + DB.toString() + ')(); const d = JSON.parse(localStorage.getItem("__DB")); d.ekip_uyeleri = [{ id: "e1", owner: "u1", eposta: "ali@x.com", ad: "Ali", aktif: true, yetkiler: { projeler: "oku" }, yonetici: false, created_at: "2026-10-01" }]; localStorage.setItem("__DB", JSON.stringify(d));');
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB2 });
+  await p.goto(U + '#/ayarlar'); await w(1200);
+  await p.click('[data-sekme="ekip"]'); await w(1200);
+  const kart = await p.isVisible('.sirket-kart');
+  await p.fill('#sk-ad', 'Yeni Şirket AŞ'); await p.click('[data-sk-ad]'); await w(300);
+  const ad = await p.evaluate(() => localStorage.getItem('__SIRKET_AD'));
+  await p.click('[data-uye="ali@x.com"] summary'); await p.check('[data-uye="ali@x.com"] [data-yonetici]'); await p.click('[data-uye="ali@x.com"] [data-kaydet]'); await w(600);
+  const yon = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).ekip_uyeleri[0].yonetici);
+  const etiket = await p.isVisible('[data-uye="ali@x.com"] .yon-r');
+  kontrol('Şirket kartı görünüyor, şirket adı kaydediliyor, kullanıcı şirket yöneticisi yapılabiliyor', kart && ad === 'Yeni Şirket AŞ' && yon === true && etiket, JSON.stringify({ kart, ad, yon, etiket }));
+  kontrol('Şirket ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
 await tarayici.close(); sunucu.close();
 console.log(sonuc.join('\n'));
 console.log(basarisiz ? `\n${basarisiz} test başarısız.` : `\nTüm testler geçti (${sonuc.length}).`);

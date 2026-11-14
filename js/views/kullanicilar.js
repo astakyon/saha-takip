@@ -32,7 +32,7 @@ export function davetLinki(eposta) {
 export async function kullaniciAyarlari(root) {
   if (app.db.mode !== 'supabase') { root.innerHTML = '<p class="hint">Başka kişilere yetki vermek için önce Genel sekmesinden bulut (Supabase) bağlantısını kur.</p>'; return; }
   root.innerHTML = '<p class="hint">Yükleniyor…</p>';
-  const { data, error } = await app.db.c.from('ekip_uyeleri').select('*').eq('owner', app.db.user().id).order('created_at');
+  const { data, error } = await app.db.c.from('ekip_uyeleri').select('*').eq('owner', app.db.sahip || app.db.user().id).order('created_at');
   if (error) { root.innerHTML = `<p class="warn">Kullanıcı tablosu bulunamadı. Supabase SQL Editor'de güncel <b>schema.sql</b> dosyasını çalıştır.</p>`; return; }
   const uyeler = data || [];
   const KAD = new Map(); let kadVar = true;
@@ -46,6 +46,7 @@ export async function kullaniciAyarlari(root) {
       ${yetkiDuzeni({})}
       <div class="btnrow"><button type="submit" class="btn primary">Ekle ve davet bağlantısı oluştur</button></div></form></details>`;
   rolBagla(root);
+  sirketKarti(root);
   import('../guvenlik.js').then(async g => {
     const sg = await g.sonGirisler();
     root.querySelectorAll('[data-uye]').forEach(k => { const s = k.querySelector('[data-songiris]'); if (!s) return; if (!sg) { s.remove(); return; } s.textContent = g.sonGirisMetni(sg[k.dataset.uye.toLowerCase()]); });
@@ -58,9 +59,9 @@ export async function kullaniciAyarlari(root) {
   yeni.onsubmit = async e => {
     e.preventDefault();
     const eposta = yeni.querySelector('#ku-e').value.trim().toLowerCase(); if (!/^\S+@\S+\.\S+$/.test(eposta)) return toast('Geçerli bir e-posta yaz.', 'err');
-    if (eposta === (app.db.user()?.email || '').toLowerCase()) return toast('Kendini ekleyemezsin; sen zaten veri sahibisin.', 'err');
+    if (eposta === (app.db.user()?.email || '').toLowerCase()) return toast('Kendini ekleyemezsin; sen zaten şirket yöneticisisin.', 'err');
     const secim = secimOku(yeni); if (!Object.values(secim).some(Boolean)) return toast('En az bir ekranı aç (Görür ya da Düzenler).', 'err');
-    const { error } = await app.db.c.from('ekip_uyeleri').insert({ eposta, ad: yeni.querySelector('#ku-a').value.trim() || null, yetkiler: yetkiOku(yeni, secim), aktif: true });
+    const { error } = await app.db.c.from('ekip_uyeleri').insert({ owner: app.db.sahip || app.db.user().id, eposta, ad: yeni.querySelector('#ku-a').value.trim() || null, yetkiler: yetkiOku(yeni, secim), aktif: true });
     if (error) return toast(/duplicate|unique/i.test(error.message) ? 'Bu e-posta zaten ekli.' : 'Eklenemedi: ' + error.message, 'err');
     const kh = await kadKaydet(eposta, yeni.querySelector('#ku-k')?.value, ''); if (kh) toast(kh, 'err');
     toast('Kişi eklendi. Davet bağlantısını gönder.'); await kullaniciAyarlari(root); root.querySelector(`[data-uye="${CSS.escape(eposta)}"] [data-davet]`)?.click();
@@ -68,9 +69,12 @@ export async function kullaniciAyarlari(root) {
   root.querySelectorAll('[data-uye]').forEach(k => {
     const u = uyeler.find(x => x.eposta === k.dataset.uye);
     k.querySelector('[data-kaydet]').onclick = async () => {
-      const { error } = await app.db.c.from('ekip_uyeleri').update({ ad: k.querySelector('[data-ad]').value.trim() || null, aktif: k.querySelector('[data-aktif]').checked, yetkiler: yetkiOku(k) }).eq('id', u.id);
+      const yon = !!k.querySelector('[data-yonetici]')?.checked;
+      if (yon && !u.yonetici && !confirmBox(`${u.ad || u.eposta} şirket yöneticisi olsun mu? Her şeyi görür ve düzenler, kullanıcıları ve şirket ayarlarını yönetir.`)) return;
+      const { error } = await app.db.c.from('ekip_uyeleri').update({ ad: k.querySelector('[data-ad]').value.trim() || null, aktif: k.querySelector('[data-aktif]').checked, yetkiler: yetkiOku(k), ...(k.querySelector('[data-yonetici]') ? { yonetici: yon } : {}) }).eq('id', u.id);
+      if (!error) { u.yonetici = yon; k.querySelector('.yon-r').hidden = !yon; }
       if (!error && k.querySelector('[data-kad]')) { const kh = await kadKaydet(u.eposta, k.querySelector('[data-kad]').value, u._kad); if (kh) return toast(kh, 'err'); u._kad = adNormal(k.querySelector('[data-kad]').value); }
-      if (!error) { const y = rolOku(k); const rb = k.querySelector('.rol-r'); if (rb) { rb.textContent = y; rb.hidden = !y; } }
+      if (!error) { const y = rolOku(k); const rb = k.querySelector('.rol-r:not(.yon-r)'); if (rb) { rb.textContent = y; rb.hidden = !y; } }
       toast(error ? 'Kaydedilemedi: ' + error.message : 'Yetkiler kaydedildi. Kişi uygulamayı yeniden açınca geçerli olur.', error ? 'err' : '');
     };
     yetkiBagla(k);
@@ -144,10 +148,36 @@ async function kadKaydet(eposta, deger, eski) {
 function uyeKarti(u, kadVar) {
   const secim = ekranSecimi(u.yetkiler);
   const ozet = Object.keys(EKRANLAR).filter(k => secim[k]).map(k => (SEKME_AD[k] || k) + (secim[k] === 'yaz' ? '' : ' (görür)')).join(', ');
-  return `<details class="uye" data-uye="${esc(u.eposta)}"><summary><span class="uye-ad"><b>${esc(u.ad || u.eposta)}</b><em class="rol-r" ${rolAl(u) ? '' : 'hidden'}>${esc(rolAl(u))}</em><small class="muted">${esc(u.eposta)}${u.aktif ? '' : ' · pasif'} · <span data-songiris>…</span></small></span><small class="muted">${esc(ozet || 'yetki yok')}</small></summary>
+  return `<details class="uye" data-uye="${esc(u.eposta)}"><summary><span class="uye-ad"><b>${esc(u.ad || u.eposta)}</b><em class="rol-r yon-r" ${u.yonetici ? '' : 'hidden'}>Şirket yöneticisi</em><em class="rol-r" ${rolAl(u) ? '' : 'hidden'}>${esc(rolAl(u))}</em><small class="muted">${esc(u.eposta)}${u.aktif ? '' : ' · pasif'} · <span data-songiris>…</span></small></span><small class="muted">${esc(ozet || 'yetki yok')}</small></summary>
     <div class="grid"><div class="fld"><label>Ad</label><input data-ad value="${esc(u.ad || '')}"></div>${kadVar ? `<div class="fld"><label>Kullanıcı adı</label><input data-kad autocapitalize="none" spellcheck="false" maxlength="30" placeholder="ör. ali.drv" value="${esc(u._kad || '')}"></div>` : ''}<div class="fld"><label>Rol / ünvan</label>${rolSecici(rolAl(u))}</div><div class="fld is-chk"><label class="chk"><input type="checkbox" data-aktif ${u.aktif ? 'checked' : ''}> <span>Erişimi açık</span></label></div></div>
+    ${'yonetici' in u ? `<label class="chk yon-chk"><input type="checkbox" data-yonetici ${u.yonetici ? 'checked' : ''}> <span><b>Şirket yöneticisi</b><small class="muted"> · her şeyi görür ve düzenler, kullanıcıları ve şirket ayarlarını yönetir; aşağıdaki ekran seçimi onun için geçerli olmaz</small></span></label>` : ''}
     <div class="fld"><label>Hazır şablon</label><div class="chips">${Object.keys(HAZIR).map(h => `<button type="button" class="chip" data-hazir="${h}">${h}</button>`).join('')}</div></div>
     ${yetkiDuzeni(u.yetkiler)}
     <div class="btnrow"><button type="button" class="btn sm primary" data-kaydet>Kaydet</button><button type="button" class="btn sm" data-davet>Davet bağlantısı</button><button type="button" class="btn sm ghost" data-onizle>Bu kişi gibi gör</button><button type="button" class="btn sm ghost danger" data-sil>Çıkar</button></div>
     <div data-link class="davet-kutu" hidden></div></details>`;
+}
+
+// ---------- Şirket: adı, kurucusu, yöneticileri ----------
+async function sirketKarti(root) {
+  const { data: b, error } = await app.db.c.rpc('sirket_bilgisi');
+  if (error || !b) { if (error && /function|schema cache/i.test(error.message)) root.insertAdjacentHTML('afterbegin', '<p class="warn">Şirket yönetimi için Supabase SQL Editor\'de güncel <b>schema.sql</b> dosyasını çalıştır (sürüm 25).</p>'); return; }
+  const kutu = document.createElement('section'); kutu.className = 'sirket-kart';
+  const yon = [{ eposta: b.kurucu_eposta, ad: 'Kurucu', kurucu: true }, ...(b.yoneticiler || [])].filter(x => x.eposta && !(x.kurucu && b.kurucu_ayrildi));
+  kutu.innerHTML = `<h3>Şirket</h3>
+    <div class="fld"><label for="sk-ad">Şirket adı</label><div class="satir-btn"><input id="sk-ad" value="${esc(b.ad || '')}" placeholder="Şirketinin adı"><button type="button" class="btn sm" data-sk-ad>Kaydet</button></div></div>
+    <p class="hint">Şirket kişiden bağımsızdır: kayıtlar şirkete aittir. Birden fazla yönetici olabilir; kurucu ayrılsa da şirket ve kayıtları yönetici(ler)le devam eder. ${b.kullanici_sayisi} aktif kullanıcı.</p>
+    <div class="fld"><label>Şirket yöneticileri</label><ul class="list sk-yon">${yon.map(x => `<li><span class="grow"><b>${esc(x.ad && !x.kurucu ? x.ad : x.eposta)}</b><small class="muted"> ${esc(x.kurucu ? 'kurucu · ' + x.eposta : x.eposta)}</small></span></li>`).join('')}</ul>
+      <p class="hint">Yönetici eklemek için aşağıdaki kullanıcı kartında “Şirket yöneticisi” kutusunu işaretle.</p></div>
+    ${b.ben_kurucu ? '' : b.kurucu_ayrildi
+      ? `<p class="warn">Kurucu (${esc(b.kurucu_eposta || '')}) şirketten ayrıldı olarak işaretli; şirkete giremez.</p><button type="button" class="btn sm ghost" data-sk-kurucu="0">Kurucuyu geri al</button>`
+      : `<button type="button" class="btn sm ghost danger" data-sk-kurucu="1">Kurucu şirketten ayrıldı</button>`}`;
+  root.prepend(kutu);
+  kutu.querySelector('[data-sk-ad]').onclick = async () => { const { error: e } = await app.db.c.rpc('sirket_adi', { p_ad: kutu.querySelector('#sk-ad').value }); toast(e ? 'Kaydedilemedi: ' + e.message : 'Şirket adı kaydedildi.', e ? 'err' : ''); };
+  kutu.querySelector('[data-sk-kurucu]')?.addEventListener('click', async ev => {
+    const ayrildi = ev.target.dataset.skKurucu === '1';
+    if (ayrildi && !confirmBox(`Kurucu (${b.kurucu_eposta}) şirketten ayrıldı olarak işaretlensin mi? Artık şirkete giremez; kayıtları şirkette kalır.`)) return;
+    const { error: e } = await app.db.c.rpc('kurucu_ayrildi', { p_ayrildi: ayrildi });
+    if (e) return toast(e.message, 'err');
+    toast(ayrildi ? 'Kurucu ayrıldı olarak işaretlendi.' : 'Kurucu geri alındı.'); kutu.remove(); sirketKarti(root);
+  });
 }

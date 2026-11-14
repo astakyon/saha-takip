@@ -872,3 +872,145 @@ update public.kisiler set pozisyon = case
 end
 where pozisyon is null and unvan is not null and btrim(unvan) <> '';
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 24 $f$;
+
+-- ===================== Sürüm 25: Şirket (K1) =====================
+-- Kayıtlardaki "owner" artık bir ŞİRKETİ gösterir (değeri, şirketi kuran kişinin kimliğiyle aynı kalır).
+-- Şirketin birden fazla yöneticisi olabilir: kurucu ve "şirket yöneticisi" işaretli kullanıcılar her şeyi görür,
+-- düzenler, kullanıcıları ve şirket ayarlarını yönetir. Kurucu ayrılırsa şirket ve verileri yaşamaya devam eder.
+alter table public.ekip_uyeleri add column if not exists yonetici boolean not null default false;
+alter table public.hesaplar add column if not exists kurucu_ayrildi boolean not null default false;
+
+-- Kurucunun kullanıcı hesabı silinse de şirketin verileri silinmesin: owner → auth.users bağı kaldırılır
+do $$ declare r record; begin
+  for r in select c.conrelid::regclass as tablo, c.conname from pg_constraint c
+    where c.contype = 'f' and c.confrelid = 'auth.users'::regclass and c.connamespace = 'public'::regnamespace
+      and c.conkey = array[(select a.attnum from pg_attribute a where a.attrelid = c.conrelid and a.attname = 'owner')]
+  loop execute format('alter table %s drop constraint %I', r.tablo, r.conname); end loop;
+end $$;
+
+-- Şirketin yetkilisi mi: kurucu (ayrılmadıysa) ya da aktif şirket yöneticisi
+create or replace function public.sirket_yetkilisi(sahip uuid) returns boolean language sql stable security definer set search_path = public as $f$
+  select (sahip = auth.uid() and not exists (select 1 from public.hesaplar h where h.owner = sahip and h.kurucu_ayrildi))
+      or exists (select 1 from public.ekip_uyeleri u where u.owner = sahip and u.aktif and u.yonetici and lower(u.eposta) = public.benim_epostam())
+$f$;
+revoke all on function public.sirket_yetkilisi(uuid) from public, anon;
+grant execute on function public.sirket_yetkilisi(uuid) to authenticated;
+
+-- Kullanıcının çalıştığı şirket: şirket yöneticiliği önce, sonra ekip üyeliği, yoksa kendi şirketi
+create or replace function public.veri_sahibi() returns uuid language sql stable security definer set search_path = public as $f$
+  select coalesce(
+    (select u.owner from public.ekip_uyeleri u where u.aktif and u.yonetici and lower(u.eposta) = public.benim_epostam() and u.owner <> auth.uid() order by u.created_at limit 1),
+    (select u.owner from public.ekip_uyeleri u where u.aktif and lower(u.eposta) = public.benim_epostam() and u.owner <> auth.uid() order by u.created_at limit 1),
+    auth.uid())
+$f$;
+create or replace function public.yetki(sahip uuid, tablo text, islem text) returns boolean language sql stable security definer set search_path = public as $f$
+  select (public.sirket_yetkilisi(sahip) or exists (
+    select 1 from public.ekip_uyeleri u
+    where u.owner = sahip and u.aktif and lower(u.eposta) = public.benim_epostam()
+      and (u.yetkiler ->> tablo = 'yaz' or (islem = 'oku' and u.yetkiler ->> tablo = 'oku'))))
+    and (islem = 'oku' or not public.hesap_askida(sahip))
+$f$;
+create or replace function public.ekipte(sahip_metin text) returns boolean language sql stable security definer set search_path = public as $f$
+  select (sahip_metin ~ '^[0-9a-f-]{36}$' and public.sirket_yetkilisi(sahip_metin::uuid)) or exists (
+    select 1 from public.ekip_uyeleri u where u.owner::text = sahip_metin and u.aktif and lower(u.eposta) = public.benim_epostam())
+$f$;
+create or replace function public.benim_yetkilerim() returns jsonb language sql stable security definer set search_path = public as $f$
+  select case
+    when public.veri_sahibi() = auth.uid() and public.sirket_yetkilisi(auth.uid())
+      then jsonb_build_object('sahip', auth.uid(), 'ben_sahip', true, 'kurucu', true)
+    when public.veri_sahibi() = auth.uid()
+      then jsonb_build_object('sahip', auth.uid(), 'ben_sahip', false, 'yetkiler', '{}'::jsonb, 'ayrildi', true)
+    when public.sirket_yetkilisi(public.veri_sahibi())
+      then (select jsonb_build_object('sahip', u.owner, 'ben_sahip', true, 'sirket_yoneticisi', true, 'ad', u.ad)
+            from public.ekip_uyeleri u where u.owner = public.veri_sahibi() and lower(u.eposta) = public.benim_epostam() limit 1)
+    else (select jsonb_build_object('sahip', u.owner, 'ben_sahip', false, 'yetkiler', u.yetkiler, 'ad', u.ad)
+          from public.ekip_uyeleri u where u.owner = public.veri_sahibi() and lower(u.eposta) = public.benim_epostam() limit 1)
+  end
+$f$;
+create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) returns boolean language sql stable security definer set search_path = public as $f$
+  select public.sirket_yetkilisi(sahip) or (public.ekipte(sahip::text) and (
+    anahtar in ('google_key', 'wa_sablonlar', 'teklif_firma', 'listeler', 'kataloglar_ek', 'ziyaret_siklik', 'usd_kur', 'kur_elle', 'elektrik_tl_kwh', 'firma_profil', 'cift_farkli')
+    or (anahtar like 'sartname:%' and public.yetki(sahip, 'projeler', 'oku'))))
+$f$;
+create or replace function public.kad_yonetebilir(e text) returns boolean language sql stable security definer set search_path = public as $f$
+  select lower(e) = public.benim_epostam()
+      or exists (select 1 from public.ekip_uyeleri u where public.sirket_yetkilisi(u.owner) and lower(u.eposta) = lower(e))
+$f$;
+
+-- Kurucuya özel kalan kuralları şirket yetkilisine aç
+alter table public.ekip_uyeleri alter column owner set default public.veri_sahibi();
+alter table public.ayarlar alter column owner set default public.veri_sahibi();
+drop policy if exists "ekip_sahip" on public.ekip_uyeleri;
+create policy "ekip_sahip" on public.ekip_uyeleri for all to authenticated using (public.sirket_yetkilisi(owner)) with check (public.sirket_yetkilisi(owner));
+drop policy if exists "ayar_yaz" on public.ayarlar;
+create policy "ayar_yaz" on public.ayarlar for all to authenticated using (public.sirket_yetkilisi(owner)) with check (public.sirket_yetkilisi(owner));
+drop policy if exists "gecmis_oku" on public.degisiklikler;
+create policy "gecmis_oku" on public.degisiklikler for select to authenticated using (public.sirket_yetkilisi(owner));
+drop policy if exists "yorum_sil" on public.yorumlar;
+create policy "yorum_sil" on public.yorumlar for delete to authenticated using (public.sirket_yetkilisi(owner) or lower(yazan) = public.benim_epostam());
+drop policy if exists "hata_oku" on public.hata_gunlugu;
+create policy "hata_oku" on public.hata_gunlugu for select to authenticated using (public.sirket_yetkilisi(owner));
+drop policy if exists "hata_sil" on public.hata_gunlugu;
+create policy "hata_sil" on public.hata_gunlugu for delete to authenticated using (public.sirket_yetkilisi(owner) or public.yonetici_mi());
+drop policy if exists "hesap_oku" on public.hesaplar;
+create policy "hesap_oku" on public.hesaplar for select to authenticated using (public.sirket_yetkilisi(owner) or public.yonetici_mi());
+
+-- Dosyalar: şirket yetkilisi şirketin bütün dosyalarını açar (yedekler dahil)
+create or replace function public.foto_izinli(yol text) returns boolean language plpgsql stable security definer set search_path = public as $f$
+declare s text := split_part(yol, '/', 1); o uuid; y text;
+begin
+  if s = auth.uid()::text and public.sirket_yetkilisi(auth.uid()) then return true; end if;
+  if public.yonetici_mi() then return true; end if;
+  if split_part(yol, '/', 2) = 'geri' then return s = auth.uid()::text; end if;
+  if s !~ '^[0-9a-f-]{36}$' then return false; end if;
+  if public.sirket_yetkilisi(s::uuid) then return true; end if;
+  if not public.ekipte(s) then return false; end if;
+  if split_part(yol, '/', 2) = 'yedek' then return false; end if;
+  o := s::uuid;
+  y := regexp_replace(yol, '_k\.jpg$', '.jpg');
+  if public.yetki(o, 'belgeler', 'oku') and exists (select 1 from public.belgeler b where b.owner = o and b.yol = y) then return true; end if;
+  if split_part(yol, '/', 2) = 'belge' then return false; end if;
+  if public.yetki(o, 'projeler', 'oku') and exists (select 1 from public.projeler t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'firmalar', 'oku') and exists (select 1 from public.firmalar t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'kisiler', 'oku') and exists (select 1 from public.kisiler t where t.owner = o and (t.kartvizit_on = y or t.kartvizit_arka = y)) then return true; end if;
+  if public.yetki(o, 'ziyaretler', 'oku') and exists (select 1 from public.ziyaretler t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'servis_kayitlari', 'oku') and exists (select 1 from public.servis_kayitlari t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'urun_aileleri', 'oku') and exists (select 1 from public.urun_aileleri t where t.owner = o and y = any(t.fotolar)) then return true; end if;
+  if public.yetki(o, 'masraflar', 'oku') and exists (select 1 from public.masraflar t where t.owner = o and t.fis = y) then return true; end if;
+  return false;
+end $f$;
+
+-- Şirket ayarları ekranı
+create or replace function public.sirket_bilgisi() returns jsonb language sql stable security definer set search_path = public, auth as $f$
+  select case when not public.sirket_yetkilisi(public.veri_sahibi()) then null else jsonb_build_object(
+    'id', public.veri_sahibi(),
+    'ad', (select h.firma from public.hesaplar h where h.owner = public.veri_sahibi()),
+    'kurucu_eposta', (select lower(u.email) from auth.users u where u.id = public.veri_sahibi()),
+    'kurucu_ayrildi', coalesce((select h.kurucu_ayrildi from public.hesaplar h where h.owner = public.veri_sahibi()), false),
+    'ben_kurucu', public.veri_sahibi() = auth.uid(),
+    'kurulus', (select h.created_at from public.hesaplar h where h.owner = public.veri_sahibi()),
+    'yoneticiler', coalesce((select jsonb_agg(jsonb_build_object('eposta', e.eposta, 'ad', e.ad) order by e.created_at) from public.ekip_uyeleri e where e.owner = public.veri_sahibi() and e.aktif and e.yonetici), '[]'::jsonb),
+    'kullanici_sayisi', (select count(*) from public.ekip_uyeleri e where e.owner = public.veri_sahibi() and e.aktif)) end
+$f$;
+revoke all on function public.sirket_bilgisi() from public, anon;
+grant execute on function public.sirket_bilgisi() to authenticated;
+create or replace function public.sirket_adi(p_ad text) returns void language plpgsql security definer set search_path = public as $f$
+begin
+  if not public.sirket_yetkilisi(public.veri_sahibi()) then raise exception 'Şirket ayarlarını yalnızca şirket yöneticisi değiştirebilir.'; end if;
+  insert into public.hesaplar (owner, firma) values (public.veri_sahibi(), nullif(btrim(p_ad), ''))
+  on conflict (owner) do update set firma = excluded.firma;
+end $f$;
+revoke all on function public.sirket_adi(text) from public, anon;
+grant execute on function public.sirket_adi(text) to authenticated;
+-- Kurucu şirketten ayrıldı: yalnızca başka bir şirket yöneticisi işaretleyebilir (şirket yöneticisiz kalmasın diye)
+create or replace function public.kurucu_ayrildi(p_ayrildi boolean) returns void language plpgsql security definer set search_path = public as $f$
+declare s uuid := public.veri_sahibi();
+begin
+  if s = auth.uid() then raise exception 'Kurucu kendini ayrıldı olarak işaretleyemez; önce başka bir şirket yöneticisi ata.'; end if;
+  if not public.sirket_yetkilisi(s) then raise exception 'Bunu yalnızca şirket yöneticisi yapabilir.'; end if;
+  update public.hesaplar set kurucu_ayrildi = p_ayrildi where owner = s;
+  if not found then insert into public.hesaplar (owner, kurucu_ayrildi) values (s, p_ayrildi); end if;
+end $f$;
+revoke all on function public.kurucu_ayrildi(boolean) from public, anon;
+grant execute on function public.kurucu_ayrildi(boolean) to authenticated;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 25 $f$;

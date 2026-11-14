@@ -1390,3 +1390,9 @@ body.kirp-acik { overflow: hidden; }
 
 /* ---------- Sürüm 51: pozisyon süzgeci ---------- */
 .chk-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; }
+
+/* ---------- Sürüm 52: şirket ---------- */
+.sirket-kart { padding: 12px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 14px; display: grid; gap: 8px; }
+.sirket-kart h3 { margin: 0; }
+.satir-btn { display: flex; gap: 8px; } .satir-btn input { flex: 1; min-width: 0; }
+.yon-chk { padding: 8px 10px; border-radius: 10px; background: var(--sari-soft); }

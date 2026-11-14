@@ -228,14 +228,15 @@ async function boot() {
     yetkiUygula(); gerekIzle(); setTimeout(hataGonder, 8000);
     if (app.db.mode === 'supabase') {
       try { const { data } = await Promise.race([app.db.c.rpc('yonetici_mi'), new Promise(r => setTimeout(() => r({}), 4000))]); app.yonetici = data === true; } catch { app.yonetici = false; }
+      if (app.yetki?.ayrildi) { const b = document.createElement('div'); b.id = 'onizleme-bar'; b.setAttribute('role', 'status'); b.innerHTML = '<span><b>Şirketten ayrıldın olarak işaretlendin.</b> Şirketin kayıtlarına erişimin yok. Bir yanlışlık varsa şirket yöneticisine yaz.</span>'; document.body.appendChild(b); }
       if (app.db.bakilan) bakisCubugu();
-      else if (sahipMi()) import('./profil.js').then(m => app.db.c.rpc('hesap_kaydol', { p_firma: m.profilVar() ? m.profil().firma : null })).then(r => { app.hesap = r?.data || null; if (app.hesap?.durum === 'askida') askidaCubugu(); }).catch(() => {});
+      else if (sahipMi() && (!app.yetki?.sahip || app.yetki.sahip === app.db.user()?.id)) import('./profil.js').then(m => app.db.c.rpc('hesap_kaydol', { p_firma: m.profilVar() ? m.profil().firma : null })).then(r => { app.hesap = r?.data || null; if (app.hesap?.durum === 'askida') askidaCubugu(); }).catch(() => {});
     }
     listeleriUygula();
     if (app.db.mode === 'supabase') import('./guvenlik.js').then(g => g.gorundum());
     temaUygula(); yaziUygula();
     app.ekip = [];
-    if (app.db.mode === 'supabase' && sahipMi()) app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif,yetkiler').eq('owner', app.db.user().id).then(({ data }) => { app.ekip = (data || []).filter(u => u.aktif); if (app.ekip.length && ['gorevler', 'bugun'].includes(lastView) && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});
+    if (app.db.mode === 'supabase' && sahipMi()) app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif,yetkiler').eq('owner', app.db.sahip || app.db.user().id).then(({ data }) => { app.ekip = (data || []).filter(u => u.aktif); if (app.ekip.length && ['gorevler', 'bugun'].includes(lastView) && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});
     if (app.db.offline) toast('Çevrimdışısın: son kaydedilen veriler gösteriliyor.');
   } catch (e) {
     view.innerHTML = `<div class="empty"><h2>Veriler yüklenemedi</h2><p>${esc(e.message)}</p><p><a class="btn" href="#/ayarlar">Bağlantı ayarlarını aç</a></p></div>`;
