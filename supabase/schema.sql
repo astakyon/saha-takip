@@ -1509,5 +1509,19 @@ alter table public.ziyaretler add column if not exists cikis_lat double precisio
 alter table public.ziyaretler add column if not exists cikis_lng double precision;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 33 $f$;
 
+-- ===================== Sürüm 34: yinelenen görevler ve otomasyon =====================
+-- tekrar: gun / hafta / 2hafta / ay / 3ay / yil — tamamlanınca uygulama bir sonrakini açar
+-- kaynak: otomatik ya da tekrarlanan görevin anahtarı (ör. oto:teklif_sure:<id>, tekrar:<ilk görev>) — aynı görev iki kez açılmasın
+alter table public.gorevler add column if not exists tekrar text;
+alter table public.gorevler add column if not exists kaynak text;
+create index if not exists gorevler_kaynak on public.gorevler (owner, kaynak) where kaynak is not null;
+-- Otomasyon kuralları şirket ayarıdır: ekip de okur
+create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) returns boolean language sql stable security definer set search_path = public as $f$
+  select public.sirket_yetkilisi(sahip) or (public.ekipte(sahip::text) and (
+    anahtar in ('google_key', 'wa_sablonlar', 'teklif_firma', 'listeler', 'kataloglar_ek', 'ziyaret_siklik', 'usd_kur', 'kur_elle', 'elektrik_tl_kwh', 'firma_profil', 'cift_farkli', 'otomasyon')
+    or (anahtar like 'sartname:%' and public.yetki(sahip, 'projeler', 'oku'))))
+$f$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 34 $f$;
+
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

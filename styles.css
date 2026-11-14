@@ -1672,3 +1672,10 @@ body.giris-var #view { padding-top: 64px; }
 .giris-btn { border-color: #15803D; color: #15803D; }
 .giris-btn.icerde { background: #15803D; color: #fff; }
 @media (prefers-reduced-motion: reduce) { .giris-bandi .gb-nokta { animation: none; } }
+
+/* Sürüm 72: yinelenen görevler ve otomasyon */
+.tekrar-r { font-weight: 600; color: var(--blue); margin-left: 6px; font-size: 12px; }
+.oto-liste li { align-items: flex-start; gap: 14px; }
+.oto-liste .chk span { display: flex; flex-direction: column; }
+.oto-gun { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); flex: none; align-items: flex-end; text-align: right; }
+.oto-gun input { width: 70px; margin-top: 3px; }

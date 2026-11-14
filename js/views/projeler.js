@@ -430,6 +430,7 @@ export function projeFormu(id, init, { durum, odak } = {}) {
       if (p._new && o.lat == null) setTimeout(() => toast('Proje kaydedildi. Haritada görünmesi için Harita → Araçlar → Konum ata ile yerini işaretleyebilirsin.'), 1500);
       if (!p._new && p0.durum !== o.durum) await app.db.save('proje_gecmis', { proje_id: o.id, tarih: new Date().toISOString(), eski_durum: p0.durum, yeni_durum: o.durum });
       if (p._new) await app.db.save('proje_gecmis', { proje_id: o.id, tarih: new Date().toISOString(), eski_durum: null, yeni_durum: o.durum, notlar: 'Kayıt oluşturuldu' });
+      if (p._new ? o.durum !== 'Proje' : p0.durum !== o.durum) await (await import('../otomasyon.js')).projeAsamasi({ ...o, id: o.id }, p._new ? null : p0.durum, o.durum);
       if (o.durum === 'Kayıp' && o.rakip_marka && o.rakip_birim_fiyat) {
         const ex = S.rakip_fiyatlar.find(r => r.proje_id === o.id && r.kaynak === 'Kayıp proje');
         await app.db.save('rakip_fiyatlar', { ...(ex || {}), aile: (o.urun_gruplari || [])[0] || o.bizim_urun || null, marka: o.rakip_marka, urun_adi: o.rakip_urun,

@@ -151,7 +151,7 @@ export function projeSayfa(el, id) {
     try {
       await app.db.save('projeler', { ...p, durum: d });
       await app.db.save('proje_gecmis', { proje_id: p.id, tarih: new Date().toISOString(), eski_durum: p.durum, yeni_durum: d });
-      toast(`Aşama: ${p.durum} → ${d}`); app.refresh();
+      toast(`Aşama: ${p.durum} → ${d}`); await (await import('../otomasyon.js')).projeAsamasi(p, p.durum, d); app.refresh();
     } catch (e) { toast('Kaydedilemedi: ' + e.message, 'err'); }
   });
 

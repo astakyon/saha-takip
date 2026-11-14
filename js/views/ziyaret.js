@@ -3,6 +3,7 @@ import { app, F, saveFilters } from '../state.js';
 import { esc, fold, tarih, today, ZIYARET_AMAC, ZIYARET_DURUM, SONUC_TIPLERI, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, silGeriAl } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { girisOzeti } from '../giriscikis.js';
+import { TEKRARLAR, tekrarAd, gorevSonrasi } from '../otomasyon.js';
 
 export const zDurum = z => z.durum || 'Yapıldı';
 const durumRenk = d => (ZIYARET_DURUM.find(x => x.k === d) || ZIYARET_DURUM[1]).c;
@@ -188,6 +189,7 @@ const GOREV_FORM = [{ title: 'Görev', fields: [
   { k: 'son_tarih', l: 'Son tarih', t: 'date' },
   { k: 'oncelik', l: 'Öncelik', t: 'sel', opts: ['Yüksek', 'Normal', 'Düşük'] },
   { k: 'durum', l: 'Durum', t: 'sel', opts: ['Açık', 'Tamam'] },
+  { k: 'tekrar', l: 'Tekrar', t: 'sel', ph: 'Tekrarlanmaz', opts: TEKRARLAR, help: 'Tamamlayınca bir sonraki görev kendiliğinden açılır.' },
   { k: 'firma_id', l: 'Firma', t: 'ref', ref: 'firmalar' },
   { k: 'kisi_id', l: 'Kişi', t: 'ref', ref: 'kisiler' },
   { k: 'proje_id', l: 'Proje', t: 'ref', ref: 'projeler' },
@@ -209,7 +211,7 @@ export function gorevForm(init = {}, after) {
     if (!o.baslik) return toast('Görevi yaz.', 'err');
     o.atanan = o.atanan || null;
     if (o.durum === 'Tamam' && g.durum !== 'Tamam') o.tamamlayan = (app.db.user?.()?.email || '').toLowerCase() || null; else if (o.durum !== 'Tamam') o.tamamlayan = null;
-    await app.db.save('gorevler', o); import('../push.js').then(m => m.gorevBildir(g0._new ? null : g0, o)); toast('Görev kaydedildi.'); closeDrawer(); after ? after() : app.refresh();
+    await app.db.save('gorevler', o); import('../push.js').then(m => m.gorevBildir(g0._new ? null : g0, o)); await gorevSonrasi(g0._new ? null : g0, o); toast('Görev kaydedildi.'); closeDrawer(); after ? after() : app.refresh();
   };
 }
 
@@ -235,11 +237,11 @@ export function gorevlerView(el) {
   const geciken = g => g.son_tarih && g.son_tarih < t && g.durum !== 'Tamam';
   const gorevSatir = g => `<li class="${g.durum === 'Tamam' ? 'done' : ''} ${geciken(g) ? 'late' : ''} pr-${g.oncelik === 'Yüksek' ? 'hi' : g.oncelik === 'Düşük' ? 'lo' : 'n'}">
       <label class="chk"><input type="checkbox" data-done="${g.id}" ${g.durum === 'Tamam' ? 'checked' : ''} aria-label="Tamamlandı"></label>
-      <button type="button" class="task-b" data-id="${g.id}"><b>${esc(g.baslik)}${g.atanan ? `<span class="atanan-r">→ ${esc(kimAd(g.atanan))}</span>` : ''}</b><small>${durumYazi(g)} · ${[g.son_tarih ? 'son tarih ' + tarih(g.son_tarih) : 'Tarihsiz', firmaAd(g.firma_id), byId('projeler', g.proje_id)?.ad, g.oncelik && g.oncelik !== 'Normal' ? g.oncelik + ' öncelik' : ''].filter(Boolean).map(esc).join(' · ')}</small></button></li>`;
+      <button type="button" class="task-b" data-id="${g.id}"><b>${esc(g.baslik)}${g.tekrar ? ` <small class="tekrar-r" title="${esc(tekrarAd(g.tekrar))}">↻ ${esc(tekrarAd(g.tekrar))}</small>` : ''}${g.atanan ? `<span class="atanan-r">→ ${esc(kimAd(g.atanan))}</span>` : ''}</b><small>${durumYazi(g)} · ${[g.son_tarih ? 'son tarih ' + tarih(g.son_tarih) : 'Tarihsiz', firmaAd(g.firma_id), byId('projeler', g.proje_id)?.ad, g.oncelik && g.oncelik !== 'Normal' ? g.oncelik + ' öncelik' : ''].filter(Boolean).map(esc).join(' · ')}</small></button></li>`;
   const bagla = root => {
     root.querySelectorAll('[data-id]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.id }));
     root.querySelectorAll('[data-zid]').forEach(b => b.onclick = () => ziyaretForm({ id: b.dataset.zid }));
-    root.querySelectorAll('[data-done]').forEach(c => c.onchange = async () => { const g = byId('gorevler', c.dataset.done); const y = { ...g, durum: c.checked ? 'Tamam' : 'Açık', tamamlayan: c.checked ? (app.db.user?.()?.email || '').toLowerCase() || null : null }; try { await app.db.save('gorevler', y); import('../push.js').then(m => m.gorevBildir(g, y)); } catch (e) { toast('Kaydedilemedi: ' + e.message, 'err'); } draw(); });
+    root.querySelectorAll('[data-done]').forEach(c => c.onchange = async () => { const g = byId('gorevler', c.dataset.done); const y = { ...g, durum: c.checked ? 'Tamam' : 'Açık', tamamlayan: c.checked ? (app.db.user?.()?.email || '').toLowerCase() || null : null }; try { await app.db.save('gorevler', y); import('../push.js').then(m => m.gorevBildir(g, y)); await gorevSonrasi(g, y); } catch (e) { toast('Kaydedilemedi: ' + e.message, 'err'); } draw(); });
   };
   const draw = () => {
     const acik = S.gorevler.filter(g => g.durum !== 'Tamam');

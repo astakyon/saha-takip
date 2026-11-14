@@ -32,6 +32,20 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 72): Yinelenen görevler ve otomasyon
+
+**Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 34: görevlere tekrar ve kaynak sütunları).**
+
+- **Tekrarlanan görev:** görev penceresinde "Tekrar" (her iş günü, her hafta, 2 haftada bir, her ay, 3 ayda bir, her yıl). Görev tamamlanınca bir sonraki aynı firma, proje, kişi ve atananla kendiliğinden açılır (ör. "her ayın 1'i cari ekstresi iste"). Ayın 31'i gibi günler kısa aylarda ayın son gününe kayar. Listede "↻ Her ay" yazar.
+- **Otomasyonlar** (Şirket profili → Otomasyonlar; her kural açılıp kapatılabilir, gün sayısı değiştirilebilir):
+  - Proje "Teklif Verildi" olunca 3 gün sonra "Teklifi takip et".
+  - Proje "Sıcak" olunca 2 gün içinde "Karar vericiyle görüş" (yüksek öncelik).
+  - Proje "Sipariş" olunca 14 gün sonra "Teslimat ve montajı takip et".
+  - Gönderilmiş teklifin geçerliliği bitmeden 2 gün kala "Teklif süresi doluyor".
+  - Müşterideki numunenin iade günü gelince "Numuneyi geri al".
+  - Vadesi 1 gün geçen açık fatura için "Tahsilat".
+- Tarih kuralları uygulama açılınca günde bir kez taranır ("Şimdi tara" ile hemen). Her otomatik görev bir kez açılır; tamamlansa da tekrar açılmaz. İstemediğin otomatik görevi silmek yerine "Tamam" yap (silinen görev bir sonraki taramada yeniden açılabilir).
+
 ## Güncelleme notu (sürüm 71): Ziyarette giriş-çıkış
 
 **Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 33: ziyaretlere giriş, çıkış ve mesafe sütunları).**

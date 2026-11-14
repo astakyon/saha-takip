@@ -281,6 +281,7 @@ async function boot() {
     }
     await app.db.loadAll({ hizli: true });
     yetkiUygula(); gerekIzle(); setTimeout(hataGonder, 8000);
+    setTimeout(() => import('./otomasyon.js').then(m => m.otomasyonTara()).catch(() => {}), 4000);
     if (app.db.mode === 'supabase') {
       try { const { data } = await Promise.race([app.db.c.rpc('yonetici_mi'), new Promise(r => setTimeout(() => r({}), 4000))]); app.yonetici = data === true; } catch { app.yonetici = false; }
       app.db.c.rpc('ekip_listesi').then(({ data }) => { app.ekipTum = (data || []).map(r => ({ eposta: (r.eposta || '').toLowerCase(), ad: r.sahip ? (r.ad && r.ad !== 'Veri sahibi' ? r.ad : 'Kurucu') : (r.ad || r.eposta.split('@')[0]), sahip: r.sahip })); }).catch(() => {});
