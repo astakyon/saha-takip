@@ -27,7 +27,16 @@ function dal(k, cocuk, ops, ziyaret = new Set()) {
   if (ziyaret.has(k.id)) return '';   // döngüye karşı
   ziyaret.add(k.id);
   const c = (cocuk.get(k.id) || []).sort((a, b) => sira(a.pozisyon) - sira(b.pozisyon) || a.ad_soyad.localeCompare(b.ad_soyad, 'tr'));
-  return `<li>${kutu(k, ops)}${c.length ? `<ul>${c.map(x => dal(x, cocuk, ops, ziyaret)).join('')}</ul>` : ''}</li>`;
+  return `<li>${kutu(k, ops)}${c.length ? `<ul>${bolumler(c, k.id, cocuk, ops, ziyaret)}</ul>` : ''}</li>`;
+}
+// Bir yöneticinin altındakiler: birden fazla kişi varsa pozisyonlarına göre bölümlere ayrılır
+// (yönetim pozisyonundakiler, ör. altındaki müdür, bölüm etiketsiz doğrudan bağlanır)
+function bolumler(c, ustId, cocuk, ops, ziyaret) {
+  if (c.length < 2) return c.map(x => dal(x, cocuk, ops, ziyaret)).join('');
+  const dogrudan = c.filter(x => YONETIM.includes(x.pozisyon)), g = new Map();
+  for (const x of c.filter(x => !YONETIM.includes(x.pozisyon))) { const p = x.pozisyon || 'Görevi girilmemiş'; (g.get(p) || g.set(p, []).get(p)).push(x); }
+  return dogrudan.map(x => dal(x, cocuk, ops, ziyaret)).join('') + [...g.entries()].sort((a, b) => sira(a[0]) - sira(b[0])).map(([p, l]) =>
+    `<li><span class="org-grup" data-grup="${esc(p)}" data-gust="${ustId}">${esc(p)} <small>${l.length}</small></span><ul>${l.map(x => dal(x, cocuk, ops, ziyaret)).join('')}</ul></li>`).join('');
 }
 
 // kisiler: aynı firmanın kişileri. Döner: { html, ozet }
@@ -48,7 +57,7 @@ export function orgSemasi(kisiler, { link = k => `#/kisi/${k.id}`, firmaAd = 'Fi
   if (yonetim.length === 1) {
     const y = yonetim[0], c = (cocuk.get(y.id) || []);
     ziyaret.add(y.id);
-    const alt = c.map(x => dal(x, cocuk, ops, ziyaret)).join('') + grupHtml;
+    const alt = (c.length ? bolumler(c, y.id, cocuk, ops, ziyaret) : '') + grupHtml;
     agac = `<li>${kutu(y, ops)}${alt ? `<ul>${alt}</ul>` : ''}</li>`;
   } else {
     const alt = yonetim.map(k => dal(k, cocuk, ops, ziyaret)).join('') + grupHtml;
@@ -61,7 +70,8 @@ export function orgSemasi(kisiler, { link = k => `#/kisi/${k.id}`, firmaAd = 'Fi
   // Ayrılanlar: ağacın yanında soluk, şimdi nerede oldukları yazılı
   const eskiHtml = eskiler.length ? `<aside class="org-eski" aria-label="Firmadan ayrılanlar"><h4>Firmadan ayrılanlar <small>${eskiler.length}</small></h4>${eskiler.map(k => { const g = (k.eski_firmalar || []).find(g => g.firma_id === firmaId) || {};
     return `<a class="org-kutu eski" href="${link(k)}"><span class="avatar sm" aria-hidden="true">${esc((k.ad_soyad || '?').slice(0, 1))}</span><span class="org-metin"><b>${esc(k.ad_soyad)}</b><small>${esc([g.unvan || g.pozisyon, g.bitis ? g.bitis.slice(0, 4) + "'te ayrıldı" : 'ayrıldı'].filter(Boolean).join(' · '))}</small><span class="org-alt"><span class="org-rozet hafif">${k.firma_id ? 'şimdi: ' + esc(firmaAdiOf(k.firma_id) || '?') : 'firması yok'}</span></span></span></a>`; }).join('')}</aside>` : '';
-  return { html: `<div class="org-yan"><div class="org-kaydir" tabindex="0" aria-label="Organizasyon şeması">${kisiler.length ? `<ul class="org">${agac}</ul>` : '<p class="hint">Firmada kayıtlı kişi yok.</p>'}</div>${eskiHtml}</div>`, ozet };
+  const arac = kisiler.length ? `<div class="org-arac" role="toolbar" aria-label="Şema yakınlaştırma"><button type="button" class="btn sm ghost" data-zoom="-" aria-label="Uzaklaştır">−</button><span data-zoomyuzde>100%</span><button type="button" class="btn sm ghost" data-zoom="+" aria-label="Yakınlaştır">+</button><button type="button" class="btn sm ghost" data-zoom="sigdir">Sığdır</button><small class="muted">Fare tekerleğiyle yakınlaştır, boş yerden tutup kaydır</small></div>` : '';
+  return { html: `<div class="org-yan">${arac}<div class="org-kaydir" tabindex="0" aria-label="Organizasyon şeması">${kisiler.length ? `<ul class="org">${agac}</ul>` : '<p class="hint">Firmada kayıtlı kişi yok.</p>'}</div>${eskiHtml}</div>`, ozet };
 }
 
 // Kendi şirketin: kurucu ve yöneticiler üstte, diğer kullanıcılar rollerine göre
@@ -77,7 +87,7 @@ export function ekipSemasi({ firma, kurucu, yoneticiler = [], uyeler = [] }) {
 // ---------- Sürükle-bırak: kişiyi başka bir kişinin üstüne bırakınca "bağlı olduğu kişi" olur ----------
 // Telefonda basılı tutup (0,3 sn) sürükle; bilgisayarda doğrudan sürükle. Grup etiketine bırakınca bağlantı kalkar,
 // pozisyon grubuysa kişinin pozisyonu o grup olur. Kısa dokunuş kartı açar.
-export function orgSurukle(kok, { kisiler, kaydet }) {
+export function orgSurukle(kok, { kisiler, kaydet, duzenle }) {
   const byId = new Map(kisiler.map(k => [k.id, k]));
   const altindaMi = (ust, id) => { let k = byId.get(id), n = 0; while (k?.ust_kisi_id && n++ < 50) { if (k.ust_kisi_id === ust) return true; k = byId.get(k.ust_kisi_id); } return false; };
   let s = null;
@@ -110,11 +120,62 @@ export function orgSurukle(kok, { kisiler, kaydet }) {
       if (!hedef) return;
       const k = byId.get(id);
       if (hedef.dataset.kid) { if (k.ust_kisi_id !== hedef.dataset.kid) await kaydet(id, { ust_kisi_id: hedef.dataset.kid }); }
-      else { const p = hedef.dataset.grup; await kaydet(id, { ust_kisi_id: null, ...(p && p !== 'Görevi girilmemiş' ? { pozisyon: p } : {}) }); }
+      else { const p = hedef.dataset.grup; await kaydet(id, { ust_kisi_id: hedef.dataset.gust || null, ...(p && p !== 'Görevi girilmemiş' ? { pozisyon: p } : {}) }); }
     });
     kutu.addEventListener('touchmove', e => { if (s?.aktif) e.preventDefault(); }, { passive: false });   // sürüklerken sayfa kaymasın
     kutu.addEventListener('pointercancel', () => { bitir(); s = null; });
-    kutu.addEventListener('click', e => { if (s?.engel) { e.preventDefault(); e.stopPropagation(); } }, true);
+    kutu.addEventListener('click', e => { if (s?.engel) { e.preventDefault(); e.stopPropagation(); return; } if (duzenle && !e.ctrlKey && !e.metaKey) { e.preventDefault(); duzenle(kutu.dataset.kid); } }, true);
     kutu.addEventListener('contextmenu', e => { if (s) e.preventDefault(); });
   });
+}
+
+// ---------- Yakınlaştırma: fare tekerleği, + / − / Sığdır, boş yerden tutup kaydırma, iki parmakla ---------
+export function orgYakinlastir(kok, { anahtar = 'org-zoom' } = {}) {
+  const kap = kok.querySelector('.org-kaydir'), agac = kap?.querySelector('.org'), yuzde = kok.querySelector('[data-zoomyuzde]');
+  if (!kap || !agac) return;
+  let z = 1; try { z = +sessionStorage.getItem(anahtar) || 1; } catch {}
+  const uygula = (yeni, mx = kap.clientWidth / 2, my = 0) => {
+    yeni = Math.max(0.35, Math.min(1.8, yeni)); const oran = yeni / z;
+    const sx = kap.scrollLeft, sy = kap.scrollTop;
+    z = yeni; agac.style.zoom = z; if (yuzde) yuzde.textContent = Math.round(z * 100) + '%';
+    kap.scrollLeft = (sx + mx) * oran - mx; kap.scrollTop = (sy + my) * oran - my;
+    try { sessionStorage.setItem(anahtar, z); } catch {}
+  };
+  const sigdir = () => { agac.style.zoom = 1; const w = agac.scrollWidth; z = 1; uygula(Math.min(1, (kap.clientWidth - 8) / w)); kap.scrollLeft = (kap.scrollWidth - kap.clientWidth) / 2; };
+  agac.style.zoom = z; if (yuzde) yuzde.textContent = Math.round(z * 100) + '%';
+  kok.querySelectorAll('[data-zoom]').forEach(b => b.onclick = () => b.dataset.zoom === 'sigdir' ? sigdir() : uygula(z * (b.dataset.zoom === '+' ? 1.2 : 1 / 1.2)));
+  kap.addEventListener('wheel', e => { e.preventDefault(); const r = kap.getBoundingClientRect(); uygula(z * Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+  // Boş yerden tutup kaydır (fare)
+  let tut = null;
+  kap.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' || e.button !== 0 || e.target.closest('.org-kutu,[data-grup]')) return; tut = { x: e.clientX, y: e.clientY, sl: kap.scrollLeft, st: kap.scrollTop }; kap.classList.add('tutuldu'); kap.setPointerCapture(e.pointerId); });
+  kap.addEventListener('pointermove', e => { if (!tut) return; kap.scrollLeft = tut.sl - (e.clientX - tut.x); kap.scrollTop = tut.st - (e.clientY - tut.y); });
+  const birak = () => { tut = null; kap.classList.remove('tutuldu'); };
+  kap.addEventListener('pointerup', birak); kap.addEventListener('pointercancel', birak);
+  // İki parmakla yakınlaştır (dokunmatik)
+  const parmak = new Map(); let ilk = null;
+  kap.addEventListener('touchstart', e => { if (e.touches.length === 2) { const [a, b] = e.touches; ilk = { d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), z }; } }, { passive: true });
+  kap.addEventListener('touchmove', e => { if (e.touches.length === 2 && ilk) { e.preventDefault(); const [a, b] = e.touches, r = kap.getBoundingClientRect(); uygula(ilk.z * Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) / ilk.d, (a.clientX + b.clientX) / 2 - r.left, (a.clientY + b.clientY) / 2 - r.top); } }, { passive: false });
+  kap.addEventListener('touchend', () => { ilk = null; parmak.clear(); });
+  if (agac.scrollWidth * z > kap.clientWidth && !sessionStorage.getItem?.(anahtar)) sigdir();
+}
+
+// ---------- Kişiye dokununca: görevini hızlı değiştir ----------
+export function orgHizliDuzen(k, { kisiler, POZ, kaydet, kartiAc }) {
+  const d = document.createElement('dialog'); d.className = 'org-dlg';
+  const ustler = kisiler.filter(x => x.id !== k.id).sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr'));
+  d.innerHTML = `<form method="dialog" class="form"><h3>${esc(k.ad_soyad)}</h3>
+    <div class="fld"><label for="od-u">Unvan</label><input id="od-u" value="${esc(k.unvan || '')}" placeholder="ör. Satınalma Müdürü"></div>
+    <div class="fld"><label for="od-p">Pozisyon (bölüm)</label><select id="od-p"><option value="">Seç</option>${POZ.map(p => `<option ${k.pozisyon === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select></div>
+    <div class="fld"><label for="od-b">Bağlı olduğu kişi</label><select id="od-b"><option value="">Yok (en üstte)</option>${ustler.map(x => `<option value="${x.id}" ${k.ust_kisi_id === x.id ? 'selected' : ''}>${esc(x.ad_soyad)}${x.unvan ? ' — ' + esc(x.unvan) : ''}</option>`).join('')}</select></div>
+    <div class="fld"><label for="od-r">Karar sürecindeki rolü</label><select id="od-r"><option value="">Seç</option>${['Karar verici', 'Etkileyici', 'Teknik', 'Satınalma', 'Saha'].map(r => `<option ${k.rol === r ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
+    <div class="btnrow"><button type="button" class="btn ghost" data-kart>Kişi kartını aç</button><span class="grow"></span><button type="button" class="btn ghost" data-vaz>Vazgeç</button><button type="submit" class="btn primary" data-kay>Kaydet</button></div></form>`;
+  document.body.appendChild(d); d.showModal();
+  const kapat = () => { d.close(); d.remove(); };
+  d.querySelector('[data-vaz]').onclick = kapat;
+  d.querySelector('[data-kart]').onclick = () => { kapat(); kartiAc(k.id); };
+  d.addEventListener('cancel', () => d.remove());
+  d.querySelector('form').onsubmit = async e => { e.preventDefault();
+    const o = { unvan: d.querySelector('#od-u').value.trim() || null, pozisyon: d.querySelector('#od-p').value || null, ust_kisi_id: d.querySelector('#od-b').value || null, rol: d.querySelector('#od-r').value || null };
+    kapat(); await kaydet(k.id, o); };
+  d.querySelector('#od-u').focus();
 }

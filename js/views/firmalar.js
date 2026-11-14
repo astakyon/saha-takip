@@ -158,14 +158,16 @@ export function firmaDetay(id, init) {
   bindForm(form, FIRMA_FORM, x);
   ciftUyarisi(panel, 'firmalar', x);
   const orgKok = panel.querySelector('[data-org]');
-  if (orgKok) import('../orgsema.js').then(({ orgSemasi, orgSurukle }) => {
+  if (orgKok) import('../orgsema.js').then(({ orgSemasi, orgSurukle, orgYakinlastir, orgHizliDuzen }) => {
     const eskiler = S.kisiler.filter(k => k.firma_id !== x.id && (k.eski_firmalar || []).some(g => g.firma_id === x.id));
     const o = orgSemasi(kisiler, { firmaAd: x.ad, eskiler, firmaId: x.id, firmaAdiOf: firmaAd });
     const yazar = rotaYazilabilir('kisiler');
-    orgKok.insertAdjacentHTML('beforeend', o.ozet + o.html + `<p class="hint">${yazar ? 'Bir kişiyi başka bir kişinin üstüne sürükle (telefonda basılı tutup sürükle): o kişiye bağlanır. Grup etiketine bırakınca bağlantı kalkar ve pozisyonu o grup olur.' : 'Kişi kartında “Bağlı olduğu kişi” seçilerek ağaç kurulur.'}</p>`);
+    orgKok.insertAdjacentHTML('beforeend', o.ozet + o.html + `<p class="hint">${yazar ? 'Kişiye dokun: unvanını, bölümünü ve kime bağlı olduğunu değiştir. Bir kişiyi başka bir kişinin üstüne sürükle (telefonda basılı tutup sürükle): o kişiye bağlanır. Bir yöneticinin altındaki bölüm etiketine bırakınca o bölüme geçer. Ctrl ile tıklayınca kişi kartı açılır.' : 'Kişi kartında “Bağlı olduğu kişi” seçilerek ağaç kurulur.'}</p>`);
     // Şema kutudan genişse ortadan başlasın (iki yana da kaydırılabilir)
     requestAnimationFrame(() => { const k = orgKok.querySelector('.org-kaydir'); if (k && k.scrollWidth > k.clientWidth) k.scrollLeft = (k.scrollWidth - k.clientWidth) / 2; });
-    if (yazar) orgSurukle(orgKok, { kisiler, kaydet: async (id, d) => { const k = byId('kisiler', id); if (!k) return; try { await app.db.save('kisiler', { ...k, ...d }); toast(d.ust_kisi_id ? `${k.ad_soyad} → ${byId('kisiler', d.ust_kisi_id)?.ad_soyad} altına bağlandı.` : `${k.ad_soyad} bağlantısı kaldırıldı.`); firmaDetay(x.id); } catch (e) { toast(e.message, 'err'); } } });
+    const kaydetK = async (id, d) => { const k = byId('kisiler', id); if (!k) return; try { await app.db.save('kisiler', { ...k, ...d }); toast('ust_kisi_id' in d && Object.keys(d).length <= 2 && d.ust_kisi_id ? `${k.ad_soyad} → ${byId('kisiler', d.ust_kisi_id)?.ad_soyad} altına bağlandı.` : `${k.ad_soyad} güncellendi.`); firmaDetay(x.id); } catch (e) { toast(e.message, 'err'); } };
+    orgYakinlastir(orgKok, { anahtar: 'org-zoom-' + x.id });
+    if (yazar) orgSurukle(orgKok, { kisiler, kaydet: kaydetK, duzenle: id => orgHizliDuzen(byId('kisiler', id), { kisiler, POZ: POZISYONLAR, kaydet: kaydetK, kartiAc: kid => { location.hash = '#/kisi/' + kid; } }) });
   });
   if (!x._new) { belgeBolumu(panel.querySelector('[data-belgeler]'), { firma_id: x.id }); tahsilatOzeti(panel.querySelector('[data-tahsilat]'), x); kayitGecmisi(panel.querySelector('[data-gecmis]'), 'firmalar', x.id); import('../yorum.js').then(m => m.yorumBolumu(panel.querySelector('[data-yorumlar]'), 'firmalar', x)); import('../iliski.js').then(m => m.iliskiBolumu(panel.querySelector('[data-iliski]'), x)); }
   panel.querySelectorAll('.avatar[data-kv]').forEach(async a => { if (a.dataset.kv) { const u = await app.db.url(a.dataset.kv, true); if (u) { a.style.backgroundImage = `url("${u}")`; a.textContent = ''; } } });

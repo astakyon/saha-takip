@@ -391,6 +391,16 @@ const DB = () => {
   const kaynak = await p.locator('.drawer.open .org [data-kid="k4"]').boundingBox(), hedef = await p.locator('.drawer.open .org [data-kid="k2"]').boundingBox();
   await p.mouse.move(kaynak.x + 30, kaynak.y + 20); await p.mouse.down(); await p.mouse.move(kaynak.x + 60, kaynak.y + 10, { steps: 4 }); await p.mouse.move(hedef.x + 40, hedef.y + 20, { steps: 8 }); await p.mouse.up(); await w(1000);
   const bag = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k4').ust_kisi_id);
+  // Bölümler: Ahmet'in altındaki Zeynep (Satınalma) bölüm etiketiyle; kişiye tıklayınca hızlı düzenleme; yakınlaştırma
+  const bolum = await p.evaluate(() => !!document.querySelector('.drawer.open .org [data-gust="k2"][data-grup="Satınalma"]') && !!document.querySelector('.drawer.open .org [data-gust="k2"][data-grup="Proje / Tasarım"]'));
+  await p.click('.drawer.open .org [data-kid="k4"]'); await w(300);
+  const dlg = await p.isVisible('dialog.org-dlg');
+  await p.selectOption('dialog.org-dlg #od-p', 'Mühendis / Teknik'); await p.fill('dialog.org-dlg #od-u', 'Elektrik Mühendisi'); await p.click('dialog.org-dlg [data-kay]'); await w(1000);
+  const k4 = await p.evaluate(async () => { const k = (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k4'); return [k.pozisyon, k.unvan]; });
+  const z0 = await p.textContent('.drawer.open [data-zoomyuzde]'); await p.click('.drawer.open [data-zoom="+"]'); const z1 = await p.textContent('.drawer.open [data-zoomyuzde]');
+  const kb = await p.locator('.drawer.open .org-kaydir').boundingBox(); await p.mouse.move(kb.x + 20, kb.y + 20); await p.mouse.wheel(0, 200); await w(200); const z2 = await p.textContent('.drawer.open [data-zoomyuzde]');
+  await p.click('.drawer.open [data-zoom="sigdir"]');
+  kontrol('Şemada yönetici altında bölümler, kişiye tıklayınca görev değişiyor, yakınlaştırma çalışıyor', bolum && dlg && k4[0] === 'Mühendis / Teknik' && k4[1] === 'Elektrik Mühendisi' && parseInt(z1) > parseInt(z0) && parseInt(z2) < parseInt(z1), JSON.stringify({ bolum, dlg, k4, z0, z1, z2 }));
   // Telefonda: basılı tut (0,3 sn) ve sürükle — Ece Su'yu Ahmet Yılmaz'ın altına
   await p.setViewportSize({ width: 820, height: 1000 }); await p.goto(U + '#/firmalar'); await p.reload(); await w(1800); await p.click('a[href="#/firma/f2"]'); await w(1200);
   await p.evaluate(() => document.querySelector('.drawer.open [data-org]').scrollIntoView({ block: 'start' })); await w(300);

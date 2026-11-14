@@ -1479,3 +1479,12 @@ a.org-kutu:hover, a.org-kutu:focus-visible { border-color: #E0B93E; }
 .ekipler-bol, .roller-bol { margin-bottom: 14px; }
 .devret-kutu { margin-top: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: 10px; }
 .baska-sat { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: var(--sari-soft); font-size: 14px; }
+
+/* ---------- Sürüm 58: şemada bölümler, yakınlaştırma, hızlı düzenleme ---------- */
+.org-arac { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.org-arac [data-zoomyuzde] { min-width: 44px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+.org-kaydir { cursor: grab; } .org-kaydir.tutuldu { cursor: grabbing; user-select: none; }
+.org-kaydir .org-kutu { cursor: pointer; }
+.org-dlg { border: 0; border-radius: 16px; padding: 18px; width: min(420px, calc(100vw - 32px)); background: var(--card); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.org-dlg::backdrop { background: rgba(10,16,21,.45); }
+.org-dlg h3 { margin: 0 0 8px; } .org-dlg .grow { flex: 1; }

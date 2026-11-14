@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 58): Firma şemasında bölümler, hızlı görev değişikliği, yakınlaştırma
+
+- **Bölümler:** Bir müdürün altında birden fazla kişi varsa, pozisyonlarına göre bölüm başlıklarıyla (Satınalma, Proje / Tasarım…) ayrılır. Yönetim pozisyonundakiler doğrudan müdürün altına bağlanır. Bir kişiyi bir bölüm başlığının üstüne sürükleyince hem pozisyonu hem bağlı olduğu müdür ayarlanır.
+- **Kişiye tıklayınca:** Küçük bir pencere açılır; unvan, pozisyon, bağlı olduğu kişi ve karar rolü buradan değiştirilir. "Kişi kartını aç" ile tam karta geçilir.
+- **Yakınlaştırma:** Şemanın üstündeki −/+ ve "Sığdır" düğmeleri, fare tekerleği (imlecin olduğu yere göre) ve telefonda iki parmakla yakınlaştırma. Boş alanı fareyle tutup sürükleyerek şema kaydırılır. Seçilen yakınlık o firma için oturum boyunca hatırlanır.
+- Veritabanı değişikliği yok.
+
 ## Güncelleme notu (sürüm 57): Ekipler ve kayıt kapsamı (K3)
 
 - **Ekipler:** Ayarlar → Ekip ve yetkiler'de ekip/departman ağacı (ör. Satış → Satış Adana), her ekibe yönetici. Kullanıcı kartından ekibe konur.
