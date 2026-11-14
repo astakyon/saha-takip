@@ -1,5 +1,5 @@
 import { S, makeAdapter, getConfig, setConfig } from './db.js';
-import { app, loadFilters, SURUM, F, saveFilters } from './state.js';
+import { app, loadFilters, SURUM } from './state.js';
 import { profil, SEKTOR } from './profil.js';
 import { esc, toast, closeDrawer } from './ui.js';
 import { listeleriUygula } from './listeler.js';
@@ -45,6 +45,7 @@ const ROUTES = {
   rakip:     { t: 'Rakip fiyatları', ico: 'tag', v: yukle('views/urunler.js', 'rakipView'), g: 'Rapor' },
   yonetim:   { t: 'Yönetim', ico: 'building', v: yukle('views/yonetim.js', 'yonetimView'), g: 'Rapor' },
   ayarlar:   { t: 'Ayarlar', ico: 'gear', v: yukle('views/ayarlar.js', 'ayarlarView'), g: 'Rapor' },
+  sirket:    { t: 'Şirket profili', ico: 'building', v: yukle('views/sirket.js', 'sirketView'), g: 'Rapor' },
 };
 const detay = (yol, ad) => async (...a) => (await import('./' + yol))[ad](...a);
 const DETAIL = { proje: detay('views/projeler.js', 'projeDetay'), firma: detay('views/firmalar.js', 'firmaDetay'), kisi: detay('views/firmalar.js', 'kisiDetay') };
@@ -84,11 +85,10 @@ window.addEventListener('menu', () => renderNav(navSon));
 const sonAlt = {};   // her başlıkta en son açılan ekran
 const baslikRotasi = b => { const { gizli } = menuDuzeni(ROUTES); const rs = b.r.filter(r => ROUTES[r] && !gizli.has(r) && rotaIzinli(r)); if (b.k === 'urunler' && app.yetki?.yetkiler?._rol === 'Bayi' && rs.includes('bayi')) rs.unshift('bayi'); return rs.includes(sonAlt[b.k]) ? sonAlt[b.k] : rs[0]; };
 // Menüde logonun altında: çalışılan firma (profil) — dokununca Ayarlar → Firma profili
-document.addEventListener('click', e => { if (e.target.closest?.('[data-navfirma]')) { try { const f = F('ayarlar', { sekme: 'hesap' }); f.sekme = 'profil'; saveFilters(); } catch {} if (location.hash === '#/ayarlar') setTimeout(() => app.refresh?.(), 0); } }, true);
 function navFirma() {
   const p = profil(); if (!p?.firma) return '';
   const alt = [SEKTOR[p.sektor], (p.iller || []).slice(0, 3).join(', ') + ((p.iller || []).length > 3 ? '…' : '')].filter(Boolean).join(' · ');
-  return `<a href="#/ayarlar" class="nav-firma" data-navfirma title="Firma profili"><span class="nav-firma-ik" aria-hidden="true">${esc(p.firma.slice(0, 1).toLocaleUpperCase('tr'))}</span><span><b>${esc(p.firma)}</b><small>${esc(alt)}</small></span></a>`;
+  return `<a href="#/sirket" class="nav-firma ${navSon === 'sirket' ? 'on' : ''}" data-navfirma title="Şirket profili"><span class="nav-firma-ik" aria-hidden="true">${esc(p.firma.slice(0, 1).toLocaleUpperCase('tr'))}</span><span><b>${esc(p.firma)}</b><small>${esc(alt)}</small></span></a>`;
 }
 function renderNav(cur) {
   const nav = document.getElementById('nav');

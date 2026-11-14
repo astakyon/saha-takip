@@ -1,12 +1,12 @@
 // Saha Takip service worker: uygulama dosyalarını ve harita karolarını önbelleğe alır
-const V = 'saha-v60';
+const V = 'saha-v61';
 const SHELL = ['./', 'index.html', 'styles.css', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon-180.png', 'icons/icon.svg', 'js/kurulum.js', 'js/giris.js', 'js/saglik.js', 'js/hedef.js', 'js/fiyatlistesi.js', 'js/tabela.js', 'js/profil.js', 'js/sihirbaz.js', 'js/geribildirim.js', 'js/data/tr-iller.js', 'js/views/yonetim.js', 'js/birlestir.js', 'js/google.js', 'js/views/ice-aktar.js',
   'js/main.js', 'js/altlik.js', 'js/osm-bolge.js', 'js/tasima.js', 'js/yetki.js', 'js/views/kullanicilar.js', 'js/views/bayi.js', 'js/tema.js', 'js/push.js', 'js/menu.js', 'js/hizli.js', 'js/kayip.js', 'js/gizli.js', 'js/esle.js', 'js/filtre.js', 'js/gecmis.js', 'js/listeler.js', 'js/guvenlik.js', 'js/oneri.js', 'js/duyuru.js', 'js/bekleyen.js', 'js/otoyedek.js', 'js/basliklar.js', 'js/baslik.js', 'js/dokunma.js', 'js/yardim.js', 'js/yorum.js', 'js/iliski.js', 'js/aday.js', 'js/barkod.js', 'js/karo.js', 'js/db.js', 'js/ui.js', 'js/forms.js', 'js/state.js',
   'js/views/map.js', 'js/views/projeler.js', 'js/views/firmalar.js', 'js/views/ziyaret.js',
   'js/views/urunler.js', 'js/views/panel.js', 'js/views/ayarlar.js', 'js/views/bolgeler.js', 'js/geo.js', 'js/data/iller.js',
   'js/ayar.js', 'js/sablon.js', 'js/sunum.js', 'js/zip.js', 'js/pptx.js', 'js/pptx-tema.js', 'js/paylas.js',
   'js/views/bugun.js', 'js/views/araclar.js', 'js/views/teklif.js', 'js/views/katalog.js', 'js/views/kayitlar.js',
-  'js/belgeler.js', 'js/ocr.js', 'js/kirp.js', 'js/kamera.js', 'js/cift.js', 'js/ses.js', 'js/grafik.js', 'js/kur.js', 'js/bildirim.js', 'js/views/tahsilat.js', 'js/views/rapor.js', 'js/ceyrek.js', 'js/views/kontrol.js', 'js/orgsema.js', 'js/data/eae-katalog.js', 'js/views/dosyalar.js'];
+  'js/belgeler.js', 'js/ocr.js', 'js/kirp.js', 'js/kamera.js', 'js/cift.js', 'js/ses.js', 'js/grafik.js', 'js/kur.js', 'js/bildirim.js', 'js/views/tahsilat.js', 'js/views/rapor.js', 'js/ceyrek.js', 'js/views/kontrol.js', 'js/orgsema.js', 'js/views/sirket.js', 'js/data/eae-katalog.js', 'js/views/dosyalar.js'];
 // Kurulumda dosyalar sunucudan taze alınır (tarayıcı önbelleği atlanır); sürüm (V) değişince hepsi yenilenir
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V && k !== 'tiles').map(k => caches.delete(k)))).then(() => self.clients.claim())); });

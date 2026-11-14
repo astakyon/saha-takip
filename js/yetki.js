@@ -56,7 +56,7 @@ export const GIZLENEBILIR = [
 ];
 const SAHIBE_OZEL = ['kontrol'];
 const ILETISIM = ['telefon', 'eposta', 'kartvizit_on', 'kartvizit_arka', 'dogum_gunu'];
-const HER_ZAMAN = ['bugun', 'ayarlar'];
+const HER_ZAMAN = ['bugun', 'ayarlar', 'sirket'];
 export const VERI_TABLOLARI = [...new Set(MODULLER.flatMap(m => m.t))];
 const SEV = { oku: 1, yaz: 2 };
 const ust = (a, b) => (SEV[b] || 0) > (SEV[a] || 0) ? b : a;

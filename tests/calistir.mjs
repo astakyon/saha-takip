@@ -348,6 +348,10 @@ const DB = () => {
   await p.screenshot({ path: 'tests/cikti/nav.png' });
   kontrol('Firmanın organizasyon şeması çiziliyor (genel müdür üstte, bağlı kişiler altında)', org && org.kutu === 5 && org.ust === 'Ahmet Yılmaz' && org.ic, JSON.stringify(org));
   kontrol('Menüde sürüm numarası görünüyor', /^v\d+/.test(surum || ''), surum);
+  await p.goto(U + '#/bugun'); await w(400); await p.click('#nav [data-navfirma]'); await w(1500);
+  const sk = await p.evaluate(() => ({ h: location.hash, baslik: document.querySelector('.sk-kimlik h1')?.textContent, sayi: document.querySelectorAll('.sk-sayi').length, ekip: !!document.querySelector('[data-ekip] .org'), tasma: document.documentElement.scrollWidth - innerWidth }));
+  await p.screenshot({ path: 'tests/cikti/sirket.png', fullPage: true });
+  kontrol('Şirket profili kendi geniş sayfasında açılıyor, ekip ağacı var, sayfa yana taşmıyor', sk.h === '#/sirket' && sk.sayi === 6 && sk.ekip && sk.tasma <= 1, JSON.stringify(sk));
   kontrol('Organizasyon şemasında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }

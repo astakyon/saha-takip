@@ -32,7 +32,7 @@ export async function ayarlarView(el) {
   let localCount = 0;
   if (sup) for (const t of ORDER) localCount += ((await idbGet('t:' + t)) || []).length;
   const pend = sup ? await app.db.pending() : 0;
-  const f = F('ayarlar', { sekme: 'hesap' });
+  const f = F('ayarlar', { sekme: 'hesap' }); if (f.sekme === 'profil') f.sekme = 'hesap';
   const ESKI = { genel: 'hesap', kullanici: 'ekip', google: 'baglanti' };
   if (ESKI[f.sekme]) f.sekme = ESKI[f.sekme];
   if (!S.projeler.length && !S.firmalar.length && !f._ilk) { f.sekme = 'veri'; f._ilk = 1; }
@@ -61,7 +61,7 @@ export async function ayarlarView(el) {
   <div class="settings">
     <button type="button" class="ayar-geri" data-geri>‹ Ayarlar</button>
     <h2 class="ayar-bolum-bas" data-bolumbas></h2>
-    <section class="card" data-tab="profil"><h2>Firma profili</h2><div data-profil></div></section>
+    <section class="card" data-tab="profil"><h2>Firma profili</h2><p>Firma profili kendi sayfasında.</p><a class="btn primary" href="#/sirket">Şirket profilini aç</a></section>
     <section class="card" data-tab="hesap"><h2>Hesap</h2>
       ${sup ? `<p>Bulut hesabına bağlısın; telefonda ve bilgisayarda aynı verileri görürsün.</p><div class="btnrow"><button class="btn ghost" data-out>Çıkış yap</button></div><details class="gelismis"><summary>Bağlantı bilgileri (Supabase)</summary>${connForm(cfg)}</details>`
       : `<p>Şu an <b>deneme modundasın</b>: veriler yalnızca bu tarayıcıda durur. Telefon ve bilgisayarda ortak kullanmak için Supabase bilgilerini gir.</p>${connForm(cfg)}`}
@@ -139,7 +139,7 @@ export async function ayarlarView(el) {
   // Telefonda önce bölüm listesi, dokununca bölüm; bilgisayarda solda liste, sağda bölüm
   const duzen = el.querySelector('[data-duzen]');
   const ac = k => { f.sekme = k; saveFilters(); sekmeGoster(k); duzen.classList.add('icerik'); if (innerWidth < 900) window.scrollTo(0, 0); };
-  el.querySelectorAll('[data-sekme]').forEach(b => b.onclick = () => ac(b.dataset.sekme));
+  el.querySelectorAll('[data-sekme]').forEach(b => b.onclick = () => b.dataset.sekme === 'profil' ? (location.hash = '#/sirket') : ac(b.dataset.sekme));
   el.querySelector('[data-geri]').onclick = () => { duzen.classList.remove('icerik'); window.scrollTo(0, 0); };
   sekmeGoster(f.sekme);
   duzen.classList.toggle('icerik', innerWidth >= 900 || dogrudan);
@@ -158,7 +158,6 @@ export async function ayarlarView(el) {
   if (menuAc) el.querySelector('.menu-d')?.setAttribute('open', '');
   import('../guvenlik.js').then(m => m.guvenlikAyarlari(el.querySelector('[data-guvenlik]')));
   hesapGirisAyarlari(el.querySelector('[data-girisayar]'));
-  if (sahipMi()) profilKarti(el.querySelector('[data-profil]'), () => ayarlarView(el));
   if (menuAc) setTimeout(() => el.querySelector('#menu-karti')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   bildirimAyarlari(el.querySelector('[data-bildirim]'));
   teklifAyarlari(el.querySelector('[data-teklifb]'));
@@ -276,32 +275,4 @@ async function migrate(el) {
 }
 
 // ---------- Firma profili ----------
-async function profilKarti(kok, yenile) {
-  if (!kok) return;
-  const { profil, profilVar, SEKTOR, ESKI } = await import('../profil.js');
-  const p = profil();
-  kok.innerHTML = `<dl class="profil-dl"><dt>Firma</dt><dd>${esc(p.firma || '—')}</dd><dt>Sektör</dt><dd>${esc(SEKTOR[p.sektor] || '—')}</dd>${p.marka ? `<dt>Temsil edilen marka</dt><dd>${esc(p.marka)}</dd>` : ''}
-      <dt>Çalışılan iller</dt><dd>${esc(p.iller.join(', '))}</dd><dt>Ana bayi</dt><dd>${esc(p.bayi || '—')}</dd></dl>
-    ${p.katalog === 'eae' ? `<div class="fld"><label>Ürün kataloğu</label><div class="seg" role="group" aria-label="Ürün kataloğu"><button type="button" data-kat="eae" class="on">Hazır EAE kataloğu</button><button type="button" data-kat="kendi">Kendi kataloğum</button></div><small>Hazır katalogda EAE ürün aileleri, ürün önerisi ve şartname karşılaştırması açıktır.</small></div>` : ''}
-    <p class="hint">Bu bilgiler ekip üyelerinde de geçerlidir. Rakip markaları ve diğer seçim listelerini Listeler bölümünden düzenleyebilirsin.</p>
-    <div class="btnrow"><button type="button" class="btn primary" data-pduz>Düzenle</button></div>`;
-  kok.querySelector('[data-pduz]').onclick = async () => (await import('../sihirbaz.js')).sihirbazAc({ duzenle: true, sonra: yenile });
-  ekibimKarti(kok, p);
-  kok.querySelectorAll('[data-kat]').forEach(b => b.onclick = async () => { if (b.dataset.kat === 'kendi' && !confirmBox('Hazır EAE kataloğu, ürün önerisi ve şartname karşılaştırması kapatılsın mı? Kendi girdiğin ürün aileleri kalır.')) return; await ayarYaz('firma_profil', { ...(profilVar() ? profil() : ESKI), eski: undefined, katalog: b.dataset.kat }); toast('Kaydedildi.'); yenile(); });
-}
 
-// Firma profilinde: şirkette kaç kişi çalışıyor, kim hangi rolde (ağaç)
-async function ekibimKarti(kok, p) {
-  if (app.db.mode !== 'supabase' || !sahipMi()) return;
-  const yer = document.createElement('div'); yer.className = 'ekibim'; kok.appendChild(yer);
-  try {
-    const [{ data: b }, { data: uyeler }] = await Promise.all([app.db.c.rpc('sirket_bilgisi'), app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif,yonetici,yetkiler').eq('owner', app.db.sahip)]);
-    const aktif = (uyeler || []).filter(u => u.aktif), kurucu = b && !b.kurucu_ayrildi ? { eposta: b.kurucu_eposta, ad: b.ben_kurucu ? 'Sen (kurucu)' : b.kurucu_eposta } : null;
-    const say = aktif.length + (kurucu ? 1 : 0), roller = new Map();
-    for (const u of aktif) { const r = u.yonetici ? 'Şirket yöneticisi' : (u.yetkiler?._rol || 'Rolü girilmemiş'); roller.set(r, (roller.get(r) || 0) + 1); }
-    const { ekipSemasi } = await import('../orgsema.js');
-    yer.innerHTML = `<h3>Ekibim</h3><div class="org-ozet"><b>${say} kişi</b>${kurucu ? '<span class="chip">Kurucu · 1</span>' : ''}${[...roller].map(([r, n]) => `<span class="chip">${esc(r)} · ${n}</span>`).join('')}</div>
-      ${ekipSemasi({ firma: b?.ad || p.firma, kurucu, yoneticiler: aktif.filter(u => u.yonetici), uyeler: aktif })}
-      <p class="hint">Kişi eklemek, rol ve yetki vermek için Ekip ve yetkiler bölümünü kullan.</p>`;
-  } catch { yer.remove(); }
-}

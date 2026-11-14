@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 54): şirket profili kendi sayfasında
+
+- Firma profili ayarlardan çıktı; **Şirket profili** artık geniş, ayrı bir sayfa (`#/sirket`). Menüde logonun altındaki firma kartına dokununca açılır; Ayarlar'daki “Firma profili” de buraya götürür.
+- Sayfada: firma bilgileri ve ürün kataloğu seçimi, **kayıt özeti** (firma, kişi, açık proje, bu ay ziyaret, teklif, sipariş), **Ekibim** (kişi sayısı, rollere göre dağılım, ağaç ve kişi/e-posta/rol tablosu; pasif kullanıcılar ayrı).
+- Ağacın sayfayı yana taşırması düzeltildi; şema kendi içinde kayar.
+
 ## Güncelleme notu (sürüm 53): menüde firma ve sürüm, organizasyon şemaları
 
 - Menüde logonun yanında **sürüm numarası**, altında **firma kartı** (firma adı, sektör, iller); dokununca Ayarlar → Firma profili açılır.
