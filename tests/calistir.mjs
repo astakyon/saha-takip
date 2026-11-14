@@ -354,12 +354,30 @@ const DB = () => {
 
 // ---------- 11) Firma organizasyon şeması ve menüde firma/sürüm ----------
 {
-  const DB3 = new Function('(' + DB.toString() + ')(); const d = JSON.parse(localStorage.getItem("__DB")); const o = x => ({ owner: "u1", firma_id: "f2", ...x }); d.kisiler.push(o({ id: "k2", ad_soyad: "Ahmet Yılmaz", unvan: "Genel Müdür", pozisyon: "Genel müdür / Yönetim", rol: "Karar verici" }), o({ id: "k3", ad_soyad: "Zeynep Ak", unvan: "Satınalma Uzmanı", pozisyon: "Satınalma", ust_kisi_id: "k2" }), o({ id: "k4", ad_soyad: "Can Öz", unvan: "Proje Mühendisi", pozisyon: "Proje / Tasarım" }), o({ id: "k5", ad_soyad: "Ece Su", unvan: "Satınalma Asistanı", pozisyon: "Satınalma", ust_kisi_id: "k3" })); d.ziyaretler.push({ id: "z9", owner: "u1", firma_id: "f2", kisi_id: "k3", tarih: new Date().toISOString().slice(0, 10) }); localStorage.setItem("__DB", JSON.stringify(d)); localStorage.setItem("saha-ayar-firma_profil", "1");');
+  const DB3 = new Function('(' + DB.toString() + ')(); const d = JSON.parse(localStorage.getItem("__DB")); const o = x => ({ owner: "u1", firma_id: "f2", ...x }); d.kisiler.push(o({ id: "k2", ad_soyad: "Ahmet Yılmaz", unvan: "Genel Müdür", pozisyon: "Genel müdür / Yönetim", rol: "Karar verici" }), o({ id: "k3", ad_soyad: "Zeynep Ak", unvan: "Satınalma Uzmanı", pozisyon: "Satınalma", ust_kisi_id: "k2" }), o({ id: "k4", ad_soyad: "Can Öz", unvan: "Proje Mühendisi", pozisyon: "Proje / Tasarım" }), o({ id: "k5", ad_soyad: "Ece Su", unvan: "Satınalma Asistanı", pozisyon: "Satınalma", ust_kisi_id: "k3" }), o({ id: "k7", firma_id: "f1", ad_soyad: "Eski Çalışan", eski_firmalar: [{ firma_id: "f2", firma_ad: "Örnek Emüt", unvan: "Satınalma Müdürü", bitis: "2024-03-01" }] })); d.ziyaretler.push({ id: "z9", owner: "u1", firma_id: "f2", kisi_id: "k3", tarih: new Date().toISOString().slice(0, 10) }); localStorage.setItem("__DB", JSON.stringify(d)); localStorage.setItem("saha-ayar-firma_profil", "1");');
   const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB3 });
   await p.setViewportSize({ width: 1280, height: 900 });
   await p.goto(U + '#/firma/f2'); await p.reload(); await w(1800);
   const org = await p.evaluate(() => { const r = document.querySelector('.drawer.open .org'); return r && { kutu: r.querySelectorAll('.org-kutu').length, ust: r.querySelector(':scope > li > .org-kutu b')?.textContent, ic: !!r.querySelector('li li li .org-kutu') }; });
   await p.locator('.drawer.open [data-org]').screenshot({ path: 'tests/cikti/org.png' }).catch(() => {});
+  const eski = await p.evaluate(() => [...document.querySelectorAll('.drawer.open .org-eski .org-kutu')].map(x => x.textContent.replace(/\s+/g, ' ').trim()));
+  // Sürükle-bırak: Can Öz'ü Ahmet Yılmaz'ın üstüne bırak
+  const kaynak = await p.locator('.drawer.open .org [data-kid="k4"]').boundingBox(), hedef = await p.locator('.drawer.open .org [data-kid="k2"]').boundingBox();
+  await p.mouse.move(kaynak.x + 30, kaynak.y + 20); await p.mouse.down(); await p.mouse.move(kaynak.x + 60, kaynak.y + 10, { steps: 4 }); await p.mouse.move(hedef.x + 40, hedef.y + 20, { steps: 8 }); await p.mouse.up(); await w(1000);
+  const bag = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k4').ust_kisi_id);
+  // Telefonda: basılı tut (0,3 sn) ve sürükle — Ece Su'yu Ahmet Yılmaz'ın altına
+  await p.setViewportSize({ width: 390, height: 844 }); await p.goto(U + '#/firmalar'); await p.reload(); await w(1800); await p.click('a[href="#/firma/f2"]'); await w(1200);
+  await p.evaluate(() => document.querySelector('.drawer.open [data-org]').scrollIntoView({ block: 'start' })); await w(300);
+  const tk = await p.locator('.drawer.open .org [data-kid="k5"]').boundingBox(), th = await p.locator('.drawer.open .org [data-kid="k2"]').boundingBox();
+  const cdp = await c.newCDPSession(p), nokta = (x, y) => [{ x: Math.round(x), y: Math.round(y), id: 1 }];
+  if (tk && th && tk.y > 0 && th.y > 0) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: nokta(tk.x + 20, tk.y + 15) }); await w(450);
+    for (let i = 1; i <= 10; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: nokta(tk.x + 20 + (th.x - tk.x) * i / 10, tk.y + 15 + (th.y - tk.y) * i / 10) });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await w(1000);
+  }
+  const bag2 = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k5').ust_kisi_id);
+  kontrol('Telefonda basılı tutup sürükleyerek de bağlanıyor', bag2 === 'k2', JSON.stringify({ bag2, tk: !!tk, th: !!th }));
+  kontrol('Şemada sürükle-bırak ile bağlı olduğu kişi ayarlanıyor; ayrılanlar yanda, nereye geçtikleriyle', bag === 'k2' && eski.length === 1 && /şimdi: Örnek Bayi/.test(eski[0]), JSON.stringify({ bag, eski }));
   const surum = await p.textContent('#nav .surum-rozet').catch(() => null);
   await p.screenshot({ path: 'tests/cikti/nav.png' });
   kontrol('Firmanın organizasyon şeması çiziliyor (genel müdür üstte, bağlı kişiler altında)', org && org.kutu === 5 && org.ust === 'Ahmet Yılmaz' && org.ic, JSON.stringify(org));

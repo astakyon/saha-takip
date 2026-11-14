@@ -20,7 +20,7 @@ function kutu(k, { link }) {
   const temas = g == null ? '<span class="org-temas yok" title="Kayıtlı ziyaret yok">temas yok</span>'
     : `<span class="org-temas ${g <= 30 ? 'iyi' : g <= 90 ? 'orta' : 'eski'}" title="Son ziyaret">${g === 0 ? 'bugün' : g + ' gün önce'}</span>`;
   const karar = k.rol === 'Karar verici' ? '<span class="org-rozet" title="Karar verici">★ karar verici</span>' : k.rol ? `<span class="org-rozet hafif">${esc(k.rol)}</span>` : '';
-  return `<a class="org-kutu" href="${link(k)}"><span class="avatar sm" aria-hidden="true">${esc((k.ad_soyad || '?').slice(0, 1))}</span>
+  return `<a class="org-kutu" href="${link(k)}" data-kid="${k.id}"><span class="avatar sm" aria-hidden="true">${esc((k.ad_soyad || '?').slice(0, 1))}</span>
     <span class="org-metin"><b>${esc(k.ad_soyad)}</b><small>${esc(k.unvan || k.pozisyon || 'Görevi girilmemiş')}</small><span class="org-alt">${karar}${temas}</span></span></a>`;
 }
 function dal(k, cocuk, ops, ziyaret = new Set()) {
@@ -31,7 +31,7 @@ function dal(k, cocuk, ops, ziyaret = new Set()) {
 }
 
 // kisiler: aynı firmanın kişileri. Döner: { html, ozet }
-export function orgSemasi(kisiler, { link = k => `#/kisi/${k.id}`, firmaAd = 'Firma' } = {}) {
+export function orgSemasi(kisiler, { link = k => `#/kisi/${k.id}`, firmaAd = 'Firma', eskiler = [], firmaId = null, firmaAdiOf = () => '' } = {}) {
   const ids = new Set(kisiler.map(k => k.id)), cocuk = new Map(), kok = [];
   for (const k of kisiler) {
     if (k.ust_kisi_id && ids.has(k.ust_kisi_id) && k.ust_kisi_id !== k.id) (cocuk.get(k.ust_kisi_id) || cocuk.set(k.ust_kisi_id, []).get(k.ust_kisi_id)).push(k);
@@ -42,7 +42,7 @@ export function orgSemasi(kisiler, { link = k => `#/kisi/${k.id}`, firmaAd = 'Fi
   const gruplar = new Map();
   for (const k of kok.filter(k => !YONETIM.includes(k.pozisyon))) { const p = k.pozisyon || 'Görevi girilmemiş'; (gruplar.get(p) || gruplar.set(p, []).get(p)).push(k); }
   const grupHtml = [...gruplar.entries()].sort((a, b) => sira(a[0]) - sira(b[0])).map(([p, l]) =>
-    `<li><span class="org-grup">${esc(p)} <small>${l.length}</small></span><ul>${l.sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr')).map(k => dal(k, cocuk, ops, ziyaret)).join('')}</ul></li>`).join('');
+    `<li><span class="org-grup" data-grup="${esc(p)}">${esc(p)} <small>${l.length}</small></span><ul>${l.sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr')).map(k => dal(k, cocuk, ops, ziyaret)).join('')}</ul></li>`).join('');
   // Üst düğüm: tek yönetici varsa o, birden çok ya da hiç yoksa firma adı
   let agac;
   if (yonetim.length === 1) {
@@ -52,13 +52,16 @@ export function orgSemasi(kisiler, { link = k => `#/kisi/${k.id}`, firmaAd = 'Fi
     agac = `<li>${kutu(y, ops)}${alt ? `<ul>${alt}</ul>` : ''}</li>`;
   } else {
     const alt = yonetim.map(k => dal(k, cocuk, ops, ziyaret)).join('') + grupHtml;
-    agac = `<li><span class="org-firma">${esc(firmaAd)}</span>${alt ? `<ul>${alt}</ul>` : ''}</li>`;
+    agac = `<li><span class="org-firma" data-grup="">${esc(firmaAd)}</span>${alt ? `<ul>${alt}</ul>` : ''}</li>`;
   }
   const sayac = new Map(); for (const k of kisiler) sayac.set(k.pozisyon || 'Görevi girilmemiş', (sayac.get(k.pozisyon || 'Görevi girilmemiş') || 0) + 1);
   const eksik = ONEMLI.filter(p => !sayac.has(p));
   const ozet = `<div class="org-ozet"><b>${kisiler.length} kişi</b>${[...sayac.entries()].sort((a, b) => sira(a[0]) - sira(b[0])).map(([p, n]) => `<span class="chip">${esc(p)} · ${n}</span>`).join('')}</div>
     ${eksik.length && kisiler.length ? `<p class="hint">Bu firmada kayıtlı ${eksik.map(esc).join(', ')} kişisi yok. Teklif ve karar sürecinde kimin olduğunu öğrenmek işine yarar.</p>` : ''}`;
-  return { html: `<div class="org-kaydir" tabindex="0" aria-label="Organizasyon şeması"><ul class="org">${agac}</ul></div>`, ozet };
+  // Ayrılanlar: ağacın yanında soluk, şimdi nerede oldukları yazılı
+  const eskiHtml = eskiler.length ? `<aside class="org-eski" aria-label="Firmadan ayrılanlar"><h4>Ayrılanlar <small>${eskiler.length}</small></h4>${eskiler.map(k => { const g = (k.eski_firmalar || []).find(g => g.firma_id === firmaId) || {};
+    return `<a class="org-kutu eski" href="${link(k)}"><span class="avatar sm" aria-hidden="true">${esc((k.ad_soyad || '?').slice(0, 1))}</span><span class="org-metin"><b>${esc(k.ad_soyad)}</b><small>${esc([g.unvan || g.pozisyon, g.bitis ? g.bitis.slice(0, 4) + "'te ayrıldı" : 'ayrıldı'].filter(Boolean).join(' · '))}</small><span class="org-alt"><span class="org-rozet hafif">${k.firma_id ? 'şimdi: ' + esc(firmaAdiOf(k.firma_id) || '?') : 'firması yok'}</span></span></span></a>`; }).join('')}</aside>` : '';
+  return { html: `<div class="org-yan"><div class="org-kaydir" tabindex="0" aria-label="Organizasyon şeması">${kisiler.length ? `<ul class="org">${agac}</ul>` : '<p class="hint">Firmada kayıtlı kişi yok.</p>'}</div>${eskiHtml}</div>`, ozet };
 }
 
 // Kendi şirketin: kurucu ve yöneticiler üstte, diğer kullanıcılar rollerine göre
@@ -69,4 +72,49 @@ export function ekipSemasi({ firma, kurucu, yoneticiler = [], uyeler = [] }) {
   const ust = [kurucu && kisi(kurucu.ad || kurucu.eposta, 'Kurucu', '<span class="org-rozet">yönetici</span>'), ...yoneticiler.map(y => kisi(y.ad || y.eposta, y.eposta, '<span class="org-rozet">yönetici</span>'))].filter(Boolean);
   const alt = [...gruplar.entries()].sort((a, b) => a[0].localeCompare(b[0], 'tr')).map(([r, l]) => `<li><span class="org-grup">${esc(r)} <small>${l.length}</small></span><ul>${l.map(u => `<li>${kisi(u.ad || u.eposta, u.eposta)}</li>`).join('')}</ul></li>`).join('');
   return `<div class="org-kaydir" tabindex="0" aria-label="Ekip şeması"><ul class="org"><li><span class="org-firma">${esc(firma || 'Şirketin')}</span><ul>${ust.map(x => `<li>${x}</li>`).join('')}${alt ? `<li><span class="org-grup">Ekip</span><ul>${alt}</ul></li>` : ''}</ul></li></ul></div>`;
+}
+
+// ---------- Sürükle-bırak: kişiyi başka bir kişinin üstüne bırakınca "bağlı olduğu kişi" olur ----------
+// Telefonda basılı tutup (0,3 sn) sürükle; bilgisayarda doğrudan sürükle. Grup etiketine bırakınca bağlantı kalkar,
+// pozisyon grubuysa kişinin pozisyonu o grup olur. Kısa dokunuş kartı açar.
+export function orgSurukle(kok, { kisiler, kaydet }) {
+  const byId = new Map(kisiler.map(k => [k.id, k]));
+  const altindaMi = (ust, id) => { let k = byId.get(id), n = 0; while (k?.ust_kisi_id && n++ < 50) { if (k.ust_kisi_id === ust) return true; k = byId.get(k.ust_kisi_id); } return false; };
+  let s = null;
+  const bitir = () => { if (!s) return; clearTimeout(s.zaman); s.hayalet?.remove(); kok.querySelectorAll('.org-hedef').forEach(x => x.classList.remove('org-hedef')); kok.classList.remove('org-suruklen'); s.kutu.classList.remove('org-tasinan'); };
+  const hedefBul = (x, y) => { const el = document.elementFromPoint(x, y)?.closest('[data-kid],[data-grup]'); if (!el || !kok.contains(el) || el === s.kutu) return null; if (el.dataset.kid && (el.dataset.kid === s.id || altindaMi(s.id, el.dataset.kid))) return null; return el; };
+  kok.querySelectorAll('.org .org-kutu[data-kid]').forEach(kutu => {
+    kutu.setAttribute('draggable', 'false');
+    kutu.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      s = { id: kutu.dataset.kid, kutu, x0: e.clientX, y0: e.clientY, aktif: false, tasindi: false, pid: e.pointerId };
+      const basla = () => { if (!s || s.aktif) return; s.aktif = true; kutu.setPointerCapture?.(s.pid); kok.classList.add('org-suruklen'); kutu.classList.add('org-tasinan');
+        s.hayalet = kutu.cloneNode(true); s.hayalet.className = 'org-kutu org-hayalet'; document.body.appendChild(s.hayalet); konum(s.x0, s.y0); navigator.vibrate?.(15); };
+      const konum = (x, y) => { if (s?.hayalet) { s.hayalet.style.left = x + 'px'; s.hayalet.style.top = y + 'px'; } };
+      s.basla = basla; s.konum = konum;
+      if (e.pointerType === 'mouse') s.fare = true; else s.zaman = setTimeout(basla, 300);
+    });
+    kutu.addEventListener('pointermove', e => {
+      if (!s || s.kutu !== kutu) return;
+      const d = Math.hypot(e.clientX - s.x0, e.clientY - s.y0);
+      if (!s.aktif) { if (s.fare && d > 6) s.basla(); else if (!s.fare && d > 10) { clearTimeout(s.zaman); s = null; } return; }
+      e.preventDefault(); s.tasindi = true; s.konum(e.clientX, e.clientY);
+      kok.querySelectorAll('.org-hedef').forEach(x => x.classList.remove('org-hedef'));
+      hedefBul(e.clientX, e.clientY)?.classList.add('org-hedef');
+    });
+    kutu.addEventListener('pointerup', async e => {
+      if (!s || s.kutu !== kutu) return;
+      const aktif = s.aktif, id = s.id, hedef = aktif ? hedefBul(e.clientX, e.clientY) : null; bitir(); s = aktif ? { engel: true } : null;
+      if (!aktif) return;
+      setTimeout(() => { s = null; }, 50);
+      if (!hedef) return;
+      const k = byId.get(id);
+      if (hedef.dataset.kid) { if (k.ust_kisi_id !== hedef.dataset.kid) await kaydet(id, { ust_kisi_id: hedef.dataset.kid }); }
+      else { const p = hedef.dataset.grup; await kaydet(id, { ust_kisi_id: null, ...(p && p !== 'Görevi girilmemiş' ? { pozisyon: p } : {}) }); }
+    });
+    kutu.addEventListener('touchmove', e => { if (s?.aktif) e.preventDefault(); }, { passive: false });   // sürüklerken sayfa kaymasın
+    kutu.addEventListener('pointercancel', () => { bitir(); s = null; });
+    kutu.addEventListener('click', e => { if (s?.engel) { e.preventDefault(); e.stopPropagation(); } }, true);
+    kutu.addEventListener('contextmenu', e => { if (s) e.preventDefault(); });
+  });
 }

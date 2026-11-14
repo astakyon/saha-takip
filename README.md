@@ -32,6 +32,11 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 56): şemada sürükle-bırak, ayrılanlar
+
+- **Organizasyon şemasında sürükle-bırak:** bir kişiyi başka bir kişinin kutusuna bırakınca “bağlı olduğu kişi” olur. Telefonda kutuya basılı tut (yaklaşık 0,3 sn, kısa titreşim), sonra sürükle. Pozisyon grubu etiketine bırakınca bağlantı kalkar ve kişinin pozisyonu o grup olur; firma adına bırakınca yalnızca bağlantı kalkar. Kendi altındaki birine bağlanamaz (döngü olmaz). Kısa dokunuş eskisi gibi kişi kartını açar. Yalnızca kişileri düzenleme yetkisi olanlarda açık.
+- **Ayrılanlar:** firmadan ayrılmış kişiler şemanın yanında soluk kutularla, ne zaman ayrıldıkları ve şimdi hangi firmada oldukları yazılı (telefonda şemanın altında). Firmada hiç güncel kişi olmasa da ayrılanlar varsa şema bölümü görünür.
+
 ## Güncelleme notu (sürüm 55): Roller (K2)
 
 - Ayarlar → Ekip ve yetkiler'de **Roller** bölümü: şirket kendi rollerini tanımlar. “Hazır rolleri ekle” ile Muhasebe, Satış, Satış destek, Proje ve Bayi rolleri tek dokunuşla gelir; her rol açılıp ekran ağacıyla (Kapalı / Görür / Düzenler), gizlenen alanlarla ve Excel izniyle düzenlenir. “Yeni rol” ile istenen ad verilir (ör. “Satış Adana”).
