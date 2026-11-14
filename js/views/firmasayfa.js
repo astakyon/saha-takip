@@ -103,20 +103,17 @@ export function firmaSayfa(el, id, sekme0) {
       <div class="fs-kim"><p class="muted">${esc([(x.tipler || []).join(', ') || 'Firma', [x.ilce, x.il].filter(Boolean).join(', ')].filter(Boolean).join(' · '))}</p>
         <h1>${esc(x.ad)}${x.key_account ? ' <em class="flag soft">Key account</em>' : ''}</h1>
         <div class="dh-meta"><span data-gerek="projeler">${acik.length} açık proje${acikT ? ' · ' + usd(acikT) : ''}</span><span data-gerek="projeler">${won} sipariş · ${lost} kayıp</span>${sip.length ? `<span data-gerek="siparisler">${usd(sipT)} SAP sipariş</span>` : ''}<span data-gerek="ziyaretler" class="${gun == null || gun > 60 ? 'neg' : ''}">${gun == null ? 'hiç ziyaret yok' : gun === 0 ? 'bugün ziyaret edildi' : `son ziyaret ${gun} gün önce`}</span>${tah.length ? `<span class="neg" data-gerek="tahsilatlar">${tah.length} açık fatura</span>` : ''}${x.segment ? `<span>Segment ${esc(x.segment)}</span>` : ''}</div></div>
-  <div class="fs-ilet">${x.telefon ? `<a class="fs-yuvarlak" href="tel:${esc(x.telefon)}" title="Ara: ${esc(x.telefon)}" aria-label="Ara">${IK.tel}<span>Ara</span></a>` : ''}<button type="button" class="fs-yuvarlak" data-a="wa" title="WhatsApp" aria-label="WhatsApp">${IK.wa}<span>WhatsApp</span></button>${x.lat != null ? `<a class="fs-yuvarlak" target="_blank" rel="noopener" href="${directionsUrl(x.lat, x.lng)}" title="Yol tarifi" aria-label="Yol tarifi">${IK.yol}<span>Yol tarifi</span></a>` : ''}</div>
-    </header>
-    <div class="fs-act">
-      <div class="fs-dug">
-        <button class="btn sm primary" data-a="duzenle" data-gerek="yaz:firmalar">Düzenle</button>
-        <div class="fs-acilir" data-acilir="ekle"><button type="button" class="btn sm fs-ekle" aria-haspopup="menu" aria-expanded="false">${IK.arti}Ekle ▾</button>
-          <div class="fs-menu" role="menu" hidden><p class="fs-menu-bas">Ekle</p>
-            <button type="button" role="menuitem" data-a="ziyaret" data-gerek="yaz:ziyaretler">${IK.pin}<span>Ziyaret</span></button><button type="button" role="menuitem" data-a="kisi" data-gerek="yaz:kisiler">${IK.kisi}<span>Kişi</span></button><button type="button" role="menuitem" data-a="gorev" data-gerek="yaz:gorevler">${IK.gor}<span>Görev</span></button>
-            <hr><button type="button" role="menuitem" data-a="teklif" data-gerek="yaz:teklifler">${IK.tek}<span>Teklif</span></button><button type="button" role="menuitem" data-a="numune" data-gerek="yaz:numuneler">${IK.num}<span>Numune</span></button><button type="button" role="menuitem" data-a="servis" data-gerek="yaz:servis_kayitlari">${IK.srv}<span>Servis kaydı</span></button></div></div>
-        <div class="fs-acilir" data-acilir="daha"><button type="button" class="btn sm ghost fs-daha" aria-haspopup="menu" aria-expanded="false" aria-label="Diğer işlemler">⋯</button>
+      <div class="fs-arac" role="toolbar" aria-label="Firma işlemleri">
+        <div class="fs-grp" data-grp="iletisim">${x.telefon ? `<a href="tel:${esc(x.telefon)}" data-ipucu="Ara" aria-label="Ara: ${esc(x.telefon)}">${IK.tel}</a>` : ''}<button type="button" data-a="wa" data-ipucu="WhatsApp" aria-label="WhatsApp" class="fs-wa">${IK.wa}</button>${x.lat != null ? `<a target="_blank" rel="noopener" href="${directionsUrl(x.lat, x.lng)}" data-ipucu="Yol tarifi" aria-label="Yol tarifi" class="fs-yol">${IK.yol}</a>` : ''}</div>
+        <div class="fs-grp" data-grp="ekle"><button type="button" data-a="ziyaret" data-gerek="yaz:ziyaretler" data-ipucu="Ziyaret ekle" aria-label="Ziyaret ekle">${IK.pin}</button><button type="button" data-a="kisi" data-gerek="yaz:kisiler" data-ipucu="Kişi ekle" aria-label="Kişi ekle">${IK.kisi}</button><button type="button" data-a="gorev" data-gerek="yaz:gorevler" data-ipucu="Görev ekle" aria-label="Görev ekle">${IK.gor}</button><button type="button" data-a="teklif" data-gerek="yaz:teklifler" data-ipucu="Teklif hazırla" aria-label="Teklif hazırla">${IK.tek}</button></div>
+        <div class="fs-grp fs-acilir" data-acilir="daha"><button type="button" class="fs-daha" aria-haspopup="menu" aria-expanded="false" aria-label="Diğer işlemler" data-ipucu="Diğer">⋯</button>
           <div class="fs-menu fs-menu-sag" role="menu" hidden>
-            <button type="button" role="menuitem" data-a="google" data-gerek="yaz:firmalar">${IK.ara}<span>Google'dan bilgi al</span></button>${x.google_url ? `<a role="menuitem" href="${esc(x.google_url)}" target="_blank" rel="noopener">${IK.yol}<span>Google Haritalar'da aç</span></a>` : ''}
-            <hr data-gerek="yaz:firmalar"><button type="button" role="menuitem" class="fs-sil" data-a="sil" data-gerek="yaz:firmalar">${IK.sil}<span>Firmayı sil</span></button></div></div>
-      </div></div>
+            <button type="button" role="menuitem" data-a="numune" data-gerek="yaz:numuneler">${IK.num}<span>Numune ver</span></button><button type="button" role="menuitem" data-a="servis" data-gerek="yaz:servis_kayitlari">${IK.srv}<span>Servis kaydı</span></button>
+            <hr><button type="button" role="menuitem" data-a="google" data-gerek="yaz:firmalar">${IK.ara}<span>Google'dan bilgi al</span></button>${x.google_url ? `<a role="menuitem" href="${esc(x.google_url)}" target="_blank" rel="noopener">${IK.yol}<span>Google Haritalar'da aç</span></a>` : ''}
+            <hr><button type="button" role="menuitem" class="fs-sil" data-a="sil" data-gerek="yaz:firmalar">${IK.sil}<span>Firmayı sil</span></button></div></div>
+      </div>
+    </header>
+    <div class="fs-act" data-gerek="yaz:firmalar"><button class="btn sm primary" data-a="duzenle">Düzenle</button></div>
     <div data-cift></div>
     <div class="p-sekme fs-sekme" role="tablist" aria-label="Firma bölümleri">${SEKMELER.map(([k, t, g]) => `<button type="button" role="tab" data-fsk="${k}" ${g ? `data-gerek="${g}"` : ''} aria-selected="${k === sekme}" class="${k === sekme ? 'on' : ''}">${t}${sayi[k] ? ` <i>${sayi[k]}</i>` : ''}</button>`).join('')}</div>
 
@@ -188,6 +185,7 @@ export function firmaSayfa(el, id, sekme0) {
 
   gerekUygula(el);
   acilirKur(el);
+  el.querySelectorAll('.fs-grp').forEach(g => { if (!g.querySelector('a, button')) g.remove(); });
   ciftUyarisi(el, 'firmalar', x);
   el.querySelector('[data-geri]').onclick = () => sayfadanDon('firmalar');
   el.querySelectorAll('.avatar[data-kv]').forEach(async a => { if (a.dataset.kv) { const u = await app.db.url(a.dataset.kv, true); if (u) { a.style.backgroundImage = `url("${u}")`; a.textContent = ''; } } });

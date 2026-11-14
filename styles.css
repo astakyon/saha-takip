@@ -1522,41 +1522,39 @@ a.org-kutu:hover, a.org-kutu:focus-visible { border-color: #E0B93E; }
   .fs-sekme { margin-left: -16px; margin-right: -16px; padding: 0 8px; }
 }
 
-/* Sürüm 60: firma başlığında iletişim simgeleri, "Ekle" ve "⋯" menüleri */
-.fs-ilet { display: flex; gap: 8px; flex: none; align-self: center; }
-.fs-yuvarlak { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink); display: inline-grid; place-items: center; cursor: pointer; text-decoration: none; padding: 0; }
-.fs-yuvarlak:hover { border-color: var(--ink-2, #9AA8B2); }
-.fs-yuvarlak > span { display: none; }
-.fs-yuvarlak[href^="tel:"] svg { color: var(--ink); }
-.fs-yuvarlak[data-a="wa"] svg { color: #15803D; }
-.fs-yuvarlak[href*="maps"] svg { color: var(--blue); }
-.fs-act { padding: 14px 0 0; }
-.fs-dug { display: flex; gap: 8px; align-items: center; }
+/* Sürüm 61: firma başlığında simge çubuğu (iletişim · ekle · diğer) */
+.fs-arac { display: flex; gap: 8px; align-items: center; flex: none; align-self: center; }
+.fs-grp { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.fs-grp > a, .fs-grp > button { position: relative; width: 42px; height: 40px; display: grid; place-items: center; border: 0; border-left: 1px solid var(--line); background: none; color: var(--ink); cursor: pointer; padding: 0; text-decoration: none; font: 700 18px/1 var(--f); }
+.fs-grp > :first-child { border-left: 0; border-radius: 11px 0 0 11px; }
+.fs-grp > :last-child { border-radius: 0 11px 11px 0; }
+.fs-grp > :only-child { border-radius: 11px; }
+.fs-grp > a:hover, .fs-grp > button:hover, .fs-grp > [aria-expanded="true"] { background: var(--lumen-soft, #FFF4D1); }
+.fs-grp > :focus-visible { outline: 2px solid var(--lumen); outline-offset: -2px; }
+.fs-grp .fs-wa { color: #15803D; } .fs-grp .fs-yol { color: var(--blue); }
 .fs-acilir { position: relative; }
-.fs-ekle svg { margin-right: 2px; vertical-align: -3px; }
-.fs-daha { min-width: 40px; font-size: 18px; line-height: 1; }
-.fs-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; min-width: 210px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 30px rgba(16, 24, 29, .16); padding: 6px; }
+.fs-acilir > .fs-daha { border-radius: 11px; }
+@media (hover: hover) {
+  .fs-grp [data-ipucu]:hover::after { content: attr(data-ipucu); position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--koyu); color: #fff; font: 600 12px var(--f); padding: 3px 8px; border-radius: 6px; white-space: nowrap; z-index: 40; pointer-events: none; }
+  .fs-grp [aria-expanded="true"]::after { display: none; }
+}
+.fs-act { padding: 12px 0 0; }
+.fs-act:empty { display: none; }
+.fs-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; min-width: 220px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 30px rgba(16, 24, 29, .16); padding: 6px; }
 .fs-menu-sag { left: auto; right: 0; }
 .fs-menu > button, .fs-menu > a { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; background: none; border-radius: 8px; font: 500 15px var(--f); color: var(--ink); text-align: left; cursor: pointer; text-decoration: none; }
 .fs-menu > button:hover, .fs-menu > a:hover, .fs-menu > :focus-visible { background: var(--lumen-soft, #FFF4D1); outline: none; }
 .fs-menu svg { color: var(--muted); flex: none; }
 .fs-menu .fs-sil, .fs-menu .fs-sil svg { color: var(--red); }
 .fs-menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
-.fs-menu-bas { display: none; }
 .fs-perde { position: fixed; inset: 0; background: rgba(16, 24, 29, .4); z-index: 1400; }
 @media (max-width: 760px) {
   .fs-bas { flex-wrap: wrap; }
-  .fs-ilet { order: 5; width: 100%; }
-  .fs-yuvarlak { width: auto; height: 38px; border-radius: 10px; padding: 0 12px; display: inline-flex; gap: 6px; font: 600 14px var(--f); }
-  .fs-yuvarlak > span { display: inline; }
-  .fs-yuvarlak[data-a="wa"] > span, .fs-yuvarlak[href*="maps"] > span { display: none; }
+  .fs-arac { order: 5; width: 100%; justify-content: space-between; gap: 6px; }
+  .fs-grp > a, .fs-grp > button { width: 40px; height: 40px; }
   .fs-act { padding-top: 10px; }
-  .fs-menu { position: fixed; left: 0; right: 0; top: auto; bottom: 0; z-index: 1401; border-radius: 18px 18px 0 0; padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; min-width: 0; }
-  .fs-menu[hidden] { display: none; }
-  .fs-menu-bas { display: block; grid-column: 1 / -1; margin: 0 0 2px; font-weight: 700; }
-  .fs-menu > button, .fs-menu > a { flex-direction: column; justify-content: center; gap: 6px; padding: 14px 6px; background: var(--paper); border-radius: 12px; font: 600 14px var(--f); text-align: center; }
+  .fs-menu { position: fixed; left: 0; right: 0; top: auto; bottom: 0; z-index: 1401; border-radius: 18px 18px 0 0; padding: 12px 12px calc(16px + env(safe-area-inset-bottom)); min-width: 0; }
+  .fs-menu > button, .fs-menu > a { padding: 14px 12px; font-size: 16px; }
   .fs-menu svg { width: 22px; height: 22px; color: var(--ink); }
-  .fs-menu hr { display: none; }
-  .fs-menu-sag { grid-template-columns: 1fr; }
-  .fs-menu-sag > button, .fs-menu-sag > a { flex-direction: row; justify-content: flex-start; padding: 14px; }
 }
+@media (max-width: 360px) { .fs-grp > a, .fs-grp > button { width: 36px; } }

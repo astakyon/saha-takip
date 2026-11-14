@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 61): Firma başlığında simge çubuğu
+
+- "Ekle" menüsü kaldırıldı. Firma adının sağında üç kutu: **iletişim** (Ara, WhatsApp, Yol tarifi) · **ekle** (Ziyaret, Kişi, Görev, Teklif) · **⋯** (Numune ver, Servis kaydı, Google'dan bilgi al, Google Haritalar'da aç, Firmayı sil).
+- Simgenin üstüne gelince adı yazar. Telefonda çubuk adın altına iner, "⋯" alttan açılan panel olur.
+- Düzenle düğmesi başlığın altında tek başına.
+
 ## Güncelleme notu (sürüm 60): Firma başlığında gruplu düğmeler, projelerde ilişki ağı üstte
 
 - **İletişim:** Ara, WhatsApp ve Yol tarifi firma adının yanında yuvarlak simgeler (telefonda adın altında).
