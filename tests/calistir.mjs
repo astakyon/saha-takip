@@ -271,16 +271,16 @@ const DB = () => {
   const ad1 = await p.evaluate(async () => { const k = (await import('./js/db.js')).S.kisiler.find(x => x.id === 'k1'); return [k.ad, k.soyad, k.ad_soyad]; });
   kontrol('Ad ve soyad ayrı alanlarda; tam ad ikisinden oluşuyor', JSON.stringify(ad0) === '["Deneme","Kişi"]' && JSON.stringify(ad1) === '["Ayşe Nur","Kaya","Ayşe Nur Kaya"]', JSON.stringify([ad0, ad1]));
   // Firmaya kayıtlı kişi atama ve ayırma
-  await p.goto(U + '#/firmalar'); await p.reload(); await w(1500); await p.click('a[href="#/firma/f1"]'); await w(800);
-  await p.click('.drawer.open [data-a="bagla"]'); await p.fill('.drawer.open [data-kisi-ara]', 'Ayşe'); await w(200);
-  await p.click('.drawer.open [data-ata="k1"]'); await w(800);
+  await p.goto(U + '#/firmalar'); await p.reload(); await w(1500); await p.click('a[href="#/firma/f1"]'); await w(800); await p.click('[data-fsk="kisiler"]'); await w(300);
+  await p.click('.fs-sayfa [data-a="bagla"]'); await p.fill('.fs-sayfa [data-kisi-ara]', 'Ayşe'); await w(200);
+  await p.click('.fs-sayfa [data-ata="k1"]'); await w(800);
   const atandi = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1').firma_id);
-  await p.click('.drawer.open [data-ayir="k1"]'); await w(800);
+  await p.click('.fs-sayfa [data-ayir="k1"]'); await w(800);
   const ayrildi = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1').firma_id);
   kontrol('Firmaya kayıtlı kişi atanıyor ve ayrılabiliyor', atandi === 'f1' && !ayrildi, JSON.stringify([atandi, ayrildi]));
   // Firmadan ayrılan kişinin eski firması kartında ve firmanın "Eski çalışanlar"ında görünüyor; elle eski firma eklenebiliyor
   const ef = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1').eski_firmalar);
-  const eskiCalisan = await p.isVisible('.drawer.open .eski-baslik');
+  const eskiCalisan = await p.isVisible('.fs-sayfa .eski-baslik');
   await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800);
   const efGorunur = await p.textContent('.drawer.open [data-eski-firma]');
   await p.click('.drawer.open [data-ef-ekle]'); await p.fill('.drawer.open [data-ef-firma]', 'Eski Usta Ltd'); await p.fill('.drawer.open [data-ef-unvan]', 'Şef'); await p.fill('.drawer.open [data-ef-tarih]', '2020-05-01'); await p.click('.drawer.open [data-ef-kaydet]'); await w(600);
@@ -383,28 +383,28 @@ const DB = () => {
   const DB3 = new Function('(' + DB.toString() + ')(); const d = JSON.parse(localStorage.getItem("__DB")); const o = x => ({ owner: "u1", firma_id: "f2", ...x }); d.kisiler.push(o({ id: "k2", ad_soyad: "Ahmet Yılmaz", unvan: "Genel Müdür", pozisyon: "Genel müdür / Yönetim", rol: "Karar verici" }), o({ id: "k3", ad_soyad: "Zeynep Ak", unvan: "Satınalma Uzmanı", pozisyon: "Satınalma", ust_kisi_id: "k2" }), o({ id: "k4", ad_soyad: "Can Öz", unvan: "Proje Mühendisi", pozisyon: "Proje / Tasarım" }), o({ id: "k5", ad_soyad: "Ece Su", unvan: "Satınalma Asistanı", pozisyon: "Satınalma", ust_kisi_id: "k3" }), o({ id: "k7", firma_id: "f1", ad_soyad: "Eski Çalışan", eski_firmalar: [{ firma_id: "f2", firma_ad: "Örnek Emüt", unvan: "Satınalma Müdürü", bitis: "2024-03-01" }] })); d.ziyaretler.push({ id: "z9", owner: "u1", firma_id: "f2", kisi_id: "k3", tarih: new Date().toISOString().slice(0, 10) }); localStorage.setItem("__DB", JSON.stringify(d)); localStorage.setItem("saha-ayar-firma_profil", "1");');
   const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB3 });
   await p.setViewportSize({ width: 1280, height: 900 });
-  await p.goto(U + '#/firma/f2'); await p.reload(); await w(1800);
-  const org = await p.evaluate(() => { const r = document.querySelector('.drawer.open .org'); return r && { kutu: r.querySelectorAll('.org-kutu').length, ust: r.querySelector(':scope > li > .org-kutu b')?.textContent, ic: !!r.querySelector('li li li .org-kutu') }; });
-  await p.locator('.drawer.open [data-org]').screenshot({ path: 'tests/cikti/org.png' }).catch(() => {});
-  const eski = await p.evaluate(() => [...document.querySelectorAll('.drawer.open .org-eski .org-kutu')].map(x => x.textContent.replace(/\s+/g, ' ').trim()));
+  await p.goto(U + '#/firma/f2/kisiler'); await p.reload(); await w(1800);
+  const org = await p.evaluate(() => { const r = document.querySelector('.fs-sayfa .org'); return r && { kutu: r.querySelectorAll('.org-kutu').length, ust: r.querySelector(':scope > li > .org-kutu b')?.textContent, ic: !!r.querySelector('li li li .org-kutu') }; });
+  await p.locator('.fs-sayfa [data-org]').screenshot({ path: 'tests/cikti/org.png' }).catch(() => {});
+  const eski = await p.evaluate(() => [...document.querySelectorAll('.fs-sayfa .org-eski .org-kutu')].map(x => x.textContent.replace(/\s+/g, ' ').trim()));
   // Sürükle-bırak: Can Öz'ü Ahmet Yılmaz'ın üstüne bırak
-  const kaynak = await p.locator('.drawer.open .org [data-kid="k4"]').boundingBox(), hedef = await p.locator('.drawer.open .org [data-kid="k2"]').boundingBox();
+  const kaynak = await p.locator('.fs-sayfa .org [data-kid="k4"]').boundingBox(), hedef = await p.locator('.fs-sayfa .org [data-kid="k2"]').boundingBox();
   await p.mouse.move(kaynak.x + 30, kaynak.y + 20); await p.mouse.down(); await p.mouse.move(kaynak.x + 60, kaynak.y + 10, { steps: 4 }); await p.mouse.move(hedef.x + 40, hedef.y + 20, { steps: 8 }); await p.mouse.up(); await w(1000);
   const bag = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k4').ust_kisi_id);
   // Bölümler: Ahmet'in altındaki Zeynep (Satınalma) bölüm etiketiyle; kişiye tıklayınca hızlı düzenleme; yakınlaştırma
-  const bolum = await p.evaluate(() => !!document.querySelector('.drawer.open .org [data-gust="k2"][data-grup="Satınalma"]') && !!document.querySelector('.drawer.open .org [data-gust="k2"][data-grup="Proje / Tasarım"]'));
-  await p.click('.drawer.open .org [data-kid="k4"]'); await w(300);
+  const bolum = await p.evaluate(() => !!document.querySelector('.fs-sayfa .org [data-gust="k2"][data-grup="Satınalma"]') && !!document.querySelector('.fs-sayfa .org [data-gust="k2"][data-grup="Proje / Tasarım"]'));
+  await p.click('.fs-sayfa .org [data-kid="k4"]'); await w(300);
   const dlg = await p.isVisible('dialog.org-dlg');
   await p.selectOption('dialog.org-dlg #od-p', 'Mühendis / Teknik'); await p.fill('dialog.org-dlg #od-u', 'Elektrik Mühendisi'); await p.click('dialog.org-dlg [data-kay]'); await w(1000);
   const k4 = await p.evaluate(async () => { const k = (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k4'); return [k.pozisyon, k.unvan]; });
-  const z0 = await p.textContent('.drawer.open [data-zoomyuzde]'); await p.click('.drawer.open [data-zoom="+"]'); const z1 = await p.textContent('.drawer.open [data-zoomyuzde]');
-  const kb = await p.locator('.drawer.open .org-kaydir').boundingBox(); await p.mouse.move(kb.x + 20, kb.y + 20); await p.mouse.wheel(0, 200); await w(200); const z2 = await p.textContent('.drawer.open [data-zoomyuzde]');
-  await p.click('.drawer.open [data-zoom="sigdir"]');
+  const z0 = await p.textContent('.fs-sayfa [data-zoomyuzde]'); await p.click('.fs-sayfa [data-zoom="+"]'); const z1 = await p.textContent('.fs-sayfa [data-zoomyuzde]');
+  const kb = await p.locator('.fs-sayfa .org-kaydir').boundingBox(); await p.mouse.move(kb.x + 20, kb.y + 20); await p.mouse.wheel(0, 200); await w(200); const z2 = await p.textContent('.fs-sayfa [data-zoomyuzde]');
+  await p.click('.fs-sayfa [data-zoom="sigdir"]');
   kontrol('Şemada yönetici altında bölümler, kişiye tıklayınca görev değişiyor, yakınlaştırma çalışıyor', bolum && dlg && k4[0] === 'Mühendis / Teknik' && k4[1] === 'Elektrik Mühendisi' && parseInt(z1) > parseInt(z0) && parseInt(z2) < parseInt(z1), JSON.stringify({ bolum, dlg, k4, z0, z1, z2 }));
   // Telefonda: basılı tut (0,3 sn) ve sürükle — Ece Su'yu Ahmet Yılmaz'ın altına
-  await p.setViewportSize({ width: 820, height: 1000 }); await p.goto(U + '#/firmalar'); await p.reload(); await w(1800); await p.click('a[href="#/firma/f2"]'); await w(1200);
-  await p.evaluate(() => document.querySelector('.drawer.open [data-org]').scrollIntoView({ block: 'start' })); await w(300);
-  const tk = await p.locator('.drawer.open .org [data-kid="k5"]').boundingBox(), th = await p.locator('.drawer.open .org [data-kid="k2"]').boundingBox();
+  await p.setViewportSize({ width: 820, height: 1000 }); await p.goto(U + '#/firmalar'); await p.reload(); await w(1800); await p.click('a[href="#/firma/f2"]'); await w(1200); await p.click('[data-fsk="kisiler"]'); await w(500);
+  await p.evaluate(() => document.querySelector('.fs-sayfa [data-org]').scrollIntoView({ block: 'start' })); await w(300);
+  const tk = await p.locator('.fs-sayfa .org [data-kid="k5"]').boundingBox(), th = await p.locator('.fs-sayfa .org [data-kid="k2"]').boundingBox();
   const cdp = await c.newCDPSession(p), nokta = (x, y) => [{ x: Math.round(x), y: Math.round(y), id: 1 }];
   if (tk && th && tk.y > 0 && th.y > 0) {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: nokta(tk.x + 20, tk.y + 15) }); await w(450);
@@ -414,6 +414,26 @@ const DB = () => {
   const bag2 = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k5').ust_kisi_id);
   kontrol('Telefonda basılı tutup sürükleyerek de bağlanıyor', bag2 === 'k2', JSON.stringify({ bag2, tk: !!tk, th: !!th }));
   kontrol('Şemada sürükle-bırak ile bağlı olduğu kişi ayarlanıyor; ayrılanlar yanda, nereye geçtikleriyle', bag === 'k2' && eski.length === 1 && /şimdi: Örnek Bayi/.test(eski[0]), JSON.stringify({ bag, eski }));
+  // Firma sayfası: sekmeler adres çubuğunda, düzenleme pencerede, kişi kartı sayfanın üstünde, geri listeye
+  await p.setViewportSize({ width: 1280, height: 900 });
+  await p.goto(U + '#/firmalar'); await p.reload(); await w(1500); await p.click('a[href="#/firma/f2"]'); await w(1000);
+  const fs1 = await p.evaluate(() => ({ h: location.hash, sek: [...document.querySelectorAll('.fs-sayfa [data-fsk]')].map(b => b.dataset.fsk).join(','), ad: document.querySelector('.fs-kim h1')?.textContent, drawer: !!document.querySelector('.drawer.open') }));
+  await p.screenshot({ path: 'tests/cikti/firma-sayfa.png', fullPage: true });
+  await p.click('.fs-sayfa .pcard[href="#/kisi/k2"]'); await w(600);
+  const kd = await p.evaluate(() => ({ drawer: !!document.querySelector('.drawer.open'), sayfa: !!document.querySelector('.fs-sayfa') }));
+  await p.click('.drawer.open .x[data-close]'); await w(600);
+  const kd2 = await p.evaluate(() => ({ h: location.hash, sayfa: !!document.querySelector('.fs-sayfa') }));
+  await p.click('[data-fsk="ziyaret"]'); await w(200); const h2 = await p.evaluate(() => location.hash);
+  await p.click('.fs-act [data-a="duzenle"]'); await w(500); await p.fill('.drawer.open [name=telefon]', '0322 111 22 33'); await p.click('.drawer.open [type=submit]'); await w(1200);
+  const fs2 = await p.evaluate(async () => ({ tel: (await import('./js/db.js')).S.firmalar.find(f => f.id === 'f2').telefon, h: location.hash, drawer: !!document.querySelector('.drawer.open'), sekme: document.querySelector('[data-fsk].on')?.dataset.fsk, metin: document.querySelector('.fs-sayfa')?.textContent.includes('0322 111 22 33') }));
+  await p.setViewportSize({ width: 390, height: 844 }); await w(300);
+  const tasma = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  await p.screenshot({ path: 'tests/cikti/firma-sayfa-tel.png' });
+  await p.setViewportSize({ width: 1280, height: 900 });
+  await p.click('[data-geri]'); await w(800); const h3 = await p.evaluate(() => location.hash);
+  kontrol('Firma kendi sayfasında sekmeli açılıyor; kişi kartı üstünde açılıp kapanıyor; düzenleme pencerede, kayıttan sonra aynı sekmede; geri listeye dönüyor',
+    fs1.h === '#/firma/f2' && fs1.sek === 'ozet,kisiler,projeler,ziyaret,satis,belgeler,notlar' && fs1.ad && !fs1.drawer && kd.drawer && kd.sayfa && kd2.h === '#/firma/f2' && kd2.sayfa && h2 === '#/firma/f2/ziyaret' && fs2.tel === '0322 111 22 33' && !fs2.drawer && fs2.sekme === 'ziyaret' && fs2.metin && tasma <= 1 && h3 === '#/firmalar',
+    JSON.stringify({ fs1, kd, kd2, h2, fs2, tasma, h3 }));
   const surum = await p.textContent('#nav .surum-rozet').catch(() => null);
   await p.screenshot({ path: 'tests/cikti/nav.png' });
   kontrol('Firmanın organizasyon şeması çiziliyor (genel müdür üstte, bağlı kişiler altında)', org && org.kutu === 5 && org.ust === 'Ahmet Yılmaz' && org.ic, JSON.stringify(org));

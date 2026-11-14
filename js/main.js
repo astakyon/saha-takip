@@ -124,6 +124,15 @@ async function route() {
   const [k, id] = parts;
   const dt = { proje: 'projeler', firma: 'firmalar', kisi: 'kisiler' }[k];
   if (DETAIL[k] && !izin(dt)) { location.hash = '#/bugun'; return; }
+  // Firma: kendi sayfasında (sekmeli); kişi ve proje kartları o sayfanın üstünde pencere olarak açılır
+  if (k === 'firma' && id) {
+    closeDrawer();
+    document.body.classList.toggle('salt-oku', !!app.db?.bakilan || (!sahipMi() && (onizlemede() || izin(dt) !== 'yaz')));
+    const sayfa = 'firma/' + id;
+    if (lastShown === sayfa && app.sayfaSekme) { app.sayfaSekme(parts[2]); return; }   // yalnızca sekme değişti
+    await sayfaGoster('firmalar', sayfa, async el => (await import('./views/firmasayfa.js')).firmaSayfa(el, id));
+    return;
+  }
   if (DETAIL[k]) {
     if (!lastView) await show('bugun');
     document.body.classList.toggle('salt-oku', !!app.db?.bakilan || (!sahipMi() && (onizlemede() || izin(dt) !== 'yaz')));
@@ -134,8 +143,31 @@ async function route() {
   if (ROUTES[k] && !rotaIzinli(k)) { location.hash = '#/bugun'; return; }
   await show(ROUTES[k] && rotaIzinli(k) ? k : 'bugun');
 }
+// Ayrı sayfa olarak açılan kart (firma): menüde ait olduğu liste seçili görünür
+let sonSayfa = null, sayfaOncesi = null;
+async function sayfaGoster(k, sayfa, ciz) {
+  if (!/^(firma|proje|kisi)\//.test(lastShown || '')) sayfaOncesi = lastShown ? '#/' + lastShown : null;
+  lastView = k; sonSayfa = sayfa;
+  renderNav(k);
+  if (lastShown && lastShown !== sayfa) kayKonum[lastShown] = window.scrollY;
+  const kok = document.getElementById('view');
+  kok.className = 'view-' + k + ' view-sayfa';
+  kok.innerHTML = `<button type="button" class="sayfa-ara" aria-label="Ara" title="Ara (/)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button><div class="view-ic"></div>`;
+  kok.querySelector('.sayfa-ara').onclick = () => aramaAc();
+  const el = kok.querySelector('.view-ic');
+  app.sayfaSekme = null; app.sayfaYolu = y => { sonSayfa = y; };
+  // Aynı sayfa yeniden çizilirken (kayıttan sonra) kaydırma yerinde kalır
+  app.refresh = async () => { const y = window.scrollY; await ciz(el); gerekUygula(el); window.scrollTo(0, y); };
+  if (lastShown !== sayfa) window.scrollTo(0, 0);
+  lastShown = sayfa;
+  await ciz(el);
+  gerekUygula(el);
+}
+// Sayfanın "geri" düğmesi: listeden gelindiyse tarayıcı geçmişiyle, doğrudan açıldıysa listeye
+export function sayfadanDon(liste) { location.hash = sayfaOncesi || '#/' + liste; }
+export const sayfaOncesiAd = () => { const r = (sayfaOncesi || '').replace('#/', ''); return ROUTES[r]?.t || null; };
 async function show(k) {
-  lastView = k;
+  lastView = k; sonSayfa = null;
   if (lastShown !== k) try { kullanimSay(k); } catch {}
   saltOku(k);
   renderNav(k);
@@ -164,7 +196,7 @@ async function show(k) {
 }
 // Detay paneli kapanınca adres çubuğunu listeye döndür (görünümü yeniden çizmeden)
 export function backToList(redraw = false) {
-  if (lastView && /^#\/(proje|firma|kisi)\//.test(location.hash)) history.replaceState(null, '', '#/' + lastView);
+  if (lastView && /^#\/(proje|firma|kisi)\//.test(location.hash)) { const h = '#/' + (sonSayfa || lastView); if (!location.hash.startsWith(h)) history.replaceState(null, '', h); }
   if (redraw) app.refresh();
 }
 export function go(hash) { if (location.hash === hash) route(); else location.hash = hash; }

@@ -143,7 +143,7 @@ window.addEventListener('popstate', () => {
   if (drawer().classList.contains('open')) { if (!birakilsinMi()) { try { history.pushState({ cekmece: true }, '', location.href); } catch {} return; } kirli = false; const d = drawer(); d.classList.remove('open'); d.setAttribute('aria-hidden', 'true'); const cb = onCloseCb; onCloseCb = null; cb && cb(); }
 });
 // Pencere başlığındaki düğmeler: ilk üçü görünür, kalanı (ve Sil) “⋯” menüsünde
-function aksiyonlariDuzenle(p) {
+export function aksiyonlariDuzenle(p) {
   const act = p.querySelector('.dh-actions'); if (!act || act.dataset.duzen) return; act.dataset.duzen = '1';
   const hepsi = [...act.children].filter(x => x.matches('.btn, a.btn'));
   const sil = hepsi.filter(x => x.matches('.danger, [data-a="sil"]')), digerleri = hepsi.filter(x => !sil.includes(x));

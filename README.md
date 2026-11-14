@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 59): Firma kartı kendi sayfasında, sekmeli
+
+- Firmaya dokununca yan pencere yerine **firmanın kendi sayfası** açılır. Üstte "← Firmalar" (ya da gelinen ekranın adı) ile geri dönülür; menüde Firmalar seçili kalır.
+- Başlıkta firma adı, tipi, ili, açık proje / sipariş / son ziyaret özeti ve işlemler: **Düzenle**, Ziyaret ekle, Kişi ekle; diğerleri (Ara, WhatsApp, Yol tarifi, Görev, Teklif, Numune, Servis, Google, Sil) "Diğer" menüsünde.
+- **Sekmeler:** Özet · Kişiler ve şema · Projeler · Ziyaret ve görevler · Teklif ve sipariş · Belgeler · Notlar. Seçili sekme adres çubuğuna yazılır (ör. `#/firma/…/kisiler`), sayfa yenilenince ya da bağlantı paylaşılınca aynı sekmede açılır. Yetkin olmayan sekmeler görünmez.
+- **Özet:** iletişim ve konum, önemli kişiler (karar vericiler önce), açık projeler, planlı ve son ziyaretler, açık görevler, not.
+- **Düzenleme** pencerede açılır; kaydedince sayfa aynı sekmede yenilenir. Kişi, ziyaret, teklif, görev kartları da sayfanın üstünde pencere olarak açılır, kapatınca firmaya dönülür.
+- Yeni firma Firmalar listesinden eklenince kaydettikten sonra doğrudan firmanın sayfasına geçilir.
+- Veritabanı değişikliği yok.
+
 ## Güncelleme notu (sürüm 58): Firma şemasında bölümler, hızlı görev değişikliği, yakınlaştırma
 
 - **Bölümler:** Bir müdürün altında birden fazla kişi varsa, pozisyonlarına göre bölüm başlıklarıyla (Satınalma, Proje / Tasarım…) ayrılır. Yönetim pozisyonundakiler doğrudan müdürün altına bağlanır. Bir kişiyi bir bölüm başlığının üstüne sürükleyince hem pozisyonu hem bağlı olduğu müdür ayarlanır.

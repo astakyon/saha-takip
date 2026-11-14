@@ -1,19 +1,12 @@
 import { S, uuid, adBol, adBirlestir } from '../db.js';
-import { rotaYazilabilir, sahipMi } from '../yetki.js';
+import { sahipMi } from '../yetki.js';
 import { app, F, saveFilters } from '../state.js';
-import { POZISYONLAR, pozisyonTahmin, esc, usd, num, pill, tarih, today, ILLER, ILCELER, OSBLER, FIRMA_TIPLERI, SEKTORLER, byId, firmaAd, match, toast, openDrawer, closeDrawer,
-  exportXlsx, directionsUrl, confirmBox, download, ACIK, parcali, gorununce, fold } from '../ui.js';
+import { POZISYONLAR, pozisyonTahmin, esc, pill, tarih, today, ILLER, ILCELER, OSBLER, FIRMA_TIPLERI, SEKTORLER, byId, firmaAd, match, toast, openDrawer, closeDrawer,
+  exportXlsx, confirmBox, download, parcali, gorununce, fold } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
-import { googleBul, aramaMetni } from '../google.js';
 import { backToList } from '../main.js';
 import { projeRolleri } from './projeler.js';
-import { ziyaretForm } from './ziyaret.js';
 import { waGonder } from '../sablon.js';
-import { teklifForm } from './teklif.js';
-import { numuneForm, servisForm } from './kayitlar.js';
-import { belgeBolumu } from '../belgeler.js';
-import { kayitGecmisi } from '../gecmis.js';
-import { tahsilatOzeti } from './tahsilat.js';
 
 const FIRMA_FORM = [
   { title: 'Firma', fields: [
@@ -60,7 +53,7 @@ const KISI_FORM = [
   ]},
 ];
 
-const firmaProjeleri = id => S.projeler.filter(p => projeRolleri(p, id).length);
+export const firmaProjeleri = id => S.projeler.filter(p => projeRolleri(p, id).length);
 
 export function firmalarView(el) {
   const f = F('firmalar', { q: '', tip: 'Tümü', il: 'Tümü', key: false, sort: 'Ada göre' });
@@ -113,96 +106,30 @@ export function firmalarView(el) {
   draw();
 }
 
-export function yeniFirma(init) { firmaDetay(null, { tipler: [], fotolar: [], konum_yaklasik: false, ...init }); }
+export function yeniFirma(init) { firmaFormu(null, { tipler: [], fotolar: [], konum_yaklasik: false, ...init }); }
 
+// Firma kartı kendi sayfasında açılır (#/firma/<id>, js/views/firmasayfa.js); yeni firma ve düzenleme pencerede
 export function firmaDetay(id, init) {
+  if (!id) return yeniFirma(init || {});
+  if (location.hash === '#/firma/' + id || location.hash.startsWith('#/firma/' + id + '/')) app.refresh?.();
+  else location.hash = '#/firma/' + id;
+}
+
+export function firmaFormu(id, init, { odak } = {}) {
   const x0 = id ? byId('firmalar', id) : { id: uuid(), ...init, _new: true };
-  if (!x0) { toast('Firma bulunamadı.', 'err'); return backToList(); }
+  if (!x0) { toast('Firma bulunamadı.', 'err'); return; }
   const x = { ...x0 };
-  const projeler = firmaProjeleri(x.id);
-  const kisiler = S.kisiler.filter(k => k.firma_id === x.id);
-  const ziy = S.ziyaretler.filter(z => z.firma_id === x.id).sort((a, b) => b.tarih.localeCompare(a.tarih));
-  const sip = S.siparisler.filter(s => s.firma_id === x.id);
-  const sipT = sip.filter(s => s.para_birimi === 'USD').reduce((a, s) => a + +s.net_deger, 0);
-  const won = projeler.filter(p => p.durum === 'Sipariş').length, lost = projeler.filter(p => p.durum === 'Kayıp').length;
-  const stok = (x.tipler || []).includes('Bayi') ? S.urunler.filter(u => u.depo && x.ad.toLowerCase().startsWith(u.depo.toLowerCase().split(' ')[0])) : [];
+  let sonra = null;
   const panel = openDrawer(`
-    <header class="dh"><div><p class="muted">${x._new ? 'Yeni firma' : esc((x.tipler || []).join(', ') || 'Firma')}</p><h2 id="drawer-title">${esc(x.ad || 'Yeni firma')}</h2>
-      ${x._new ? '' : (() => { const acik = projeler.filter(p => ACIK.includes(p.durum)), acikT = acik.reduce((a, p) => a + (+p.tutar_usd || 0), 0); const sonZ = ziy.find(z => (z.durum || 'Yapıldı') === 'Yapıldı'); const gun = sonZ ? Math.round((new Date(today()) - new Date(sonZ.tarih)) / 864e5) : null; const tah = S.tahsilatlar.filter(t => t.firma_id === x.id && (+t.tutar || 0) > (+t.odenen || 0)); return `<div class="dh-meta"><span data-gerek="projeler">${acik.length} açık proje${acikT ? ' · ' + usd(acikT) : ''}</span><span data-gerek="projeler">${won} sipariş · ${lost} kayıp</span>${sip.length ? `<span>${usd(sipT)} SAP sipariş</span>` : ''}<span data-gerek="ziyaretler" class="${gun == null || gun > 60 ? 'neg' : ''}">${gun == null ? 'hiç ziyaret yok' : gun === 0 ? 'bugün ziyaret edildi' : `son ziyaret ${gun} gün önce`}</span>${tah.length ? `<span class="neg">${tah.length} açık fatura</span>` : ''}${x.segment ? `<span>Segment ${esc(x.segment)}</span>` : ''}</div>`; })()}</div>
+    <header class="dh"><div><p class="muted">${x._new ? 'Yeni firma' : 'Firmayı düzenle'}</p><h2 id="drawer-title">${esc(x.ad || 'Yeni firma')}</h2></div>
       <button class="x" data-close aria-label="Kapat">×</button></header>
-    <div data-cift></div>
-    ${x._new ? '' : `<div class="dh-actions"><button class="btn sm" data-a="kisi" data-gerek="yaz:kisiler">Kişi ekle</button><button class="btn sm" data-a="ziyaret" data-gerek="yaz:ziyaretler">Ziyaret ekle</button><button class="btn sm ghost" data-a="google" data-gerek="yaz:firmalar">Google'dan bilgi al</button>${x.google_url ? `<a class="btn sm ghost" href="${esc(x.google_url)}" target="_blank" rel="noopener">Google Haritalar</a>` : ''}
-      <button class="btn sm ghost" data-a="wa">WhatsApp</button><button class="btn sm ghost" data-a="teklif" data-gerek="yaz:teklifler">Teklif</button><button class="btn sm ghost" data-a="numune" data-gerek="yaz:numuneler">Numune</button><button class="btn sm ghost" data-a="servis" data-gerek="yaz:servis_kayitlari">Servis kaydı</button>
-      ${x.telefon ? `<a class="btn sm ghost" href="tel:${esc(x.telefon)}">Ara</a>` : ''}
-      ${x.lat != null ? `<a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(x.lat, x.lng)}">Yol tarifi</a>` : ''}
-      <button class="btn sm ghost danger" data-a="sil" data-gerek="yaz:firmalar">Sil</button></div>`}
     <form class="dbody form" novalidate>
-      ${x._new ? '' : `<section class="rel top">
-        <div data-gerek="kisiler"><h3>Kişiler <span class="muted">${kisiler.length}</span></h3>
-        ${kisiler.length ? `<ul class="cards">${kisiler.map(k => `<li class="kisi-bag"><a href="#/kisi/${k.id}" class="pcard"><span class="avatar" data-kv="${esc(k.kartvizit_on || '')}">${esc(k.ad_soyad.slice(0, 1))}</span><span><b>${esc(k.ad_soyad)}</b><small>${esc([k.unvan, k.telefon].filter(Boolean).join(' · '))}</small></span></a><button type="button" class="btn sm ghost" data-ayir="${k.id}" data-gerek="yaz:kisiler" aria-label="${esc(k.ad_soyad)} kişisini bu firmadan ayır">Ayır</button></li>`).join('')}</ul>` : '<p class="hint">Henüz kişi eklenmedi.</p>'}
-        <div class="btnrow" data-gerek="yaz:kisiler"><button type="button" class="btn sm" data-a="kisi">Yeni kişi</button><button type="button" class="btn sm ghost" data-a="bagla">Kayıtlı kişiyi bu firmaya ata</button></div>
-        ${(() => { const eski = S.kisiler.filter(k => k.firma_id !== x.id && (k.eski_firmalar || []).some(g => g.firma_id === x.id)); return eski.length ? `<h4 class="eski-baslik">Eski çalışanlar <span class="muted">${eski.length}</span></h4><ul class="list">${eski.map(k => { const g = k.eski_firmalar.find(g => g.firma_id === x.id); return `<li><a href="#/kisi/${k.id}"><b>${esc(k.ad_soyad)}</b></a><small class="muted">${esc([g.unvan, g.bitis ? tarih(g.bitis) + ' tarihine kadar' : '', k.firma_id ? 'şimdi: ' + firmaAd(k.firma_id) : ''].filter(Boolean).join(' · '))}</small></li>`; }).join('')}</ul>` : ''; })()}
-        <div class="kisi-sec" data-kisi-sec hidden><input type="search" placeholder="Kişi adı, telefon ya da e-posta…" aria-label="Atanacak kişiyi ara" data-kisi-ara><ul class="list" data-kisi-sonuc></ul></div></div>
-        ${kisiler.length >= 2 || S.kisiler.some(k => k.firma_id !== x.id && (k.eski_firmalar || []).some(g => g.firma_id === x.id)) ? `<section class="org-bolum" data-gerek="kisiler" data-org><h3>Organizasyon şeması</h3></section>` : ''}
-        <div data-gerek="projeler"><h3>Projeler <span class="muted">${projeler.length}</span></h3>
-        ${projeler.length ? `<ul class="list">${projeler.map(p => `<li><a href="#/proje/${p.id}"><b>${esc(p.ad)}</b><span class="muted">${projeRolleri(p, x.id).join(', ')} · ${usd(p.tutar_usd)}</span></a>${pill(p.durum)}</li>`).join('')}</ul>` : '<p class="hint">Bu firmanın yer aldığı proje yok.</p>'}</div>
-        ${stok.length ? `<h3>Depo stoğu</h3><p class="hint">${stok.filter(u => u.stok > 0).length} kalem stokta. <a href="#/urunler">Stok ve fiyat ekranında aç</a></p>` : ''}
-        <div data-tahsilat data-gerek="tahsilatlar"></div><div data-iliski data-gerek="projeler !iliski"></div><div data-yorumlar data-gerek="yorumlar"></div><div data-belgeler data-gerek="belgeler"></div><div data-gecmis></div>
-        <div data-gerek="ziyaretler"><h3>Ziyaretler <span class="muted">${ziy.length}</span></h3>
-        ${ziy.length ? `<ul class="list">${ziy.slice(0, 12).map(z => `<li><span class="muted">${tarih(z.tarih)}</span><span>${esc(byId('kisiler', z.kisi_id)?.ad_soyad || '')} ${esc((z.notlar || '').slice(0, 140))}</span></li>`).join('')}</ul>` : '<p class="hint">Ziyaret kaydı yok.</p>'}</div>
-      </section>`}
       ${renderForm(FIRMA_FORM, x)}
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div>
-    </form>`, { wide: true, onClose: () => backToList() });
+    </form>`, { wide: true, onClose: () => { if (sonra) sonra(); else if (x._new) backToList(); } });
   const form = panel.querySelector('form');
   bindForm(form, FIRMA_FORM, x);
-  ciftUyarisi(panel, 'firmalar', x);
-  const orgKok = panel.querySelector('[data-org]');
-  if (orgKok) import('../orgsema.js').then(({ orgSemasi, orgSurukle, orgYakinlastir, orgHizliDuzen }) => {
-    const eskiler = S.kisiler.filter(k => k.firma_id !== x.id && (k.eski_firmalar || []).some(g => g.firma_id === x.id));
-    const o = orgSemasi(kisiler, { firmaAd: x.ad, eskiler, firmaId: x.id, firmaAdiOf: firmaAd });
-    const yazar = rotaYazilabilir('kisiler');
-    orgKok.insertAdjacentHTML('beforeend', o.ozet + o.html + `<p class="hint">${yazar ? 'Kişiye dokun: unvanını, bölümünü ve kime bağlı olduğunu değiştir. Bir kişiyi başka bir kişinin üstüne sürükle (telefonda basılı tutup sürükle): o kişiye bağlanır. Bir yöneticinin altındaki bölüm etiketine bırakınca o bölüme geçer. Ctrl ile tıklayınca kişi kartı açılır.' : 'Kişi kartında “Bağlı olduğu kişi” seçilerek ağaç kurulur.'}</p>`);
-    // Şema kutudan genişse ortadan başlasın (iki yana da kaydırılabilir)
-    requestAnimationFrame(() => { const k = orgKok.querySelector('.org-kaydir'); if (k && k.scrollWidth > k.clientWidth) k.scrollLeft = (k.scrollWidth - k.clientWidth) / 2; });
-    const kaydetK = async (id, d) => { const k = byId('kisiler', id); if (!k) return; try { await app.db.save('kisiler', { ...k, ...d }); toast('ust_kisi_id' in d && Object.keys(d).length <= 2 && d.ust_kisi_id ? `${k.ad_soyad} → ${byId('kisiler', d.ust_kisi_id)?.ad_soyad} altına bağlandı.` : `${k.ad_soyad} güncellendi.`); firmaDetay(x.id); } catch (e) { toast(e.message, 'err'); } };
-    orgYakinlastir(orgKok, { anahtar: 'org-zoom-' + x.id });
-    if (yazar) orgSurukle(orgKok, { kisiler, kaydet: kaydetK, duzenle: id => orgHizliDuzen(byId('kisiler', id), { kisiler, POZ: POZISYONLAR, kaydet: kaydetK, kartiAc: kid => { location.hash = '#/kisi/' + kid; } }) });
-  });
-  if (!x._new) { belgeBolumu(panel.querySelector('[data-belgeler]'), { firma_id: x.id }); tahsilatOzeti(panel.querySelector('[data-tahsilat]'), x); kayitGecmisi(panel.querySelector('[data-gecmis]'), 'firmalar', x.id); import('../yorum.js').then(m => m.yorumBolumu(panel.querySelector('[data-yorumlar]'), 'firmalar', x)); import('../iliski.js').then(m => m.iliskiBolumu(panel.querySelector('[data-iliski]'), x)); }
-  panel.querySelectorAll('.avatar[data-kv]').forEach(async a => { if (a.dataset.kv) { const u = await app.db.url(a.dataset.kv, true); if (u) { a.style.backgroundImage = `url("${u}")`; a.textContent = ''; } } });
-  // Kayıtlı bir kişiyi bu firmaya ata / firmadan ayır
-  const kisiAra = () => {
-    const q = panel.querySelector('[data-kisi-ara]')?.value || '', ul = panel.querySelector('[data-kisi-sonuc]'); if (!ul) return;
-    const l = S.kisiler.filter(k => k.firma_id !== x.id && match(q, k.ad_soyad, k.telefon, k.eposta, firmaAd(k.firma_id))).sort((a, b) => (a.firma_id ? 1 : 0) - (b.firma_id ? 1 : 0) || a.ad_soyad.localeCompare(b.ad_soyad, 'tr')).slice(0, 8);
-    ul.innerHTML = l.length ? l.map(k => `<li><button type="button" class="linkrow" data-ata="${k.id}"><b>${esc(k.ad_soyad)}</b><small class="muted">${esc(k.firma_id ? 'şu an: ' + (firmaAd(k.firma_id) || '?') : 'firması yok')}${k.telefon ? ' · ' + esc(k.telefon) : ''}</small></button></li>`).join('') : '<li class="hint">Eşleşen kişi yok. “Yeni kişi” ile ekleyebilirsin.</li>';
-    ul.querySelectorAll('[data-ata]').forEach(b => b.onclick = async () => {
-      const k = S.kisiler.find(z => z.id === b.dataset.ata); if (!k) return;
-      if (k.firma_id && !confirmBox(`${k.ad_soyad} şu an “${firmaAd(k.firma_id)}” firmasında. Bu firmaya taşınsın mı?`)) return;
-      try { await app.db.save('kisiler', { ...k, firma_id: x.id }); toast(`${k.ad_soyad} bu firmaya atandı.`); firmaDetay(x.id); } catch (e) { toast(e.message, 'err'); }
-    });
-  };
-  panel.querySelector('[data-kisi-ara]')?.addEventListener('input', kisiAra);
-  panel.querySelectorAll('[data-ayir]').forEach(b => b.onclick = async () => {
-    const k = S.kisiler.find(z => z.id === b.dataset.ayir); if (!k || !confirmBox(`${k.ad_soyad} bu firmadan ayrılsın mı? Kişi silinmez, firması boş kalır.`)) return;
-    try { await app.db.save('kisiler', { ...k, firma_id: null }); toast('Kişi firmadan ayrıldı.'); firmaDetay(x.id); } catch (e) { toast(e.message, 'err'); }
-  });
-  panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
-    const a = b.dataset.a;
-    if (a === 'kisi') kisiDetay(null, { firma_id: x.id });
-    if (a === 'bagla') { const k = panel.querySelector('[data-kisi-sec]'); k.hidden = !k.hidden; if (!k.hidden) { kisiAra(); k.querySelector('input').focus(); } }
-    if (a === 'wa') waGonder({ firma: x, kisi: kisiler.find(k => k.telefon) || null });
-    if (a === 'teklif') teklifForm({ firma_id: x.id, kisi_id: kisiler[0]?.id || null });
-    if (a === 'numune') numuneForm({ firma_id: x.id, kisi_id: kisiler[0]?.id || null });
-    if (a === 'servis') servisForm({ firma_id: x.id });
-    if (a === 'ziyaret') ziyaretForm({ firma_id: x.id }, () => firmaDetay(x.id));
-    if (a === 'google') googleBul({ q: aramaMetni(x), hedef: { table: 'firmalar', rec: x }, sonra: () => firmaDetay(x.id) });
-    if (a === 'sil' && confirmBox(`“${x.ad}” silinsin mi? Projelerdeki bağlantıları boşaltılır.`)) {
-      await app.db.del('firmalar', x.id);
-      for (const p of S.projeler) { const ch = {}; for (const k of ['yatirimci_id', 'projeci_id', 'danisman_id', 'gemut_id', 'emut_id', 'alici_id', 'bayi_id']) if (p[k] === x.id) ch[k] = null; if (Object.keys(ch).length) await app.db.save('projeler', { ...p, ...ch }); }
-      toast('Firma silindi.'); closeDrawer(); app.refresh();
-    }
-  });
+  if (odak) setTimeout(() => { const a = panel.querySelector(`[name="${odak}"]`); if (!a) return; a.closest('details')?.setAttribute('open', ''); a.focus(); a.scrollIntoView({ block: 'center' }); }, 80);
   form.onsubmit = async e => {
     e.preventDefault();
     try {
@@ -210,7 +137,10 @@ export function firmaDetay(id, init) {
       if (!o.ad) return toast('Firma adını yaz.', 'err');
       const dup = x._new && S.firmalar.find(f => f.ad.toLocaleLowerCase('tr') === o.ad.toLocaleLowerCase('tr'));
       if (dup && !confirmBox(`“${dup.ad}” adında bir firma zaten var. Yine de yeni kayıt açılsın mı?`)) return;
-      await app.db.save('firmalar', o); toast(`${o.ad} kaydedildi.`); closeDrawer(); app.refresh();
+      await app.db.save('firmalar', o); toast(`${o.ad} kaydedildi.`);
+      // Firmalar listesinden açılan yeni firma kendi sayfasına geçer; başka ekrandan eklenince o ekranda kalınır
+      sonra = x._new && location.hash === '#/firmalar' ? () => { location.hash = '#/firma/' + o.id; } : () => app.refresh();
+      closeDrawer(true);
     } catch (err) { toast('Kaydedilemedi: ' + err.message, 'err'); }
   };
 }
@@ -375,7 +305,7 @@ export function kisiDetay(id, init) {
 }
 
 // Benzer kayıt uyarısı (detayın üstünde) ve listelerdeki "Benzer kayıtlar" düğmesi
-function ciftUyarisi(panel, tablo, r) {
+export function ciftUyarisi(panel, tablo, r) {
   if (r._new || !r.id) return;
   import('../cift.js').then(({ benzerleri, karsilastir }) => {
     const kok = panel.querySelector('[data-cift]'); if (!kok) return;
