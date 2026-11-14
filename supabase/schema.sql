@@ -1080,3 +1080,147 @@ begin
   end loop;
 end $$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 27 $f$;
+
+-- ===================== Sürüm 28: Ekipler ve kayıt kapsamı (K3) =====================
+-- Ekip ağacı (Satış → Satış Adana), ekip yöneticisi. Kayıtlarda "sorumlu" (e-posta) ve "ekip".
+-- Rolün kapsamı (_kapsam): tum = şirketin bütün kayıtları, ekip = kendi ekibi ve alt ekipleri, kendi = sorumlusu olduğu kayıtlar.
+-- Ekip yöneticisi, rolü ne olursa olsun ekibinin kayıtlarını görür ve düzenler. Şirket yöneticileri her şeyi görür.
+create table if not exists public.ekipler (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default public.veri_sahibi(),
+  ad text not null, ust_ekip_id uuid references public.ekipler(id) on delete set null,
+  yonetici_eposta text,
+  created_at timestamptz default now(), updated_at timestamptz default now(),
+  unique (owner, ad)
+);
+create index if not exists ekipler_owner_idx on public.ekipler (owner);
+alter table public.ekipler enable row level security;
+drop policy if exists "ekip_yonet" on public.ekipler;
+create policy "ekip_yonet" on public.ekipler for all to authenticated using (public.sirket_yetkilisi(owner)) with check (public.sirket_yetkilisi(owner));
+drop policy if exists "ekip_oku" on public.ekipler;
+create policy "ekip_oku" on public.ekipler for select to authenticated using (public.ekipte(owner::text));
+drop trigger if exists touch on public.ekipler;
+create trigger touch before update on public.ekipler for each row execute function public.touch_updated_at();
+alter table public.ekip_uyeleri add column if not exists ekip_id uuid references public.ekipler(id) on delete set null;
+
+-- Kayıtlara sorumlu ve ekip
+do $$ declare t text; begin
+  foreach t in array array['firmalar','kisiler','projeler','ziyaretler','gorevler','teklifler','siparisler','numuneler','servis_kayitlari','tahsilatlar'] loop
+    execute format('alter table public.%I add column if not exists sorumlu text', t);
+    execute format('alter table public.%I add column if not exists ekip_id uuid references public.ekipler(id) on delete set null', t);
+    execute format('create index if not exists %I on public.%I (owner, sorumlu)', t || '_sorumlu_idx', t);
+  end loop;
+end $$;
+
+-- Benim ekiplerim: üyesi olduğum ekip ve yönettiğim ekipler, alt ekipleriyle
+create or replace function public.benim_ekiplerim() returns uuid[] language sql stable security definer set search_path = public as $f$
+  with recursive bas as (
+    select u.ekip_id as id from public.ekip_uyeleri u where u.owner = public.veri_sahibi() and u.aktif and lower(u.eposta) = public.benim_epostam() and u.ekip_id is not null
+    union select e.id from public.ekipler e where e.owner = public.veri_sahibi() and lower(e.yonetici_eposta) = public.benim_epostam()
+  ), agac as (
+    select id from bas union select e.id from public.ekipler e join agac a on e.ust_ekip_id = a.id
+  ) select coalesce(array_agg(id), '{}') from agac
+$f$;
+-- Yönettiğim ekipler (alt ekipleriyle): kapsamı ne olursa olsun bu ekiplerin kayıtları görünür
+create or replace function public.yonettigim_ekipler() returns uuid[] language sql stable security definer set search_path = public as $f$
+  with recursive agac as (
+    select e.id from public.ekipler e where e.owner = public.veri_sahibi() and lower(e.yonetici_eposta) = public.benim_epostam()
+    union select e.id from public.ekipler e join agac a on e.ust_ekip_id = a.id
+  ) select coalesce(array_agg(id), '{}') from agac
+$f$;
+-- Kapsamım: şirket yetkilisi ya da üye kaydı olmayan (kendi şirketi) = tum
+create or replace function public.benim_kapsamim() returns text language sql stable security definer set search_path = public as $f$
+  select case when public.sirket_yetkilisi(public.veri_sahibi()) then 'tum'
+    else coalesce((select nullif(u.yetkiler ->> '_kapsam', '') from public.ekip_uyeleri u where u.owner = public.veri_sahibi() and u.aktif and lower(u.eposta) = public.benim_epostam() limit 1), 'tum') end
+$f$;
+-- Bir kayıt kapsamımda mı (owner'ın yetki kontrolü ayrıca yapılır)
+create or replace function public.kapsamda(sahip uuid, sorumlu text, ekip uuid) returns boolean language sql stable security definer set search_path = public as $f$
+  select sahip <> public.veri_sahibi() or public.benim_kapsamim() = 'tum'
+    or lower(coalesce(sorumlu, '')) = public.benim_epostam()
+    or (ekip is not null and ekip = any(public.yonettigim_ekipler()))
+    or (public.benim_kapsamim() = 'ekip' and ekip is not null and ekip = any(public.benim_ekiplerim()))
+$f$;
+revoke all on function public.kapsamda(uuid, text, uuid) from public, anon;
+grant execute on function public.kapsamda(uuid, text, uuid) to authenticated;
+
+-- Yeni kayıt: sorumlu boşsa ekleyen kişi, ekip boşsa ekleyenin ekibi
+create or replace function public.kayit_sorumlu() returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if new.sorumlu is null or new.sorumlu = '' then new.sorumlu := nullif(public.benim_epostam(), ''); end if;
+  if new.ekip_id is null then
+    select u.ekip_id into new.ekip_id from public.ekip_uyeleri u where u.owner = new.owner and lower(u.eposta) = lower(new.sorumlu) and u.aktif limit 1;
+  end if;
+  return new;
+end $f$;
+
+do $$ declare t text; begin
+  foreach t in array array['firmalar','kisiler','projeler','ziyaretler','gorevler','teklifler','siparisler','numuneler','servis_kayitlari','tahsilatlar'] loop
+    execute format('drop trigger if exists kayit_sorumlu on public.%I', t);
+    execute format('create trigger kayit_sorumlu before insert on public.%I for each row execute function public.kayit_sorumlu()', t);
+    execute format('drop policy if exists "oku" on public.%I', t);
+    execute format('drop policy if exists "ekle" on public.%I', t);
+    execute format('drop policy if exists "degistir" on public.%I', t);
+    execute format('drop policy if exists "sil" on public.%I', t);
+    execute format('create policy "oku" on public.%I for select to authenticated using (public.yetki(owner, %L, %L) and public.kapsamda(owner, sorumlu, ekip_id))', t, t, 'oku');
+    execute format('create policy "ekle" on public.%I for insert to authenticated with check (public.yetki(owner, %L, %L) and public.kapsamda(owner, sorumlu, ekip_id))', t, t, 'yaz');
+    execute format('create policy "degistir" on public.%I for update to authenticated using (public.yetki(owner, %L, %L) and public.kapsamda(owner, sorumlu, ekip_id)) with check (public.yetki(owner, %L, %L) and public.kapsamda(owner, sorumlu, ekip_id))', t, t, 'yaz', t, 'yaz');
+    execute format('create policy "sil" on public.%I for delete to authenticated using (public.yetki(owner, %L, %L) and public.kapsamda(owner, sorumlu, ekip_id))', t, t, 'yaz');
+  end loop;
+end $$;
+
+-- Taşıma: sorumlusu boş eski kayıtlar → kaydı ilk ekleyen (değişiklik geçmişinden), bulunamazsa şirketin kurucusu
+do $$ declare t text; begin
+  foreach t in array array['firmalar','kisiler','projeler','ziyaretler','gorevler','teklifler','siparisler','numuneler','servis_kayitlari','tahsilatlar'] loop
+    execute format($q$update public.%I x set sorumlu = coalesce(
+        (select d.kim from public.degisiklikler d where d.owner = x.owner and d.tablo = %L and d.kayit_id = x.id and d.kim is not null and d.kim <> '' order by d.zaman limit 1),
+        (select lower(u.email) from auth.users u where u.id = x.owner))
+      where x.sorumlu is null$q$, t, t);
+  end loop;
+end $$;
+
+-- Kapsam dışında kalan firmalar: yalnızca adı ve sorumlusu (aynı firmaya iki satışçı gitmesin)
+create or replace function public.baska_satiscida(q text) returns table (ad text, sorumlu text, sorumlu_ad text) language sql stable security definer set search_path = public as $f$
+  select f.ad, f.sorumlu, coalesce((select e.ad from public.ekip_uyeleri e where e.owner = f.owner and lower(e.eposta) = lower(f.sorumlu) limit 1), f.sorumlu)
+  from public.firmalar f
+  where f.owner = public.veri_sahibi() and public.ekipte(f.owner::text) and length(btrim(q)) >= 3
+    and lower(f.ad) like '%' || lower(btrim(q)) || '%'
+    and not public.kapsamda(f.owner, f.sorumlu, f.ekip_id)
+  order by f.ad limit 5
+$f$;
+revoke all on function public.baska_satiscida(text) from public, anon;
+grant execute on function public.baska_satiscida(text) to authenticated;
+
+-- Kayıt devri: bir kişinin sorumlu olduğu bütün kayıtlar başka birine geçer; hedef boşsa kişinin ekip yöneticisine, o da yoksa kurucuya
+create or replace function public.kayit_devret(p_kimden text, p_kime text default null) returns jsonb language plpgsql security definer set search_path = public, auth as $f$
+declare s uuid := public.veri_sahibi(); hedef text := lower(nullif(btrim(coalesce(p_kime, '')), '')); t text; n int; toplam int := 0; sonuc jsonb := '{}'::jsonb;
+begin
+  if not public.sirket_yetkilisi(s) then raise exception 'Kayıt devrini yalnızca şirket yöneticisi yapabilir.'; end if;
+  if hedef is null then
+    -- kişinin ekibinden yukarı doğru ilk ekip yöneticisi
+    with recursive yukari as (
+      select e.id, e.ust_ekip_id, e.yonetici_eposta, 0 as d from public.ekip_uyeleri u join public.ekipler e on e.id = u.ekip_id
+        where u.owner = s and lower(u.eposta) = lower(p_kimden)
+      union all select e.id, e.ust_ekip_id, e.yonetici_eposta, y.d + 1 from public.ekipler e join yukari y on e.id = y.ust_ekip_id where y.d < 20
+    ) select lower(yonetici_eposta) into hedef from yukari where yonetici_eposta is not null and lower(yonetici_eposta) <> lower(p_kimden) order by d limit 1;
+  end if;
+  if hedef is null then select lower(u.email) into hedef from auth.users u where u.id = s; end if;
+  foreach t in array array['firmalar','kisiler','projeler','ziyaretler','gorevler','teklifler','siparisler','numuneler','servis_kayitlari','tahsilatlar'] loop
+    execute format('update public.%I set sorumlu = $1 where owner = $2 and lower(sorumlu) = lower($3)', t) using hedef, s, p_kimden;
+    get diagnostics n = row_count; toplam := toplam + n; if n > 0 then sonuc := sonuc || jsonb_build_object(t, n); end if;
+  end loop;
+  return jsonb_build_object('kime', hedef, 'toplam', toplam, 'tablolar', sonuc);
+end $f$;
+revoke all on function public.kayit_devret(text, text) from public, anon;
+grant execute on function public.kayit_devret(text, text) to authenticated;
+-- Firmanın sorumlusu değişince, aynı sorumluya bağlı kişileri de yeni sorumluya geçer
+create or replace function public.firma_sorumlu_yay() returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if new.sorumlu is distinct from old.sorumlu then
+    update public.kisiler set sorumlu = new.sorumlu, ekip_id = coalesce(new.ekip_id, ekip_id)
+    where owner = new.owner and firma_id = new.id and (sorumlu is null or lower(sorumlu) = lower(coalesce(old.sorumlu, '')));
+  end if;
+  return new;
+end $f$;
+drop trigger if exists firma_sorumlu_yay on public.firmalar;
+create trigger firma_sorumlu_yay after update of sorumlu on public.firmalar for each row execute function public.firma_sorumlu_yay();
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 28 $f$;

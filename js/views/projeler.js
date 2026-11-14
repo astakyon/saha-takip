@@ -1,4 +1,5 @@
 import { S, uuid } from '../db.js';
+import { sahipMi } from '../yetki.js';
 import { anaBayi, anaBayiKisa, markaAdi, eaeKatalog } from '../profil.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, usd, num, pill, tarih, today, DURUMLAR, ACIK, ILLER, ILCELER, OSBLER, RAKIPLER, KAYIP_NEDENLERI, URUN_AILELERI, SEKTORLER,
@@ -20,6 +21,7 @@ export const PROJE_FORM = [
   { title: 'Proje', fields: [
     { k: 'ad', l: 'Proje adı', auto: true, full: true, req: true, ph: 'Örn. Oyak Çimento Ek Kapsam' },
     { k: 'durum', l: 'Aşama', t: 'sel', opts: DURUMLAR.map(d => d.k), ph: 'Seç' },
+    { k: 'sorumlu', l: 'Sorumlu', t: 'sel', ph: 'Ekleyen kişi', opts: () => (app.ekipTum || []).map(k => ({ v: k.eposta, l: k.ad + (k.sahip ? ' (kurucu)' : '') })), show: () => sahipMi() && (app.ekipTum || []).length > 1, help: 'Kaydı kim takip ediyor; kapsamı “Sadece kendi” olan kullanıcılar yalnızca sorumlusu oldukları kayıtları görür.' },
     { k: 'tutar_usd', l: 'Tahmini tutar (USD)', t: 'num' },
     { k: 'beklenen_tarih', l: 'Beklenen sipariş tarihi', t: 'date' },
     { k: 'takip_yili', l: 'Takip yılı', t: 'sel', opts: [2025, 2026, 2027, 2028].map(String) },

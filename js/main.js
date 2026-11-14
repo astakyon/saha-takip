@@ -237,6 +237,7 @@ async function boot() {
     yetkiUygula(); gerekIzle(); setTimeout(hataGonder, 8000);
     if (app.db.mode === 'supabase') {
       try { const { data } = await Promise.race([app.db.c.rpc('yonetici_mi'), new Promise(r => setTimeout(() => r({}), 4000))]); app.yonetici = data === true; } catch { app.yonetici = false; }
+      app.db.c.rpc('ekip_listesi').then(({ data }) => { app.ekipTum = (data || []).map(r => ({ eposta: (r.eposta || '').toLowerCase(), ad: r.sahip ? (r.ad && r.ad !== 'Veri sahibi' ? r.ad : 'Kurucu') : (r.ad || r.eposta.split('@')[0]), sahip: r.sahip })); }).catch(() => {});
       if (app.yetki?.ayrildi) { const b = document.createElement('div'); b.id = 'onizleme-bar'; b.setAttribute('role', 'status'); b.innerHTML = '<span><b>Şirketten ayrıldın olarak işaretlendin.</b> Şirketin kayıtlarına erişimin yok. Bir yanlışlık varsa şirket yöneticisine yaz.</span>'; document.body.appendChild(b); }
       if (app.db.bakilan) bakisCubugu();
       else if (sahipMi() && (!app.yetki?.sahip || app.yetki.sahip === app.db.user()?.id)) import('./profil.js').then(m => app.db.c.rpc('hesap_kaydol', { p_firma: m.profilVar() ? m.profil().firma : null })).then(r => { app.hesap = r?.data || null; if (app.hesap?.durum === 'askida') askidaCubugu(); }).catch(() => {});

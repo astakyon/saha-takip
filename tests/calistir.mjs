@@ -348,7 +348,33 @@ const DB = () => {
   await p.locator('.roller-bol').screenshot({ path: 'tests/cikti/roller.png' }).catch(() => {});
   const ali2 = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).ekip_uyeleri[0].yetkiler);
   kontrol('Hazır roller ekleniyor, kullanıcı rol alıyor, rol değişince kullanıcı da değişiyor', roller.length === 5 && ali1.rol_id === satisId && ali1.yetkiler._rol === 'Satış' && ali1.yetkiler.projeler === 'yaz' && agacGizli && ali1.yetkiler._ekran?.harita === 'oku' && !ali2._ekran?.harita, JSON.stringify({ roller, agacGizli, ali1: { rol: ali1.rol_id === satisId, y: ali1.yetkiler._rol }, h2: ali2._ekran?.harita }));
+  // K3: ekip ekle, kullanıcıyı ekibe koy, rol kapsamı "Sadece kendinin", kayıt devri
+  await p.click('.ekipler-bol details.card-ic summary'); await p.fill('[data-yeniekip] [data-ekad]', 'Satış Adana'); await p.click('[data-ekekle]'); await w(1200);
+  const ekip = await p.evaluate(() => (JSON.parse(localStorage.getItem('__DB')).ekipler || [])[0]);
+  await p.click('[data-uye="ali@x.com"] summary').catch(() => {}); await w(200);
+  await p.selectOption('[data-uye="ali@x.com"] [data-uyeekip]', ekip.id); await p.click('[data-uye="ali@x.com"] [data-kaydet]'); await w(700);
+  const sid = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).roller.find(r => r.ad === 'Satış').id);
+  await p.click(`.rol-k[data-rol="${sid}"] summary`).catch(() => {}); await w(200);
+  await p.click(`.rol-k[data-rol="${sid}"] [data-kapsam] [data-v="kendi"]`); await p.click(`.rol-k[data-rol="${sid}"] [data-rolkaydet]`); await w(1200);
+  const k3 = await p.evaluate(() => { const d = JSON.parse(localStorage.getItem('__DB')); return { ekip: d.ekip_uyeleri[0].ekip_id, kapsam: d.roller.find(r => r.ad === 'Satış').yetkiler._kapsam, aliKapsam: d.ekip_uyeleri[0].yetkiler._kapsam }; });
+  await p.evaluate(() => { window.__DB.firmalar[0].sorumlu = 'ali@x.com'; localStorage.setItem('__DB', JSON.stringify(window.__DB)); });
+  await p.click('[data-uye="ali@x.com"] summary').catch(() => {}); await w(200);
+  if (!(await p.isVisible('[data-uye="ali@x.com"] [data-devret]'))) await p.click('[data-uye="ali@x.com"] summary');
+  await p.click('[data-uye="ali@x.com"] [data-devret]'); await p.click('[data-uye="ali@x.com"] [data-devyap]'); await w(800);
+  const devir = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).firmalar[0].sorumlu);
+  kontrol('Ekip ekleniyor, kullanıcı ekibe konuyor, rol kapsamı kaydediliyor ve kişiye yayılıyor, kayıtlar devrediliyor', k3.ekip === ekip?.id && k3.kapsam === 'kendi' && k3.aliKapsam === 'kendi' && devir === 'sahip@x.com', JSON.stringify({ k3, devir }));
   kontrol('Şirket ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
+// ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
+{
+  const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');
+  const { p, c } = await sayfa({ supabase: true, hazirla: DB4 });
+  await p.goto(U + '#/firmalar'); await w(1500);
+  await p.fill('[data-q]', 'Gizli'); await w(900);
+  const t = await p.textContent('[data-baska]').catch(() => '');
+  kontrol('Kapsamı dar kullanıcı aradığı firmanın başka satışçıda olduğunu görüyor', /Başka satışçıda:.*Gizli Firma AŞ.*Veli/.test(t || ''), t);
   await c.close();
 }
 

@@ -1409,7 +1409,7 @@ body.kirp-acik { overflow: hidden; }
 .org-ozet { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; } .org-ozet b { margin-right: 4px; }
 .org-kaydir { overflow-x: auto; padding: 8px 0 12px; -webkit-overflow-scrolling: touch; }
 .org, .org ul { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; }
-.org { width: max-content; min-width: 100%; }
+.org { width: max-content; margin: 0 auto; justify-content: flex-start; }
 .org li { position: relative; display: flex; flex-direction: column; align-items: center; padding: 18px 6px 0; }
 .org ul { padding-top: 0; position: relative; }
 /* bağlantı çizgileri */
@@ -1454,16 +1454,28 @@ a.org-kutu:hover, a.org-kutu:focus-visible { border-color: #E0B93E; }
 @media (max-width: 760px) { .sk-izgara { grid-template-columns: minmax(0, 1fr); } .sk-sayilar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ---------- Sürüm 56: şemada sürükle-bırak, ayrılanlar ---------- */
-.org-yan { display: flex; gap: 14px; align-items: flex-start; }
-.org-yan > .org-kaydir { flex: 1; min-width: 0; }
-.org-eski { flex: 0 0 210px; display: grid; gap: 8px; padding: 10px; border-left: 2px dashed var(--line); }
+.org-yan { display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
+.org-yan > .org-kaydir { min-width: 0; }
+.org-eski { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; padding: 12px 0 0; border-top: 2px dashed var(--line); }
+.org-eski h4 { grid-column: 1 / -1; }
 .org-eski h4 { margin: 0; font-size: 13px; color: var(--muted); } .org-eski h4 small { font-weight: 400; }
 .org-kutu.eski { opacity: .62; border-style: dashed; max-width: none; }
 .org-kutu.eski:hover, .org-kutu.eski:focus-visible { opacity: 1; }
-@media (max-width: 760px) { .org-yan { flex-direction: column; } .org-eski { flex: none; width: 100%; border-left: 0; border-top: 2px dashed var(--line); grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); } .org-eski h4 { grid-column: 1 / -1; } }
 .org .org-kutu[data-kid] { touch-action: pan-x pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .org-suruklen .org-kutu[data-kid], .org-suruklen [data-grup] { transition: box-shadow .12s, transform .12s; }
 .org-tasinan { opacity: .35; }
 .org-hedef { box-shadow: 0 0 0 3px #F5B800 !important; transform: scale(1.04); }
 .org-hayalet { position: fixed; z-index: 3000; pointer-events: none; transform: translate(-50%, -60%) rotate(-2deg); box-shadow: 0 10px 30px rgba(0,0,0,.25); opacity: .95; }
 @media (prefers-reduced-motion: reduce) { .org-hedef { transform: none; } .org-hayalet { transform: translate(-50%, -60%); } }
+
+/* ---------- Sürüm 57: ekipler ve kapsam ---------- */
+.kapsam-seg { display: inline-flex; flex-wrap: wrap; margin: 4px 0; }
+.ekipler-bol, .roller-bol { margin-bottom: 14px; }
+.devret-kutu { margin-top: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: 10px; }
+.baska-sat { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: var(--sari-soft); font-size: 14px; }
+
+/* ---------- Sürüm 57: ekipler ve kapsam ---------- */
+.kapsam-seg { display: inline-flex; flex-wrap: wrap; margin: 4px 0; }
+.ekipler-bol, .roller-bol { margin-bottom: 14px; }
+.devret-kutu { margin-top: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: 10px; }
+.baska-sat { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: var(--sari-soft); font-size: 14px; }

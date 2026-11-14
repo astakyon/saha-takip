@@ -32,6 +32,17 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 57): Ekipler ve kayıt kapsamı (K3)
+
+- **Ekipler:** Ayarlar → Ekip ve yetkiler'de ekip/departman ağacı (ör. Satış → Satış Adana), her ekibe yönetici. Kullanıcı kartından ekibe konur.
+- **Kayıt kapsamı** (rolde ya da kişiye özel ayarda): *Tüm şirketin*, *Ekibinin* (kendi ekibi ve alt ekipleri), *Sadece kendinin* (sorumlusu olduğu kayıtlar). Ekip yöneticisi, rolü ne olursa olsun yönettiği ekiplerin kayıtlarını görür. Şirket yöneticileri her şeyi görür. Kural sunucuda (RLS) uygulanır: kapsam dışındaki kayıt telefona hiç gelmez.
+- **Sorumlu:** firma, kişi, proje, ziyaret, görev, teklif, sipariş, numune, servis ve tahsilat kayıtlarında. Yeni kayıtta ekleyen kişi ve ekibi kendiliğinden yazılır; firma ve proje formunda şirket yöneticisi değiştirebilir. Firmanın sorumlusu değişince aynı sorumludaki kişileri de geçer.
+- **Başka satışçıda:** kapsamı dar kullanıcı Firmalar'da arama yapınca, kendi görmediği eşleşen firmalar yalnızca adı ve sorumlusuyla “Başka satışçıda” olarak gösterilir.
+- **Kayıt devri:** kullanıcı kartında “Kayıtlarını devret”; hedef seçilmezse kişinin ekibinden yukarı doğru ilk ekip yöneticisine, o da yoksa kurucuya. Kullanıcı pasife alınınca devretmek isteyip istemediği sorulur.
+- **Taşıma:** mevcut kayıtların sorumlusu, değişiklik geçmişinden kaydı ilk ekleyen kişi olur; bulunamazsa kurucu. Bütün roller başta “Tüm şirketin” kapsamındadır; kimse bugün gördüğünden azını görmez.
+- Organizasyon şemasında **firmadan ayrılanlar artık ağacın altında** ayrı bir bölümde; geniş şema ortadan başlar ve iki yana kaydırılır (kutular kesilmez).
+- Supabase'de güncel **schema.sql** çalıştırılmalı (sürüm 28).
+
 ## Güncelleme notu (sürüm 56): şemada sürükle-bırak, ayrılanlar
 
 - **Organizasyon şemasında sürükle-bırak:** bir kişiyi başka bir kişinin kutusuna bırakınca “bağlı olduğu kişi” olur. Telefonda kutuya basılı tut (yaklaşık 0,3 sn, kısa titreşim), sonra sürükle. Pozisyon grubu etiketine bırakınca bağlantı kalkar ve kişinin pozisyonu o grup olur; firma adına bırakınca yalnızca bağlantı kalkar. Kendi altındaki birine bağlanamaz (döngü olmaz). Kısa dokunuş eskisi gibi kişi kartını açar. Yalnızca kişileri düzenleme yetkisi olanlarda açık.

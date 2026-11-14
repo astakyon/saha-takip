@@ -1,5 +1,5 @@
 import { S, uuid, adBol, adBirlestir } from '../db.js';
-import { rotaYazilabilir } from '../yetki.js';
+import { rotaYazilabilir, sahipMi } from '../yetki.js';
 import { app, F, saveFilters } from '../state.js';
 import { POZISYONLAR, pozisyonTahmin, esc, usd, num, pill, tarih, today, ILLER, ILCELER, OSBLER, FIRMA_TIPLERI, SEKTORLER, byId, firmaAd, match, toast, openDrawer, closeDrawer,
   exportXlsx, directionsUrl, confirmBox, download, ACIK, parcali, gorununce, fold } from '../ui.js';
@@ -19,6 +19,7 @@ const FIRMA_FORM = [
   { title: 'Firma', fields: [
     { k: 'ad', l: 'Firma adı', auto: true, full: true, req: true },
     { k: 'tipler', l: 'Firma tipi', t: 'tags', opts: FIRMA_TIPLERI },
+    { k: 'sorumlu', l: 'Sorumlu', t: 'sel', ph: 'Ekleyen kişi', opts: () => (app.ekipTum || []).map(k => ({ v: k.eposta, l: k.ad + (k.sahip ? ' (kurucu)' : '') })), show: () => sahipMi() && (app.ekipTum || []).length > 1, help: 'Kaydı kim takip ediyor; kapsamı “Sadece kendi” olan kullanıcılar yalnızca sorumlusu oldukları kayıtları görür.' },
     { k: 'telefon', l: 'Telefon', t: 'tel' }, { k: 'eposta', l: 'E-posta', t: 'email' },
   ]},
   { title: 'Konum', ozet: 'harita, il, ilçe, adres', kapali: o => !o._new, fields: [
@@ -73,6 +74,7 @@ export function firmalarView(el) {
       <label>Sırala <select data-k="sort">${['Ada göre', 'Proje sayısı', 'Son ziyaret'].map(x => `<option ${f.sort === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
       <label class="chk"><input type="checkbox" data-b="key" ${f.key ? 'checked' : ''}> <span>Key account</span></label></div>
   </div>
+  <div class="baska-sat" data-baska hidden aria-live="polite"></div>
   <div class="rows firms" data-rows></div>`;
   const stats = new Map(S.firmalar.map(x => [x.id, { p: 0, k: 0, s: 0, z: null }]));
   for (const p of S.projeler) for (const id of new Set([p.yatirimci_id, p.projeci_id, p.danisman_id, p.gemut_id, p.emut_id, p.alici_id, p.bayi_id])) { const s = stats.get(id); if (s) { s.p++; if (p.durum === 'Sipariş') s.k++; if (p.durum === 'Kayıp') s.s++; } }
@@ -87,7 +89,15 @@ export function firmalarView(el) {
       <span class="muted">${esc((x.tipler || []).join(', '))}</span><span class="muted">${esc(x.il || '')}</span>
       <span class="muted">${s.p ? `${s.p} proje · ${s.k} sipariş · ${s.s} kayıp` : ''}</span><span class="r muted">${s.z ? 'son ziyaret ' + tarih(s.z) : ''}</span></a>`; }), { sar: x => `<div class="row head" aria-hidden="true"><span>Firma</span><span>Tip</span><span>İl</span><span>Projeler</span><span class="r">Son ziyaret</span></div>` + x });
   };
-  let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
+  // Kapsamı dar kullanıcı: aradığı firma başka satışçıdaysa yalnızca adı ve sorumlusu gösterilir
+  const baska = async () => {
+    const kutu = el.querySelector('[data-baska]'); if (!kutu) return;
+    const q = (f.q || '').trim(); if (sahipMi() || app.db.mode !== 'supabase' || q.length < 3) { kutu.hidden = true; return; }
+    try { const { data } = await app.db.c.rpc('baska_satiscida', { q }); if (!data?.length) { kutu.hidden = true; return; }
+      kutu.hidden = false; kutu.innerHTML = `<b>Başka satışçıda:</b> ${data.map(x => `${esc(x.ad)} <small class="muted">(${esc(x.sorumlu_ad || x.sorumlu || '?')})</small>`).join(', ')}<small class="muted"> — bu firmalara gitmeden önce sorumlusuyla konuş.</small>`; } catch { kutu.hidden = true; }
+  };
+  let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); baska(); }, 200); };
+  baska();
   el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { f.tip = b.dataset.t; el.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b)); saveFilters(); draw(); });
   el.querySelectorAll('[data-k]').forEach(s => s.onchange = () => { f[s.dataset.k] = s.value; saveFilters(); draw(); });
   el.querySelectorAll('[data-b]').forEach(s => s.onchange = () => { f[s.dataset.b] = s.checked; saveFilters(); draw(); });
@@ -153,6 +163,8 @@ export function firmaDetay(id, init) {
     const o = orgSemasi(kisiler, { firmaAd: x.ad, eskiler, firmaId: x.id, firmaAdiOf: firmaAd });
     const yazar = rotaYazilabilir('kisiler');
     orgKok.insertAdjacentHTML('beforeend', o.ozet + o.html + `<p class="hint">${yazar ? 'Bir kişiyi başka bir kişinin üstüne sürükle (telefonda basılı tutup sürükle): o kişiye bağlanır. Grup etiketine bırakınca bağlantı kalkar ve pozisyonu o grup olur.' : 'Kişi kartında “Bağlı olduğu kişi” seçilerek ağaç kurulur.'}</p>`);
+    // Şema kutudan genişse ortadan başlasın (iki yana da kaydırılabilir)
+    requestAnimationFrame(() => { const k = orgKok.querySelector('.org-kaydir'); if (k && k.scrollWidth > k.clientWidth) k.scrollLeft = (k.scrollWidth - k.clientWidth) / 2; });
     if (yazar) orgSurukle(orgKok, { kisiler, kaydet: async (id, d) => { const k = byId('kisiler', id); if (!k) return; try { await app.db.save('kisiler', { ...k, ...d }); toast(d.ust_kisi_id ? `${k.ad_soyad} → ${byId('kisiler', d.ust_kisi_id)?.ad_soyad} altına bağlandı.` : `${k.ad_soyad} bağlantısı kaldırıldı.`); firmaDetay(x.id); } catch (e) { toast(e.message, 'err'); } } });
   });
   if (!x._new) { belgeBolumu(panel.querySelector('[data-belgeler]'), { firma_id: x.id }); tahsilatOzeti(panel.querySelector('[data-tahsilat]'), x); kayitGecmisi(panel.querySelector('[data-gecmis]'), 'firmalar', x.id); import('../yorum.js').then(m => m.yorumBolumu(panel.querySelector('[data-yorumlar]'), 'firmalar', x)); import('../iliski.js').then(m => m.iliskiBolumu(panel.querySelector('[data-iliski]'), x)); }
