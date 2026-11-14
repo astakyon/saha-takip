@@ -1,18 +1,11 @@
 import { S, uuid } from '../db.js';
 import { sahipMi } from '../yetki.js';
-import { anaBayi, anaBayiKisa, markaAdi, eaeKatalog } from '../profil.js';
+import { anaBayi, anaBayiKisa, markaAdi } from '../profil.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, usd, num, pill, tarih, today, DURUMLAR, ACIK, ILLER, ILCELER, OSBLER, RAKIPLER, KAYIP_NEDENLERI, URUN_AILELERI, SEKTORLER,
-  byId, firmaAd, match, toast, openDrawer, closeDrawer, exportXlsx, directionsUrl, confirmBox, durumRenk, SANTIYE, olasilik, gunEkle, fold } from '../ui.js';
-import { teklifForm } from './teklif.js';
-import { numuneForm } from './kayitlar.js';
-import { belgeBolumu, belgeleri } from '../belgeler.js';
-import { kayitGecmisi } from '../gecmis.js';
-import { siparisForm } from './panel.js';
+  byId, firmaAd, match, toast, openDrawer, closeDrawer, exportXlsx, confirmBox, durumRenk, SANTIYE, olasilik, gunEkle, fold } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
-import { googleBul, aramaMetni } from '../google.js';
 import { backToList } from '../main.js';
-import { ziyaretForm, gorevForm } from './ziyaret.js';
 import { ayar, ayarYaz } from '../ayar.js';
 
 // Proje formu: yeni projede yalnızca gerekli alanlar açık; ayrıntılar açılır bölümlerde
@@ -361,7 +354,7 @@ export function yeniProje(init) {
 }
 
 // Şantiye ilerleme fotoğrafları: projenin ve projeye bağlı ziyaretlerin fotoğrafları tarih sırasıyla
-function santiyeBolumu(kutu, p) {
+export function santiyeBolumu(kutu, p) {
   if (!kutu) return;
   const ciz = async () => {
     const pr = byId('projeler', p.id) || p;
@@ -387,46 +380,28 @@ function santiyeBolumu(kutu, p) {
   };
   ciz();
 }
-const projeSekme = { id: null, k: 'bilgi' };
-const PS_GEREK = { ziyaret: 'ziyaretler,gorevler', satis: 'teklifler,siparisler', yorum: 'yorumlar' };   // aynı proje yeniden açılınca son sekme
+// Proje kartı kendi sayfasında açılır (#/proje/<id>, js/views/projesayfa.js); yeni proje ve düzenleme pencerede
 export function projeDetay(id, init) {
+  if (!id) return projeFormu(null, init || {});
+  if (location.hash === '#/proje/' + id || location.hash.startsWith('#/proje/' + id + '/')) app.refresh?.();
+  else location.hash = '#/proje/' + id;
+}
+
+export function projeFormu(id, init, { durum, odak } = {}) {
   const p0 = id ? byId('projeler', id) : { id: uuid(), ...init, _new: true };
-  if (!p0) { toast('Proje bulunamadı.', 'err'); return backToList(); }
-  const p = { ...p0, takip_yili: p0.takip_yili ? String(p0.takip_yili) : '2026' };
-  const ziy = S.ziyaretler.filter(z => z.proje_id === p.id).sort((a, b) => b.tarih.localeCompare(a.tarih));
-  const sip = S.siparisler.filter(s => s.proje_id === p.id).sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
-  const gec = S.proje_gecmis.filter(g => g.proje_id === p.id).sort((a, b) => b.tarih.localeCompare(a.tarih));
-  const gor = S.gorevler.filter(g => g.proje_id === p.id);
-  const tek = S.teklifler.filter(x => x.proje_id === p.id).sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
-  const sekme = ['bilgi', 'ziyaret', 'satis', 'belge', 'yorum', 'gecmis'].includes(init?.sekme) ? init.sekme : (projeSekme.id === p.id ? projeSekme.k : 'bilgi');
+  if (!p0) { toast('Proje bulunamadı.', 'err'); return; }
+  const p = { ...p0, takip_yili: p0.takip_yili ? String(p0.takip_yili) : '2026', ...(durum ? { durum } : {}) };
+  let sonra = null;
   const panel = openDrawer(`
-    <header class="dh" style="--c:${durumRenk(p.durum)}"><div><p class="muted">${p._new ? 'Yeni proje' : 'Proje'}</p><h2 id="drawer-title">${esc(p.ad || 'Yeni proje')}</h2>
-      ${p._new ? '' : `<div class="dh-meta">${pill(p.durum)}<span>${usd(p.tutar_usd)}</span><span>${esc([p.ilce, p.il].filter(Boolean).join(', '))}</span></div>`}</div>
+    <header class="dh" style="--c:${durumRenk(p.durum)}"><div><p class="muted">${p._new ? 'Yeni proje' : durum ? 'Aşama: ' + esc(durum) : 'Projeyi düzenle'}</p><h2 id="drawer-title">${esc(p.ad || 'Yeni proje')}</h2></div>
       <button class="x" data-close aria-label="Kapat">×</button></header>
-    ${p._new ? '' : `<div class="dh-actions">
-      <button class="btn sm" data-a="ziyaret" data-gerek="yaz:ziyaretler">Ziyaret ekle</button><button class="btn sm" data-a="gorev" data-gerek="yaz:gorevler">Görev ekle</button><button class="btn sm" data-a="teklif" data-gerek="yaz:teklifler">Teklif hazırla</button><button class="btn sm ghost" data-a="numune" data-gerek="yaz:numuneler">Numune ver</button><button class="btn sm ghost" data-a="google" data-gerek="yaz:projeler">Google'dan konum al</button>${p.google_url ? `<a class="btn sm ghost" href="${esc(p.google_url)}" target="_blank" rel="noopener">Google Haritalar</a>` : ''}
-      ${p.lat != null ? `<a class="btn sm ghost" target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}">Yol tarifi</a>` : ''}
-      <button class="btn sm ghost danger" data-a="sil" data-gerek="yaz:projeler">Sil</button></div>
-      <div class="quick-durum" data-gerek="yaz:projeler" role="group" aria-label="Durumu hızlı değiştir">${DURUMLAR.map(d => `<button type="button" data-qd="${d.k}" class="${p.durum === d.k ? 'on' : ''}" style="--c:${d.c}">${d.k}</button>`).join('')}</div>
-      <div class="p-sekme" role="tablist" aria-label="Proje bölümleri">${[['bilgi', 'Bilgiler', ''], ['ziyaret', 'Ziyaret ve görev', ziy.length + gor.length], ['satis', 'Teklif ve sipariş', tek.length + sip.length], ['belge', 'Belgeler', belgeleri({ proje_id: p.id }).length], ['yorum', 'Yorumlar', (S.yorumlar || []).filter(y => y.kayit_id === p.id).length], ['gecmis', 'Geçmiş', gec.length]].map(([k, t, n]) => `<button type="button" role="tab" data-psk="${k}" ${PS_GEREK[k] ? `data-gerek="${PS_GEREK[k]}"` : ''} aria-selected="${k === sekme}" class="${k === sekme ? 'on' : ''}">${t}${n ? ` <i>${n}</i>` : ''}</button>`).join('')}</div>`}
     <form class="dbody form" novalidate>
-      <div data-ps="bilgi" ${p._new || sekme === 'bilgi' ? '' : 'hidden'}>${renderForm(PROJE_FORM, p)}
+      <div data-ps="bilgi">${renderForm(PROJE_FORM, p)}
       <div class="calc" data-calc hidden></div></div>
-      ${p._new ? '' : (() => { const r = related(ziy, sip, gec, gor, tek); return `<div data-ps="ziyaret" data-gerek="${PS_GEREK.ziyaret}" ${sekme === 'ziyaret' ? '' : 'hidden'}>${r.ziyaret}</div><div data-ps="satis" data-gerek="${PS_GEREK.satis}" ${sekme === 'satis' ? '' : 'hidden'}>${r.satis}<section class="rel" data-oneri data-gerek="teklifler"></section><section class="rel" data-sartname data-gerek="teklifler"></section></div><div data-ps="belge" ${sekme === 'belge' ? '' : 'hidden'}><section class="rel" data-santiye></section><section class="rel" data-belgeler data-gerek="belgeler"></section></div><div data-ps="yorum" data-gerek="yorumlar" ${sekme === 'yorum' ? '' : 'hidden'}><section class="rel" data-yorumlar></section></div><div data-ps="gecmis" ${sekme === 'gecmis' ? '' : 'hidden'}>${r.gecmis}<section class="rel" data-gecmis></section></div>`; })()}
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div>
-    </form>`, { wide: true, onClose: () => backToList() });
+    </form>`, { wide: true, onClose: () => { if (sonra) sonra(); else if (p._new) backToList(); } });
   const form = panel.querySelector('form');
-  panel.querySelectorAll('[data-psk]').forEach(b => b.onclick = () => {
-    const k = b.dataset.psk; projeSekme.id = p.id; projeSekme.k = k;
-    panel.querySelectorAll('[data-psk]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
-    panel.querySelectorAll('[data-ps]').forEach(x => x.hidden = x.dataset.ps !== k);
-    if (k === 'bilgi') panel.querySelectorAll('[data-loc]').forEach(m => setTimeout(() => m._map?.invalidateSize(), 50));
-    panel.scrollTop = 0;
-  });
-  if (!p._new && eaeKatalog()) import('../oneri.js').then(m => { m.oneriBolumu(panel.querySelector('[data-oneri]'), p); m.sartnameBolumu(panel.querySelector('[data-sartname]'), p); });
-  if (!p._new) santiyeBolumu(panel.querySelector('[data-santiye]'), p);
-  if (!p._new) import('../yorum.js').then(m => m.yorumBolumu(panel.querySelector('[data-yorumlar]'), 'projeler', p));
-  if (!p._new) { belgeBolumu(panel.querySelector('[data-belgeler]'), { proje_id: p.id }); kayitGecmisi(panel.querySelector('[data-gecmis]'), 'projeler', p.id); }
+  if (durum || odak) setTimeout(() => { const h = durum === 'Kayıp' ? form.querySelector('[data-show="kayip"]') : durum === 'Sipariş' ? form.querySelector('[data-show="sip"]') : form.querySelector(`[name="${odak}"]`); if (!h) return; h.closest('details')?.setAttribute('open', ''); h.scrollIntoView({ block: 'start' }); if (h.matches('input, textarea, select')) h.focus(); }, 120);
   const calc = (o, root) => {
     const box = root.querySelector('[data-calc]');
     if (o.durum !== 'Kayıp') { box.hidden = true; return; }
@@ -438,22 +413,6 @@ export function projeDetay(id, init) {
   };
   bindForm(form, PROJE_FORM, p, { onChange: calc });
   calc(p, form);
-  panel.querySelectorAll('[data-qd]').forEach(b => b.onclick = async () => {
-    const d = b.dataset.qd; form.querySelector('[name=durum]').value = d; form.dispatchEvent(new Event('change'));
-    panel.querySelectorAll('[data-qd]').forEach(x => x.classList.toggle('on', x === b));
-    if (d === 'Kayıp') form.querySelector('[data-show="kayip"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-  panel.querySelectorAll('[data-sp]').forEach(b => b.onclick = () => siparisForm({ id: b.dataset.sp }));
-  panel.querySelectorAll('[data-tk]').forEach(b => b.onclick = () => teklifForm({ id: b.dataset.tk }, () => projeDetay(p.id)));
-  panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
-    const a = b.dataset.a;
-    if (a === 'ziyaret') ziyaretForm({ proje_id: p.id, firma_id: p.emut_id || p.alici_id || p.bayi_id }, () => projeDetay(p.id));
-    if (a === 'teklif') teklifForm({ proje_id: p.id }, () => projeDetay(p.id));
-    if (a === 'numune') numuneForm({ proje_id: p.id, firma_id: p.emut_id || p.alici_id || null });
-    if (a === 'gorev') gorevForm({ proje_id: p.id, baslik: '' }, () => projeDetay(p.id));
-    if (a === 'google') googleBul({ q: aramaMetni(p), hedef: { table: 'projeler', rec: p }, sonra: () => projeDetay(p.id) });
-    if (a === 'sil' && confirmBox(`“${p.ad}” silinsin mi? Bu işlem geri alınamaz.`)) { await app.db.del('projeler', p.id); toast('Proje silindi.'); closeDrawer(); app.refresh(); }
-  });
   form.onsubmit = async e => {
     e.preventDefault();
     try {
@@ -477,26 +436,9 @@ export function projeDetay(id, init) {
           birim_fiyat: o.rakip_birim_fiyat, fiyat_metin: `${o.rakip_birim_fiyat} USD`, para_birimi: 'USD', tarih: today(), kaynak: 'Kayıp proje', proje_id: o.id, notlar: o.kayip_aciklama });
       }
       toast(`${saved.ad} kaydedildi.`);
-      closeDrawer(); app.refresh();
+      sonra = p._new && location.hash === '#/projeler' ? () => { location.hash = '#/proje/' + o.id; } : () => app.refresh();
+      closeDrawer(true);
     } catch (err) { console.error(err); toast('Kaydedilemedi: ' + err.message, 'err'); }
   };
 }
 
-function related(ziy, sip, gec, gor, tek) {
-  return {
-    ziyaret: `<section class="rel">
-    <h3>Ziyaretler <span class="muted">${ziy.length}</span></h3>
-    ${ziy.length ? `<ul class="list">${ziy.map(z => `<li><span class="muted">${tarih(z.tarih)}</span><span>${esc(firmaAd(z.firma_id))} — ${esc((z.notlar || '').slice(0, 120))}</span></li>`).join('')}</ul>` : '<p class="hint">Bu projeye bağlı ziyaret yok.</p>'}
-    ${gor.length ? `<h3>Görevler <span class="muted">${gor.length}</span></h3><ul class="list">${gor.map(g => `<li><span>${g.durum === 'Tamam' ? '✓' : '○'} ${esc(g.baslik)}</span><span class="muted">${tarih(g.son_tarih)}</span></li>`).join('')}</ul>` : ''}
-  </section>`,
-    satis: `<section class="rel">
-    ${tek.length ? `<h3>Teklifler <span class="muted">${tek.length}</span></h3><ul class="list">${tek.map(x => `<li><button type="button" class="linkbtn" data-tk="${x.id}">${esc(x.teklif_no || 'Teklif')}</button><span class="muted">${tarih(x.tarih)} · ${esc(x.durum)}</span><b class="num">${num(x.toplam)} ${esc(x.para_birimi || '')}</b></li>`).join('')}</ul>` : ''}
-    <h3>Siparişler <span class="muted">${sip.length}</span></h3>
-    ${sip.length ? `<ul class="list">${sip.map(s => `<li class="${s.rapor_disi ? 'disi' : ''}"><span class="muted">${tarih(s.tarih)}</span><button type="button" class="linkrow" data-sp="${s.id}"><b>${esc(s.siparis_no || 'Sipariş')} · ${esc(s.referans || s.musteri_adi || '')}</b>${s.siparis_notu ? `<span class="muted">Not: ${esc(s.siparis_notu.slice(0, 80))}</span>` : ''}</button><b class="num">${num(s.net_deger)} ${esc(s.para_birimi)}</b></li>`).join('')}</ul>
-      <p class="hint">Toplam: ${usd(sip.filter(s => s.para_birimi === 'USD').reduce((a, s) => a + +s.net_deger, 0))}</p>` : '<p class="hint">Sipariş listesinde bu projeye bağlı kayıt yok.</p>'}
-  </section>`,
-    gecmis: `<section class="rel">
-    ${gec.length ? `<h3>Durum geçmişi</h3><ul class="list">${gec.map(g => `<li><span class="muted">${tarih(g.tarih)}</span><span>${g.eski_durum ? esc(g.eski_durum) + ' → ' : ''}${esc(g.yeni_durum)}${g.notlar ? ' · ' + esc(g.notlar) : ''}</span></li>`).join('')}</ul>` : '<p class="hint">Durum değişikliği kaydı yok.</p>'}
-  </section>`,
-  };
-}

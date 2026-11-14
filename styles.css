@@ -1564,3 +1564,40 @@ a.org-kutu:hover, a.org-kutu:focus-visible { border-color: #E0B93E; }
 .ks-firma { color: inherit; font-weight: 600; }
 .ks-kv { display: flex; gap: 10px; flex-wrap: wrap; }
 .ks-kv-r { width: min(100%, 260px); aspect-ratio: 1.75; border: 1px solid var(--line); border-radius: 10px; background: var(--line-2) center / cover no-repeat; cursor: zoom-in; padding: 0; }
+
+/* Sürüm 63: proje kartı kendi sayfasında; aşama şeridi, projedeki firmalar */
+.ps-sayfa { position: relative; }
+.ps-sayfa::before { content: ""; display: block; height: 4px; border-radius: 4px; background: var(--durum); margin: -4px 0 12px; }
+.ps-logo { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; flex: none; color: var(--durum); background: color-mix(in srgb, var(--durum) 14%, transparent); }
+.ps-tutar { color: var(--ink); }
+.ps-asama { display: flex; gap: 8px; align-items: stretch; margin-top: 12px; flex-wrap: wrap; }
+.ps-serit { display: flex; flex: 1 1 520px; min-width: 0; }
+.ps-serit button, .ps-yan button { flex: 1; border: 1px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 10px; font: 600 14px var(--f); cursor: pointer; white-space: nowrap; margin-left: -1px; }
+.ps-serit button:first-child { border-radius: 10px 0 0 10px; margin-left: 0; }
+.ps-serit button:last-child { border-radius: 0 10px 10px 0; }
+.ps-serit button.gec { background: var(--line-2, #EEF2F4); color: var(--ink); }
+.ps-serit button.on, .ps-yan button.on { background: var(--c); border-color: var(--c); color: #fff; position: relative; z-index: 1; }
+.ps-serit button:hover:not(.on), .ps-yan button:hover:not(.on) { border-color: var(--c); color: var(--ink); z-index: 2; position: relative; }
+.ps-yan { display: flex; gap: 6px; }
+.ps-yan button { flex: none; border-radius: 10px; margin: 0; }
+.ps-yan button[data-asama="Kayıp"]:not(.on) { color: var(--red); }
+.ps-izgara { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+.ps-sag { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.ps-pay { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ps-pay > a, .ps-pay > span { display: flex; flex-direction: column; gap: 1px; background: var(--paper); border-radius: 10px; padding: 8px 10px; text-decoration: none; color: inherit; min-width: 0; border: 1px solid transparent; }
+.ps-pay > a:hover { border-color: var(--line); background: var(--card); }
+.ps-pay small { font: 700 11.5px var(--f); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.ps-pay b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ps-pay .bos b { color: var(--muted); font-weight: 400; }
+.ps-pay .muted { font-size: 13px; }
+.ps-kayip { border-color: color-mix(in srgb, var(--red) 40%, var(--line)); }
+.ps-siparis { border-color: color-mix(in srgb, var(--green) 40%, var(--line)); }
+.ps-firma h2 a { color: inherit; text-decoration: none; } .ps-firma h2 a:hover { text-decoration: underline; }
+.ps-firma-alt { margin: -4px 0 10px; font-size: 14px; }
+@media (max-width: 760px) {
+  .ps-logo { width: 42px; height: 42px; }
+  .ps-asama { flex-wrap: nowrap; overflow-x: auto; margin-left: -16px; margin-right: -16px; padding: 0 16px 2px; scrollbar-width: none; }
+  .ps-asama::-webkit-scrollbar { display: none; }
+  .ps-serit { flex: none; }
+  .ps-serit button { flex: none; padding: 8px 10px; }
+}

@@ -72,7 +72,7 @@ const DB = () => {
   for (const r of rotalar) { await p.goto(U + '#/' + r); await w(500); const t = await p.evaluate(() => document.querySelector('#view .view-ic')?.innerText.trim().length || 0); if (!t) bos.push(r); }
   kontrol(`${rotalar.length} ekranın hepsi açılıyor`, !bos.length && rotalar.length > 20, 'boş: ' + bos.join(', '));
   await p.goto(U + '#/projeler'); await w(500); const pid = await p.evaluate(async () => (await import('./js/db.js')).S.projeler[0].id);
-  await p.goto(U + '#/proje/' + pid); await w(600); kontrol('Proje kartı açılıyor', await p.isVisible('.drawer.open'));
+  await p.goto(U + '#/proje/' + pid); await w(800); kontrol('Proje kartı açılıyor', await p.isVisible('.ps-sayfa'));
   kontrol('Ekranlarda hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
@@ -85,10 +85,10 @@ const DB = () => {
   kontrol('Üye menüsünde yalnızca açık ekranlar var', !nav.some(r => ['takvim', 'masraflar', 'harita', 'panel', 'dosyalar'].includes(r)) && nav.includes('projeler'), nav.join(' '));
   await p.goto(U + '#/masraflar'); await w(500); kontrol('Kapalı ekran adres çubuğundan açılmıyor', (await p.evaluate(() => location.hash)) === '#/bugun');
   await p.goto(U + '#/proje/p1'); await w(800);
-  const sekmeler = await p.evaluate(() => [...document.querySelectorAll('.drawer.open [role=tab]')].map(x => x.textContent));
-  kontrol('Proje kartında kapalı sekme yok', !sekmeler.some(s => /Ziyaret/.test(s)), sekmeler.join(' | '));
-  kontrol('Görür yetkisinde düzenleme düğmesi yok', !(await p.evaluate(() => [...document.querySelectorAll('.drawer.open .dh-actions button')].some(b => /Ziyaret ekle|Sil|Teklif/.test(b.textContent)))));
-  kontrol('Tutarlar gizli', /•••/.test(await p.textContent('.drawer.open .dh-meta')));
+  const sekmeler = await p.evaluate(() => [...document.querySelectorAll('.ps-sayfa [role=tab]')].map(x => x.textContent));
+  kontrol('Proje kartında kapalı sekme yok', sekmeler.length && !sekmeler.some(s => /Ziyaret/.test(s)), sekmeler.join(' | '));
+  { const yd = await p.evaluate(() => [...document.querySelectorAll('.ps-sayfa button:not([role=tab])')].filter(b => /Ziyaret ekle|sil|Teklif|Düzenle/i.test(b.textContent + ' ' + (b.getAttribute('aria-label') || ''))).map(b => b.outerHTML.slice(0, 120)).concat(document.querySelector('.ps-sayfa [data-asama]') ? ['asama'] : [])); kontrol('Görür yetkisinde düzenleme düğmesi yok', !yd.length, yd.join(' / ')); }
+  kontrol('Tutarlar gizli', /•••/.test(await p.textContent('.ps-sayfa .dh-meta')));
   kontrol('Kapalı verilerin hiçbiri ekranda yok', !/GIZLI_ZIYARET|GIZLI_MASRAF|125\.000/.test(await p.evaluate(() => document.body.innerText)));
   const kayit = await p.evaluate(async () => { const { app } = await import('./js/state.js'); try { await app.db.save('projeler', { id: 'p1', ad: 'x' }); return 'kaydetti'; } catch (e) { return e.message; } });
   kontrol('Görür yetkisinde kayıt reddediliyor', kayit !== 'kaydetti', kayit);
@@ -456,6 +456,25 @@ const DB = () => {
   kontrol('Firma kendi sayfasında sekmeli açılıyor; kişi kartı üstünde açılıp kapanıyor; düzenleme pencerede, kayıttan sonra aynı sekmede; geri listeye dönüyor',
     fs1.h === '#/firma/f2' && fs1.sek === 'ozet,kisiler,projeler,ziyaret,satis,belgeler,notlar' && fs1.ad && !fs1.drawer && kd.drawer && kd.sayfa && kd2.h === '#/firma/f2' && kd2.sayfa && h2 === '#/firma/f2/ziyaret' && fs2.tel === '0322 111 22 33' && !fs2.drawer && fs2.sekme === 'ziyaret' && fs2.metin && tasma <= 1 && h3 === '#/firmalar',
     JSON.stringify({ fs1, kd, kd2, h2, fs2, tasma, h3 }));
+  // Proje sayfası: aşama şeridi, projedeki firmalar, kayıpta form, geri
+  await p.setViewportSize({ width: 1280, height: 900 });
+  await p.evaluate(async () => { const { app } = await import('./js/state.js'); await app.db.save('projeler', { id: 'pq', ad: 'Spor Salonu', durum: 'İhale', tutar_usd: 250000, emut_id: 'f2', ilgili_kisi_id: 'k2', il: 'Mersin' }); });
+  await p.goto(U + '#/projeler'); await w(800); await p.goto(U + '#/proje/pq'); await w(1000);
+  const ps1 = await p.evaluate(() => ({ sayfa: !!document.querySelector('.ps-sayfa'), pay: [...document.querySelectorAll('.ps-pay a')].map(a => a.getAttribute('href')).join(','), on: document.querySelector('.ps-serit .on')?.dataset.asama, geri: document.querySelector('[data-geri]')?.textContent }));
+  await p.screenshot({ path: 'tests/cikti/proje-sayfa.png', fullPage: true });
+  await p.click('[data-asama="Sıcak"]'); await w(800);
+  const ps2 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { durum: S.projeler.find(x => x.id === 'pq').durum, gec: S.proje_gecmis.some(g => g.proje_id === 'pq' && g.yeni_durum === 'Sıcak'), on: document.querySelector('.ps-serit .on')?.dataset.asama, gecti: [...document.querySelectorAll('.ps-serit .gec')].length }; });
+  await p.click('[data-asama="Kayıp"]'); await w(700);
+  const ps3 = await p.evaluate(() => ({ drawer: !!document.querySelector('.drawer.open'), durum: document.querySelector('.drawer.open [name=durum]')?.value, kayip: !document.querySelector('.drawer.open [data-show="kayip"]')?.hidden }));
+  await p.click('.drawer.open .x[data-close]'); await w(500);
+  await p.click('[data-fsk="firmalar"]'); await w(300);
+  const ps4 = await p.evaluate(() => ({ h: location.hash, kisi: !!document.querySelector('[data-fs="firmalar"] a[href="#/kisi/k2"]') }));
+  await p.setViewportSize({ width: 390, height: 844 }); await w(300);
+  const ptasma = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  await p.screenshot({ path: 'tests/cikti/proje-sayfa-tel.png' });
+  await p.setViewportSize({ width: 1280, height: 900 });
+  await p.click('[data-geri]'); await w(700); const ph = await p.evaluate(() => location.hash);
+  kontrol('Proje kendi sayfasında: projedeki firmalar, aşama şeridiyle durum değişiyor (kayıpta form açılıyor), sekme adreste, geri listeye', ps1.sayfa && /#\/firma\/f2/.test(ps1.pay) && /#\/kisi\/k2/.test(ps1.pay) && ps1.on === 'İhale' && /Projeler/.test(ps1.geri) && ps2.durum === 'Sıcak' && ps2.gec && ps2.on === 'Sıcak' && ps2.gecti === 3 && ps3.drawer && ps3.durum === 'Kayıp' && ps3.kayip && ps4.h === '#/proje/pq/firmalar' && ps4.kisi && ptasma <= 1 && ph === '#/projeler', JSON.stringify({ ps1, ps2, ps3, ps4, ptasma, ph }));
   const surum = await p.textContent('#nav .surum-rozet').catch(() => null);
   await p.screenshot({ path: 'tests/cikti/nav.png' });
   kontrol('Firmanın organizasyon şeması çiziliyor (genel müdür üstte, bağlı kişiler altında)', org && org.kutu === 5 && org.ust === 'Ahmet Yılmaz' && org.ic, JSON.stringify(org));

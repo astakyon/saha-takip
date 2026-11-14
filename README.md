@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 63): Proje kartı kendi sayfasında
+
+- Projeye dokununca firma ve kişi gibi **kendi sayfası** açılır; üstte projenin aşama renginde ince şerit, "←" ile gelinen yere dönülür.
+- Başlık: aşama, tutar, olasılık, beklenen sipariş ayı, son ziyaret. Simge çubuğu: **iletişim** (Ara ve WhatsApp proje ilgilisine, Yol tarifi şantiyeye) · **ekle** (Ziyaret, Görev, Teklif, Numune; proje, firma ve ilgili kişi seçili gelir) · **⋯** (Google'dan konum al, Google Haritalar, Projeyi kopyala, Projeyi sil).
+- **Aşama şeridi:** Proje → İhale → Teklif Verildi → Sıcak → Sipariş; yanında Beklemede, Kayıp, İptal. Dokununca aşama değişir ve geçmişe yazılır. Sipariş ve Kayıp ek bilgi istediği için pencere açılır (tutar/tarih ya da neden, işi alan marka, rakip fiyat).
+- **Sekmeler:** Özet · Firmalar ve kişiler · Ziyaret ve görevler · Teklif ve sipariş · Ürün ve şartname (EAE kataloğunda) · Belgeler ve şantiye · Yorumlar · Geçmiş.
+- **Özet:** projedeki firmalar (Yatırımcı, Projeci, Danışman, Gemüt, Emüt, Malzeme alıcısı, Bayi, ilgili kişi; dokununca sayfasına gider), konum, sıradaki iş (açık görev, planlı ve son ziyaret, son teklif), kayıp/sipariş bilgisi, proje bilgileri ve notlar.
+- **Firmalar ve kişiler:** her firmanın rolü, son ziyaret tarihi ve o firmadaki kişiler (ilgili kişi ★).
+- Düzenleme ve yeni proje pencerede. Projeler listesinden eklenen yeni proje kaydedilince kendi sayfasına geçer.
+
 ## Güncelleme notu (sürüm 62): Kişi kartı kendi sayfasında
 
 - Kişiye dokununca firma gibi **kendi sayfası** açılır. "←" geri düğmesi gelinen yeri yazar: firmadan geldiysen firma adı, listeden geldiysen "Kişiler". Firma → kişi → geri → geri sırasıyla adım adım dönülür.

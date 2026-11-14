@@ -124,16 +124,15 @@ async function route() {
   const [k, id] = parts;
   const dt = { proje: 'projeler', firma: 'firmalar', kisi: 'kisiler' }[k];
   if (DETAIL[k] && !izin(dt)) { location.hash = '#/bugun'; return; }
-  // Firma ve kişi: kendi sayfalarında (sekmeli); proje kartı ve formlar sayfanın üstünde pencere olarak açılır
-  if ((k === 'firma' || k === 'kisi') && id) {
+  // Firma, kişi ve proje: kendi sayfalarında (sekmeli); formlar sayfanın üstünde pencere olarak açılır
+  if ((k === 'firma' || k === 'kisi' || k === 'proje') && id) {
     closeDrawer();
     document.body.classList.toggle('salt-oku', !!app.db?.bakilan || (!sahipMi() && (onizlemede() || izin(dt) !== 'yaz')));
     const sayfa = k + '/' + id;
     if (lastShown === sayfa && app.sayfaSekme) { app.sayfaSekme(parts[2]); return; }   // yalnızca sekme değişti
-    const liste = k === 'kisi' && rotaIzinli('kisiler') ? 'kisiler' : 'firmalar';
-    await sayfaGoster(liste, sayfa, k === 'firma'
-      ? async el => (await import('./views/firmasayfa.js')).firmaSayfa(el, id)
-      : async el => (await import('./views/kisisayfa.js')).kisiSayfa(el, id));
+    const liste = k === 'proje' ? 'projeler' : k === 'kisi' && rotaIzinli('kisiler') ? 'kisiler' : 'firmalar';
+    const CIZ = { firma: ['firmasayfa', 'firmaSayfa'], kisi: ['kisisayfa', 'kisiSayfa'], proje: ['projesayfa', 'projeSayfa'] }[k];
+    await sayfaGoster(liste, sayfa, async el => (await import(`./views/${CIZ[0]}.js`))[CIZ[1]](el, id));
     return;
   }
   if (DETAIL[k]) {
@@ -150,7 +149,7 @@ async function route() {
 // "Geri" için gelinen yerler yığında tutulur: liste → firma → kişi; geri dönülünce yığından çıkar.
 let sonSayfa = null, yigin = [];
 async function sayfaGoster(k, sayfa, ciz) {
-  const sayfadanmi = /^(firma|kisi)\//.test(lastShown || '');
+  const sayfadanmi = /^(firma|kisi|proje)\//.test(lastShown || '');
   if (!sayfadanmi) yigin = lastShown && ROUTES[lastShown] ? [{ yol: lastShown, hash: '#/' + lastShown, ad: ROUTES[lastShown].t }] : [];
   else if (lastShown !== sayfa) {
     const i = yigin.findIndex(y => y.yol === sayfa);
