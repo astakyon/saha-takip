@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 53): menüde firma ve sürüm, organizasyon şemaları
+
+- Menüde logonun yanında **sürüm numarası**, altında **firma kartı** (firma adı, sektör, iller); dokununca Ayarlar → Firma profili açılır.
+- **Firma profili → Ekibim:** şirkette kaç kişi çalıştığı, rollere göre sayılar ve ağaç (kurucu ve yöneticiler üstte, kullanıcılar rollerine göre).
+- **Firma kartında organizasyon şeması** (2+ kişi varsa): firmanın kişileri ağaç olarak; kişi kartındaki yeni **“Bağlı olduğu kişi (yöneticisi)”** alanıyla kurulur, seçilmeyenler pozisyonlarına göre gruplanır, sahip/genel müdür en üstte. Her kutuda karar rolü (★ karar verici) ve son ziyaretten bu yana geçen süre (yeşil ≤30 gün, sarı ≤90, kırmızı daha eski); firmada Satınalma, Proje veya Mühendis kişisi yoksa uyarı.
+- Kişi başka firmaya geçince “bağlı olduğu kişi” bağlantısı kalkar.
+- Supabase'de güncel **schema.sql** çalıştırılmalı (sürüm 26).
+
 ## Güncelleme notu (sürüm 52): Şirket (K1) — şirket kişiden bağımsız, birden fazla yönetici
 
 - Kayıtlar artık bir **şirkete** aittir (değeri kurucunun kimliğiyle aynı kalır; mevcut veriye dokunulmaz, taşıma gerekmez). Kurucunun kullanıcı hesabı silinse de şirketin kayıtları silinmez.

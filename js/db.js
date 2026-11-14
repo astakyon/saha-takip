@@ -1,7 +1,7 @@
 // Veri katmanı: Supabase (bulut) veya Deneme (bu cihazın tarayıcısı)
 export const TABLES = {
   firmalar: ['id','ad','tipler','il','ilce','belde','osb','bolge_id','adres','lat','lng','konum_yaklasik','telefon','eposta','web','vergi_no','segment','sektor','key_account','notlar','fotolar','google_place_id','google_url'],
-  kisiler: ['id','firma_id','eski_firmalar','ad_soyad','ad','soyad','unvan','pozisyon','telefon','eposta','web','adres','rol','kartvizit_on','kartvizit_arka','dogum_gunu','notlar'],
+  kisiler: ['id','firma_id','ust_kisi_id','eski_firmalar','ad_soyad','ad','soyad','unvan','pozisyon','telefon','eposta','web','adres','rol','kartvizit_on','kartvizit_arka','dogum_gunu','notlar'],
   projeler: ['id','ad','durum','durum_alt','kritik','takip_yili','hedef_listesi','baska_bolge','il','ilce','belde','bolge_id','osb','lokasyon','adres','lat','lng','konum_yaklasik','icerik','kanal','bayi_id','takipci','takipci_tel','calisildi','tutar_usd','olasilik','beklenen_tarih','teklif_no','crm_kodu','urun_gruplari','sektor','alt_sektor','yeni_refit','yatirimci_id','projeci_id','danisman_id','gemut_id','emut_id','alici_id','ilgili_kisi_id','ziyaret_edilecek','sorulacak','notlar','fotolar','siparis_tutari_usd','siparis_tarihi','bizim_teklif_usd','bizim_urun','rakip_marka','rakip_urun','rakip_birim_fiyat','rakip_miktar','rakip_toplam_usd','kayip_nedeni','kayip_aciklama','google_place_id','google_url','santiye_asamasi','alim_tarihi','referans','aday','aday_kaynak','ihale_tarihi'],
   proje_gecmis: ['id','proje_id','tarih','eski_durum','yeni_durum','notlar'],
   ziyaretler: ['id','tarih','saat','durum','firma_id','kisi_id','proje_id','amac','notlar','sonuc_tipi','sonuc','lat','lng','fotolar'],
@@ -46,6 +46,9 @@ export function firmaGecmisi(t, row, gecmisYok = false) {
   if (t !== 'kisiler' || gecmisYok || !row.id || !('firma_id' in row)) return row;
   const eski = (S.kisiler || []).find(x => x.id === row.id);
   if (!eski?.firma_id || eski.firma_id === (row.firma_id || null)) return row;
+  // Yeni firmada eski yöneticisi yoksa bağlantı kalkar
+  if (row.ust_kisi_id && !(S.kisiler || []).some(x => x.id === row.ust_kisi_id && x.firma_id === (row.firma_id || null))) row = { ...row, ust_kisi_id: null };
+  else if (!('ust_kisi_id' in row) && eski.ust_kisi_id) row = { ...row, ust_kisi_id: null };
   const liste = Array.isArray(row.eski_firmalar) ? row.eski_firmalar : (eski.eski_firmalar || []);
   const bugun = new Date().toISOString().slice(0, 10);
   if (liste[0]?.firma_id === eski.firma_id && liste[0]?.bitis === bugun) return { ...row, eski_firmalar: liste };

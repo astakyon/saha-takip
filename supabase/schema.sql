@@ -1014,3 +1014,7 @@ end $f$;
 revoke all on function public.kurucu_ayrildi(boolean) from public, anon;
 grant execute on function public.kurucu_ayrildi(boolean) to authenticated;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 25 $f$;
+
+-- ===================== Sürüm 26: kişinin bağlı olduğu kişi (firma organizasyon şeması) =====================
+alter table public.kisiler add column if not exists ust_kisi_id uuid references public.kisiler(id) on delete set null;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 26 $f$;

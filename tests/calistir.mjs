@@ -336,6 +336,22 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 11) Firma organizasyon şeması ve menüde firma/sürüm ----------
+{
+  const DB3 = new Function('(' + DB.toString() + ')(); const d = JSON.parse(localStorage.getItem("__DB")); const o = x => ({ owner: "u1", firma_id: "f2", ...x }); d.kisiler.push(o({ id: "k2", ad_soyad: "Ahmet Yılmaz", unvan: "Genel Müdür", pozisyon: "Genel müdür / Yönetim", rol: "Karar verici" }), o({ id: "k3", ad_soyad: "Zeynep Ak", unvan: "Satınalma Uzmanı", pozisyon: "Satınalma", ust_kisi_id: "k2" }), o({ id: "k4", ad_soyad: "Can Öz", unvan: "Proje Mühendisi", pozisyon: "Proje / Tasarım" }), o({ id: "k5", ad_soyad: "Ece Su", unvan: "Satınalma Asistanı", pozisyon: "Satınalma", ust_kisi_id: "k3" })); d.ziyaretler.push({ id: "z9", owner: "u1", firma_id: "f2", kisi_id: "k3", tarih: new Date().toISOString().slice(0, 10) }); localStorage.setItem("__DB", JSON.stringify(d)); localStorage.setItem("saha-ayar-firma_profil", "1");');
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB3 });
+  await p.setViewportSize({ width: 1280, height: 900 });
+  await p.goto(U + '#/firma/f2'); await p.reload(); await w(1800);
+  const org = await p.evaluate(() => { const r = document.querySelector('.drawer.open .org'); return r && { kutu: r.querySelectorAll('.org-kutu').length, ust: r.querySelector(':scope > li > .org-kutu b')?.textContent, ic: !!r.querySelector('li li li .org-kutu') }; });
+  await p.locator('.drawer.open [data-org]').screenshot({ path: 'tests/cikti/org.png' }).catch(() => {});
+  const surum = await p.textContent('#nav .surum-rozet').catch(() => null);
+  await p.screenshot({ path: 'tests/cikti/nav.png' });
+  kontrol('Firmanın organizasyon şeması çiziliyor (genel müdür üstte, bağlı kişiler altında)', org && org.kutu === 5 && org.ust === 'Ahmet Yılmaz' && org.ic, JSON.stringify(org));
+  kontrol('Menüde sürüm numarası görünüyor', /^v\d+/.test(surum || ''), surum);
+  kontrol('Organizasyon şemasında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
 await tarayici.close(); sunucu.close();
 console.log(sonuc.join('\n'));
 console.log(basarisiz ? `\n${basarisiz} test başarısız.` : `\nTüm testler geçti (${sonuc.length}).`);

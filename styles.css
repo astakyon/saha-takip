@@ -1396,3 +1396,42 @@ body.kirp-acik { overflow: hidden; }
 .sirket-kart h3 { margin: 0; }
 .satir-btn { display: flex; gap: 8px; } .satir-btn input { flex: 1; min-width: 0; }
 .yon-chk { padding: 8px 10px; border-radius: 10px; background: var(--sari-soft); }
+
+/* ---------- Sürüm 53: menüde firma, organizasyon şeması ---------- */
+.surum-rozet { font-family: inherit; font-size: 11px; font-weight: 600; color: rgba(255,255,255,.72); border: 1px solid rgba(255,255,255,.22); border-radius: 999px; padding: 1px 7px; letter-spacing: .02em; }
+.nav-firma { display: flex; align-items: center; gap: 10px; margin: -8px 4px 14px; padding: 9px 10px; border-radius: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); color: inherit; text-decoration: none; }
+.nav-firma:hover, .nav-firma:focus-visible { background: rgba(255,255,255,.1); }
+.nav-firma > span:last-child { min-width: 0; display: grid; } .nav-firma b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-firma small { font-size: 11.5px; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-firma-ik { width: 32px; height: 32px; border-radius: 9px; background: #F5B800; color: #10181D; display: grid; place-items: center; font-weight: 700; flex: none; }
+@media (max-width: 900px) { .nav-firma { display: none; } }
+
+.org-ozet { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; } .org-ozet b { margin-right: 4px; }
+.org-kaydir { overflow-x: auto; padding: 8px 0 12px; -webkit-overflow-scrolling: touch; }
+.org, .org ul { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; }
+.org { width: max-content; min-width: 100%; }
+.org li { position: relative; display: flex; flex-direction: column; align-items: center; padding: 18px 6px 0; }
+.org ul { padding-top: 0; position: relative; }
+/* bağlantı çizgileri */
+.org li::before, .org li::after { content: ''; position: absolute; top: 0; width: 50%; height: 18px; border-top: 2px solid var(--line); }
+.org li::before { right: 50%; } .org li::after { left: 50%; border-left: 2px solid var(--line); }
+.org li:only-child::before, .org li:only-child::after { display: none; } .org li:only-child { padding-top: 18px; }
+.org li:first-child::before, .org li:last-child::after { border: 0 none; }
+.org li:last-child::before { border-right: 2px solid var(--line); border-radius: 0 8px 0 0; }
+.org li:first-child::after { border-radius: 8px 0 0 0; }
+.org ul::before { content: ''; position: absolute; top: -18px; left: 50%; height: 18px; border-left: 2px solid var(--line); }
+.org > li { padding-top: 0; } .org > li::before, .org > li::after { display: none; }
+.org li > ul { margin-top: 18px; }
+.org > li:only-child { padding-top: 0; }
+.org-kutu { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); min-width: 150px; max-width: 200px; text-decoration: none; color: inherit; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+a.org-kutu:hover, a.org-kutu:focus-visible { border-color: #E0B93E; }
+.org-metin { display: grid; gap: 1px; min-width: 0; text-align: left; } .org-metin b { font-size: 13.5px; } .org-metin small { font-size: 12px; color: var(--muted); }
+.org-alt { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.org-rozet { font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--sari-soft); } .org-rozet.hafif { background: var(--zemin-2, #EEF1F3); }
+.org-temas { font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--zemin-2, #EEF1F3); color: var(--muted); }
+.org-temas.iyi { background: var(--yesil-soft); color: var(--ink); } .org-temas.orta { background: var(--sari-soft); color: var(--ink); } .org-temas.eski { background: var(--kirmizi-soft); color: var(--ink); }
+.org-grup, .org-firma { display: inline-block; padding: 5px 12px; border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.org-grup small { opacity: .7; font-weight: 400; } .org-firma { background: #F5B800; color: #10181D; font-size: 13.5px; }
+.avatar.sm { width: 28px; height: 28px; font-size: 13px; flex: none; }
+.org-bolum { margin-top: 18px; } .org-bolum h3 { margin-bottom: 2px; }
+.ekibim { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; } .ekibim h3 { margin: 0 0 4px; }

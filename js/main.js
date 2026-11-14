@@ -1,5 +1,6 @@
 import { S, makeAdapter, getConfig, setConfig } from './db.js';
-import { app, loadFilters } from './state.js';
+import { app, loadFilters, SURUM, F, saveFilters } from './state.js';
+import { profil, SEKTOR } from './profil.js';
 import { esc, toast, closeDrawer } from './ui.js';
 import { listeleriUygula } from './listeler.js';
 import { kisayolAl, canInstall, install, onInstallChange } from './kurulum.js';
@@ -82,6 +83,13 @@ let navSon = 'bugun';
 window.addEventListener('menu', () => renderNav(navSon));
 const sonAlt = {};   // her başlıkta en son açılan ekran
 const baslikRotasi = b => { const { gizli } = menuDuzeni(ROUTES); const rs = b.r.filter(r => ROUTES[r] && !gizli.has(r) && rotaIzinli(r)); if (b.k === 'urunler' && app.yetki?.yetkiler?._rol === 'Bayi' && rs.includes('bayi')) rs.unshift('bayi'); return rs.includes(sonAlt[b.k]) ? sonAlt[b.k] : rs[0]; };
+// Menüde logonun altında: çalışılan firma (profil) — dokununca Ayarlar → Firma profili
+document.addEventListener('click', e => { if (e.target.closest?.('[data-navfirma]')) { try { const f = F('ayarlar', { sekme: 'hesap' }); f.sekme = 'profil'; saveFilters(); } catch {} if (location.hash === '#/ayarlar') setTimeout(() => app.refresh?.(), 0); } }, true);
+function navFirma() {
+  const p = profil(); if (!p?.firma) return '';
+  const alt = [SEKTOR[p.sektor], (p.iller || []).slice(0, 3).join(', ') + ((p.iller || []).length > 3 ? '…' : '')].filter(Boolean).join(' · ');
+  return `<a href="#/ayarlar" class="nav-firma" data-navfirma title="Firma profili"><span class="nav-firma-ik" aria-hidden="true">${esc(p.firma.slice(0, 1).toLocaleUpperCase('tr'))}</span><span><b>${esc(p.firma)}</b><small>${esc(alt)}</small></span></a>`;
+}
 function renderNav(cur) {
   const nav = document.getElementById('nav');
   const { ana, gorunur } = menuDuzeni(ROUTES);
@@ -91,7 +99,8 @@ function renderNav(cur) {
   const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : !sahipMi() ? `<span class="mode-badge">${esc(app.yetki?.yetkiler?._rol || 'Ekip üyesi')}${app.yetki?.ad ? ' · ' + esc(app.yetki.ad) : ''}</span>` : '';
   const anaB = ana.map(k => BASLIKLAR.find(b => b.k === k)).filter(Boolean), digerB = BASLIKLAR.filter(b => !ana.includes(b.k) && gorunur(b));
   nav.innerHTML = `
-    <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b>${mode}</div>
+    <div class="brand"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b><small class="surum-rozet" title="Uygulama sürümü">v${SURUM}</small>${mode}</div>
+    ${navFirma()}
     <button type="button" class="nav-ara" data-navara><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Ara</span><kbd>/</kbd></button>
     <div class="nav-main">${anaB.map(item).join('')}
       <button class="nav-more ${!ana.includes(aktif) ? 'on' : ''}" type="button" aria-haspopup="true">${icon('more')}<span>Diğer</span></button></div>

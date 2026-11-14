@@ -286,5 +286,22 @@ async function profilKarti(kok, yenile) {
     <p class="hint">Bu bilgiler ekip üyelerinde de geçerlidir. Rakip markaları ve diğer seçim listelerini Listeler bölümünden düzenleyebilirsin.</p>
     <div class="btnrow"><button type="button" class="btn primary" data-pduz>Düzenle</button></div>`;
   kok.querySelector('[data-pduz]').onclick = async () => (await import('../sihirbaz.js')).sihirbazAc({ duzenle: true, sonra: yenile });
+  ekibimKarti(kok, p);
   kok.querySelectorAll('[data-kat]').forEach(b => b.onclick = async () => { if (b.dataset.kat === 'kendi' && !confirmBox('Hazır EAE kataloğu, ürün önerisi ve şartname karşılaştırması kapatılsın mı? Kendi girdiğin ürün aileleri kalır.')) return; await ayarYaz('firma_profil', { ...(profilVar() ? profil() : ESKI), eski: undefined, katalog: b.dataset.kat }); toast('Kaydedildi.'); yenile(); });
+}
+
+// Firma profilinde: şirkette kaç kişi çalışıyor, kim hangi rolde (ağaç)
+async function ekibimKarti(kok, p) {
+  if (app.db.mode !== 'supabase' || !sahipMi()) return;
+  const yer = document.createElement('div'); yer.className = 'ekibim'; kok.appendChild(yer);
+  try {
+    const [{ data: b }, { data: uyeler }] = await Promise.all([app.db.c.rpc('sirket_bilgisi'), app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif,yonetici,yetkiler').eq('owner', app.db.sahip)]);
+    const aktif = (uyeler || []).filter(u => u.aktif), kurucu = b && !b.kurucu_ayrildi ? { eposta: b.kurucu_eposta, ad: b.ben_kurucu ? 'Sen (kurucu)' : b.kurucu_eposta } : null;
+    const say = aktif.length + (kurucu ? 1 : 0), roller = new Map();
+    for (const u of aktif) { const r = u.yonetici ? 'Şirket yöneticisi' : (u.yetkiler?._rol || 'Rolü girilmemiş'); roller.set(r, (roller.get(r) || 0) + 1); }
+    const { ekipSemasi } = await import('../orgsema.js');
+    yer.innerHTML = `<h3>Ekibim</h3><div class="org-ozet"><b>${say} kişi</b>${kurucu ? '<span class="chip">Kurucu · 1</span>' : ''}${[...roller].map(([r, n]) => `<span class="chip">${esc(r)} · ${n}</span>`).join('')}</div>
+      ${ekipSemasi({ firma: b?.ad || p.firma, kurucu, yoneticiler: aktif.filter(u => u.yonetici), uyeler: aktif })}
+      <p class="hint">Kişi eklemek, rol ve yetki vermek için Ekip ve yetkiler bölümünü kullan.</p>`;
+  } catch { yer.remove(); }
 }
