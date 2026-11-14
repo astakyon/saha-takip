@@ -259,6 +259,11 @@ const DB = () => {
     const sat = [{ metin: 'Ahmet KARTAŞ', boy: 52 }, { metin: 'Elektrik | Mühendislik', boy: 19 }, { metin: 'ÖRNEKKENT AYDINLATMA ELEKTRİK SAN. VE TİC.LTD. ŞTİ.', boy: 26 }, { metin: 'Telefon: 0507 000 1122', boy: 20 }];
     return O.kartvizitAyristir(sat.map(x => x.metin).join('\n'), sat); });
   kontrol('Kartvizitte ad, firma ve unvan doğru ayrılıyor', ayr.ad_soyad === 'Ahmet Kartaş' && ayr.unvan === null && ayr.firma === 'Örnekkent Aydınlatma Elektrik San. ve Tic. Ltd. Şti.' && ayr.telefon === '0507 000 11 22', JSON.stringify(ayr));
+  // Logo adı kişi adı sanılmıyor: e-postanın başı kişiyi, alan adı firmayı gösteriyor; "I$" → "İş"
+  const ayr2 = await p.evaluate(async () => { const O = await import('./js/ocr.js');
+    const sat = [{ metin: 'vs TEKNOVA', boy: 60 }, { metin: 'Ayla KORKMAZ', boy: 30 }, { metin: 'I$ Geliştirme Mühendisi', boy: 20 }, { metin: '+90 (532) 111 22 33', boy: 18 }, { metin: 'aylakorkmaz@teknovaotomasyon.com', boy: 18 }];
+    const r = O.kartvizitAyristir(sat.map(x => x.metin).join('\n'), sat); const { pozisyonTahmin } = await import('./js/ui.js'); return { ...r, poz: pozisyonTahmin(r.unvan) }; });
+  kontrol('Kartvizitte logo ad sanılmıyor, firma alan adından bulunuyor, pozisyon tahmin ediliyor', ayr2.ad_soyad === 'Ayla Korkmaz' && ayr2.firma === 'Teknova' && ayr2.unvan === 'İş Geliştirme Mühendisi' && ayr2.poz === 'Satış / Pazarlama', JSON.stringify(ayr2));
   // Ad ve soyad ayrı: eski kayıt bölünüyor, kaydedince tam ad ikisinden oluşuyor
   await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800);
   const ad0 = await p.evaluate(() => [document.querySelector('.drawer.open [name=ad]')?.value, document.querySelector('.drawer.open [name=soyad]')?.value]);
@@ -301,6 +306,15 @@ const DB = () => {
   await p.click('.drawer.open [data-farkli]'); await w(600);
   const kalan = await p.evaluate(async () => (await import('./js/cift.js')).benzerSayisi('kisiler'));
   kontrol('Benzer kişiler bulunuyor, alan seçilerek birleştiriliyor, “Farklı kayıtlar” bir daha gösterilmiyor', /Benzer kayıtlar \(2\)/.test(dug) && !bir.k9 && bir.k1 && bir.k1.unvan === 'Satınalma' && kalan === 0, JSON.stringify({ dug, bir, kalan }));
+  // Pozisyona göre süzme (eski firmalardaki pozisyon dahil)
+  await p.evaluate(async () => { const { app } = await import('./js/state.js'); await app.db.save('kisiler', { id: 'k6', ad_soyad: 'Poz Deneme', pozisyon: 'Satış / Pazarlama', eski_firmalar: [{ firma_ad: 'Eski AŞ', pozisyon: 'Satınalma', bitis: '2021-01-01' }] }); });
+  await p.goto(U + '#/kisiler'); await p.reload(); await w(1500);
+  await p.selectOption('[data-poz]', 'Satınalma'); await w(300);
+  const s1 = await p.textContent('[data-sum]');
+  await p.check('[data-eskidahil]'); await w(300);
+  const s2 = await p.textContent('[data-sum]'), eskiYazi = await p.isVisible('text=eskiden: Eski AŞ');
+  await p.selectOption('[data-poz]', ''); await w(200);
+  kontrol('Kişiler pozisyona göre, eski firmalardaki pozisyonlar dahil süzülüyor', parseInt(s2) === parseInt(s1) + 1 && eskiYazi, JSON.stringify({ s1, s2, eskiYazi }));
   kontrol('Kırpmada hata yok', !hatalar.filter(h => !/Okuma motoru indirilemedi/.test(h)).length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }

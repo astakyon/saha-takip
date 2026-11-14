@@ -854,3 +854,21 @@ create or replace function public.yetki_surum() returns int language sql stable 
 -- [{ firma_id, firma_ad, unvan, bitis }] — firma değişince uygulama ekler
 alter table public.kisiler add column if not exists eski_firmalar jsonb;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 23 $f$;
+
+-- ===================== Sürüm 24: kişinin pozisyonu (görev alanı) =====================
+alter table public.kisiler add column if not exists pozisyon text;
+-- Eski kayıtlar: unvandan tahmin (uygulamadaki kurallarla aynı sırada)
+update public.kisiler set pozisyon = case
+  when unvan ~* '(sahib|ortak|kurucu|owner|founder|partner)' then 'Firma sahibi / Ortak'
+  when unvan ~* '(satın ?alma|satinalma|tedarik|purchas|procure)' then 'Satınalma'
+  when unvan ~* '(genel müdür|genel mudur|yönetim kurulu|ceo|direkt|başkan|general manager)' then 'Genel müdür / Yönetim'
+  when unvan ~* '(şantiye|santiye|saha|şef|ustabaşı)' then 'Saha / Şantiye'
+  when unvan ~* '(proje|tasarım|tasarim|design|mimar)' then 'Proje / Tasarım'
+  when unvan ~* '(satış|satis|pazarlama|ş geliştirme|s gelistirme|sales|business development|marketing|temsilci)' then 'Satış / Pazarlama'
+  when unvan ~* '(muhasebe|finans|mali|account|finance)' then 'Muhasebe / Finans'
+  when unvan ~* '(mühendis|muhendis|tekniker|teknisyen|teknik|engineer|elektrik)' then 'Mühendis / Teknik'
+  when unvan ~* '(asistan|sekreter|idari|ofis|assistant)' then 'İdari / Asistan'
+  when unvan ~* '(müdür|mudur|manager|yönetici)' then 'Genel müdür / Yönetim'
+end
+where pozisyon is null and unvan is not null and btrim(unvan) <> '';
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 24 $f$;

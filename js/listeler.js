@@ -2,7 +2,7 @@
 // Listeler ui.js'deki dizilerin içeriği değiştirilerek uygulanır; böylece bütün formlar ve süzgeçler yeni listeyi kullanır.
 import { S } from './db.js';
 import { app } from './state.js';
-import { esc, toast, confirmBox, FIRMA_TIPLERI, RAKIPLER, KAYIP_NEDENLERI, ZIYARET_AMAC, URUN_AILELERI, SEKTORLER, MASRAF_TIP, SERVIS_TIP, DURUMLAR, OLASILIK } from './ui.js';
+import { esc, toast, confirmBox, POZISYONLAR, FIRMA_TIPLERI, RAKIPLER, KAYIP_NEDENLERI, ZIYARET_AMAC, URUN_AILELERI, SEKTORLER, MASRAF_TIP, SERVIS_TIP, DURUMLAR, OLASILIK } from './ui.js';
 import { ayar, ayarYaz } from './ayar.js';
 import { profilUygula, sektorListesi } from './profil.js';
 
@@ -11,6 +11,7 @@ export const LISTELER = [
   { k: 'RAKIPLER', ad: 'Rakip markaları', arr: RAKIPLER, kul: [['projeler', 'rakip_marka'], ['rakip_fiyatlar', 'marka']] },
   { k: 'KAYIP_NEDENLERI', ad: 'Kayıp nedenleri', arr: KAYIP_NEDENLERI, kul: [['projeler', 'kayip_nedeni']] },
   { k: 'ZIYARET_AMAC', ad: 'Ziyaret amaçları', arr: ZIYARET_AMAC, kul: [['ziyaretler', 'amac']] },
+  { k: 'POZISYONLAR', ad: 'Kişi pozisyonları', arr: POZISYONLAR, kul: [['kisiler', 'pozisyon']] },
   { k: 'SEKTORLER', ad: 'Sektörler', arr: SEKTORLER, kul: [['firmalar', 'sektor'], ['projeler', 'sektor']] },
   { k: 'URUN_AILELERI', ad: 'Ürün aileleri (rakip fiyatları için)', arr: URUN_AILELERI, kul: [['rakip_fiyatlar', 'aile']] },
   { k: 'MASRAF_TIP', ad: 'Masraf türleri', arr: MASRAF_TIP, kul: [['masraflar', 'tip']] },

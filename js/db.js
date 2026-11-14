@@ -1,7 +1,7 @@
 // Veri katmanı: Supabase (bulut) veya Deneme (bu cihazın tarayıcısı)
 export const TABLES = {
   firmalar: ['id','ad','tipler','il','ilce','belde','osb','bolge_id','adres','lat','lng','konum_yaklasik','telefon','eposta','web','vergi_no','segment','sektor','key_account','notlar','fotolar','google_place_id','google_url'],
-  kisiler: ['id','firma_id','eski_firmalar','ad_soyad','ad','soyad','unvan','telefon','eposta','web','adres','rol','kartvizit_on','kartvizit_arka','dogum_gunu','notlar'],
+  kisiler: ['id','firma_id','eski_firmalar','ad_soyad','ad','soyad','unvan','pozisyon','telefon','eposta','web','adres','rol','kartvizit_on','kartvizit_arka','dogum_gunu','notlar'],
   projeler: ['id','ad','durum','durum_alt','kritik','takip_yili','hedef_listesi','baska_bolge','il','ilce','belde','bolge_id','osb','lokasyon','adres','lat','lng','konum_yaklasik','icerik','kanal','bayi_id','takipci','takipci_tel','calisildi','tutar_usd','olasilik','beklenen_tarih','teklif_no','crm_kodu','urun_gruplari','sektor','alt_sektor','yeni_refit','yatirimci_id','projeci_id','danisman_id','gemut_id','emut_id','alici_id','ilgili_kisi_id','ziyaret_edilecek','sorulacak','notlar','fotolar','siparis_tutari_usd','siparis_tarihi','bizim_teklif_usd','bizim_urun','rakip_marka','rakip_urun','rakip_birim_fiyat','rakip_miktar','rakip_toplam_usd','kayip_nedeni','kayip_aciklama','google_place_id','google_url','santiye_asamasi','alim_tarihi','referans','aday','aday_kaynak','ihale_tarihi'],
   proje_gecmis: ['id','proje_id','tarih','eski_durum','yeni_durum','notlar'],
   ziyaretler: ['id','tarih','saat','durum','firma_id','kisi_id','proje_id','amac','notlar','sonuc_tipi','sonuc','lat','lng','fotolar'],
@@ -50,7 +50,7 @@ export function firmaGecmisi(t, row, gecmisYok = false) {
   const bugun = new Date().toISOString().slice(0, 10);
   if (liste[0]?.firma_id === eski.firma_id && liste[0]?.bitis === bugun) return { ...row, eski_firmalar: liste };
   const f = (S.firmalar || []).find(f => f.id === eski.firma_id);
-  return { ...row, eski_firmalar: [{ firma_id: eski.firma_id, firma_ad: f?.ad || null, unvan: eski.unvan || null, bitis: bugun }, ...liste] };
+  return { ...row, eski_firmalar: [{ firma_id: eski.firma_id, firma_ad: f?.ad || null, unvan: eski.unvan || null, pozisyon: eski.pozisyon || null, bitis: bugun }, ...liste] };
 }
 export function pick(table, obj) {
   if (table === 'kisiler') obj = kisiAdDuzen(obj);

@@ -28,6 +28,24 @@ export const FIRMA_TIPLERI = ['Emüt', 'Gemüt', 'Proje Bürosu', 'Danışman', 
 export const RAKIPLER = ['Ledvance', 'Philips', 'Pelsan', 'İkizler', 'Proton', 'Cemdağ', 'Alkan', 'Pedaş', 'Niki', 'Lamptime', 'Yavuz', 'Gecem', 'Seva', 'Korg', 'Nade', 'Gersan', 'Üç-El', 'EEC'];
 export const KAYIP_NEDENLERI = ['Fiyat', 'Şartname dışı kaldık', 'Müşteri ilişkisi', 'Teslim süresi', 'Ödeme koşulu', 'Teknik yetersizlik', 'Proje iptal', 'Bayi tercihi', 'Diğer'];
 export const URUN_AILELERI = ['HBL', 'RVX', 'REVOLED X', 'TRD', 'BLM', 'DWL', 'STL', 'EXT', 'YPL', 'PRK', 'VLR', 'ALB', 'REV', 'SROUND', 'ETANJ', 'INFINOO', '60x60', 'DOWNLED', 'PROLIT', 'RA-HORUS-OSIRIS', 'FLP', 'BB'];
+// Kişinin firmadaki pozisyonu (görev alanı) — süzme ve raporlar için; Ayarlar → Listeler'den düzenlenir
+export const POZISYONLAR = ['Firma sahibi / Ortak', 'Genel müdür / Yönetim', 'Satınalma', 'Proje / Tasarım', 'Mühendis / Teknik', 'Saha / Şantiye', 'Satış / Pazarlama', 'Muhasebe / Finans', 'İdari / Asistan', 'Diğer'];
+// Unvandan pozisyon tahmini (pozisyon boşsa)
+export function pozisyonTahmin(unvan) {
+  const u = String(unvan || '').toLocaleLowerCase('tr');
+  if (!u) return null;
+  if (/sahib|ortak|kurucu|owner|founder|partner/.test(u)) return 'Firma sahibi / Ortak';
+  if (/satın ?alma|satinalma|tedarik|purchas|procure/.test(u)) return 'Satınalma';
+  if (/genel müdür|yönetim kurulu|ceo|direkt|başkan|general manager/.test(u)) return 'Genel müdür / Yönetim';
+  if (/şantiye|saha|şef|ustabaşı|site/.test(u)) return 'Saha / Şantiye';
+  if (/proje|tasarım|design|mimar/.test(u)) return 'Proje / Tasarım';
+  if (/satış|pazarlama|iş geliştirme|sales|business development|marketing|temsilci/.test(u)) return 'Satış / Pazarlama';
+  if (/muhasebe|finans|mali|account|finance/.test(u)) return 'Muhasebe / Finans';
+  if (/mühendis|tekniker|teknisyen|teknik|engineer|elektrik/.test(u)) return 'Mühendis / Teknik';
+  if (/asistan|sekreter|idari|ofis|assistant/.test(u)) return 'İdari / Asistan';
+  if (/müdür|manager|yönetici/.test(u)) return 'Genel müdür / Yönetim';
+  return null;
+}
 export const SEKTORLER = ['Endüstriyel', 'Gıda', 'Metal / Demir Çelik', 'Kimya', 'Enerji', 'Lojistik / Depo', 'Konut', 'Ofis', 'AVM / Ticari', 'Hastane', 'Okul', 'Kamu', 'Otopark / Çevre', 'Tekstil', 'Kağıt / Ambalaj', 'Havalimanı / Altyapı', 'Diğer'];
 // Kazanma olasılığı girilmemiş projelerde aşamaya göre varsayılan (%)
 export const OLASILIK = { 'Proje': 10, 'İhale': 25, 'Teklif Verildi': 40, 'Sıcak': 70, 'Beklemede': 15, 'Sipariş': 100, 'Kayıp': 0, 'İptal': 0 };

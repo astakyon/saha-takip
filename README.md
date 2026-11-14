@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 51): kartvizit okuma ve pozisyonlar
+
+- **Kartvizit okuma:** e-posta adresinin başı kişinin adıyla, alan adı firmayla karşılaştırılıyor; logodaki büyük firma adı (ör. MERKON) artık ad soyad sanılmıyor, firma olarak alınıyor. Logo/simgeden kalan baştaki kısa harfler atılıyor, “I$” gibi okuma hataları “İş” olarak düzeltiliyor. Kayıtlı firma, web ya da e-posta alan adından da eşleştiriliyor.
+- **Pozisyon:** kişiye görev alanı seçilir (Firma sahibi / Ortak, Genel müdür / Yönetim, Satınalma, Proje / Tasarım, Mühendis / Teknik, Saha / Şantiye, Satış / Pazarlama, Muhasebe / Finans, İdari / Asistan, Diğer). Boş bırakılırsa unvandan tahmin edilir; kartvizitten de tahmin edilir. Liste Ayarlar → Listeler'den değiştirilebilir.
+- Eski firmalara pozisyon da yazılır (firma değişince kendiliğinden, elle eklerken seçilerek).
+- **Kişiler listesinde pozisyon süzgeci**; “Eski firmalarındaki pozisyonlar dahil” işaretlenirse, örneğin daha önce satınalmada çalışmış kişiler de listelenir (“eskiden: …” yazar). Excel'e Pozisyon sütunu eklendi.
+- Supabase'de güncel **schema.sql** çalıştırılmalı (sürüm 24); mevcut kişilerin pozisyonu unvanlarından doldurulur.
+
 ## Güncelleme notu (sürüm 50): kişinin eski firmaları
 
 - Kişi kartında **“Eski firmaları”** bölümü: kişinin firması değiştirilince (ya da firmadan ayrılınca) önceki firma, oradaki unvanı ve ayrılış tarihiyle kendiliğinden eklenir.

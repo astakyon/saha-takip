@@ -85,7 +85,9 @@ const ADRES = /(mah\.?|mahalle|cad\.?|cadde|sok\.?|sokak|bulv|blv|no ?:|no\.|kat
 
 // Kartvizit metnini alanlara ayırır
 export function kartvizitAyristir(metin, satirBilgi = null) {
-  const satirlar = String(metin || '').split(/\n+/).map(s => s.replace(/[|_~•·]+/g, ' ').replace(/\s{2,}/g, ' ').trim()).filter(s => s.length > 1);
+  // Satır temizliği: logo/simgeden kalan baştaki küçük harfli kısa parçalar ("vs", "kA") atılır; "$" çoğu zaman "ş"dir (I$ → İş)
+  const satirlar = String(metin || '').split(/\n+/).map(s => s.replace(/[|_~•·]+/g, ' ').replace(/\s{2,}/g, ' ').trim()
+    .replace(/^(?:[a-zçğıöşü][\p{L}]?\s+)+(?=\p{L}{3,})/u, '').replace(/(?<=\p{L})\$|\$(?=\p{L})/gu, 'ş').replace(/(?<!\p{L})I[şŞ](?!\p{L})/gu, 'İş')).filter(s => s.length > 1);
   const tum = satirlar.join('\n');
   const eposta = (/[A-Za-z0-9._%+-]+\s?@\s?[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.exec(tum) || [''])[0].replace(/\s/g, '').toLowerCase() || null;
   const web = (/(?:https?:\/\/)?(?:www\.)[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/i.exec(tum) || [''])[0].toLowerCase() || (eposta && !/gmail|hotmail|yahoo|outlook|icloud|yandex/.test(eposta) ? 'www.' + eposta.split('@')[1] : null);
@@ -103,21 +105,31 @@ export function kartvizitAyristir(metin, satirBilgi = null) {
   const aday = satirlar.filter(s => !/@|www\.|https?:/i.test(s) && (s.match(/\d/g) || []).length < 4 && !ADRES.test(s));
   // Firma: kayıtlı firmalardan eşleşen ya da şirket ekleri içeren satır
   let firma = null, firmaId = null;
+  // E-posta ve web adresinden ipuçları: alan adı genelde firmanın, e-postanın başı genelde kişinin adıdır
+  const GENEL = /^(gmail|hotmail|yahoo|outlook|icloud|yandex|live|msn|mynet)\./;
+  const alanAdi = (eposta && !GENEL.test(eposta.split('@')[1]) ? eposta.split('@')[1] : (web || '').replace(/^(https?:\/\/)?(www\.)?/, '')).split('.')[0] || '';
+  const yerel = eposta ? eposta.split('@')[0].replace(/[^a-z]/g, '') : '';
+  const harf = s => fold(s).replace(/[^a-z]/g, '');
+  const sirketMi = s => { const h = harf(s); return alanAdi.length >= 3 && h.length >= 3 && (alanAdi.includes(h) || fold(s).split(/\s+/).some(w => w.replace(/[^a-z]/g, '').length >= 4 && alanAdi.includes(w.replace(/[^a-z]/g, '')))); };
+  const kisiMi = s => { const w = fold(s).split(/\s+/).map(x => x.replace(/[^a-z]/g, '')).filter(x => x.length >= 3); return !!yerel && w.length > 0 && w.some(x => yerel.includes(x)); };
+  if (alanAdi) for (const f of S.firmalar || []) { const d = [f.web, f.eposta].map(x => String(x || '').toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').split('@').pop().split('.')[0]); if (d.includes(alanAdi)) { firma = f.ad; firmaId = f.id; break; } }
   const fk = s => fold(s).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-  for (const f of S.firmalar || []) { const k = fk(f.ad).split(' ').slice(0, 2).join(' '); if (k.length >= 4 && fk(tum).includes(k)) { firma = f.ad; firmaId = f.id; break; } }
+  if (!firma) for (const f of S.firmalar || []) { const k = fk(f.ad).split(' ').slice(0, 2).join(' '); if (k.length >= 4 && fk(tum).includes(k)) { firma = f.ad; firmaId = f.id; break; } }
   const YASAL = /(?<!\p{L})(ltd|şti|sti|a\.?ş|a\.s|inc|gmbh|san\.|tic\.|sanayi|ticaret)(?!\p{L})/iu;
-  if (!firma) firma = aday.find(s => YASAL.test(s)) || [...aday].filter(s => FIRMA.test(s) && !UNVAN.test(s)).sort((a, b) => b.length - a.length)[0] || null;
+  if (!firma) firma = aday.find(s => YASAL.test(s)) || [...aday].filter(s => FIRMA.test(s) && !UNVAN.test(s)).sort((a, b) => b.length - a.length)[0] || aday.find(s => sirketMi(s) && !kisiMi(s) && !UNVAN.test(s)) || null;
   const buyuk = w => w.length > 3 && w === w.toLocaleUpperCase('tr') && /[A-ZÇĞİÖŞÜ]/.test(w);
   if (firma && !firmaId) firma = firma.replace(/^(?:[A-ZÇĞİÖŞÜ0-9]{1,2}\s+)+(?=\S+\s+\S)/, '');   // logonun yanlış okunan harfleri
   if (firma && !firmaId) firma = firma.split(/\s+/).map(w => buyuk(w.replace(/[.,]/g, '')) ? w[0] + w.slice(1).toLocaleLowerCase('tr') : w).join(' ');
   if (firma && !firmaId) firma = firma.replace(/(?<!\p{L})tic\.?\s*ltd\.?/giu, 'Tic. Ltd.').replace(/(?<!\p{L})san\.?(?!\p{L})/giu, 'San.').replace(/(?<!\p{L})ve(?!\p{L})/giu, 've')
     .replace(/(?<!\p{L})tic\.?(?!\p{L})/giu, 'Tic.').replace(/(?<!\p{L})ltd\.?(?!\p{L})/giu, 'Ltd.').replace(/(?<!\p{L})şt[iİı]\.?(?!\p{L})/giu, 'Şti.').replace(/(?<!\p{L})a\.?ş\.?(?!\p{L})/giu, 'A.Ş.').replace(/\s{2,}/g, ' ').trim();
-  const unvan = aday.find(s => s !== firma && UNVAN.test(s) && s.split(' ').length <= 6) || null;
+  let unvan = aday.find(s => s !== firma && UNVAN.test(s) && s.split(' ').length <= 6) || null;
+  if (unvan) unvan = unvan.split(/\s+/).map(w => buyuk(w) ? w[0] + w.slice(1).toLocaleLowerCase('tr') : w).join(' ');
   // Ad soyad: 2-4 kelime, harflerden oluşan, unvan/firma olmayan; büyük harfle başlayan ilk aday
-  const adAday = aday.filter(s => s !== firma && s !== unvan && !FIRMA.test(s) && !UNVAN.test(s) && /^[A-Za-zÇĞİÖŞÜçğıöşü.'\s-]+$/.test(s) && s.split(/\s+/).length >= 2 && s.split(/\s+/).length <= 4);
+  const adAday = aday.filter(s => s !== firma && !(sirketMi(s) && !kisiMi(s)) && !UNVAN.test(s) && s !== unvan && !FIRMA.test(s) && !UNVAN.test(s) && /^[A-Za-zÇĞİÖŞÜçğıöşü.'\s-]+$/.test(s) && s.split(/\s+/).length >= 2 && s.split(/\s+/).length <= 4);
   // Kartta en büyük yazılan uygun satır genellikle kişinin adıdır
   const boyu = s => satirBilgi?.find(x => x.metin === s)?.boy || 0;
-  let ad = (satirBilgi ? [...adAday].sort((a, b) => boyu(b) - boyu(a)) : adAday)[0] || null;
+  // E-postanın başında geçen ad (merihdoner → Merih Döner) en güçlü ipucu; sonra yazı büyüklüğü
+  let ad = [...adAday].sort((a, b) => (kisiMi(b) - kisiMi(a)) || (satirBilgi ? boyu(b) - boyu(a) : 0))[0] || null;
   if (ad) ad = ad.split(/\s+/).map(w => w.length > 1 && w === w.toLocaleUpperCase('tr') ? w[0] + w.slice(1).toLocaleLowerCase('tr') : w).join(' ');
   const adres = satirlar.filter(s => ADRES.test(s) && !/@|www\./.test(s)).map(temiz).join(', ') || null;
   const cep = telefonlar.find(t => t.tur === 'cep'), sabit = telefonlar.find(t => t.tur === 'sabit');

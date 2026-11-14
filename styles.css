@@ -1387,3 +1387,6 @@ body.kirp-acik { overflow: hidden; }
 .ef-form { display: grid; gap: 8px; margin-top: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
 .ef-form label { display: grid; gap: 4px; font-size: 13.5px; }
 .eski-baslik { margin: 12px 0 4px; font-size: 14px; }
+
+/* ---------- Sürüm 51: pozisyon süzgeci ---------- */
+.chk-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; }
