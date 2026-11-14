@@ -49,8 +49,8 @@ export const EKRANLAR = {
 };
 // Kişiye gösterilmeyen ekstra bölümler (ekran açık olsa bile)
 export const GIZLENEBILIR = [
-  { k: 'tutar', ad: 'Tutar, fiyat ve hedefler', d: 'Proje tutarları, teklif ve stok fiyatları "•••" görünür. Bu bir görüntü ayarıdır: ilgili ekranın verisi telefona yine gelir.' },
-  { k: 'iletisim', ad: 'Kişilerin telefon ve e-postası', d: 'Kişi kartlarında telefon, e-posta ve WhatsApp düğmesi gizlenir (görüntü ayarı).' },
+  { k: 'tutar', ad: 'Tutar, fiyat, cari ve hedefler', d: 'Proje tutarları, teklif ve sipariş değerleri, stok ve rakip fiyatları, tahsilat (cari) tutarları ve hedefler. Sunucuda gizlenir: bu değerler kişinin telefonuna hiç gönderilmez, ekranda "•••" görünür; kaydı düzenlese de değerler değişmez.' },
+  { k: 'iletisim', ad: 'Kişilerin telefon ve e-postası', d: 'Telefon, e-posta, kartvizit fotoğrafı ve doğum günü. Sunucuda gizlenir: kişinin telefonuna hiç gönderilmez.' },
   { k: 'yorum', ad: 'Yorumlar', d: 'Proje ve firma kartındaki yorumlar bölümü hiç görünmez.' },
   { k: 'iliski', ad: 'Firma ilişki ağı', d: 'Firma kartındaki ilişki ağı ve "kimin üzerinden ulaşırım" bölümü görünmez.' },
 ];
@@ -153,7 +153,13 @@ export function yetkiUygula() {
   } else { if (on) { try { sessionStorage.removeItem(ON); } catch {} } app.yetki = gercek; }
   if (app.db) app.db.onizleme = onizlemede() || !!app.db.bakilan;
   document.documentElement.dataset.tutar = gizliBolum('tutar') ? 'gizli' : '';
-  if (app.db) app.db.gizliAlan = gizliBolum('iletisim') ? { kisiler: ILETISIM } : null;
+  if (app.db) {
+    // Sunucudaki hassas sütun listesi (şema 30) varsa ondan; yoksa yalnızca kişi iletişim bilgileri
+    const hs = app.db.hs, g = {};
+    if (hs) { for (const [t, h] of Object.entries(hs)) if (gizliBolum(h.grup)) g[t] = h.hassas; }
+    else if (gizliBolum('iletisim')) g.kisiler = ILETISIM;
+    app.db.gizliAlan = Object.keys(g).length ? g : null;
+  }
   if (sahipMi()) return;
   if (gizliBolum('iletisim') && Array.isArray(S.kisiler)) S.kisiler = S.kisiler.map(k => { const o = { ...k }; for (const a of ILETISIM) delete o[a]; return o; });
   const ben = (onizlemede() ? app.yetki.eposta : app.db?.user?.()?.email || '').toLowerCase();

@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 67): Hassas alanlar sunucuda (K4)
+
+**Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 30).**
+
+- Kullanıcının rolünde (Şirket profili → Ekip ve yetkiler → "Gizli bölümler") **Tutar, fiyat, cari ve hedefler** ya da **Kişilerin telefon ve e-postası** kapalıysa bu değerler artık **sunucuda** gizlenir: o kişinin telefonuna hiç gönderilmez (önceden yalnızca ekranda "•••" gösteriliyordu, veri telefona yine geliyordu).
+- Gizlenen sütunlar: projelerde tutar, sipariş tutarı, bizim teklif, rakip fiyat ve toplam · teklif kalemleri ve toplamı · sipariş net değeri · stok ve stok geçmişi fiyatı · hedefler · rakip fiyatları · tahsilat tutarı ve ödenen · kişilerde telefon, e-posta, kartvizit fotoğrafı, doğum günü.
+- Bu alanları göremeyen kişi kaydı düzenleyip kaydettiğinde gizli değerler değişmez ya da silinmez (sunucu korur).
+- Kurucu ve şirket yöneticileri her şeyi görür. Teknik: sütunların doğrudan okunması kapatıldı; değerler `hassas_degerler()` ile yalnızca hakkı olana döner, kayıtlar `kaydet_toplu()` ile yazılır.
+- Şema çalıştırılmazsa uygulama eskisi gibi çalışır (gizleme yalnızca ekranda).
+
 ## Güncelleme notu (sürüm 66): Bugün ve Takvim tek başlıkta, şirket profili sekmeli, Ayarlar sadeleşti
 
 - **Bugün ve Takvim birleşti:** menüde tek "Bugün" başlığı; üstte sekmeler Bugün · Takvim · Ziyaretler · Görevler. Menüde bir yer boşaldı (varsayılan ana menüye Satış geldi).

@@ -1230,3 +1230,120 @@ create or replace function public.yetki_surum() returns int language sql stable 
 -- tutum: Destekliyor / Tarafsız / Bilinmiyor / Rakipçi; etki: Yüksek / Orta / Düşük
 alter table public.projeler add column if not exists karar_grubu jsonb;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 29 $f$;
+
+-- ===================== Sürüm 30: hassas alanlar sunucuda (K4) =====================
+-- Rolünde "Tutar, fiyat ve hedefler" ya da "Kişilerin telefon ve e-postası" gizli olan ekip üyesine bu sütunlar
+-- hiç gönderilmez. Sütunların doğrudan okunması kapatılır (sütun izni); değerler yalnızca hassas_degerler()
+-- üzerinden ve yalnızca görme hakkı olana döner. Gizli alanı göremeyen kişi kaydı değiştirirken o alanlar korunur.
+create or replace function public.hassas_kolonlar() returns jsonb language sql immutable as $f$
+  select '{
+    "projeler":       {"grup": "tutar",    "kol": ["tutar_usd", "siparis_tutari_usd", "bizim_teklif_usd", "rakip_birim_fiyat", "rakip_toplam_usd"]},
+    "teklifler":      {"grup": "tutar",    "kol": ["kalemler", "toplam", "iskonto"]},
+    "siparisler":     {"grup": "tutar",    "kol": ["net_deger"]},
+    "urunler":        {"grup": "tutar",    "kol": ["birim_fiyat_usd"]},
+    "stok_gecmis":    {"grup": "tutar",    "kol": ["birim_fiyat_usd"]},
+    "hedefler":       {"grup": "tutar",    "kol": ["tutar_usd", "resmi_usd", "resmi_tl"]},
+    "rakip_fiyatlar": {"grup": "tutar",    "kol": ["birim_fiyat", "fiyat_metin"]},
+    "tahsilatlar":    {"grup": "tutar",    "kol": ["tutar", "odenen"]},
+    "kisiler":        {"grup": "iletisim", "kol": ["telefon", "eposta", "kartvizit_on", "kartvizit_arka", "dogum_gunu"]}
+  }'::jsonb
+$f$;
+grant execute on function public.hassas_kolonlar() to authenticated;
+
+-- Kullanıcı bu şirketin bu gruptaki hassas alanlarını görebilir mi (kurucu ve şirket yöneticisi her zaman)
+create or replace function public.hassas_acik(sahip uuid, grup text) returns boolean language sql stable security definer set search_path = public as $f$
+  select public.sirket_yetkilisi(sahip) or exists (
+    select 1 from public.ekip_uyeleri u where u.owner = sahip and u.aktif and lower(u.eposta) = public.benim_epostam()
+      and not coalesce(u.yetkiler -> '_gizli', '[]'::jsonb) ? grup)
+$f$;
+revoke all on function public.hassas_acik(uuid, text) from public, anon;
+grant execute on function public.hassas_acik(uuid, text) to authenticated;
+
+-- Sütun izinleri: hassas sütunlar dışındaki her sütun okunabilir. Sonradan sütun eklenince yeniden çağrılır
+-- (schema.sql her çalıştırıldığında en sonda çağrılır).
+create or replace function public.hassas_izinleri_yenile() returns void language plpgsql security definer set search_path = public as $f$
+declare t text; h jsonb := public.hassas_kolonlar(); kols text;
+begin
+  for t in select jsonb_object_keys(h) loop
+    if to_regclass('public.' || t) is null then continue; end if;
+    execute format('revoke select on public.%I from authenticated, anon', t);
+    select string_agg(quote_ident(c.column_name), ', ' order by c.ordinal_position) into kols
+      from information_schema.columns c where c.table_schema = 'public' and c.table_name = t
+        and not (h -> t -> 'kol') ? c.column_name;
+    execute format('grant select (%s) on public.%I to authenticated', kols, t);
+  end loop;
+end $f$;
+revoke all on function public.hassas_izinleri_yenile() from public, anon, authenticated;
+
+-- Uygulama için: her tablonun okunabilir sütunları ve hassas sütunları
+create or replace function public.hassas_semasi() returns jsonb language sql stable security definer set search_path = public as $f$
+  select jsonb_object_agg(t, jsonb_build_object('grup', h -> t ->> 'grup', 'hassas', h -> t -> 'kol',
+    'okunur', (select jsonb_agg(c.column_name order by c.ordinal_position) from information_schema.columns c
+               where c.table_schema = 'public' and c.table_name = t and not (h -> t -> 'kol') ? c.column_name)))
+  from (select public.hassas_kolonlar() h) x, jsonb_object_keys(x.h) t where to_regclass('public.' || t) is not null
+$f$;
+revoke all on function public.hassas_semasi() from public, anon;
+grant execute on function public.hassas_semasi() to authenticated;
+
+-- Hassas değerler: yalnızca görebildiği kayıtlar (okuma yetkisi ve kapsamı) ve grubu açık olan şirketler için
+create or replace function public.hassas_degerler(p_tablo text, p_sonra timestamptz default null, p_idler uuid[] default null)
+returns table(id uuid, deger jsonb) language plpgsql stable security definer set search_path = public as $f$
+declare h jsonb := public.hassas_kolonlar() -> p_tablo; kosul text; secim text;
+begin
+  if h is null then return; end if;
+  select string_agg(format('%L, t.%I', k, k), ', ') into secim from jsonb_array_elements_text(h -> 'kol') k;
+  kosul := format('public.yetki(t.owner, %L, %L) and public.hassas_acik(t.owner, %L)', p_tablo, 'oku', h ->> 'grup');
+  if exists (select 1 from information_schema.columns c where c.table_schema = 'public' and c.table_name = p_tablo and c.column_name = 'sorumlu') then
+    kosul := kosul || ' and public.kapsamda(t.owner, t.sorumlu, t.ekip_id)'; end if;
+  if p_sonra is not null and exists (select 1 from information_schema.columns c where c.table_schema = 'public' and c.table_name = p_tablo and c.column_name = 'updated_at') then
+    kosul := kosul || format(' and t.updated_at > %L', p_sonra); end if;
+  if p_idler is not null then kosul := kosul || format(' and t.id = any(%L::uuid[])', p_idler); end if;
+  return query execute format('select t.id, jsonb_build_object(%s) from public.%I t where %s', secim, p_tablo, kosul);
+end $f$;
+revoke all on function public.hassas_degerler(text, timestamptz, uuid[]) from public, anon;
+grant execute on function public.hassas_degerler(text, timestamptz, uuid[]) to authenticated;
+
+-- Göremeyen kişi kaydı güncellerken hassas alanlar eski değerinde kalır
+create or replace function public.hassas_koru() returns trigger language plpgsql security definer set search_path = public as $f$
+declare h jsonb := public.hassas_kolonlar() -> tg_table_name;
+begin
+  if h is null or auth.uid() is null or public.hassas_acik(new.owner, h ->> 'grup') then return new; end if;
+  new := jsonb_populate_record(new, (select jsonb_object_agg(k, to_jsonb(old) -> k) from jsonb_array_elements_text(h -> 'kol') k));
+  return new;
+end $f$;
+do $$ declare t text; begin
+  for t in select jsonb_object_keys(public.hassas_kolonlar()) loop
+    if to_regclass('public.' || t) is null then continue; end if;
+    execute format('drop trigger if exists hassas_koru on public.%I', t);
+    execute format('create trigger hassas_koru before update on public.%I for each row execute function public.hassas_koru()', t);
+  end loop;
+end $$;
+-- Kaydetme: hassas sütunu olan tablolarda "upsert" (ON CONFLICT DO UPDATE ... = excluded.x) sütunu okuma izni ister.
+-- Bu fonksiyon çağıranın yetkisiyle çalışır (RLS ve sütun izinleri aynen geçerli): önce günceller, kayıt yoksa ekler.
+create or replace function public.kaydet_toplu(p_tablo text, p_satirlar jsonb)
+returns table(id uuid, updated_at timestamptz) language plpgsql security invoker set search_path = public as $f$
+declare r jsonb; kols text; n int; var_upd boolean;
+begin
+  if public.hassas_kolonlar() -> p_tablo is null then raise exception 'kaydet_toplu: % desteklenmiyor', p_tablo; end if;
+  var_upd := exists (select 1 from information_schema.columns c where c.table_schema = 'public' and c.table_name = p_tablo and c.column_name = 'updated_at');
+  for r in select * from jsonb_array_elements(case when jsonb_typeof(p_satirlar) = 'array' then p_satirlar else jsonb_build_array(p_satirlar) end) loop
+    select string_agg(quote_ident(c.column_name), ', ' order by c.ordinal_position) into kols
+      from information_schema.columns c where c.table_schema = 'public' and c.table_name = p_tablo and r ? c.column_name and c.column_name <> 'id';
+    n := 0;
+    if kols is not null then
+      execute format('update public.%I t set (%s) = (select %s from jsonb_populate_record(null::public.%I, $1)) where t.id = ($1 ->> ''id'')::uuid', p_tablo, kols, kols, p_tablo) using r;
+      get diagnostics n = row_count;
+    end if;
+    if n = 0 then
+      execute format('insert into public.%I (id%s) select id%s from jsonb_populate_record(null::public.%I, $1)', p_tablo, coalesce(', ' || kols, ''), coalesce(', ' || kols, ''), p_tablo) using r;
+    end if;
+    if var_upd then return query execute format('select t.id, t.updated_at from public.%I t where t.id = ($1 ->> ''id'')::uuid', p_tablo) using r;
+    else id := (r ->> 'id')::uuid; updated_at := null; return next; end if;
+  end loop;
+end $f$;
+revoke all on function public.kaydet_toplu(text, jsonb) from public, anon;
+grant execute on function public.kaydet_toplu(text, jsonb) to authenticated;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 30 $f$;
+
+-- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
+select public.hassas_izinleri_yenile();

@@ -163,7 +163,16 @@ function schemaErr(e, t) {
   if (/column|schema cache|does not exist|Could not find/i.test(m)) return new Error('Veritabanı eski sürümde. Supabase SQL Editor\'de supabase/schema.sql dosyasını yeniden çalıştır. (' + m + ')');
   return new Error((t ? t + ': ' : '') + m);
 }
+// K4 (şema 30): hassas sütunu olan tablolarda sütunlar doğrudan okunamaz; okunabilir sütunlar ve hassas sütunlar
+// sunucudan öğrenilir (hassas_semasi). Kaydetme "upsert" yerine kaydet_toplu ile yapılır (upsert sütunu okuma izni ister).
+let HS = null;
+export const hassasSemasi = () => HS;
 async function upsertSafe(c, t, rows) {
+  if (HS?.[t]) {
+    const liste = [].concat(rows).map(r => { const o = strip(t, r); for (const k of Object.keys(o)) if (o[k] === undefined) delete o[k]; return o; });
+    const { data, error } = await c.rpc('kaydet_toplu', { p_tablo: t, p_satirlar: liste });
+    if (error) throw error; return data;
+  }
   for (let i = 0; i < 12; i++) {
     const tek = !Array.isArray(rows);
     let q = c.from(t).upsert(tek ? strip(t, rows) : rows.map(r => strip(t, r)));
@@ -202,6 +211,21 @@ class SupaAdapter {
   async signUp(email, password) { const { data, error } = await this.c.auth.signUp({ email, password }); if (error) throw error; this.session = data.session; return data; }
   async signOut() { await this.c.auth.signOut(); this.session = null; }
   // Ekip yetkileri: veri sahibi mi, ekip üyesiyse hangi tablolar (schema.sql sürüm 8 gerekir; yoksa sahip sayılır)
+  async hassasYukle() {
+    try { const { data, error } = await this.c.rpc('hassas_semasi'); HS = !error && data && typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length ? data : null; } catch { HS = null; }
+    this.hs = HS; return HS;
+  }
+  secim(t) { return HS?.[t]?.okunur?.length ? HS[t].okunur.join(',') : '*'; }
+  // Hassas değerleri (yalnızca görme hakkı olanlara döner) satırlara işle; idler verilmezse tablonun tamamı
+  async hassasBirlestir(t, idler = null) {
+    const h = HS?.[t]; if (!h) return;
+    const al = async ids => { let tum = [], from = 0; for (;;) { const { data, error } = await this.c.rpc('hassas_degerler', { p_tablo: t, p_idler: ids }).range(from, from + 999); if (error) throw error; tum = tum.concat(data || []); if (!data || data.length < 1000) break; from += 1000; } return tum; };
+    let gelen = [];
+    if (idler) { for (let i = 0; i < idler.length; i += 200) gelen = gelen.concat(await al(idler.slice(i, i + 200))); } else gelen = await al(null);
+    const m = new Map(gelen.map(r => [r.id, r.deger]));
+    const hedef = idler ? new Set(idler) : null;
+    S[t] = S[t].map(r => { if (hedef && !hedef.has(r.id)) return r; const d = m.get(r.id); const o = { ...r }; for (const k of h.hassas) if (d) o[k] = d[k]; else if (r.updated_at) delete o[k]; return o; });
+  }
   async yetkiYukle() {
     try { const { data, error } = await this.c.rpc('benim_yetkilerim'); if (error) throw error; this.yetki = data || { ben_sahip: true }; }
     catch { this.yetki = { ben_sahip: true }; }
@@ -235,22 +259,26 @@ class SupaAdapter {
     this._tazeleniyor = (async () => {
       const uid = this.user()?.id, onceki = JSON.stringify(this.yetki || null);
       await this.yetkiYukle();
+      await this.hassasYukle();
       await idbSet('yetki:' + uid, this.yetki);
       if (JSON.stringify(this.yetki) !== onceki && onceki !== 'null') this.senk = {};   // yetki değişti: görünen kayıtlar değişmiş olabilir
-      const senk = { ...(this.senk || {}) };
+      // Hassas alan kuralları ilk kez geldiyse (şema 30) hepsini baştan çek: eski kopyadaki gizli değerler silinsin
+      if (!!HS !== !!(this.senk || {}).__hs) this.senk = {};
+      const senk = { ...(this.senk || {}) }; if (HS) senk.__hs = 1; else delete senk.__hs;
       const bekleyen = new Set(((await idbGet('outbox')) || []).map(o => o.row?.id || o.id));
       await Promise.all(Object.keys(TABLES).map(async t => {
         try {
-          if (!senk[t] || !GUNCEL.has(t)) { const all = await this.tablo(t); const yerel = S[t].filter(r => bekleyen.has(r.id) && !all.some(x => x.id === r.id)); S[t] = all.concat(yerel); }
+          if (!senk[t] || !GUNCEL.has(t)) { const all = await this.tablo(t); const yerel = S[t].filter(r => bekleyen.has(r.id) && !all.some(x => x.id === r.id)); S[t] = all.concat(yerel); await this.hassasBirlestir(t); }
           else {
             const deg = await this.tablo(t, q => q.gt('updated_at', senk[t]));
-            if (deg.length) { const m = new Map(S[t].map(r => [r.id, r])); for (const r of deg) m.set(r.id, r); S[t] = [...m.values()]; }
+            if (deg.length) { const m = new Map(S[t].map(r => [r.id, r])); for (const r of deg) m.set(r.id, r); S[t] = [...m.values()]; await this.hassasBirlestir(t, deg.map(r => r.id)); }
             const { count, error } = await this.kapsam(t, this.c.from(t).select('id', { count: 'exact', head: true }));
             if (!error && count != null && count !== S[t].filter(r => !bekleyen.has(r.id) || r.updated_at).length) {
               const ids = new Set((await this.tablo(t, null, 'id')).map(r => r.id));
               const eksik = [...ids].filter(id => !S[t].some(r => r.id === id));
               S[t] = S[t].filter(r => ids.has(r.id) || bekleyen.has(r.id));
               for (let i = 0; i < eksik.length; i += 200) S[t] = S[t].concat(await this.tablo(t, q => q.in('id', eksik.slice(i, i + 200))));
+              if (eksik.length) await this.hassasBirlestir(t, eksik);
             }
           }
           if (GUNCEL.has(t)) senk[t] = S[t].reduce((a, r) => r.updated_at && r.updated_at > a ? r.updated_at : a, senk[t] || '');
@@ -266,6 +294,7 @@ class SupaAdapter {
     try { return await this._tazeleniyor; } finally { this._tazeleniyor = null; }
   }
   async tablo(t, filtre, alanlar = '*') {
+    if (alanlar === '*') alanlar = this.secim(t);
     let all = [], from = 0;
     for (;;) {
       let q = this.kapsam(t, this.c.from(t).select(alanlar)); if (filtre) q = filtre(q);
@@ -297,6 +326,7 @@ class SupaAdapter {
     if (this.yazamaz(t, obj)) throw new Error(this.onizleme ? (this.bakilan ? 'Bu hesaba salt okunur bakıyorsun; değişiklik kaydedilmez.' : 'Önizlemedesin: değişiklik kaydedilmez.') : 'Bu bölümde düzenleme yetkin yok. Veri sahibinden yetki iste.');
     let row = pick(t, obj); if (!row.id) row.id = uuid();
     row = firmaGecmisi(t, row, obj?._gecmisYok);
+    for (const k of this.gizliAlan?.[t] || []) if (S[t].some(x => x.id === row.id)) delete row[k];   // gizli alanlar var olan kayıtta ezilmesin (sunucu da korur)
     const i = S[t].findIndex(x => x.id === row.id), onceki = i >= 0 ? S[t][i] : null;
     // Ekleme yetkisi olmayan ekip üyesi (ör. kendisine atanan görev) yalnızca var olan kaydı günceller; upsert ekleme izni de ister
     const sadeceGuncelle = this.yetki?.ben_sahip === false && this.yetki.yetkiler?.[t] !== 'yaz' && i >= 0;
@@ -313,7 +343,8 @@ class SupaAdapter {
         if (r.error) throw r.error;
         if (r.data?.length) sunucuZamani(r.data[0].updated_at);
         else {
-          const { data: guncel, error: e2 } = await this.c.from(t).select('*').eq('id', row.id).maybeSingle();
+          const { data: guncel0, error: e2 } = await this.c.from(t).select(this.secim(t)).eq('id', row.id).maybeSingle();
+          const guncel = guncel0 && HS?.[t] ? { ...guncel0, ...Object.fromEntries(HS[t].hassas.filter(k => k in (onceki || {})).map(k => [k, onceki[k]])) } : guncel0;
           if (e2) throw e2;
           if (!guncel) { if (sadeceGuncelle) throw new Error('row-level security: güncelleme yetkisi yok'); const d = await upsertSafe(this.c, t, row); sunucuZamani(d?.[0]?.updated_at); }
           else {

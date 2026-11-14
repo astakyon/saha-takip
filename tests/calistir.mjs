@@ -371,6 +371,22 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 13) K4: hassas alanlar sunucuda (tutar gizli üyeye hiç gelmez, kaydetmek silmez) ----------
+{
+  const DB5 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__HASSAS", "1"); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { projeler: "yaz", firmalar: "oku", _ekran: { projeler: "yaz" }, _gizli: ["tutar"] } }));');
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB5 });
+  await p.goto(U + '#/proje/p1'); await w(1800);
+  const uye = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const { app } = await import('./js/state.js'); return { tutar: S.projeler.find(x => x.id === 'p1')?.tutar_usd, meta: document.querySelector('.ps-sayfa .dh-meta')?.textContent || '', gizli: JSON.stringify(app.db.gizliAlan) }; });
+  await p.evaluate(async () => { const { S } = await import('./js/db.js'); const { app } = await import('./js/state.js'); await app.db.save('projeler', { ...S.projeler.find(x => x.id === 'p1'), ad: 'Örnek Hastane (üye)', tutar_usd: null }); });
+  await w(400);
+  const sunucu = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).projeler.find(x => x.id === 'p1'));
+  // Sahip: aynı veri, tutarı görür
+  await p.evaluate(() => { localStorage.removeItem('__YETKI'); }); await p.goto(U + '#/proje/p1'); await p.reload(); await w(1800);
+  const sahip = await p.evaluate(async () => (await import('./js/db.js')).S.projeler.find(x => x.id === 'p1')?.tutar_usd);
+  kontrol('K4: tutar gizli üyeye sunucudan hiç gelmiyor, kaydettiğinde silinmiyor; sahip görüyor', uye.tutar === undefined && !/125/.test(uye.meta) && /tutar_usd/.test(uye.gizli) && sunucu.ad === 'Örnek Hastane (üye)' && sunucu.tutar_usd === 125000 && sahip === 125000, JSON.stringify({ uye, sunucu: { ad: sunucu.ad, t: sunucu.tutar_usd }, sahip }));
+  kontrol('K4 ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
 {
   const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');
