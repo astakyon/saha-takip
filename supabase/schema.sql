@@ -849,3 +849,8 @@ create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) retu
     or (anahtar like 'sartname:%' and public.yetki(sahip, 'projeler', 'oku'))))
 $f$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 22 $f$;
+
+-- ===================== Sürüm 23: kişinin eski firmaları =====================
+-- [{ firma_id, firma_ad, unvan, bitis }] — firma değişince uygulama ekler
+alter table public.kisiler add column if not exists eski_firmalar jsonb;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 23 $f$;

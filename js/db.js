@@ -1,7 +1,7 @@
 // Veri katmanı: Supabase (bulut) veya Deneme (bu cihazın tarayıcısı)
 export const TABLES = {
   firmalar: ['id','ad','tipler','il','ilce','belde','osb','bolge_id','adres','lat','lng','konum_yaklasik','telefon','eposta','web','vergi_no','segment','sektor','key_account','notlar','fotolar','google_place_id','google_url'],
-  kisiler: ['id','firma_id','ad_soyad','ad','soyad','unvan','telefon','eposta','web','adres','rol','kartvizit_on','kartvizit_arka','dogum_gunu','notlar'],
+  kisiler: ['id','firma_id','eski_firmalar','ad_soyad','ad','soyad','unvan','telefon','eposta','web','adres','rol','kartvizit_on','kartvizit_arka','dogum_gunu','notlar'],
   projeler: ['id','ad','durum','durum_alt','kritik','takip_yili','hedef_listesi','baska_bolge','il','ilce','belde','bolge_id','osb','lokasyon','adres','lat','lng','konum_yaklasik','icerik','kanal','bayi_id','takipci','takipci_tel','calisildi','tutar_usd','olasilik','beklenen_tarih','teklif_no','crm_kodu','urun_gruplari','sektor','alt_sektor','yeni_refit','yatirimci_id','projeci_id','danisman_id','gemut_id','emut_id','alici_id','ilgili_kisi_id','ziyaret_edilecek','sorulacak','notlar','fotolar','siparis_tutari_usd','siparis_tarihi','bizim_teklif_usd','bizim_urun','rakip_marka','rakip_urun','rakip_birim_fiyat','rakip_miktar','rakip_toplam_usd','kayip_nedeni','kayip_aciklama','google_place_id','google_url','santiye_asamasi','alim_tarihi','referans','aday','aday_kaynak','ihale_tarihi'],
   proje_gecmis: ['id','proje_id','tarih','eski_durum','yeni_durum','notlar'],
   ziyaretler: ['id','tarih','saat','durum','firma_id','kisi_id','proje_id','amac','notlar','sonuc_tipi','sonuc','lat','lng','fotolar'],
@@ -39,6 +39,18 @@ function kisiAdDuzen(o) {
   if (o.ad_soyad !== undefined && o.ad_soyad !== null && String(o.ad_soyad).trim() && String(o.ad_soyad).trim().replace(/\s+/g, ' ') !== tam) return { ...o, ...adBol(o.ad_soyad), ad_soyad: String(o.ad_soyad).trim().replace(/\s+/g, ' ') };
   if (tam) return { ...o, ad_soyad: tam };
   return o;
+}
+// Firma geçmişi: kişinin firması değişince (ya da firmadan ayrılınca) önceki firma, unvanı ve tarihiyle
+// "eski firmalar" listesine eklenir. Birleştirme gibi veri düzeltmelerinde (_gecmisYok) eklenmez.
+export function firmaGecmisi(t, row, gecmisYok = false) {
+  if (t !== 'kisiler' || gecmisYok || !row.id || !('firma_id' in row)) return row;
+  const eski = (S.kisiler || []).find(x => x.id === row.id);
+  if (!eski?.firma_id || eski.firma_id === (row.firma_id || null)) return row;
+  const liste = Array.isArray(row.eski_firmalar) ? row.eski_firmalar : (eski.eski_firmalar || []);
+  const bugun = new Date().toISOString().slice(0, 10);
+  if (liste[0]?.firma_id === eski.firma_id && liste[0]?.bitis === bugun) return { ...row, eski_firmalar: liste };
+  const f = (S.firmalar || []).find(f => f.id === eski.firma_id);
+  return { ...row, eski_firmalar: [{ firma_id: eski.firma_id, firma_ad: f?.ad || null, unvan: eski.unvan || null, bitis: bugun }, ...liste] };
 }
 export function pick(table, obj) {
   if (table === 'kisiler') obj = kisiAdDuzen(obj);
@@ -101,7 +113,8 @@ class LocalAdapter {
   }
   async persist(t) { DB_DURUM.surum++; await idbSet('t:' + t, S[t]); }
   async save(t, obj) {
-    const row = pick(t, obj); if (!row.id) row.id = uuid();
+    let row = pick(t, obj); if (!row.id) row.id = uuid();
+    row = firmaGecmisi(t, row, obj?._gecmisYok);
     for (const k of this.gizliAlan?.[t] || []) if (S[t].some(x => x.id === row.id)) delete row[k];   // ekip üyesine gizlenen alanlar var olan kayıtta ezilmesin
     const i = S[t].findIndex(x => x.id === row.id);
     const full = { ...(i >= 0 ? S[t][i] : { created_at: new Date().toISOString() }), ...row, updated_at: new Date().toISOString() };
@@ -279,7 +292,8 @@ class SupaAdapter {
   async bekleyenSil(i) { const q = (await idbGet('outbox')) || []; q.splice(i, 1); await idbSet('outbox', q); window.dispatchEvent(new CustomEvent('outbox', { detail: 0 })); }
   async save(t, obj) {
     if (this.yazamaz(t, obj)) throw new Error(this.onizleme ? (this.bakilan ? 'Bu hesaba salt okunur bakıyorsun; değişiklik kaydedilmez.' : 'Önizlemedesin: değişiklik kaydedilmez.') : 'Bu bölümde düzenleme yetkin yok. Veri sahibinden yetki iste.');
-    const row = pick(t, obj); if (!row.id) row.id = uuid();
+    let row = pick(t, obj); if (!row.id) row.id = uuid();
+    row = firmaGecmisi(t, row, obj?._gecmisYok);
     const i = S[t].findIndex(x => x.id === row.id), onceki = i >= 0 ? S[t][i] : null;
     // Ekleme yetkisi olmayan ekip üyesi (ör. kendisine atanan görev) yalnızca var olan kaydı günceller; upsert ekleme izni de ister
     const sadeceGuncelle = this.yetki?.ben_sahip === false && this.yetki.yetkiler?.[t] !== 'yaz' && i >= 0;

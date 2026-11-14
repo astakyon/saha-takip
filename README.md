@@ -32,6 +32,15 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 50): kişinin eski firmaları
+
+- Kişi kartında **“Eski firmaları”** bölümü: kişinin firması değiştirilince (ya da firmadan ayrılınca) önceki firma, oradaki unvanı ve ayrılış tarihiyle kendiliğinden eklenir.
+- **“Yeni firmaya geçti”** düğmesi formdaki firma ve unvanı boşaltır; yeni firmayı yazıp kaydedince eskisi geçmişe geçer.
+- **“Eski firma ekle”** ile uygulamadan önceki firmalar elle eklenir; her satır “Kaldır” ile silinir.
+- Firma kartında **“Eski çalışanlar”**: o firmadan ayrılmış kişiler, şimdi hangi firmada oldukları ile.
+- Benzer kayıtları birleştirirken iki kişinin eski firmaları birleşir; firmalar birleşince eski firma kayıtları kalan firmaya çevrilir. Birleştirme eski firma eklemez.
+- Supabase'de güncel **schema.sql** çalıştırılmalı (sürüm 23).
+
 ## Güncelleme notu (sürüm 49): benzer kayıtlar (karşılaştır, birleştir, düzelt)
 
 - **Benzer kişiler:** aynı telefon, aynı e-posta ya da aynı ad soyad. **Benzer firmalar:** benzer ad (Ltd., Şti., Elektrik, Aydınlatma gibi ekler yok sayılır), aynı telefon, aynı vergi no, aynı web/e-posta alan adı, aynı Google kaydı.

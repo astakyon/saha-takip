@@ -131,11 +131,16 @@ export function karsilastir(tablo, idA, idB, sonra) {
       // Kullanıcının seçmediği değerler kaybolmasın: 2'nin farklı telefonu ve notları 1'in notlarına eklenir
       if (tablo === 'kisiler' && B.telefon && yeni.telefon && tel(B.telefon) !== tel(yeni.telefon)) yeni.notlar = [yeni.notlar, 'Diğer telefon: ' + B.telefon].filter(Boolean).join('\n');
       if (B.notlar && B.notlar !== yeni.notlar) yeni.notlar = [yeni.notlar, B.notlar].filter(Boolean).join('\n');
-      if (tablo === 'kisiler') { for (const a of ['kartvizit_on', 'kartvizit_arka']) if (!yeni[a] && B[a]) yeni[a] = B[a]; }
+      if (tablo === 'kisiler') { for (const a of ['kartvizit_on', 'kartvizit_arka']) if (!yeni[a] && B[a]) yeni[a] = B[a];
+        const ef = [...(A.eski_firmalar || []), ...(B.eski_firmalar || [])].filter((g, i, l) => l.findIndex(h => (h.firma_id || h.firma_ad) === (g.firma_id || g.firma_ad) && h.bitis === g.bitis) === i);
+        if (B.firma_id && B.firma_id !== yeni.firma_id && !ef.some(g => g.firma_id === B.firma_id)) ef.unshift({ firma_id: B.firma_id, firma_ad: firmaAd(B.firma_id) || null, unvan: B.unvan || null, bitis: null });
+        yeni.eski_firmalar = ef.length ? ef : null; yeni._gecmisYok = true; }
       else { yeni.tipler = [...new Set([...(A.tipler || []), ...(B.tipler || [])])]; yeni.fotolar = [...new Set([...(A.fotolar || []), ...(B.fotolar || [])])]; if (yeni.lat == null && B.lat != null) Object.assign(yeni, { lat: B.lat, lng: B.lng, konum_yaklasik: B.konum_yaklasik }); for (const a of ['belde', 'osb', 'google_place_id', 'google_url', 'bolge_id']) if (!yeni[a] && B[a]) yeni[a] = B[a]; }
       await app.db.save(tablo, yeni);
       const BAG = tablo === 'kisiler' ? KISI_BAG : FIRMA_BAG;
-      for (const [t, alan] of Object.entries(BAG)) for (const r of (S[t] || []).filter(r => alan.some(a => r[a] === B.id))) { const o = { ...r }; for (const a of alan) if (o[a] === B.id) o[a] = A.id; await app.db.save(t, o); }
+      for (const [t, alan] of Object.entries(BAG)) for (const r of (S[t] || []).filter(r => alan.some(a => r[a] === B.id))) { const o = { ...r, _gecmisYok: true }; for (const a of alan) if (o[a] === B.id) o[a] = A.id; await app.db.save(t, o); }
+      // Kişilerin eski firmalar listesinde silinen firma geçiyorsa kalan firmaya çevrilir
+      if (tablo === 'firmalar') for (const k of (S.kisiler || []).filter(k => (k.eski_firmalar || []).some(g => g.firma_id === B.id))) await app.db.save('kisiler', { ...k, eski_firmalar: k.eski_firmalar.map(g => g.firma_id === B.id ? { ...g, firma_id: A.id, firma_ad: yeni.ad } : g), _gecmisYok: true });
       await app.db.del(tablo, B.id);
       toast('Kayıtlar birleştirildi.'); closeDrawer(); app.refresh?.(); sonra?.();
     } catch (err) { toast('Birleştirilemedi: ' + err.message, 'err'); e.target.disabled = false; }

@@ -273,6 +273,14 @@ const DB = () => {
   await p.click('.drawer.open [data-ayir="k1"]'); await w(800);
   const ayrildi = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1').firma_id);
   kontrol('Firmaya kayıtlı kişi atanıyor ve ayrılabiliyor', atandi === 'f1' && !ayrildi, JSON.stringify([atandi, ayrildi]));
+  // Firmadan ayrılan kişinin eski firması kartında ve firmanın "Eski çalışanlar"ında görünüyor; elle eski firma eklenebiliyor
+  const ef = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1').eski_firmalar);
+  const eskiCalisan = await p.isVisible('.drawer.open .eski-baslik');
+  await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800);
+  const efGorunur = await p.textContent('.drawer.open [data-eski-firma]');
+  await p.click('.drawer.open [data-ef-ekle]'); await p.fill('.drawer.open [data-ef-firma]', 'Eski Usta Ltd'); await p.fill('.drawer.open [data-ef-unvan]', 'Şef'); await p.fill('.drawer.open [data-ef-tarih]', '2020-05-01'); await p.click('.drawer.open [data-ef-kaydet]'); await w(600);
+  const ef2 = await p.evaluate(async () => (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1').eski_firmalar.map(g => g.firma_ad));
+  kontrol('Eski firmalar kişi kartında ve firmanın eski çalışanlarında görünüyor, elle eklenebiliyor', ef?.[0]?.firma_id === 'f1' && eskiCalisan && /tarihine kadar/.test(efGorunur) && ef2.includes('Eski Usta Ltd'), JSON.stringify({ ef, eskiCalisan, ef2 }));
   // Kişide internet sitesi ve adres
   await p.goto(U + '#/kisiler'); await p.reload(); await w(1500); await p.click('a[href="#/kisi/k1"]'); await w(800);
   await p.fill('.drawer.open [name=web]', 'www.ornek.com'); await p.fill('.drawer.open [name=adres]', 'Örnek Mah. 1. Sok. No:2 Mersin'); await p.click('.drawer.open [type=submit]'); await w(800);

@@ -1381,3 +1381,9 @@ body.kirp-acik { overflow: hidden; }
 .cift-sec { display: flex; flex-wrap: wrap; gap: 6px; } .cift-sec .chip { max-width: 100%; text-align: left; white-space: normal; }
 .cift-alan input[data-son] { width: 100%; }
 .cift-l li { align-items: center; }
+
+/* ---------- Sürüm 50: eski firmalar ---------- */
+.eski-firma .list li { align-items: center; } .eski-firma small { display: block; }
+.ef-form { display: grid; gap: 8px; margin-top: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
+.ef-form label { display: grid; gap: 4px; font-size: 13.5px; }
+.eski-baslik { margin: 12px 0 4px; font-size: 14px; }

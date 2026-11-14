@@ -76,7 +76,7 @@ export async function kisiBirlestir(kalanId, gidenIds) {
   const BAG = { ziyaretler: ['kisi_id'], gorevler: ['kisi_id'], teklifler: ['kisi_id'], numuneler: ['kisi_id'], servis_kayitlari: ['kisi_id'], projeler: ['ilgili_kisi_id'] };
   for (const gid of gidenIds) {
     const g = byId('kisiler', gid); if (!g) continue;
-    for (const [t, alan] of Object.entries(BAG)) for (const r of (S[t] || []).filter(r => alan.some(a => r[a] === gid))) { const o = { ...r }; for (const a of alan) if (o[a] === gid) o[a] = kalanId; await app.db.save(t, o); }
+    for (const [t, alan] of Object.entries(BAG)) for (const r of (S[t] || []).filter(r => alan.some(a => r[a] === gid))) { const o = { ...r, _gecmisYok: true }; for (const a of alan) if (o[a] === gid) o[a] = kalanId; await app.db.save(t, o); }
     for (const a of ['firma_id', 'unvan', 'telefon', 'eposta', 'rol', 'kartvizit_on', 'kartvizit_arka', 'dogum_gunu']) if (!kalan[a] && g[a]) kalan[a] = g[a];
     if (g.telefon && kalan.telefon && g.telefon.replace(/\D/g, '') !== kalan.telefon.replace(/\D/g, '')) kalan.notlar = [kalan.notlar, 'Diğer telefon: ' + g.telefon].filter(Boolean).join('\n');
     if (g.notlar && g.notlar !== kalan.notlar) kalan.notlar = [kalan.notlar, g.notlar].filter(Boolean).join('\n');
@@ -90,7 +90,7 @@ export async function firmaBirlestir(kalanId, gidenIds) {
   const BAG = { projeler: ROL, kisiler: ['firma_id'], ziyaretler: ['firma_id'], gorevler: ['firma_id'], siparisler: ['firma_id'], teklifler: ['firma_id'], numuneler: ['firma_id'], servis_kayitlari: ['firma_id'], tahsilatlar: ['firma_id'], belgeler: ['firma_id'] };
   for (const gid of gidenIds) {
     const g = byId('firmalar', gid); if (!g) continue;
-    for (const [t, alan] of Object.entries(BAG)) for (const r of S[t].filter(r => alan.some(a => r[a] === gid))) { const o = { ...r }; for (const a of alan) if (o[a] === gid) o[a] = kalanId; await app.db.save(t, o); }
+    for (const [t, alan] of Object.entries(BAG)) for (const r of S[t].filter(r => alan.some(a => r[a] === gid))) { const o = { ...r, _gecmisYok: true }; for (const a of alan) if (o[a] === gid) o[a] = kalanId; await app.db.save(t, o); }
     const birlesik = { ...kalan, tipler: [...new Set([...(kalan.tipler || []), ...(g.tipler || [])])], fotolar: [...new Set([...(kalan.fotolar || []), ...(g.fotolar || [])])], notlar: [kalan.notlar, g.notlar].filter(Boolean).join('\n') || null };
     for (const a of ['il', 'ilce', 'belde', 'osb', 'adres', 'telefon', 'eposta', 'web', 'vergi_no', 'sektor', 'google_place_id', 'google_url']) if (!birlesik[a] && g[a]) birlesik[a] = g[a];
     if (birlesik.lat == null && g.lat != null) Object.assign(birlesik, { lat: g.lat, lng: g.lng, konum_yaklasik: g.konum_yaklasik });
