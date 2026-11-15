@@ -32,6 +32,10 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 89): Ziyarete hazırlık
+
+- Bugün'ün planındaki her ziyarette **Hazırlık**, firma sayfasında **Ziyarete hazırlık**: firmanın son 12 ayı (ziyaret, teklif ve tutarı, sipariş ve tutarı, kazanılan/kaybedilen), **konuşulacaklar** (vade riski, açık ve gecikmiş görevler, cevap bekleyen teklifler, sessiz sıcak projeler, satış haritası uyarıları, müşteride bekleyen numune, açık servis kaydı), açık projeler, **kiminle** (karar vericiler önce, telefon, 14 gün içindeki doğum günü), son iki görüşmenin notları, bu firmada kaybedilen markalar. Altta Yol, Firma sayfası, **Giriş yap**.
+
 ## Güncelleme notu (sürüm 88): tahsilat ve vade riski
 
 - Firma bazında risk, Satış → Tahsilat kayıtlarından: gecikmiş alacak (yaklaşık USD), en uzun gecikme ve geçmişte vadeden ortalama kaç gün sonra ödediği.

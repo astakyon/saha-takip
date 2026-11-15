@@ -800,7 +800,11 @@ const DB = () => {
     const ts = '2026-10-01T08:00:00Z', o = x => ({ owner: 'u1', updated_at: ts, created_at: ts, ...x });
     const g = n => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
     localStorage.setItem('__DB', JSON.stringify({
-      firmalar: [o({ id: 'f1', ad: 'Geciken İnşaat', lat: 37, lng: 35.3 }), o({ id: 'f2', ad: 'Geç Öder Elektrik' }), o({ id: 'f3', ad: 'Düzgün Yapı' })], kisiler: [], gorevler: [], teklifler: [], projeler: [], ekip_uyeleri: [],
+      firmalar: [o({ id: 'f1', ad: 'Geciken İnşaat', lat: 37, lng: 35.3, segment: 'A' }), o({ id: 'f2', ad: 'Geç Öder Elektrik' }), o({ id: 'f3', ad: 'Düzgün Yapı' })], ekip_uyeleri: [],
+      kisiler: [o({ id: 'k1', firma_id: 'f1', ad_soyad: 'Ali Örnek', telefon: '05320000000', dogum_gunu: '1980-' + g(5).slice(5) })],
+      gorevler: [o({ id: 'g1', firma_id: 'f1', baslik: 'Numune listesini sor', durum: 'Açık', son_tarih: g(-2) })],
+      teklifler: [o({ id: 't1', firma_id: 'f1', proje_id: 'pr1', teklif_no: 'T-9', tarih: g(-20), gecerlilik: g(5), durum: 'Gönderildi', toplam: 30000, para_birimi: 'USD' })],
+      projeler: [o({ id: 'pr1', ad: 'Fabrika Aydınlatma', durum: 'Sıcak', tutar_usd: 80000, emut_id: 'f1' })],
       ziyaretler: [o({ id: 'z1', firma_id: 'f1', tarih: g(0), durum: 'Planlandı' })],
       tahsilatlar: [o({ id: 'h1', firma_id: 'f1', tarih: g(-130), vade: g(-70), tutar: 20000, odenen: 0, para_birimi: 'USD' }), o({ id: 'h2', firma_id: 'f1', tarih: g(-20), vade: g(40), tutar: 5000, odenen: 0, para_birimi: 'USD' }),
         ...[1, 2, 3].map(i => o({ id: 'p' + i, firma_id: 'f2', tarih: g(-200 + i * 30), vade: g(-150 + i * 30), tutar: 1000, odenen: 1000, odeme_tarihi: g(-110 + i * 30), para_birimi: 'USD' })),
@@ -819,6 +823,17 @@ const DB = () => {
   await p.goto(U + '#/firma/f1'); await w(1200); const r5 = await p.evaluate(() => document.querySelector('h1 .vr-rozet')?.textContent || '');
   kontrol('Vade riski: 70 gün gecikmiş firma yüksek risk, düzenli 40 gün geç ödeyen "geç öder", düzgün firma risksiz; Panel kartı, Bugün planında rozet, teklif penceresinde uyarı (firma değişince güncelleniyor), firma sayfasında rozet',
     r1.a.join() === 'yuksek,20000,70' && r1.b.join() === 'gec,40' && r1.d === null && r1.liste.join() === 'f1,f2' && r1.planRozet && r2 === 2 && /Yüksek risk/.test(r3) && /20\.000 \$ gecikmiş/.test(r3) && r4 === '' && /20\.000/.test(r5), JSON.stringify({ r1, r2, r3, r4, r5 }));
+  // Ziyarete hazırlık
+  await p.goto(U + '#/bugun'); await w(1200);
+  await p.evaluate(() => document.querySelector('[data-hazirlik="f1"]').click()); await w(700);
+  const hz = await p.evaluate(() => { const d = document.querySelector('.drawer.open'); return { h: d.querySelector('h2')?.textContent, konu: [...d.querySelectorAll('.hz-konu li')].map(l => l.textContent), kisi: d.querySelector('.hz-ic .list a[href="#/kisi/k1"]')?.textContent || '', proje: !!d.querySelector('a[href="#/proje/pr1"]'), alt: d.querySelector('.hz-alt')?.textContent }; });
+  await p.screenshot({ path: 'tests/cikti/ziyarete-hazirlik.png' });
+  await p.click('.drawer.open [data-hzgiris]'); await w(1200);
+  const hzG = await p.evaluate(async () => { const { aktifZiyaret } = await import('./js/giriscikis.js'); return aktifZiyaret()?.firma_id; });
+  await p.goto(U + '#/firma/f1'); await w(1000); await p.evaluate(() => document.querySelector('[data-hazirlik]').click()); await w(600);
+  const hzF = await p.evaluate(() => document.querySelector('.drawer.open h2')?.textContent);
+  kontrol('Ziyarete hazırlık: Bugün planından ve firma sayfasından açılıyor; tahsilat, gecikmiş görev, cevap bekleyen teklif konuşulacaklarda; karar verici/kişi ve doğum günü, açık proje; Giriş yap ziyareti başlatıyor',
+    hz.h === 'Geciken İnşaat' && hz.konu.some(k => /^Tahsilat/.test(k)) && hz.konu.some(k => /Numune listesini sor/.test(k)) && hz.konu.some(k => /Teklif T-9 cevap bekliyor/.test(k)) && /5 gün sonra doğum günü/.test(hz.kisi) && hz.proje && /A segmenti/.test(hz.alt) && hzG === 'f1' && hzF === 'Geciken İnşaat', JSON.stringify({ hz, hzG, hzF }));
   kontrol('Vade riskinde hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }

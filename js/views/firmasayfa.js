@@ -79,7 +79,7 @@ export function firmaSayfa(el, id, sekme0) {
             <hr><button type="button" role="menuitem" class="fs-sil" data-a="sil" data-gerek="yaz:firmalar">${IK.sil}<span>Firmayı sil</span></button></div></div>
       </div>
     </header>
-    <div class="fs-act"><button class="btn sm primary" data-a="duzenle" data-gerek="yaz:firmalar">Düzenle</button>${(() => { const a = aktifZiyaret(); return a && a.firma_id === x.id ? `<button class="btn sm giris-btn icerde" data-a="cikis" data-gerek="yaz:ziyaretler">Çıkış yap · ${esc(girisOzeti(a))}</button>` : `<button class="btn sm giris-btn" data-a="giris" data-gerek="yaz:ziyaretler">Giriş yap</button>`; })()}</div>
+    <div class="fs-act"><button class="btn sm primary" data-a="duzenle" data-gerek="yaz:firmalar">Düzenle</button><button class="btn sm" data-hazirlik>Ziyarete hazırlık</button>${(() => { const a = aktifZiyaret(); return a && a.firma_id === x.id ? `<button class="btn sm giris-btn icerde" data-a="cikis" data-gerek="yaz:ziyaretler">Çıkış yap · ${esc(girisOzeti(a))}</button>` : `<button class="btn sm giris-btn" data-a="giris" data-gerek="yaz:ziyaretler">Giriş yap</button>`; })()}</div>
     <div data-cift></div>
     <div class="p-sekme fs-sekme" role="tablist" aria-label="Firma bölümleri">${SEKMELER.map(([k, t, g]) => `<button type="button" role="tab" data-fsk="${k}" ${g ? `data-gerek="${g}"` : ''} aria-selected="${k === sekme}" class="${k === sekme ? 'on' : ''}">${t}${sayi[k] ? ` <i>${sayi[k]}</i>` : ''}</button>`).join('')}</div>
 
@@ -152,6 +152,7 @@ export function firmaSayfa(el, id, sekme0) {
   gerekUygula(el);
   acilirKur(el); araciTemizle(el);
   ciftUyarisi(el, 'firmalar', x);
+  el.querySelector('[data-hazirlik]')?.addEventListener('click', async () => (await import('../hazirlik.js')).hazirlikAc(x.id));
   el.querySelector('[data-geri]').onclick = () => sayfadanDon('firmalar');
   el.querySelectorAll('.avatar[data-kv]').forEach(async a => { if (a.dataset.kv) { const u = await app.db.url(a.dataset.kv, true); if (u) { a.style.backgroundImage = `url("${u}")`; a.textContent = ''; } } });
 

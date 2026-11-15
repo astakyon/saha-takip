@@ -81,6 +81,7 @@ export const YENILIKLER = [
   { s: 81, t: 'Kayıp ve rakip', m: 'Hangi rakibe, hangi nedenle, hangi il ve sektörde kaybettiğin; fiyat farkı ve rakibe karşı kazandıkların.', r: '#/rakipanaliz', d: 'Raporlar → Kayıp ve rakip' },
   { s: 83, t: 'Daha hızlı', m: 'Çok kayıt olduğunda Ziyaretler, Teklifler, Panel ve Bugün ekranları belirgin biçimde daha hızlı açılıyor.', r: null, d: '' },
   { s: 86, t: 'Aynı anda düzenleme', m: 'Bir kaydı iki kişi aynı anda değiştirirse farklı alanlar sormadan birleşir; aynı alan değiştiyse yalnızca o alan iki değeriyle sorulur. İnternetsiz değişiklikler de böyle birleşir.', r: null, d: '' },
+  { s: 89, t: 'Ziyarete hazırlık', m: 'Ziyaretten önce firmanın son 12 ayı ve konuşulacaklar tek ekranda: tahsilat, açık görev, cevap bekleyen teklif, sessiz projeler, kişiler ve doğum günleri, son görüşmeler.', r: '#/bugun', d: 'Bugün planı → Hazırlık · firma sayfası' },
   { s: 88, t: 'Vade riski', m: 'Gecikmiş alacağı olan ya da düzenli geç ödeyen firmalar: teklif ve ziyaret penceresinde uyarı, firma sayfasında ve Bugün planında rozet, Panel\'de liste.', r: '#/panel', d: 'Panel · teklif ve ziyaret penceresi' },
   { s: 87, t: 'Bugünün soruları', m: 'Bugün ekranında her gün en fazla 3 kısa soru: kayıp nedeni, proje tutarı, gecikmiş tarih, firma segmenti. Yerinde cevapla; radar ve analizler doğru çalışsın.', r: '#/bugun', d: 'Bugün' },
 ];

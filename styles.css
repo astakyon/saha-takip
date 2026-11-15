@@ -1838,3 +1838,15 @@ body.giris-var #view { padding-top: 64px; }
 .vr-l li { display: flex; gap: 10px; align-items: center; }
 .vr-l a.grow { display: flex; flex-direction: column; min-width: 0; }
 .vr-n { width: 4px; align-self: stretch; border-radius: 2px; background: var(--c); flex: none; }
+
+/* Ziyarete hazırlık */
+.hz-ic h3 { font-size: 14.5px; margin: 16px 0 6px; }
+.hz-alt { margin: 0 0 10px; color: var(--muted); }
+.hz-not { margin: 4px 0 0; font-size: 12px; }
+.hz-konu { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.hz-konu li { border-left: 4px solid var(--c); background: color-mix(in srgb, var(--c) 7%, var(--card)); border-radius: 6px; padding: 6px 10px; font-size: 14px; }
+.hz-gor { list-style: none; margin: 0; padding: 0; }
+.hz-gor li { padding: 6px 0; border-bottom: 1px solid var(--line-2); font-size: 14px; }
+.hz-gor p { margin: 3px 0 0; color: var(--muted); }
+.hz-ic .list li { display: flex; gap: 8px; align-items: center; }
+.hz-ic .list a.grow { display: flex; flex-direction: column; min-width: 0; }
