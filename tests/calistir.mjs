@@ -501,6 +501,35 @@ const DB = () => {
   kontrol('Otomasyonda hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// ---------- 19) Fırsat radarı ----------
+{
+  const DB9 = () => {
+    const ts = '2026-10-01T08:00:00Z', o = x => ({ owner: 'u1', updated_at: ts, created_at: ts, ...x });
+    const g = n => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+    localStorage.setItem('__DB', JSON.stringify({
+      firmalar: [o({ id: 'f1', ad: 'Örnek Bayi', tipler: ['Bayi'] }), o({ id: 'f2', ad: 'Büyük Emüt', tipler: ['Emüt'], segment: 'A' })],
+      kisiler: [], ziyaretler: [], gorevler: [],
+      projeler: [o({ id: 'p2', ad: 'Hastane Ek Bina', durum: 'Sıcak', tutar_usd: 320000, emut_id: 'f2' }), o({ id: 'p3', ad: 'Küçük Depo', durum: 'Teklif Verildi', tutar_usd: 4000, emut_id: 'f1' })],
+      teklifler: [o({ id: 't2', proje_id: 'p3', firma_id: 'f1', teklif_no: 'T-2', tarih: g(-12), gecerlilik: g(3), durum: 'Gönderildi', toplam: 4000, para_birimi: 'USD' })],
+      ekip_uyeleri: [] }));
+  };
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB9 });
+  await p.setViewportSize({ width: 1280, height: 900 }); await p.goto(U + '#/bugun'); await w(1500);
+  const r1 = await p.evaluate(() => ({ kart: !!document.querySelector('.radar-k'), ilk: document.querySelector('.radar-l .radar-s b')?.textContent, turler: [...new Set([...document.querySelectorAll('.radar-k .radar-s')].map(x => x.dataset.rk.split(':')[0]))], n: document.querySelectorAll('.radar-k .radar-s').length }));
+  await p.screenshot({ path: 'tests/cikti/radar.png', fullPage: true });
+  const ilkK = await p.evaluate(() => document.querySelector('.radar-k .radar-s').dataset.rk);
+  await p.evaluate(() => document.querySelector('.radar-k [data-rertele]').click()); await w(900);
+  const r2 = await p.evaluate(k => !document.querySelector(`.radar-k [data-rk="${k}"]`), ilkK);
+  await p.evaluate(() => document.querySelector('[data-radartum]').click()); await w(500);
+  await p.click('.drawer.open [data-rt="teklif"]'); await w(300);
+  const r3 = await p.evaluate(() => [...document.querySelectorAll('.drawer.open .radar-s')].map(x => x.dataset.rk));
+  await p.click('.drawer.open .x[data-close]'); await w(400);
+  await p.goto(U + '#/panel'); await w(1200); const r4 = await p.evaluate(() => !!document.querySelector('.radar-k'));
+  kontrol('Fırsat radarı: sessiz sıcak proje en üstte, karar verici, teklif süresi ve A müşterisi listede; ertelenen gizleniyor; Panel\'de de var', r1.kart && r1.ilk === 'Hastane Ek Bina' && ['sessiz', 'karar', 'teklif', 'uzak'].every(t => r1.turler.includes(t)) && r2 && r3.length === 1 && r3[0] === 'teklif:t2' && r4, JSON.stringify({ r1, r2, r3, r4 }));
+  kontrol('Radarda hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
 // ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
 {
   const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');

@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 74): Fırsat radarı
+
+- **Bugün** ve **Panel** ekranında yeni kart: kaçmak üzere olan işler tek listede, önem sırasıyla. Dört tür: uzun süredir hareket olmayan sıcak projeler (varsayılan 14 gün), karar vericisi belirsiz, ulaşılmamış ya da rakipçi olan projeler, geçerliliği dolan ve cevap gelmemiş teklifler, ziyaret aralığı geçmiş A ve key account müşteriler.
+- Sıra, projenin tutarı × olasılığı ve ne kadar süredir sessiz kaldığıyla belirlenir. Her satırda **Planla** (yarına planlı ziyaret) ya da **Haritaya** (satış haritası) ve **Ertele** (7 gün gösterme) var. **Tümü** penceresinde türe göre süzme ve sessizlik süresi ayarı.
+- Hesap telefonda yapılır, yeni tablo ya da şema değişikliği gerekmez.
+
 ## Güncelleme notu (sürüm 73): Şablonlar yerinde, Excel'den proje yüklemesi genişledi
 
 - **Mesaj şablonları** Firmalar ve Kişiler ekranının üstünde ("Mesaj şablonları") ve WhatsApp penceresinde ("Şablonları düzenle"). **Teklif bilgileri** (PDF üst bilgisi ve koşullar) Teklifler ekranının üstünde. Şirket profilindeki "Mesaj ve teklif şablonları" sekmesi kalktı.

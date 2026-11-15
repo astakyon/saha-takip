@@ -9,6 +9,7 @@ import { renderForm, bindForm, readForm } from '../forms.js';
 import { yilGercek, ceyrekGercek, hedefKaydi, siparisUsd, donemKuru, ceyrekOf } from '../ceyrek.js';
 import { kur } from '../kur.js';
 import { yuklemeKaydet } from '../belgeler.js';
+import { radarKarti, radarBagla } from '../radar.js';
 
 const q = d => Math.floor((new Date(d).getMonth()) / 3) + 1;
 const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0);
@@ -52,6 +53,7 @@ export function panelView(el) {
   </section>
   <div class="dash">
     ${hedefKalanKarti(t)}
+    ${radarKarti({ n: 8 })}
     <section class="card wide"><h2>Çeyrek bazında sipariş ve hedef</h2>
       <div class="qbars">${[0, 1, 2, 3].map(i => `<div class="qb"><div class="qb-cols"><span class="bar target" style="height:${hed[i] / maxQ * 100}%" title="Hedef ${usd(hed[i])}"></span><span class="bar real ${gercek[i] >= hed[i] && hed[i] ? 'ok' : ''}" style="height:${gercek[i] / maxQ * 100}%" title="Gerçekleşen ${usd(gercek[i])}"></span></div>
         <b>${i + 1}. çeyrek</b><small>${usd(gercek[i])}${hed[i] ? ` · %${num(gercek[i] / hed[i] * 100)}` : ''}</small></div>`).join('')}</div>
@@ -86,6 +88,7 @@ export function panelView(el) {
       <p class="hint">Çeyrek ve yarı dönem sunumlarındaki tablo düzeninde Excel dosyası indirir; satırları sunuma kopyalayabilirsin.</p>
       <div class="btnrow"><button class="btn primary" data-pptx>Çeyrek sunumu (PowerPoint)</button><button class="btn" data-s="kayip">Kayıp projeler</button><button class="btn" data-s="pot">Potansiyel projeler (${Y})</button><button class="btn" data-s="str">${Y + 1} potansiyel ve stratejik projeler</button><button class="btn ghost" data-s="hedef">Hedef proje listesi</button></div></section>
   </div>`;
+  radarBagla(el, () => panelView(el));
   el.querySelector('[data-yil]').onchange = e => { f.yil = +e.target.value; saveFilters(); panelView(el); };
   el.querySelector('[data-hedefgir]')?.addEventListener('click', () => hedefForm(+t.slice(0, 4)));
   el.querySelector('[data-ozet]').onclick = () => { const fs = F('siparisler', {}); fs.gor = 'ceyrek'; fs.yil = Y; saveFilters(); };

@@ -13,6 +13,7 @@ import { haftaVerisi, haftaBasi } from './rapor.js';
 import { F, saveFilters } from '../state.js';
 import { sahipMi } from '../yetki.js';
 import { etiketKarti } from '../yorum.js';
+import { radarKarti, radarBagla } from '../radar.js';
 
 // Segmente göre ziyaret sıklığı: A 30, B 60, C 90 gün; segmentsiz firmalarda 45 gün
 export const SIKLIK = { A: 30, B: 60, C: 90 };
@@ -111,8 +112,8 @@ async function kmMasrafa(gun) {
 // Uzun listeler: ilk n satır, kalanı “Tümünü gör” ile
 const kisa = (satirlar, n = 5, cls = 'list') => satirlar.length <= n ? `<ul class="${cls}">${satirlar.join('')}</ul>`
   : `<ul class="${cls}">${satirlar.slice(0, n).join('')}</ul><ul class="${cls}" data-fazla hidden>${satirlar.slice(n).join('')}</ul><button type="button" class="linkbtn tumu" data-tumu>Tümünü gör (${satirlar.length})</button>`;
-const KARTLAR = [['ozet', 'Bugün özeti'], ['etiket', 'Seni etiketlediler'], ['plan', 'Bugünün planı'], ['uyari', 'Uyarılar'], ['gorev', 'Görevler'], ['yapilan', 'Bugün yapılanlar'], ['zaman', 'Zamanı gelen projeler'], ['gidilmeyen', 'Uzun süredir gidilmeyenler'], ['yarin', 'Yarın'], ['dogum', 'Doğum günleri'], ['rapor', 'Geçen haftanın raporu']];
-const kartAnahtar = h => { const t = (h || '').trim(); if (/^Bugünün planı/.test(t)) return 'plan'; if (/^Bugün özeti/.test(t)) return 'ozet'; if (/görevler$|^Görevler/i.test(t) && !/^Bugün/.test(t)) return 'gorev'; if (/^Bugün yapılanlar/.test(t)) return 'yapilan'; if (/^Zamanı gelen/.test(t)) return 'zaman'; if (/^Uzun süredir/.test(t)) return 'gidilmeyen'; if (/^Yarın/.test(t)) return 'yarin'; if (/^Doğum/.test(t)) return 'dogum'; if (/^Uyarılar/.test(t)) return 'uyari'; if (/haftanın raporu/.test(t)) return 'rapor'; if (/^Seni etiketlediler/.test(t)) return 'etiket'; return null; };
+const KARTLAR = [['ozet', 'Bugün özeti'], ['etiket', 'Seni etiketlediler'], ['plan', 'Bugünün planı'], ['radar', 'Fırsat radarı'], ['uyari', 'Uyarılar'], ['gorev', 'Görevler'], ['yapilan', 'Bugün yapılanlar'], ['zaman', 'Zamanı gelen projeler'], ['gidilmeyen', 'Uzun süredir gidilmeyenler'], ['yarin', 'Yarın'], ['dogum', 'Doğum günleri'], ['rapor', 'Geçen haftanın raporu']];
+const kartAnahtar = h => { const t = (h || '').trim(); if (/^Bugünün planı/.test(t)) return 'plan'; if (/^Bugün özeti/.test(t)) return 'ozet'; if (/görevler$|^Görevler/i.test(t) && !/^Bugün/.test(t)) return 'gorev'; if (/^Bugün yapılanlar/.test(t)) return 'yapilan'; if (/^Zamanı gelen/.test(t)) return 'zaman'; if (/^Uzun süredir/.test(t)) return 'gidilmeyen'; if (/^Yarın/.test(t)) return 'yarin'; if (/^Doğum/.test(t)) return 'dogum'; if (/^Uyarılar/.test(t)) return 'uyari'; if (/haftanın raporu/.test(t)) return 'rapor'; if (/^Seni etiketlediler/.test(t)) return 'etiket'; if (/^Fırsat radarı/.test(t)) return 'radar'; return null; };
 const kartAyar = () => ({ sira: [], gizli: [], ...(ayar('bugun_kartlar') || {}) });
 function kartDuzeniUygula(el) {
   const a = kartAyar(), dash = el.querySelector('.dash'); if (!dash) return;
@@ -189,6 +190,7 @@ export function bugunView(el) {
           ${sirali.length > 10 ? '<p class="hint">Google Haritalar tek rotada en fazla 10 durak gösterir; ilk 10 durak eklendi.</p>' : ''}`
         : ''}
       </section>`}
+      <div data-radar-yer data-gerek="projeler"></div>
       ${!gorev.length && !ekipAcik.length ? '' : `<section class="card"><h2>${uye ? 'Sana atanan görevler' : 'Görevler'}</h2>${gorev.length ? kisa(gorev.map(g1), 5, 'list chk-list') : `<p class="hint">${uye ? 'Sana atanmış açık görev yok.' : 'Bugün için açık görev yok.'}</p>`}${ekipAcik.length ? `<p class="hint">Ekipte ${ekipAcik.length} açık görev: ${esc([...new Set(ekipAcik.map(g => kimAd(g.atanan)))].join(', '))}</p>` : ''}${uye ? '' : '<p><a href="#/gorevler">Görev takvimi</a></p>'}</section>`}
       ${!yapilan.length && !kmBugun ? '' : `<section class="card"><h2>Bugün yapılanlar</h2>${yapilan.length ? kisa(yapilan.map(z1), 5) : '<p class="hint">Henüz ziyaret kaydı yok.</p>'}${kmBugun ? `<p class="hint">Ziyaret noktalarına göre yaklaşık ${kmBugun} km.${kmYazildi(t) ? ' Masraflara yazıldı.' : ` <button type="button" class="linkbtn" data-kmyaz="${t}">Masrafa yaz</button>`}</p>` : ''}</section>`}
       ${!zg.length ? '' : `<section class="card"><h2>Zamanı gelen projeler <span class="muted">${zg.length}</span></h2>
@@ -213,6 +215,7 @@ export function bugunView(el) {
   // Boş hesap ya da yalnızca örnek veri: başlangıç kartı (Excel'den yükleme, örnek veriler)
   { const bos = !S.projeler.length && !S.kisiler.length;
     import('../ilkyukleme.js').then(m => { const k = el.querySelector('[data-basla]'); if (!k || !(bos || m.ornekVarMi()) || !(app.db?.yetki?.ben_sahip !== false)) return; k.innerHTML = m.baslaKarti({ baslik: bos ? 'Başlamak için' : 'Örnek verilerle çalışıyorsun' }); m.baslaBagla(k, () => app.refresh()); }); }
+  { const y = el.querySelector('[data-radar-yer]'); if (y) { y.outerHTML = radarKarti(); radarBagla(el, () => bugunView(el)); } }
   kartDuzeniUygula(el);
   el.querySelector('[data-kduzen]').onclick = () => kartDuzeniPaneli(el);
   el.querySelector('[data-yeni]')?.addEventListener('click', () => ziyaretForm({}));
