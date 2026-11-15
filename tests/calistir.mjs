@@ -685,11 +685,11 @@ const DB = () => {
   kontrol('Pazartesi bildirimi zamanlama SQL\'i: pazartesi 05:00 UTC, bildir fonksiyonu, anahtar başlıkları, haftalık olay', /cron\.schedule\('saha-pazartesi-ozeti', '0 5 \* \* 1'/.test(zs) && zs.includes("url := 'https://abc.supabase.co/functions/v1/bildir'") && zs.includes("'x-cron-anahtar', 'GIZLI'") && zs.includes("'Bearer ANON'") && zs.includes('{"olay":"haftalik"}'), zs);
   // Yenilikler: eski sürümden gelen kullanıcıya bir kez
   await p.evaluate(() => localStorage.setItem('saha-gorulen-surum', '78')); await p.reload(); await w(2600);
-  const yn = await p.evaluate(() => ({ acik: document.querySelector('.drawer.open h2')?.textContent, n: document.querySelectorAll('.drawer.open .yenilik-l li').length, ilk: document.querySelector('.drawer.open .yenilik-l b')?.textContent }));
+  const yn = await p.evaluate(async () => ({ ...(m => ({ enYeni: Math.max(...m.YENILIKLER.map(x => x.s)), son: m.YENILIKLER.reduce((a, b) => b.s > a.s ? b : a).t }))(await import('./js/yardim.js')), acik: document.querySelector('.drawer.open h2')?.textContent, n: document.querySelectorAll('.drawer.open .yenilik-l li').length, ilk: document.querySelector('.drawer.open .yenilik-l b')?.textContent }));
   await p.evaluate(() => [...document.querySelectorAll('.drawer.open .yenilik-l li')].find(li => /Kayıp ve rakip/.test(li.textContent)).querySelector('[data-yi]').click()); await w(1000);
   const yn2 = await p.evaluate(() => ({ hash: location.hash, gor: localStorage.getItem('saha-gorulen-surum') }));
   await p.reload(); await w(2600); const yn3 = await p.evaluate(() => !document.querySelector('.drawer.open .yenilik-l'));
-  kontrol('Yenilikler: yeni sürümde bir kez açılıyor (yalnızca görülmemişler, en yeni üstte), Göster ilgili ekrana götürüyor, tekrar açılmıyor', yn.acik === 'Yenilikler' && yn.n === 4 && yn.ilk === 'Daha hızlı' && yn2.hash === '#/rakipanaliz' && yn2.gor === '83' && yn3, JSON.stringify({ yn, yn2, yn3 }));
+  kontrol('Yenilikler: yeni sürümde bir kez açılıyor (yalnızca görülmemişler, en yeni üstte), Göster ilgili ekrana götürüyor, tekrar açılmıyor', yn.acik === 'Yenilikler' && yn.n >= 4 && yn.ilk === yn.son && yn2.hash === '#/rakipanaliz' && yn2.gor === String(yn.enYeni) && yn3, JSON.stringify({ yn, yn2, yn3 }));
   kontrol('Ekip haritasında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }

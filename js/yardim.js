@@ -79,17 +79,18 @@ export const YENILIKLER = [
   { s: 79, t: 'Ekip haritası', m: 'Gün içinde kim nerede giriş yaptı, saat sırasıyla olanlar ve kişi başına özet.', r: '#/ekiphar', d: 'Raporlar → Ekip haritası' },
   { s: 80, t: 'Pazartesi özeti', m: 'Haftanın ilk açılışında geçen hafta, bu hafta ve dikkat edilecekler tek kartta. İstersen pazartesi sabahı bildirim olarak da gelir.', r: '#/bugun', d: 'Bugün' },
   { s: 81, t: 'Kayıp ve rakip', m: 'Hangi rakibe, hangi nedenle, hangi il ve sektörde kaybettiğin; fiyat farkı ve rakibe karşı kazandıkların.', r: '#/rakipanaliz', d: 'Raporlar → Kayıp ve rakip' },
+  { s: 83, t: 'Daha hızlı', m: 'Çok kayıt olduğunda Ziyaretler, Teklifler, Panel ve Bugün ekranları belirgin biçimde daha hızlı açılıyor.', r: null, d: '' },
   { s: 86, t: 'Aynı anda düzenleme', m: 'Bir kaydı iki kişi aynı anda değiştirirse farklı alanlar sormadan birleşir; aynı alan değiştiyse yalnızca o alan iki değeriyle sorulur. İnternetsiz değişiklikler de böyle birleşir.', r: null, d: '' },
   { s: 87, t: 'Bugünün soruları', m: 'Bugün ekranında her gün en fazla 3 kısa soru: kayıp nedeni, proje tutarı, gecikmiş tarih, firma segmenti. Yerinde cevapla; radar ve analizler doğru çalışsın.', r: '#/bugun', d: 'Bugün' },
-  { s: 83, t: 'Daha hızlı', m: 'Çok kayıt olduğunda Ziyaretler, Teklifler, Panel ve Bugün ekranları belirgin biçimde daha hızlı açılıyor.', r: null, d: '' },
 ];
+const SON_YENILIK = () => Math.max(...YENILIKLER.map(x => x.s));
 export function yenilikleriGoster(hepsi = false) {
   let gor = 0; try { gor = +localStorage.getItem('saha-gorulen-surum') || 0; } catch {}
-  const l = YENILIKLER.filter(x => hepsi || x.s > gor).reverse();
+  const l = YENILIKLER.filter(x => hepsi || x.s > gor).sort((a, b) => b.s - a.s);
   if (!l.length) return false;
-  const p = openDrawer(`<header class="dh"><div><p class="muted">Sürüm ${YENILIKLER.at(-1).s}</p><h2 id="drawer-title">Yenilikler</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+  const p = openDrawer(`<header class="dh"><div><p class="muted">Sürüm ${SON_YENILIK()}</p><h2 id="drawer-title">Yenilikler</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <div class="dbody"><ul class="yenilik-l">${l.map((x, i) => `<li><div><b>${esc(x.t)}</b>${x.d ? `<small class="muted">${esc(x.d)}</small>` : ''}<p>${esc(x.m)}</p></div>${x.r || x.hizli ? `<button type="button" class="btn sm ghost" data-yi="${i}">Göster</button>` : ''}</li>`).join('')}</ul></div>
-    <div class="dfoot sticky"><button type="button" class="btn primary" data-close>Tamam</button></div>`, { onClose: () => { try { localStorage.setItem('saha-gorulen-surum', String(YENILIKLER.at(-1).s)); } catch {} } });
+    <div class="dfoot sticky"><button type="button" class="btn primary" data-close>Tamam</button></div>`, { onClose: () => { try { localStorage.setItem('saha-gorulen-surum', String(SON_YENILIK())); } catch {} } });
   p.querySelectorAll('[data-yi]').forEach(b => b.onclick = async () => {
     const x = l[+b.dataset.yi]; p.querySelector('[data-close]').click();
     // Pencere kapanırken geçmişte bir adım geri gidilir; yönlendirme ondan sonra
@@ -100,7 +101,7 @@ export function yenilikleriGoster(hepsi = false) {
 // Açılışta: tanıtımı hiç görmemişse tanıtım; görmüşse ve yeni sürüm varsa yenilikler (bir kez)
 export function acilisYardimi() {
   let tanitim = null, gor = null; try { tanitim = localStorage.getItem('saha-tanitim'); gor = localStorage.getItem('saha-gorulen-surum'); } catch { return; }
-  if (!tanitim) { try { localStorage.setItem('saha-gorulen-surum', String(YENILIKLER.at(-1).s)); } catch {} return tanitimGerekirse(); }
+  if (!tanitim) { try { localStorage.setItem('saha-gorulen-surum', String(SON_YENILIK())); } catch {} return tanitimGerekirse(); }
   if (gor === null) { try { localStorage.setItem('saha-gorulen-surum', '73'); } catch {} }   // eski kullanıcı: 74 ve sonrasını göster
   setTimeout(() => { if (!document.querySelector('.drawer.open, .tanitim')) yenilikleriGoster(); }, 1200);
 }
