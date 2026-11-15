@@ -13,7 +13,7 @@ function ogeler() {
   return [
     { ad: 'Ziyaret kaydet', alt: 'yapılan görüşme', t: 'ziyaretler', r: ['ziyaretler', 'takvim'], f: async () => (await import('./views/ziyaret.js')).ziyaretForm({}) },
     { ad: 'Ziyaret planla', alt: 'yarın için', t: 'ziyaretler', r: ['ziyaretler', 'takvim'], f: async () => (await import('./views/ziyaret.js')).ziyaretForm({ durum: 'Planlandı', tarih: y }) },
-    { ad: 'Sesli not', alt: 'konuş, sonra firmaya bağla', t: 'gorevler', r: 'bugun', f: () => sesliNot() },
+    { ad: 'Konuşarak kaydet', alt: 'anlat: ziyaret, sonuç, sonraki adım', t: 'gorevler', r: 'bugun', f: () => sesliNot() },
     { ad: 'Görev', alt: 'yapılacak iş, hatırlatma', t: 'gorevler', r: ['gorevler', 'takvim'], f: async () => (await import('./views/ziyaret.js')).gorevForm({}) },
     { ad: 'Kartvizit', alt: 'fotoğrafla kişi ekle', t: 'kisiler', r: ['kisiler', 'firmalar'], f: async () => (await import('./views/firmalar.js')).kartvizittenKisi() },
     { ad: 'Ürün kodu oku', alt: 'etiket, barkod → stok ve fiyat', t: 'urunler', oku: true, r: ['urunler', 'bayi'], f: async () => (await import('./barkod.js')).kodOku() },
@@ -55,29 +55,73 @@ export function hizliKur() {
   window.addEventListener('hashchange', guncelle); guncelle();
 }
 
-// ---------- Sesli hızlı not ----------
-// Konuşarak not al; firma/proje seçilirse ziyaret notu, seçilmezse görev olarak kaydedilir (sonra bağlanabilir)
+// ---------- Konuşarak ziyaret kaydı ----------
+// Konuş (ya da yaz): firma, kişi, proje, sonuç ve sonraki adım cümleden ayrılır; kontrol edip kaydedersin.
+// Firma bulunursa bugünün ziyareti (ve varsa sonraki adım görevi) olur; bulunmazsa not görevlerine düşer.
 export async function sesliNot() {
   const { mikDugme, mikBagla, sesDestek } = await import('./ses.js');
-  const dl = (id, t, k) => `<datalist id="${id}">${S[t].map(x => `<option value="${esc(x[k])}">`).join('')}</datalist>`;
-  const p = openDrawer(`<header class="dh"><div><p class="muted">${sesDestek() ? 'Mikrofona dokun ve konuş' : 'Yaz'}</p><h2 id="drawer-title">Hızlı not</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
-    <form class="dbody form"><div class="fld full"><label for="sn-t">Not</label><div class="area-wrap"><textarea id="sn-t" rows="5" placeholder="Örn. Medcem şantiyesinde elektrik ihalesi kasımda, Ahmet Bey teklif istiyor"></textarea>${mikDugme()}</div></div>
-      <div class="grid"><div class="fld"><label for="sn-f">Firma (isteğe bağlı)</label><input id="sn-f" list="sn-fl" autocomplete="off">${dl('sn-fl', 'firmalar', 'ad')}</div>
-      <div class="fld"><label for="sn-p">Proje (isteğe bağlı)</label><input id="sn-p" list="sn-pl" autocomplete="off">${dl('sn-pl', 'projeler', 'ad')}</div></div>
-      <p class="hint">Firma ya da proje seçersen bugünün ziyaret notu olarak kaydedilir; seçmezsen görevlerine düşer, sonra ilgili firmaya bağlarsın.</p>
+  const { ayristir } = await import('./ayristir.js');
+  const { SONUC_TIPLERI, ZIYARET_AMAC } = await import('./ui.js');
+  const opt = (l, v, bos = '—') => `<option value="">${bos}</option>` + l.map(x => `<option value="${esc(x[0])}" ${x[0] === v ? 'selected' : ''}>${esc(x[1])}</option>`).join('');
+  const p = openDrawer(`<header class="dh"><div><p class="muted">${sesDestek() ? 'Mikrofona dokun ve anlat' : 'Yaz'}</p><h2 id="drawer-title">Konuşarak kaydet</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+    <form class="dbody form ks-form"><div class="fld full"><label for="sn-t">Ne oldu?</label><div class="area-wrap"><textarea id="sn-t" rows="4" placeholder="Örn. Yıldız Elektrik'te Ali Bey'le görüştüm, hastane işi için teklif istedi, perşembe ara"></textarea>${mikDugme()}</div></div>
+      <section class="ks-anl" aria-live="polite"><h3>Anlaşılan <small class="muted">kontrol et, gerekirse düzelt</small></h3>
+        <div class="grid">
+          <div class="fld"><label for="ks-f">Firma</label><select id="ks-f" data-a="firma_id"></select></div>
+          <div class="fld"><label for="ks-k">Kişi</label><select id="ks-k" data-a="kisi_id"></select></div>
+          <div class="fld"><label for="ks-p">Proje</label><select id="ks-p" data-a="proje_id"></select></div>
+          <div class="fld"><label for="ks-s">Sonuç</label><select id="ks-s" data-a="sonuc_tipi">${opt(SONUC_TIPLERI.map(x => [x, x]))}</select></div>
+          <div class="fld"><label for="ks-m">Amaç</label><select id="ks-m" data-a="amac">${opt(ZIYARET_AMAC.map(x => [x, x]), '', 'Genel ziyaret')}</select></div>
+          <div class="fld"><label for="ks-z">Ziyaret tarihi</label><input id="ks-z" type="date" data-a="tarih" value="${today()}"></div>
+          <div class="fld"><label for="ks-g">Sonraki adım (görev)</label><input id="ks-g" data-a="gorev" maxlength="140" placeholder="yoksa boş bırak"></div>
+          <div class="fld"><label for="ks-gt">Görev tarihi</label><input id="ks-gt" type="date" data-a="gorev_tarih"></div>
+        </div></section>
+      <p class="hint" data-ksipucu>Firma bulunursa ziyaret olarak kaydedilir; bulunmazsa not görevlerine düşer. Metin telefonda ayrıştırılır, hiçbir yere gönderilmez.</p>
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`);
   mikBagla(p);
-  const ta = p.querySelector('#sn-t');
+  const ta = p.querySelector('#sn-t'), el = id => p.querySelector(id), elle = new Set();
+  const firmalar = [...S.firmalar].sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+  const doldurF = v => { el('#ks-f').innerHTML = opt(firmalar.map(f => [f.id, f.ad]), v, 'Firma yok (not olarak)'); };
+  const doldurK = (fid, v) => { const l = S.kisiler.filter(k => !fid || k.firma_id === fid); el('#ks-k').innerHTML = opt(l.map(k => [k.id, k.ad_soyad]), v); };
+  const doldurP = (fid, v) => { const r = p => [p.emut_id, p.gemut_id, p.alici_id, p.bayi_id, p.projeci_id, p.danisman_id, p.yatirimci_id].includes(fid); const l = S.projeler.filter(x => !x.aday && (!fid || r(x) || x.id === v)); el('#ks-p').innerHTML = opt(l.map(x => [x.id, x.ad]), v); };
+  doldurF(''); doldurK('', ''); doldurP('', '');
+  const uygula = () => {
+    const a = ayristir(ta.value);
+    const fid = elle.has('firma_id') ? el('#ks-f').value : (a.firma_id || '');
+    if (!elle.has('firma_id')) doldurF(fid);
+    if (!elle.has('kisi_id')) doldurK(fid, a.kisi_id || ''); 
+    if (!elle.has('proje_id')) doldurP(fid, a.proje_id || '');
+    if (!elle.has('sonuc_tipi')) el('#ks-s').value = a.sonuc_tipi || '';
+    if (!elle.has('amac')) el('#ks-m').value = a.amac || '';
+    if (!elle.has('tarih')) el('#ks-z').value = a.tarih || today();
+    if (!elle.has('gorev')) el('#ks-g').value = a.gorev?.baslik || '';
+    if (!elle.has('gorev_tarih')) el('#ks-gt').value = a.gorev?.son_tarih || '';
+    p.querySelector('.ks-anl').classList.toggle('dolu', !!(fid || a.sonuc_tipi || a.gorev));
+  };
+  p.querySelectorAll('[data-a]').forEach(x => x.addEventListener('change', () => {
+    elle.add(x.dataset.a);
+    if (x.dataset.a === 'firma_id') { elle.delete('kisi_id'); elle.delete('proje_id'); doldurK(x.value, ''); doldurP(x.value, ''); }
+  }));
+  let zt; ta.addEventListener('input', () => { clearTimeout(zt); zt = setTimeout(uygula, 250); });
+  ta.addEventListener('change', uygula);
   setTimeout(() => { const m = p.querySelector('[data-mic]'); if (m) m.click(); else ta.focus(); }, 250);
   p.querySelector('form').onsubmit = async e => {
     e.preventDefault();
     p.querySelector('[data-mic].on')?.click();
-    const metin = ta.value.trim(); if (!metin) return toast('Notu yaz ya da söyle.', 'err');
-    const bul = (t, k, v) => v ? S[t].find(x => fold(x[k]) === fold(v)) : null;
-    const f = bul('firmalar', 'ad', p.querySelector('#sn-f').value.trim()), pr = bul('projeler', 'ad', p.querySelector('#sn-p').value.trim());
+    const metin = ta.value.trim(); if (!metin) return toast('Anlat ya da yaz.', 'err');
+    const fid = el('#ks-f').value || null, kid = el('#ks-k').value || null, pid = el('#ks-p').value || null;
+    const gorev = el('#ks-g').value.trim(), gt = el('#ks-gt').value || gunEkle(today(), 1);
     try {
-      if (f || pr) { await app.db.save('ziyaretler', { tarih: today(), durum: 'Yapıldı', amac: 'Genel ziyaret', firma_id: f?.id || pr?.emut_id || pr?.alici_id || null, proje_id: pr?.id || null, notlar: metin, fotolar: [] }); toast('Ziyaret notu kaydedildi.'); }
-      else { await app.db.save('gorevler', { baslik: metin.length > 70 ? metin.slice(0, 70) + '…' : metin, notlar: metin, durum: 'Açık', oncelik: 'Normal', son_tarih: today() }); toast('Not görevlerine eklendi.'); }
+      if (fid || pid) {
+        const pr = byId('projeler', pid);
+        await app.db.save('ziyaretler', { tarih: el('#ks-z').value || today(), durum: 'Yapıldı', amac: el('#ks-m').value || 'Genel ziyaret', sonuc_tipi: el('#ks-s').value || null,
+          firma_id: fid || pr?.emut_id || pr?.alici_id || null, kisi_id: kid, proje_id: pid, notlar: metin, fotolar: [] });
+        if (gorev) await app.db.save('gorevler', { baslik: gorev, son_tarih: gt, durum: 'Açık', oncelik: 'Normal', firma_id: fid, proje_id: pid, kisi_id: kid, notlar: metin });
+        toast(`Ziyaret kaydedildi${gorev ? ', sonraki adım ' + tarih(gt) + ' tarihli görev oldu' : ''}.`);
+      } else {
+        await app.db.save('gorevler', { baslik: gorev || (metin.length > 70 ? metin.slice(0, 70) + '…' : metin), notlar: metin, durum: 'Açık', oncelik: 'Normal', son_tarih: gorev ? gt : today() });
+        toast('Not görevlerine eklendi.');
+      }
       closeDrawer(); app.refresh();
     } catch (err) { toast('Kaydedilemedi: ' + err.message, 'err'); }
   };

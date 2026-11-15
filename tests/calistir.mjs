@@ -602,6 +602,47 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 21) Konuşarak ziyaret kaydı ----------
+{
+  const DB10 = () => {
+    const ts = '2026-10-01T08:00:00Z', o = x => ({ owner: 'u1', updated_at: ts, created_at: ts, ...x });
+    localStorage.setItem('__DB', JSON.stringify({
+      firmalar: [o({ id: 'fy', ad: 'Yıldız Elektrik Taahhüt Ltd. Şti.', tipler: ['Emüt'] }), o({ id: 'fk', ad: 'Kuzey İnşaat', tipler: ['Gemüt'] }), o({ id: 'fa', ad: 'Atlas Proje Mühendislik', tipler: ['Projeci'] })],
+      kisiler: [o({ id: 'ka', firma_id: 'fy', ad_soyad: 'Ali Örnek', ad: 'Ali', soyad: 'Örnek' }), o({ id: 'kb', firma_id: 'fk', ad_soyad: 'Ali Kaya', ad: 'Ali', soyad: 'Kaya' }), o({ id: 'kc', firma_id: 'fk', ad_soyad: 'Ayşe Demir', ad: 'Ayşe', soyad: 'Demir' })],
+      projeler: [o({ id: 'ph', ad: 'Devlet Hastanesi Ek Bina', durum: 'Sıcak', emut_id: 'fy' }), o({ id: 'po', ad: 'Okul Yenileme', durum: 'Proje', emut_id: 'fk' })],
+      ziyaretler: [], gorevler: [], ekip_uyeleri: [] }));
+  };
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB10 });
+  await p.setViewportSize({ width: 1280, height: 900 }); await p.goto(U + '#/bugun'); await w(1500);
+  const ay = await p.evaluate(async () => {
+    const { ayristir, tarihBul } = await import('./js/ayristir.js'); const { gunEkle } = await import('./js/ui.js');
+    const t = '2026-11-16';   // Pazartesi
+    const a1 = ayristir("Yıldız Elektrik'te Ali Bey'le görüştüm, hastane işi için teklif istedi, perşembe ara", t);
+    const a2 = ayristir('Kuzey İnşaatta Ayşe Hanım ile görüştüm, okul projesinde fiyatı yüksek buldu, pazarlık sürüyor, haftaya salı tekrar uğrayacağım', t);
+    const a3 = ayristir('Atlas Proje kapalıydı kimseyi bulamadım', t);
+    const a4 = ayristir('Bugün hiçbir firmaya gitmedim, yarın katalog gönder', t);
+    return { a1, a2, a3, a4, d: { yarin: tarihBul('yarin ara', t), obur: tarihBul('obur gun', t), cuma: tarihBul('cuma gunu', t), haftayaPzt: tarihBul('haftaya pazartesi', t), kasim20: tarihBul('20 kasimda', t), uc: tarihBul('3 gun sonra', t), pazar: tarihBul('pazara', t) } };
+  });
+  const a = ay;
+  const ayOk = a.a1.firma_id === 'fy' && a.a1.kisi_id === 'ka' && a.a1.proje_id === 'ph' && a.a1.sonuc_tipi === 'Teklif istendi' && a.a1.gorev?.son_tarih === '2026-11-19'
+    && a.a2.firma_id === 'fk' && a.a2.kisi_id === 'kc' && a.a2.proje_id === 'po' && a.a2.sonuc_tipi === 'Pazarlık sürüyor' && a.a2.gorev?.son_tarih === '2026-11-24' && /Tekrar ziyaret/.test(a.a2.gorev?.baslik)
+    && a.a3.firma_id === 'fa' && a.a3.sonuc_tipi === 'Görüşülemedi' && !a.a3.kisi_id
+    && !a.a4.firma_id && a.a4.gorev?.son_tarih === '2026-11-17'
+    && a.d.yarin === '2026-11-17' && a.d.obur === '2026-11-18' && a.d.cuma === '2026-11-20' && a.d.haftayaPzt === '2026-11-23' && a.d.kasim20 === '2026-11-20' && a.d.uc === '2026-11-19' && a.d.pazar === '2026-11-22';
+  kontrol('Konuşarak kayıt ayrıştırıcı: firma (ekli adla), kişi (Bey/Hanım), proje, sonuç, sonraki adım ve tarih ifadeleri (yarın, öbür gün, gün adı, haftaya, 20 kasım, 3 gün sonra)', ayOk, JSON.stringify(a));
+  // Arayüz: + → Konuşarak kaydet
+  await p.evaluate(async () => (await import('./js/hizli.js')).sesliNot()); await w(600);
+  await p.fill('.drawer.open #sn-t', "Yıldız Elektrik'te Ali Bey'le görüştüm, hastane işi için teklif istedi, yarın ara"); await p.dispatchEvent('.drawer.open #sn-t', 'change'); await w(500);
+  const ui1 = await p.evaluate(() => ({ f: document.querySelector('#ks-f').value, k: document.querySelector('#ks-k').value, p: document.querySelector('#ks-p').value, s: document.querySelector('#ks-s').value, g: document.querySelector('#ks-g').value, dolu: document.querySelector('.ks-anl').classList.contains('dolu') }));
+  await p.screenshot({ path: 'tests/cikti/konusarak-kaydet.png' });
+  await p.selectOption('#ks-s', 'Olumlu'); await w(100);
+  await p.click('.drawer.open [type=submit]'); await w(1200);
+  const ui2 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const { today, gunEkle } = await import('./js/ui.js'); const z = S.ziyaretler.at(-1), g = S.gorevler.at(-1); return { z: z && [z.firma_id, z.kisi_id, z.proje_id, z.sonuc_tipi, z.durum, z.tarih === today()].join(), g: g && [g.firma_id, g.son_tarih === gunEkle(today(), 1), /^Ara/.test(g.baslik)].join() }; });
+  kontrol('Konuşarak kaydet penceresi: alanlar kendiliğinden doluyor, elle değiştirilen alan korunuyor, ziyaret ve sonraki adım görevi kaydediliyor', ui1.f === 'fy' && ui1.k === 'ka' && ui1.p === 'ph' && ui1.s === 'Teklif istendi' && /^Ara: Yıldız Elektrik \(Ali Örnek\)$/.test(ui1.g) && ui1.dolu && ui2.z === 'fy,ka,ph,Olumlu,Yapıldı,true' && ui2.g === 'fy,true,true', JSON.stringify({ ui1, ui2 }));
+  kontrol('Konuşarak kayıtta hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
 // ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
 {
   const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');

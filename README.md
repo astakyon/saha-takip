@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 78): Konuşarak ziyaret kaydı
+
+- **+ → Konuşarak kaydet** (eski "Sesli not"): mikrofona dokun, anlat. Örnek: "Yıldız Elektrik'te Ali Bey'le görüştüm, hastane işi için teklif istedi, perşembe ara".
+- Cümleden ayrılanlar: **firma** (ekli adla da: Yıldız'da, Kuzey İnşaatta), **kişi** (Ali Bey, Ayşe Hanım ya da ad soyad; firmanın kişileri önce), **proje** (firmanın projeleri önce; "hastane işi" → Devlet Hastanesi Ek Bina), **sonuç** (teklif istendi, pazarlık, olumlu, olumsuz, görüşülemedi, sipariş…), **amaç**, **ziyaret tarihi** ("dün") ve **sonraki adım** (ara, teklif gönder, numune götür, tekrar uğra, katalog gönder) ile tarihi (bugün, yarın, öbür gün, gün adı, haftaya salı, 3 gün sonra, 20 kasım, ayın 5'i, ay sonu).
+- Alanlar yazdıkça dolar; elle değiştirdiğin alan bir daha üzerine yazılmaz. Kaydedince bugünün ziyareti ve sonraki adım görevi açılır. Firma bulunmazsa not görevlerine düşer.
+- Ayrıştırma kurala dayalıdır ve telefonda yapılır; metin hiçbir yapay zekâ servisine gönderilmez. (Sesi yazıya çeviren, telefonun kendi konuşma tanımasıdır.)
+
 ## Güncelleme notu (sürüm 77): Bayi portalı
 
 **Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 36: bayi_talepleri tablosu).**
