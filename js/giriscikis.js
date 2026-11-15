@@ -1,5 +1,6 @@
 // Ziyarette giriş-çıkış: firmaya varınca "Giriş yap" (saat ve konum, firmaya uzaklık), ayrılırken "Çıkış yap" (süre).
 // Giriş yapılmış ama çıkılmamış ziyaret her ekranda üstte bir bantla görünür. Bugün için planlı ziyaret varsa o kayıt kullanılır.
+import { ozellikSay } from './saglik.js';
 import { S } from './db.js';
 import { app } from './state.js';
 import { esc, toast, confirmBox, today, byId, firmaAd, myLocation } from './ui.js';
@@ -18,6 +19,7 @@ export const aktifZiyaret = () => (S.ziyaretler || []).filter(z => z.giris && !z
 const konumAl = async () => { try { return await myLocation(); } catch (e) { toast(e.message + ' Giriş konumsuz kaydedilir.', 'err'); return null; } };
 
 export async function girisYap({ firma_id, proje_id = null, kisi_id = null } = {}) {
+  ozellikSay('giris');
   const a = aktifZiyaret();
   if (a) {
     if (a.firma_id === firma_id) return toast(`${firmaAd(firma_id)} için zaten giriş yaptın (${saatStr(a.giris)}).`);
@@ -39,6 +41,7 @@ export async function girisYap({ firma_id, proje_id = null, kisi_id = null } = {
 }
 
 export async function cikisYap(z, { formAc = true } = {}) {
+  ozellikSay('cikis');
   z = byId('ziyaretler', z?.id) || z; if (!z) return;
   const konum = await konumAl(), simdi = new Date();
   const o = { ...z, cikis: simdi.toISOString(), ...(konum ? { cikis_lat: konum[0], cikis_lng: konum[1] } : {}) };

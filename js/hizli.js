@@ -1,4 +1,5 @@
 // Hızlı ekle (+) düğmesi ve genel arama. Her ekranda sağ altta; bilgisayarda “/” ya da Ctrl+K ile arama açılır.
+import { ozellikSay } from './saglik.js';
 import { S } from './db.js';
 import { app } from './state.js';
 import { esc, fold, byId, firmaAd, tarih, today, gunEkle, openDrawer, closeDrawer, usd, toast, kelimeUyar } from './ui.js';
@@ -109,6 +110,7 @@ export async function sesliNot() {
     e.preventDefault();
     p.querySelector('[data-mic].on')?.click();
     const metin = ta.value.trim(); if (!metin) return toast('Anlat ya da yaz.', 'err');
+    ozellikSay('konusarak');
     const fid = el('#ks-f').value || null, kid = el('#ks-k').value || null, pid = el('#ks-p').value || null;
     const gorev = el('#ks-g').value.trim(), gt = el('#ks-gt').value || gunEkle(today(), 1);
     try {

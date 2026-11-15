@@ -1,6 +1,7 @@
 // Haftalık saha planı: haftayı günlere ve bölgelere böl, önerilerden sürükle (ya da gün düğmesine dokun), her gün için rota.
 // Öneriler: Fırsat radarı, ziyaret aralığı geçen firmalar, zamanı gelen projeler. Planlar uygulamadaki planlı ziyaretlerdir;
 // Google Takvim'e ya da başka bir yere gönderilmez.
+import { ozellikSay } from '../saglik.js';
 import { S } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, tarih, today, gunEkle, byId, firmaAd, toast, confirmBox, ILLER } from '../ui.js';
@@ -86,6 +87,7 @@ export function haftaplanView(el) {
 
   const yenile = () => haftaplanView(el);
   const planla = async (firma_id, proje_id, gun, varolan) => {
+    if (!varolan) ozellikSay('hafta-plan');
     try {
       if (varolan) { const z = byId('ziyaretler', varolan); if (!z || z.tarih === gun) return; await app.db.save('ziyaretler', { ...z, tarih: gun }); }
       else await app.db.save('ziyaretler', { firma_id, proje_id: proje_id || null, tarih: gun, durum: 'Planlandı', fotolar: [] });
@@ -120,6 +122,7 @@ export function haftaplanView(el) {
       for (const x of ol.filter(x => x.il === B[d] && !kul.has(x.firma_id)).slice(0, Math.max(0, enFazla - mevcut))) { kul.add(x.firma_id); yeni.push({ x, d }); }
     }
     if (!yeni.length) return toast('Seçili bölgelerde yerleştirilecek öneri kalmadı.');
+    ozellikSay('hafta-dagit');
     if (!confirmBox(`${yeni.length} ziyaret planlanacak (${gunlerB.map(d => GUN_KISA[gunler.indexOf(d)] + ' ' + B[d]).join(', ')}; günde en fazla ${enFazla}). Devam edilsin mi?`)) return;
     try { for (const { x, d } of yeni) await app.db.save('ziyaretler', { firma_id: x.firma_id, proje_id: x.proje_id || null, tarih: d, durum: 'Planlandı', fotolar: [] }); toast(`${yeni.length} ziyaret planlandı.`); }
     catch (e) { toast('Bir kısmı kaydedilemedi: ' + e.message, 'err'); }

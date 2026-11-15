@@ -1,4 +1,5 @@
 // Bugün: günlük özet, günün rotası, yakınımdakiler, zamanı gelen projeler, uzun süredir gidilmeyenler, doğum günleri, uyarılar
+import { ozellikSay } from '../saglik.js';
 import { S } from '../db.js';
 import { app } from '../state.js';
 import { esc, usd, num, pill, tarih, today, gunEkle, byId, firmaAd, toast, openDrawer, closeDrawer, myLocation, directionsUrl, ACIK } from '../ui.js';
@@ -249,8 +250,8 @@ export function bugunView(el) {
   el.querySelector('[data-yeni2]')?.addEventListener('click', () => ziyaretForm({}));
   el.querySelectorAll('[data-tumu]').forEach(b => b.onclick = () => { b.previousElementSibling.hidden = false; b.remove(); });
   el.querySelectorAll('[data-kmyaz]').forEach(b => b.onclick = () => kmMasrafa(b.dataset.kmyaz));
-  el.querySelector('[data-raporac]')?.addEventListener('click', () => { const g = gunEkle(haftaBasi(today()), -7); try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} const fr = F('rapor', {}); fr.bas = g; saveFilters(); location.hash = '#/rapor'; });
-  el.querySelector('[data-raporplan]')?.addEventListener('click', () => { try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} });
+  el.querySelector('[data-raporac]')?.addEventListener('click', () => { ozellikSay('pazartesi'); const g = gunEkle(haftaBasi(today()), -7); try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} const fr = F('rapor', {}); fr.bas = g; saveFilters(); location.hash = '#/rapor'; });
+  el.querySelector('[data-raporplan]')?.addEventListener('click', () => { ozellikSay('pazartesi'); try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} });
   el.querySelector('[data-raporkapat]')?.addEventListener('click', e => { try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} e.target.closest('section').remove(); });
   el.querySelector('[data-yedekgit]')?.addEventListener('click', () => { try { sessionStorage.setItem('ayar-sekme', 'veri'); } catch {} });
   el.querySelector('[data-yakin]')?.addEventListener('click', () => yakinimdakiler());

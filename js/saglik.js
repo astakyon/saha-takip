@@ -59,18 +59,29 @@ export function kullanimSay(rota) {
   k.r[rota] = r; lsYaz(KUL, k);
 }
 export const kullanimVerisi = () => lsAl(KUL, null);
+// Ekran dışında ölçülen özellikler (ekranın içindeki düğmeler). Sayaç anahtarı "oz:<ad>".
+export const OZELLIKLER = {
+  'oz:radar': 'Fırsat radarı: Planla', 'oz:radar-ertele': 'Fırsat radarı: Ertele', 'oz:hafta-plan': 'Hafta planı: güne ekle', 'oz:hafta-dagit': 'Hafta planı: Otomatik dağıt',
+  'oz:giris': 'Ziyarete giriş', 'oz:cikis': 'Ziyaretten çıkış', 'oz:konusarak': 'Konuşarak kaydet', 'oz:onay-baglanti': 'Teklif onay bağlantısı', 'oz:teklif-pdf': 'Teklif PDF',
+  'oz:teklif-wa': 'Teklif WhatsApp', 'oz:talep': 'Bayi talebi açıldı', 'oz:pazartesi': 'Pazartesi özeti kartı', 'oz:hazirlik': 'Ziyarete hazırlık', 'oz:eksik-veri': 'Eksik veri kartından tamamlama',
+  'oz:firma-sayfa': 'Firma sayfası', 'oz:proje-sayfa': 'Proje sayfası', 'oz:kisi-sayfa': 'Kişi sayfası',
+};
+export const ozellikSay = k => { try { kullanimSay('oz:' + k); } catch {} };
 export function kullanimKarti(kok, { rotalar, gizli, ad, gizle }) {
   if (!kok) return;
   const k = kullanimVerisi();
   if (!k) { kok.innerHTML = '<p class="hint">Henüz ölçüm yok.</p>'; return; }
   const gun = Math.max(1, Math.round((Date.now() - new Date(k.bas)) / 864e5));
   const otuz = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+  const oz = Object.entries(OZELLIKLER).map(([key, a]) => { const x = k.r[key] || { n: 0, gunler: [] }; return { a, n: x.n, gun30: x.gunler.filter(d => d >= otuz).length }; }).sort((a, b) => b.n - a.n);
   const satir = Object.keys(rotalar).filter(r => r !== 'ayarlar' && rotaIzinli(r)).map(r => { const x = k.r[r] || { n: 0, gunler: [] }; return { r, n: x.n, gun30: x.gunler.filter(d => d >= otuz).length, son: x.son }; }).sort((a, b) => b.gun30 - a.gun30 || b.n - a.n);
   const enCok = Math.max(1, ...satir.map(s => s.gun30));
   const oneri = gun >= 21 ? satir.filter(s => !s.n && !gizli.has(s.r) && !['bugun'].includes(s.r)) : [];
   kok.innerHTML = `<p class="hint">Hangi ekranı ne sıklıkla açtığın yalnızca bu cihazda sayılır; hiçbir yere gönderilmez. Ölçüm ${gun} gündür sürüyor.</p>
     ${oneri.length ? `<div class="kul-oneri"><b>Hiç açmadığın ${oneri.length} ekran var.</b> Menüyü sadeleştirmek için kaldırabilirsin (Ayarlar → Menü'den geri açılır).<div class="chips">${oneri.map(s => `<button type="button" class="chip" data-kgizle="${s.r}">${esc(ad(s.r))} ✕</button>`).join('')}</div><button type="button" class="btn sm" data-khepsi>Hepsini menüden kaldır</button></div>` : gun < 21 ? `<p class="hint">Kullanmadığın ekranlar için öneri ${21 - gun} gün sonra çıkar.</p>` : ''}
     <ul class="list kul-l">${satir.filter(s => s.n).slice(0, 15).map(s => `<li><span class="grow">${esc(ad(s.r))}<small class="muted"> · son 30 günde ${s.gun30} gün · toplam ${s.n} kez</small></span><span class="kul-bar" style="--w:${Math.round(s.gun30 / enCok * 100)}%"></span></li>`).join('')}</ul>
+    <details class="kul-oz"><summary>Özellikler (${oz.filter(o => o.n).length}/${oz.length} kullanıldı)</summary>
+      <ul class="list kul-l">${oz.map(o => `<li><span class="grow">${esc(o.a)}<small class="muted"> · ${o.n ? `son 30 günde ${o.gun30} gün · toplam ${o.n} kez` : 'hiç kullanılmadı'}</small></span></li>`).join('')}</ul></details>
     <button type="button" class="btn sm ghost" data-ksifirla>Ölçümü sıfırla</button>`;
   kok.querySelectorAll('[data-kgizle]').forEach(b => b.onclick = async () => { await gizle([b.dataset.kgizle]); toast(ad(b.dataset.kgizle) + ' menüden kaldırıldı.'); });
   kok.querySelector('[data-khepsi]')?.addEventListener('click', async () => { await gizle(oneri.map(s => s.r)); toast(oneri.length + ' ekran menüden kaldırıldı.'); });

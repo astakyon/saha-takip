@@ -4,6 +4,7 @@
 //   karar    : sıcak projede karar verici belirsiz, ulaşılmamış ya da rakipçi
 //   teklif   : gönderilmiş teklifin geçerliliği doluyor ya da yeni doldu, cevap yok
 // Puan: yaklaşık değer (tutar × olasılık) × aciliyet. Hesap telefonda yapılır.
+import { ozellikSay } from './saglik.js';
 import { S } from './db.js';
 import { app } from './state.js';
 import { esc, usd, tarih, today, gunEkle, byId, firmaAd, olasilik, toast, openDrawer } from './ui.js';
@@ -46,7 +47,8 @@ function sonHareketler() {
 
 // Ertelenenler: { anahtar: 'YYYY-AA-GG' } o güne kadar listede görünmez
 const ertelenen = () => { const e = ayar('radar_ertele') || {}; const t = today(); return Object.fromEntries(Object.entries(e).filter(([, d]) => d > t)); };
-export async function ertele(anahtar, gun = 7) { await ayarYaz('radar_ertele', { ...ertelenen(), [anahtar]: gunEkle(today(), gun) }); }
+export async function ertele(anahtar, gun = 7) {
+  ozellikSay('radar-ertele'); await ayarYaz('radar_ertele', { ...ertelenen(), [anahtar]: gunEkle(today(), gun) }); }
 
 export function radarListesi({ hepsi = false } = {}) {
   const t = today(), son = sonHareketler(), esik = sessizGun(), l = [];
@@ -120,6 +122,7 @@ export function radarKarti({ n = 5, baslik = 'Fırsat radarı' } = {}) {
 }
 
 async function eylemYap(x) {
+  ozellikSay('radar');
   const { ziyaretForm } = await import('./views/ziyaret.js');
   const e = x.eylem;
   if (e.tip === 'harita') { location.hash = x.href; return; }

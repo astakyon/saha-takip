@@ -1,4 +1,5 @@
 // Hızlı teklif taslağı: ürün kalemleri, yazdırılabilir PDF, WhatsApp özeti
+import { ozellikSay } from '../saglik.js';
 import { S } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, num, tarih, today, gunEkle, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, waLink, ACIK, urunBilgi, exportXlsx } from '../ui.js';
@@ -115,7 +116,8 @@ export function teklifForm(init = {}, after) {
   form.onsubmit = async e => { e.preventDefault(); try { await kaydet(); toast('Teklif kaydedildi.'); closeDrawer(); after ? after() : app.refresh(); } catch (err) { console.error(err); toast('Kaydedilemedi: ' + err.message, 'err'); } };
   panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     const a = b.dataset.a;
-    if (a === 'pdf') teklifYazdir(t0);
+    if (a === 'pdf') { ozellikSay('teklif-pdf'); teklifYazdir(t0); }
+    if (a === 'wa') ozellikSay('teklif-wa');
     if (a === 'baglanti') { closeDrawer(); (await import('../onaybaglanti.js')).baglantiPenceresi(byId('teklifler', t0.id) || t0, () => app.refresh()); }
     if (a === 'wa') { const k = byId('kisiler', t0.kisi_id); window.open(waLink(k?.telefon || byId('firmalar', t0.firma_id)?.telefon || '', teklifMetni(t0)), '_blank', 'noopener'); }
     if (a === 'revize') { const { id, created_at, updated_at, ...r } = t0; const kok = revKok(t0.teklif_no); const n = Math.max(1, ...S.teklifler.filter(x => revKok(x.teklif_no) === kok).map(x => revNo(x.teklif_no))) + 1; teklifForm({ ...r, teklif_no: `${kok}-R${n}`, tarih: today(), gecerlilik: gunEkle(today(), 15), durum: 'Taslak', kalemler: (t0.kalemler || []).map(k => ({ ...k })), notlar: [t0.notlar, `${t0.teklif_no} teklifinin revizyonu.`].filter(Boolean).join('\n') }, after); }

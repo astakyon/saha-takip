@@ -1,6 +1,7 @@
 // Teklif onay bağlantısı: müşteri teklifi telefonundan açar, "Onaylıyorum" ya da "Revize istiyorum" der.
 // Bağlantı oluşturulurken teklifin müşteriye gösterilecek hali (PDF ile aynı) donmuş kopya olarak saklanır;
 // müşteri yalnızca bu kopyayı görür, maliyet ve iç kayıtlar hiç gitmez. Yanıt gelince teklif Kabul olur ve sana görev düşer.
+import { ozellikSay } from './saglik.js';
 import { app } from './state.js';
 import { esc, tarih, today, gunEkle, byId, firmaAd, toast, openDrawer, confirmBox, waLink } from './ui.js';
 import { getConfig } from './db.js';
@@ -40,6 +41,7 @@ export async function baglantiOlustur(t) {
   const icerik = { gonderen: bilgi.ad || firmaAdi(), hazirlayan: benimAdim(), musteri: firmaAd(t.firma_id) || '', kisi: k?.ad_soyad || '', proje: p?.ad || '',
     teklif_no: t.teklif_no || '', tarih: t.tarih, gecerlilik: t.gecerlilik || null, para_birimi: t.para_birimi || 'USD', net: h.net, genel: h.genel, html: teklifHtml(t) };
   const kayit = { teklif_id: t.id, anahtar: rastgeleAnahtar(), son_tarih: t.gecerlilik && t.gecerlilik >= today() ? t.gecerlilik : gunEkle(today(), 30), icerik };
+  ozellikSay('onay-baglanti');
   const { data, error } = await tablo().insert(kayit).select().single();
   if (error) throw new Error(eskiSema(error) ? SEMA_UYARI : error.message);
   if (t.durum === 'Taslak') { try { await app.db.save('teklifler', { ...t, durum: 'Gönderildi' }); } catch {} }

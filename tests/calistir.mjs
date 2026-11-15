@@ -560,6 +560,10 @@ const DB = () => {
   await p.evaluate(async () => { const { raporKarti } = await import('./js/views/bugun.js'); const { haftaBasi } = await import('./js/views/rapor.js'); const { today, gunEkle } = await import('./js/ui.js'); document.querySelector('.dash').insertAdjacentHTML('afterbegin', raporKarti(gunEkle(haftaBasi(today()), 7))); });
   await (await p.$('.rapor-kart')).screenshot({ path: 'tests/cikti/pazartesi-ozeti.png' });
   kontrol('Pazartesi özeti kartı: geçen hafta, bu hafta, dikkat edilecekler (radardan), hafta planına geçiş; perşembe çıkmıyor', hz.radar > 0 && /^Haftan · /.test(hz.h2 || '') && hz.dikkat && hz.plan && hz.per === '', JSON.stringify(hz));
+  const ks = await p.evaluate(async () => { const { kullanimVerisi } = await import('./js/saglik.js'); const r = kullanimVerisi()?.r || {}; return { radar: r['oz:radar-ertele']?.n || 0, plan: r['oz:hafta-plan']?.n || 0, dagit: r['oz:hafta-dagit']?.n || 0, plnEkran: r.plan?.n || 0 }; });
+  await p.goto(U + '#/ayarlar'); await w(900); await p.evaluate(() => document.querySelector('[data-sekme="gorunum"], [data-t="gorunum"]')?.click()); await w(500);
+  const ksK = await p.evaluate(() => document.querySelector('.kul-oz summary')?.textContent || '');
+  kontrol('Kullanım ölçümü özellikleri de sayıyor (radar ertele, hafta planına ekleme, otomatik dağıt) ve Ayarlar → Kullanım\'da listeliyor', ks.radar >= 1 && ks.plan >= 1 && ks.dagit >= 1 && ks.plnEkran >= 1 && /Özellikler \(\d+\/17 kullanıldı\)/.test(ksK), JSON.stringify({ ks, ksK }));
   kontrol('Radarda hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }

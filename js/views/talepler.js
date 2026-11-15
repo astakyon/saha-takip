@@ -1,5 +1,6 @@
 // Bayi portalı: dış kullanıcı (bayi, proje firması) yeni proje bildirir, teklif ister, stok sorar; yalnızca kendi firmasının taleplerini görür.
 // Şirket tarafı aynı ekranda talepleri görür, yanıtlar, projeye ya da teklife dönüştürür. Her yeni talep sunucuda görev olarak açılır.
+import { ozellikSay } from '../saglik.js';
 import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, num, usd, tarih, today, byId, firmaAd, toast, openDrawer, closeDrawer, confirmBox, ILLER, ILCELER, match } from '../ui.js';
@@ -61,7 +62,7 @@ function talepFormu(init = {}, sonra) {
     form.querySelector('[type=submit]').disabled = true;
     const { error } = await tablo().insert(o);
     if (error) { form.querySelector('[type=submit]').disabled = false; return toast(eskiSema(error) ? SEMA : 'Gönderilemedi: ' + error.message, 'err'); }
-    toast('Talep gönderildi.'); closeDrawer();
+    ozellikSay('talep'); toast('Talep gönderildi.'); closeDrawer();
   };
 }
 

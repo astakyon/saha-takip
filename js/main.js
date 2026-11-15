@@ -159,6 +159,7 @@ async function route() {
 // "Geri" için gelinen yerler yığında tutulur: liste → firma → kişi; geri dönülünce yığından çıkar.
 let sonSayfa = null, yigin = [];
 async function sayfaGoster(k, sayfa, ciz) {
+  if (lastShown !== sayfa) try { kullanimSay('oz:' + sayfa.split('/')[0] + '-sayfa'); } catch {}
   const sayfadanmi = /^(firma|kisi|proje)\//.test(lastShown || '');
   if (!sayfadanmi) yigin = lastShown && ROUTES[lastShown] ? [{ yol: lastShown, hash: '#/' + lastShown, ad: ROUTES[lastShown].t }] : [];
   else if (lastShown !== sayfa) {
