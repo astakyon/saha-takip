@@ -76,7 +76,7 @@ export async function sesliNot() {
           <div class="fld"><label for="ks-g">Sonraki adım (görev)</label><input id="ks-g" data-a="gorev" maxlength="140" placeholder="yoksa boş bırak"></div>
           <div class="fld"><label for="ks-gt">Görev tarihi</label><input id="ks-gt" type="date" data-a="gorev_tarih"></div>
         </div></section>
-      <p class="hint" data-ksipucu>Firma bulunursa ziyaret olarak kaydedilir; bulunmazsa not görevlerine düşer. Metin telefonda ayrıştırılır, hiçbir yere gönderilmez.</p>
+      <p class="hint" data-ksipucu>Firma bulunursa ziyaret olarak kaydedilir; bulunmazsa not görevlerine düşer. Cümle telefonda ayrıştırılır. Mikrofonla anlatırsan sesi yazıya tarayıcının konuşma tanıması çevirir (Chrome'da Google'ın hizmeti); istersen yazarak da kullanabilirsin.</p>
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`);
   mikBagla(p);
   const ta = p.querySelector('#sn-t'), el = id => p.querySelector(id), elle = new Set();

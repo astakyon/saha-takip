@@ -37,7 +37,7 @@ Depoda **Settings → Pages → Build and deployment**:
 - **+ → Konuşarak kaydet** (eski "Sesli not"): mikrofona dokun, anlat. Örnek: "Yıldız Elektrik'te Ali Bey'le görüştüm, hastane işi için teklif istedi, perşembe ara".
 - Cümleden ayrılanlar: **firma** (ekli adla da: Yıldız'da, Kuzey İnşaatta), **kişi** (Ali Bey, Ayşe Hanım ya da ad soyad; firmanın kişileri önce), **proje** (firmanın projeleri önce; "hastane işi" → Devlet Hastanesi Ek Bina), **sonuç** (teklif istendi, pazarlık, olumlu, olumsuz, görüşülemedi, sipariş…), **amaç**, **ziyaret tarihi** ("dün") ve **sonraki adım** (ara, teklif gönder, numune götür, tekrar uğra, katalog gönder) ile tarihi (bugün, yarın, öbür gün, gün adı, haftaya salı, 3 gün sonra, 20 kasım, ayın 5'i, ay sonu).
 - Alanlar yazdıkça dolar; elle değiştirdiğin alan bir daha üzerine yazılmaz. Kaydedince bugünün ziyareti ve sonraki adım görevi açılır. Firma bulunmazsa not görevlerine düşer.
-- Ayrıştırma kurala dayalıdır ve telefonda yapılır; metin hiçbir yapay zekâ servisine gönderilmez. (Sesi yazıya çeviren, telefonun kendi konuşma tanımasıdır.)
+- Ayrıştırma kurala dayalıdır ve telefonda yapılır; yazılan metin başka bir servise gönderilmez. Mikrofon kullanılırsa sesi yazıya tarayıcının konuşma tanıması çevirir; Chrome'da bu Google'ın hizmetidir (sesli yazma uygulamada zaten böyle çalışıyordu). Bunu istemezsen cümleyi yazarak gir.
 
 ## Güncelleme notu (sürüm 77): Bayi portalı
 
