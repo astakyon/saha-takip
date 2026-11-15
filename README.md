@@ -32,6 +32,15 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 77): Bayi portalı
+
+**Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 36: bayi_talepleri tablosu).**
+
+- **Satış → Bayi talepleri.** Dış kullanıcı (bayi ya da proje firması) girişte doğrudan **Taleplerim** ekranını görür: **Yeni proje** (ad, il/ilçe, müteahhit, tahmini tutar, beklenen alım), **Teklif isteği** (görebildiği bir proje için ya da yeni), **Stok sorusu** (ürün ve adet) ya da **Diğer**. Yanıtı aynı ekranda görür; henüz işlenmemiş talebini geri çekebilir.
+- Her yeni talep sunucuda **görev** olarak açılır: firmanın sorumlusuna atanır (teklif isteği yarına yüksek öncelikli, diğerleri 2 gün sonraya).
+- Şirket tarafında talepler durumlarıyla (Yeni, İnceleniyor, Yanıtlandı, Projeye dönüştü, Kapandı): **Yanıtla** (bayi görür), **Projeye dönüştür** (proje formu bayi, il, tutar ve notlarla dolu açılır; kaydedince talep projeye bağlanır), **Teklif hazırla**, **Kapat**. Bayi telefonla ilettiyse **Talep kaydet** ile bayi adına girilebilir.
+- Güvenlik sunucuda: dış kullanıcının talebi her zaman kendi firmasına bağlanır, başka firmanın talebini göremez, durumu ve yanıtı değiştiremez, görevleri görmez.
+
 ## Güncelleme notu (sürüm 76): Teklif onay bağlantısı
 
 **Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 35: teklif_baglantilari tablosu, teklif_goster ve teklif_yanitla işlevleri).**

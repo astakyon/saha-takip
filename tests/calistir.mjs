@@ -397,6 +397,16 @@ const DB = () => {
   await p.goto(U + '#/proje/p1'); await w(1200);
   const sek = await p.evaluate(() => [...document.querySelectorAll('.ps-sayfa [data-fsk]')].map(b => b.dataset.fsk).join(','));
   kontrol('K5: dış kullanıcı yalnızca firmasının projelerini, firmasını ve kişilerini görüyor; satış haritası kapalı; menüde "Dış kullanıcı"', dis.proje === 'p1' && dis.firma === 'f1' && !/k1|k2/.test(dis.kisi) && /Dış kullanıcı · Örnek Bayi/.test(dis.rozet || '') && !/harita/.test(sek), JSON.stringify({ dis, sek }));
+  // Bayi portalı: dış kullanıcı talep açar, yalnızca kendi firmasının talebini görür
+  await p.evaluate(async () => { const { app } = await import('./js/state.js'); await app.db.c.from('bayi_talepleri').upsert([{ id: 'bt9', owner: 'u1', dis_firma_id: 'f2', tur: 'Diğer', baslik: 'Başka firmanın talebi', durum: 'Yeni', created_at: '2026-11-01T08:00:00Z' }]); });
+  await p.goto(U + '#/talepler'); await w(1300);
+  const bt0 = await p.evaluate(() => ({ h1: document.querySelector('.vh h1')?.textContent, n: document.querySelectorAll('.talep').length }));
+  await p.evaluate(() => document.querySelector('[data-yeni]').click()); await w(500);
+  await p.fill('.drawer.open [name=baslik]', 'Okul yenileme'); await p.selectOption('.drawer.open [name=il]', 'Adana'); await p.fill('.drawer.open [name=tahmini_tutar]', '45000'); await p.fill('.drawer.open [name=aciklama]', '40 sınıf, LED panel');
+  await p.click('.drawer.open [type=submit]'); await w(1200);
+  const bt1 = await p.evaluate(() => ({ db: JSON.parse(localStorage.getItem('__DB')).bayi_talepleri.find(x => x.baslik === 'Okul yenileme'), liste: [...document.querySelectorAll('.talep b')].map(x => x.textContent) }));
+  await p.screenshot({ path: 'tests/cikti/bayi-talepleri.png', fullPage: true });
+  kontrol('Bayi portalı: dış kullanıcı "Taleplerim"de yeni proje bildiriyor, talep firmasına bağlanıyor, başka firmanın talebini görmüyor', /^Taleplerim/.test(bt0.h1) && bt0.n === 0 && bt1.db?.dis_firma_id === 'f1' && bt1.db?.tur === 'Yeni proje' && bt1.db?.il === 'Adana' && bt1.db?.tahmini_tutar === 45000 && bt1.liste.join() === 'Okul yenileme', JSON.stringify({ bt0, bt1 }));
   kontrol('K5 ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
@@ -577,6 +587,17 @@ const DB = () => {
   kontrol('Teklif onay bağlantısı: oluşturuluyor (48 karakter anahtar, PDF ile aynı içerik, teklif Gönderildi), listede rozet; müşteri sayfası teklifi gösteriyor, onay gidiyor, yanlış anahtarda uyarı',
     ob1.n === 1 && ob1.anahtar === 48 && ob1.html && Math.round(ob1.genel) === 1200 && ob1.son === '2099-01-01' && ob1.durum === 'Gönderildi' && ob1.satir === 1 && /teklif\.html#a=[0-9a-f]{48}&p=x&k=k$/.test(ob1.adres) && /gönderildi/i.test(rozet || '')
     && mus1.no === 'T-7' && /1\.200,00/.test(mus1.toplam) && mus1.belge && mus1.onay && yanit.length === 1 && yanit[0].p_yanit === 'Onay' && yanit[0].p_ad === 'Ali Örnek' && /onaylandı/i.test(mus2) && /geçersiz/i.test(mus3), JSON.stringify({ ...ob1, b: undefined, rozet, mus1, yanit, mus2, mus3 }));
+  // Bayi talepleri: şirket tarafı yanıtlıyor ve projeye dönüştürüyor
+  await p.evaluate(async () => { const { app } = await import('./js/state.js'); await app.db.c.from('bayi_talepleri').upsert([{ id: 'bt1', owner: 'u1', dis_firma_id: 'f1', tur: 'Yeni proje', baslik: 'Okul yenileme', il: 'Adana', tahmini_tutar: 45000, durum: 'Yeni', created_at: '2026-11-14T08:00:00Z' }, { id: 'bt2', owner: 'u1', dis_firma_id: 'f1', tur: 'Stok sorusu', baslik: 'Stok: HBL 120W × 40', durum: 'Yeni', created_at: '2026-11-13T08:00:00Z' }]); });
+  await p.goto(U + '#/talepler'); await w(1300);
+  const tl0 = await p.evaluate(() => ({ n: document.querySelectorAll('.talep').length, sum: document.querySelector('[data-sum]')?.textContent }));
+  await p.evaluate(() => document.querySelector('[data-tid="bt2"] [data-yanit]').click()); await w(500);
+  await p.fill('.drawer.open [name=yanit]', 'Depoda 60 adet var.'); await p.click('.drawer.open [type=submit]'); await w(1000);
+  await p.evaluate(() => document.querySelector('[data-tid="bt1"] [data-proje]').click()); await w(800);
+  const pform = await p.evaluate(() => document.querySelector('.drawer.open [name=ad]')?.value);
+  await p.click('.drawer.open [type=submit]'); await w(2200);
+  const tl1 = await p.evaluate(async () => { const d = JSON.parse(localStorage.getItem('__DB')); const { S } = await import('./js/db.js'); const b1 = d.bayi_talepleri.find(x => x.id === 'bt1'), b2 = d.bayi_talepleri.find(x => x.id === 'bt2'); const pr = S.projeler.find(x => x.id === b1.sonuc_proje_id); return { b1d: b1.durum, pr: pr?.ad, bayi: pr?.bayi_id, il: pr?.il, b2d: b2.durum, b2y: b2.yanit }; });
+  kontrol('Bayi talepleri (şirket): açık talepler listede, yanıt kaydediliyor, "Projeye dönüştür" projeyi bayiyle açıp talebi bağlıyor', tl0.n === 2 && /2 yeni/.test(tl0.sum) && tl1.b2d === 'Yanıtlandı' && tl1.b2y === 'Depoda 60 adet var.' && pform === 'Okul yenileme' && tl1.b1d === 'Projeye dönüştü' && tl1.pr === 'Okul yenileme' && tl1.bayi === 'f1' && tl1.il === 'Adana', JSON.stringify({ tl0, pform, tl1 }));
   kontrol('Onay bağlantısında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }

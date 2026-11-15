@@ -32,6 +32,7 @@ const ROUTES = {
   dosyalar:  { t: 'Dosyalar', ico: 'doc', v: yukle('views/dosyalar.js', 'dosyalarView'), g: 'Saha' },
   tahsilat:  { t: 'Tahsilat', ico: 'coins', v: yukle('views/tahsilat.js', 'tahsilatView'), g: 'Satış' },
   bayi:      { t: 'Bayi paneli', ico: 'box', v: yukle('views/bayi.js', 'bayiView'), g: 'Satış' },
+  talepler:  { t: 'Bayi talepleri', ico: 'box', v: yukle('views/talepler.js', 'taleplerView'), g: 'Satış' },
   teklifler: { t: 'Teklifler', ico: 'doc', v: yukle('views/teklif.js', 'tekliflerView'), g: 'Satış' },
   araclar:   { t: 'Aydınlatma araçları', ico: 'calc', v: yukle('views/araclar.js', 'araclarView'), g: 'Satış' },
   katalog:   { t: 'Ürün kataloğu', ico: 'book', v: yukle('views/katalog.js', 'katalogView'), g: 'Satış' },
@@ -125,6 +126,8 @@ function renderNav(cur) {
 let lastView = null, lastShown = null; const kayKonum = {};
 const saltOku = k => document.body.classList.toggle('salt-oku', !!app.db?.bakilan || (!sahipMi() && !rotaYazilabilir(k)));
 async function route() {
+  // Dış kullanıcı (bayi) açılışta kendi taleplerini görür
+  if (!lastView && app.yetki?.dis && !sahipMi() && /^(#\/?)?(bugun)?$/.test(location.hash)) { history.replaceState(null, '', '#/talepler'); }
   const parts = (location.hash.replace(/^#\/?/, '') || 'bugun').split('/');
   const [k, id] = parts;
   const dt = { proje: 'projeler', firma: 'firmalar', kisi: 'kisiler' }[k];

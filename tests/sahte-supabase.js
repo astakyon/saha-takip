@@ -20,7 +20,7 @@
     limit() { return this; }
     range(a, b) { this.r = [a, b]; return this; }
     upsert(rows) { this.op = 'upsert'; this.rows = rows; return this; }
-    insert(rows) { this.op = 'upsert'; this.rows = [].concat(rows).map(r => ({ id: r.id || crypto.randomUUID(), ...r })); return this; }
+    insert(rows) { this.op = 'upsert'; const Y = JSON.parse(localStorage.getItem('__YETKI') || 'null'); this.rows = [].concat(rows).map(r => ({ id: r.id || crypto.randomUUID(), ...r, ...(this.t === 'bayi_talepleri' ? { durum: r.durum || 'Yeni', created_at: new Date().toISOString(), ...(Y?.dis ? { dis_firma_id: Y.dis.firma_id, durum: 'Yeni' } : {}) } : {}) })); return this; }
     update(row) { this.op = 'update'; this.row = row; return this; }
     delete() { this.op = 'delete'; return this; }
     maybeSingle() { this.tek = true; return this; }
@@ -34,9 +34,9 @@
       if (this.op === 'select') {
         let l = T.filter(r => this.f.every(f => f(r)));
         const Y = JSON.parse(localStorage.getItem('__YETKI') || 'null');
-        if (Y && Y.ben_sahip === false && !['ayarlar', 'yorumlar', 'ekip_uyeleri'].includes(this.t) && !Y.yetkiler?.[this.t]) l = this.t === 'gorevler' ? l.filter(r => r.atanan === 'uye@x.com') : [];
+        if (Y && Y.ben_sahip === false && !['ayarlar', 'yorumlar', 'ekip_uyeleri', 'bayi_talepleri'].includes(this.t) && !Y.yetkiler?.[this.t]) l = this.t === 'gorevler' ? l.filter(r => r.atanan === 'uye@x.com') : [];
         if (Y?.dis) { const f = Y.dis.firma_id, R = ['yatirimci_id', 'projeci_id', 'danisman_id', 'gemut_id', 'emut_id', 'alici_id', 'bayi_id'], pr = new Set((DB.projeler || []).filter(x => R.some(r => x[r] === f)).map(x => x.id));
-          l = this.t === 'projeler' ? l.filter(x => pr.has(x.id)) : this.t === 'firmalar' ? l.filter(x => x.id === f) : this.t === 'kisiler' ? l.filter(x => x.firma_id === f) : ['teklifler', 'siparisler', 'numuneler'].includes(this.t) ? l.filter(x => x.firma_id === f || pr.has(x.proje_id)) : ['urunler', 'stok_gecmis', 'urun_aileleri', 'ayarlar', 'yorumlar', 'ekip_uyeleri'].includes(this.t) ? l : []; }
+          l = this.t === 'projeler' ? l.filter(x => pr.has(x.id)) : this.t === 'firmalar' ? l.filter(x => x.id === f) : this.t === 'kisiler' ? l.filter(x => x.firma_id === f) : ['teklifler', 'siparisler', 'numuneler'].includes(this.t) ? l.filter(x => x.firma_id === f || pr.has(x.proje_id)) : ['urunler', 'stok_gecmis', 'urun_aileleri', 'ayarlar', 'yorumlar', 'ekip_uyeleri'].includes(this.t) ? l : this.t === 'bayi_talepleri' ? l.filter(x => x.dis_firma_id === f) : []; }
         if (this.cnt) return { data: this.head ? null : l, count: l.length, error: null };
         if (this.tek) return { data: l[0] || null, error: null };
         if (this.r) l = l.slice(this.r[0], this.r[1] + 1);

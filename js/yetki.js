@@ -88,6 +88,7 @@ export function rotaIzinli(k) {
   if (k === 'yonetim') return !!app.yonetici && !onizlemede();
   if (sahipMi() || HER_ZAMAN.includes(k)) return true;
   if (SAHIBE_OZEL.includes(k)) return false;
+  if (k === 'talepler') return !!app.yetki?.dis || !!izin('projeler');   // bayi portalı: dış kullanıcı her zaman, iç kullanıcı projeleri görüyorsa
   const e = ekranlar();
   return e ? !!e[k] : !!eskiRota(k);
 }
@@ -95,6 +96,7 @@ export const rotaYazilabilir = k => {
   if (sahipMi()) return true;
   if (onizlemede()) return false;
   if (HER_ZAMAN.includes(k)) return true;
+  if (k === 'talepler') return !!app.yetki?.dis || izin('projeler') === 'yaz';
   const e = ekranlar();
   return e ? e[k] === 'yaz' && !EKRANLAR[k]?.salt : eskiRota(k) === 'yaz';
 };

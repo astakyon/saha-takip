@@ -10,6 +10,7 @@ const Y = {
   firmalar: ['Firmalar', 'Emüt, Gemüt, proje büroları, bayiler ve müşteriler. Telefonda satırı sola kaydırınca Ara, WhatsApp, Ziyaret ekle. Firma kartında kişiler, projeler, ilişki ağı, yorumlar ve tahsilat özeti var.'],
   kisiler: ['Kişiler', 'Firmalardaki temas kişilerin. Kartvizitin fotoğrafını çekince bilgiler kendiliğinden okunur. Satırı sola kaydırınca hızlı işlemler.'],
   plan: ['Haftalık saha planı', 'Haftanın günlerine bölge seç, öneri listesinden firmaları güne sürükle ya da gün düğmesine dokun. Otomatik dağıt, bölgesi seçili günlere o ildeki en önemli önerileri koyar. Her gün için rota Google Haritalar\'da açılır. Planlar yalnızca uygulamada kalır.'],
+  talepler: ['Bayi talepleri', 'Bayiler (dış kullanıcılar) buradan yeni proje bildirir, teklif ister, stok sorar; her talep sana görev olarak düşer. Talebi yanıtla, projeye dönüştür ya da teklif hazırla. Bayi yalnızca kendi firmasının taleplerini ve yanıtlarını görür.'],
   takvim: ['Takvim', 'Haftalık ziyaret planı. Bir güne dokunarak ziyaret planla; planlı ziyaretler Bugün ekranında rota olur.'],
   ziyaretler: ['Ziyaretler', 'Yapılan ve planlanan bütün ziyaretler, notları ve sonuçlarıyla. Sahadayken “Ziyaret kaydet” ile konum da eklenir.'],
   gorevler: ['Görevler', 'Yapılacak işler ve hatırlatmalar. Ekipten birine atayabilirsin; o kişiye bildirim gider, tamamlayınca sana haber gelir.'],

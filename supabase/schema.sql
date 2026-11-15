@@ -1602,5 +1602,78 @@ revoke all on function public.teklif_yanitla(text, text, text, text) from public
 grant execute on function public.teklif_yanitla(text, text, text, text) to anon, authenticated;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 35 $f$;
 
+-- ===================== Sürüm 36: bayi portalı (dış kullanıcı talepleri) =====================
+-- Dış kullanıcı (bayi ya da proje firması) yeni proje bildirir, teklif ister, stok sorar. Talep firmasına bağlanır;
+-- dış kullanıcı yalnızca kendi firmasının taleplerini görür. Her yeni talep şirkete görev olarak düşer.
+create table if not exists public.bayi_talepleri (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default public.veri_sahibi() references auth.users(id) on delete cascade,
+  dis_firma_id uuid references public.firmalar(id) on delete set null,
+  tur text not null default 'Yeni proje' check (tur in ('Yeni proje', 'Teklif isteği', 'Stok sorusu', 'Diğer')),
+  baslik text not null, aciklama text,
+  proje_id uuid references public.projeler(id) on delete set null,
+  il text, ilce text, muteahhit text, tahmini_tutar numeric, beklenen_tarih date,
+  urun text, adet numeric,
+  durum text not null default 'Yeni' check (durum in ('Yeni', 'İnceleniyor', 'Yanıtlandı', 'Projeye dönüştü', 'Kapandı')),
+  yanit text, yanit_zaman timestamptz, yanitlayan text,
+  acan text default public.benim_epostam(), acan_ad text,
+  sonuc_proje_id uuid, sonuc_teklif_id uuid,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+alter table public.bayi_talepleri enable row level security;
+create index if not exists bayi_talepleri_owner_idx on public.bayi_talepleri (owner, durum);
+drop trigger if exists touch on public.bayi_talepleri;
+create trigger touch before update on public.bayi_talepleri for each row execute function public.touch_updated_at();
+
+-- Dış kullanıcının talebi her zaman kendi firmasına bağlanır; durumu ve yanıtı o değiştiremez
+create or replace function public.talep_hazirla() returns trigger language plpgsql security definer set search_path = public as $f$
+declare f uuid := public.dis_firmam(new.owner);
+begin
+  if f is not null then
+    new.dis_firma_id := f;
+    if tg_op = 'INSERT' then
+      new.durum := 'Yeni'; new.yanit := null; new.yanit_zaman := null; new.yanitlayan := null; new.sonuc_proje_id := null; new.sonuc_teklif_id := null;
+      new.acan := public.benim_epostam();
+      if new.proje_id is not null and not public.dis_proje(new.proje_id, f) then new.proje_id := null; end if;
+    end if;
+  elsif tg_op = 'UPDATE' and new.yanit is distinct from old.yanit then
+    new.yanit_zaman := now(); new.yanitlayan := public.benim_epostam();
+  end if;
+  return new;
+end $f$;
+drop trigger if exists talep_hazirla on public.bayi_talepleri;
+create trigger talep_hazirla before insert or update on public.bayi_talepleri for each row execute function public.talep_hazirla();
+
+-- Yeni talep şirkete görev olarak düşer: firmanın sorumlusuna (yoksa atanmamış)
+create or replace function public.talep_gorev() returns trigger language plpgsql security definer set search_path = public as $f$
+declare fa text; so text; ek uuid;
+begin
+  select ad, sorumlu, ekip_id into fa, so, ek from public.firmalar where id = new.dis_firma_id;
+  insert into public.gorevler (owner, baslik, son_tarih, oncelik, durum, firma_id, proje_id, notlar, atanan, sorumlu, ekip_id, kaynak)
+  values (new.owner, 'Bayi talebi · ' || new.tur || ': ' || left(new.baslik, 120) || coalesce(' (' || fa || ')', ''),
+    current_date + case when new.tur = 'Teklif isteği' then 1 else 2 end, case when new.tur = 'Teklif isteği' then 'Yüksek' else 'Normal' end, 'Açık',
+    new.dis_firma_id, new.proje_id, left(new.aciklama, 2000), so, so, ek, 'talep:' || new.id);
+  return null;
+end $f$;
+drop trigger if exists talep_gorev on public.bayi_talepleri;
+create trigger talep_gorev after insert on public.bayi_talepleri for each row when (new.dis_firma_id is not null) execute function public.talep_gorev();
+
+drop policy if exists "oku" on public.bayi_talepleri;
+drop policy if exists "ekle" on public.bayi_talepleri;
+drop policy if exists "degistir" on public.bayi_talepleri;
+drop policy if exists "sil" on public.bayi_talepleri;
+-- İç kullanıcı: projeleri görebilen okur, projeleri yazabilen yanıtlar. Dış kullanıcı: yalnızca kendi firmasının talepleri.
+create policy "oku" on public.bayi_talepleri for select to authenticated using (
+  case when public.dis_firmam(owner) is not null then dis_firma_id = public.dis_firmam(owner) else public.yetki(owner, 'projeler', 'oku') end);
+create policy "ekle" on public.bayi_talepleri for insert to authenticated with check (
+  owner = public.veri_sahibi() and (public.dis_firmam(owner) is not null or public.yetki(owner, 'projeler', 'yaz')));
+create policy "degistir" on public.bayi_talepleri for update to authenticated using (public.dis_firmam(owner) is null and public.yetki(owner, 'projeler', 'yaz'))
+  with check (public.dis_firmam(owner) is null and public.yetki(owner, 'projeler', 'yaz'));
+create policy "sil" on public.bayi_talepleri for delete to authenticated using (
+  (public.dis_firmam(owner) is null and public.yetki(owner, 'projeler', 'yaz'))
+  or (dis_firma_id = public.dis_firmam(owner) and durum = 'Yeni' and acan = public.benim_epostam()));
+revoke all on public.bayi_talepleri from anon;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 36 $f$;
+
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

@@ -1740,3 +1740,16 @@ body.giris-var #view { padding-top: 64px; }
 .ob-r { font-style: normal; font-size: 11.5px; font-weight: 700; border-radius: 99px; padding: 1px 8px; background: var(--line-2); color: var(--muted); margin-left: 6px; }
 .ob-r.ok { background: var(--yesil-soft); color: var(--green); }
 .ob-r.warn { background: #FFF4D1; color: #7A5600; }
+
+/* Bayi talepleri */
+.talep-l { display: flex; flex-direction: column; gap: 10px; list-style: none; padding: 0; }
+.talep { background: var(--card, #fff); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.talep-ust { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.talep p { margin: 4px 0; }
+.talep-e { display: inline-block; font-size: 12.5px; background: var(--line-2); border-radius: 99px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+.talep-a { white-space: pre-wrap; font-size: 14px; }
+.talep-y { background: var(--yesil-soft); border-radius: 10px; padding: 8px 10px; white-space: pre-wrap; font-size: 14px; }
+.talep-y small { display: block; color: var(--green); font-weight: 700; }
+.tf-tur { flex-wrap: wrap; margin-bottom: 10px; }
+.frow2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 520px) { .frow2 { grid-template-columns: 1fr; } }
