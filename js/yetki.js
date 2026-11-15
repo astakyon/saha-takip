@@ -8,7 +8,7 @@ import { S } from './db.js';
 export const MODULLER = [
   { k: 'projeler', ad: 'Projeler', t: ['projeler', 'proje_gecmis'], rota: ['projeler', 'referanslar'] },
   { k: 'firmalar', ad: 'Firmalar ve kişiler', t: ['firmalar', 'kisiler'], rota: ['firmalar', 'kisiler'] },
-  { k: 'ziyaretler', ad: 'Ziyaretler ve görevler', t: ['ziyaretler', 'gorevler'], rota: ['ziyaretler', 'gorevler', 'takvim', 'plan', 'rapor'] },
+  { k: 'ziyaretler', ad: 'Ziyaretler ve görevler', t: ['ziyaretler', 'gorevler'], rota: ['ziyaretler', 'gorevler', 'takvim', 'plan', 'ekiphar', 'rapor'] },
   { k: 'bolgeler', ad: 'Sanayi bölgeleri', t: ['bolgeler'], rota: ['bolgeler'] },
   { k: 'siparisler', ad: 'Siparişler, hedefler ve panel', t: ['siparisler', 'hedefler'], rota: ['siparisler', 'panel'] },
   { k: 'teklifler', ad: 'Teklifler', t: ['teklifler'], rota: ['teklifler'] },
@@ -44,6 +44,7 @@ export const EKRANLAR = {
   rakip:      { t: ['rakip_fiyatlar'], o: [], d: 'Rakip marka fiyatları' },
   araclar:    { t: [], o: [], salt: true, d: 'Aydınlatma hesap araçları' },
   panel:      { t: ['hedefler'], o: ['siparisler', 'projeler'], d: 'Hedefler, satış grafikleri ve özetler' },
+  ekiphar:    { t: [], o: ['ziyaretler', 'gorevler', 'teklifler', 'firmalar'], salt: true, d: 'Ekip haritası: gün içinde kim nerede giriş yaptı, akış ve kişi özeti (kendi kapsamındaki kayıtlar)' },
   rapor:      { t: [], o: ['ziyaretler', 'gorevler', 'projeler', 'firmalar'], salt: true, d: 'Haftalık faaliyet raporu' },
   masraflar:  { t: ['masraflar'], o: [], d: 'Masraf ve km kayıtları' },
   dosyalar:   { t: ['belgeler'], o: [], d: 'Yüklenen dosyalar ve belgeler' },

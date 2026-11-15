@@ -11,6 +11,7 @@ const Y = {
   kisiler: ['Kişiler', 'Firmalardaki temas kişilerin. Kartvizitin fotoğrafını çekince bilgiler kendiliğinden okunur. Satırı sola kaydırınca hızlı işlemler.'],
   plan: ['Haftalık saha planı', 'Haftanın günlerine bölge seç, öneri listesinden firmaları güne sürükle ya da gün düğmesine dokun. Otomatik dağıt, bölgesi seçili günlere o ildeki en önemli önerileri koyar. Her gün için rota Google Haritalar\'da açılır. Planlar yalnızca uygulamada kalır.'],
   talepler: ['Bayi talepleri', 'Bayiler (dış kullanıcılar) buradan yeni proje bildirir, teklif ister, stok sorar; her talep sana görev olarak düşer. Talebi yanıtla, projeye dönüştür ya da teklif hazırla. Bayi yalnızca kendi firmasının taleplerini ve yanıtlarını görür.'],
+  ekiphar: ['Ekip haritası', 'Seçilen gün ekibin ziyaret noktaları haritada (renk kişiye göre, kesikli çizgi güzergâh), şu an içeride olanlar, saat sırasıyla giriş, çıkış, ziyaret, teklif ve tamamlanan görevler, kişi başına ziyaret sayısı, içeride geçen süre ve tahmini yol. Konum yalnızca giriş ve çıkış anında alınır.'],
   takvim: ['Takvim', 'Haftalık ziyaret planı. Bir güne dokunarak ziyaret planla; planlı ziyaretler Bugün ekranında rota olur.'],
   ziyaretler: ['Ziyaretler', 'Yapılan ve planlanan bütün ziyaretler, notları ve sonuçlarıyla. Sahadayken “Ziyaret kaydet” ile konum da eklenir.'],
   gorevler: ['Görevler', 'Yapılacak işler ve hatırlatmalar. Ekipten birine atayabilirsin; o kişiye bildirim gider, tamamlayınca sana haber gelir.'],

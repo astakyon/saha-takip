@@ -1759,3 +1759,26 @@ body.giris-var #view { padding-top: 64px; }
 .ks-anl.dolu { background: var(--yesil-soft); border-color: color-mix(in srgb, var(--green) 35%, transparent); }
 .ks-anl h3 { font-size: 14px; margin: 0 0 6px; }
 .ks-anl h3 small { font-weight: 400; }
+
+/* Ekip haritası */
+.eh { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.eh-harita { grid-row: span 2; padding: 0; overflow: hidden; }
+#eh-map { height: 520px; }
+#eh-map.bos { height: 260px; opacity: .7; }
+.eh-harita .hint { margin: 8px 12px; }
+.eh-ust { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 10px; }
+.eh-kisi { flex-wrap: wrap; }
+.eh-t .r { white-space: nowrap; }
+.eh-kisi i, .eh-ad i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--c); margin-right: 6px; vertical-align: 0; }
+.eh-t td { vertical-align: top; }
+.eh-t small { display: block; }
+.eh-canli { color: var(--green); font-weight: 600; }
+.eh-l { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 420px; overflow: auto; }
+.eh-l li { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--line-2); font-size: 13.5px; }
+.eh-l time { width: 42px; flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+.eh-i { width: 20px; height: 20px; flex: none; border-radius: 50%; background: var(--c); color: #fff; font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; }
+.eh-l .linkbtn { text-align: left; }
+.eh-canli-nokta { animation: ehNabiz 1.6s ease-in-out infinite; }
+@keyframes ehNabiz { 50% { stroke-width: 6; stroke-opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .eh-canli-nokta { animation: none; } }
+@media (max-width: 1000px) { .eh { grid-template-columns: 1fr; } .eh-harita { grid-row: auto; } #eh-map { height: 340px; } }

@@ -643,6 +643,36 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 22) Ekip haritası ve canlı akış ----------
+{
+  const DB11 = () => {
+    const ts = '2026-10-01T08:00:00Z', o = x => ({ owner: 'u1', updated_at: ts, created_at: ts, ...x });
+    const g = new Date(); const gun = `${g.getFullYear()}-${String(g.getMonth() + 1).padStart(2, '0')}-${String(g.getDate()).padStart(2, '0')}`;
+    const z = (h, m) => new Date(`${gun}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`).toISOString();
+    localStorage.setItem('__DB', JSON.stringify({
+      firmalar: [o({ id: 'f1', ad: 'Yıldız Elektrik', lat: 37.0, lng: 35.32 }), o({ id: 'f2', ad: 'Kuzey İnşaat', lat: 36.8, lng: 34.6 }), o({ id: 'f3', ad: 'Atlas Proje', lat: 37.01, lng: 35.30 })],
+      ziyaretler: [o({ id: 'z1', sorumlu: 'gorkem@x.com', tarih: gun, durum: 'Yapıldı', firma_id: 'f1', giris: z(9, 5), cikis: z(9, 50), lat: 37.0, lng: 35.32, giris_mesafe: 40, sonuc_tipi: 'Olumlu' }),
+        o({ id: 'z2', sorumlu: 'gorkem@x.com', tarih: gun, durum: 'Yapıldı', firma_id: 'f3', giris: z(10, 30), lat: 37.01, lng: 35.30 }),
+        o({ id: 'z3', sorumlu: 'ali@x.com', tarih: gun, durum: 'Yapıldı', firma_id: 'f2', giris: z(11, 20), cikis: z(11, 55), lat: 36.8, lng: 34.6 }),
+        o({ id: 'z4', sorumlu: 'ali@x.com', tarih: gun, durum: 'Planlandı', firma_id: 'f1' })],
+      teklifler: [o({ id: 'tt', sorumlu: 'ali@x.com', teklif_no: 'T-5', tarih: gun, firma_id: 'f2', toplam: 5000, para_birimi: 'USD', created_at: z(12, 10) })],
+      gorevler: [o({ id: 'gg', baslik: 'Katalog gönder', durum: 'Tamam', tamamlayan: 'gorkem@x.com', updated_at: z(13, 0) })],
+      ekip_uyeleri: [] }));
+  };
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB11 });
+  await p.setViewportSize({ width: 1280, height: 900 }); await p.goto(U + '#/ekiphar'); await w(1500);
+  const eh = await p.evaluate(() => ({ satir: [...document.querySelectorAll('.eh-t tbody tr')].map(r => r.innerText.replace(/\s+/g, ' ')), canli: document.querySelector('.eh-canli')?.textContent, akis: [...document.querySelectorAll('.eh-l li')].map(l => l.innerText.replace(/\s+/g, ' ')), kisi: document.querySelectorAll('.eh-kisi [data-k]').length }));
+  await p.screenshot({ path: 'tests/cikti/ekip-haritasi.png', fullPage: true });
+  await p.evaluate(() => document.querySelector('.eh-kisi [data-k="ali@x.com"]').click()); await w(500);
+  const eh2 = await p.evaluate(() => [...document.querySelectorAll('.eh-l li')].length);
+  await p.setViewportSize({ width: 390, height: 844 }); await w(400);
+  const ehTasma = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  kontrol('Ekip haritası: kişi özeti (ziyaret, içeride süre, teklif, görev), şu an içeride olan, saat sırasıyla akış, kişiye göre süzme, telefonda taşmıyor',
+    eh.satir.length === 2 && /gorkem/.test(eh.satir[0]) && /Atlas Proje/.test(eh.canli || '') && eh.akis.length === 7 && /Görev tamamlandı/.test(eh.akis[0]) && eh.kisi === 3 && eh2 === 3 && ehTasma <= 1, JSON.stringify({ eh, eh2, ehTasma }));
+  kontrol('Ekip haritasında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
 // ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
 {
   const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');

@@ -32,6 +32,11 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 79): Ekip haritası ve canlı akış
+
+- **Raporlar → Ekip haritası:** seçilen gün ekibin ziyaret noktaları haritada (renk kişiye göre, kesikli çizgi o günün güzergâhı; içeride olan nabız atar), **kişi özeti** (yapılan/planlı ziyaret, içeride geçen süre, tahmini yol, teklif, tamamlanan görev; "şu an Atlas Proje'de, 10:30'dan beri") ve saat sırasıyla **akış** (giriş, çıkış ve süre, ziyaret sonucu, teklif, tamamlanan görev). Kişiye göre süzülür, önceki günlere gidilir.
+- Giriş-çıkış (sürüm 71) verisinin üstüne kuruludur. Konum yalnızca giriş ve çıkış anında alınır; sürekli takip yoktur. Herkes yalnızca kendi yetki kapsamındaki kayıtları görür (yönetici kendi ekibini). Şema değişikliği yok.
+
 ## Güncelleme notu (sürüm 78): Konuşarak ziyaret kaydı
 
 - **+ → Konuşarak kaydet** (eski "Sesli not"): mikrofona dokun, anlat. Örnek: "Yıldız Elektrik'te Ali Bey'le görüştüm, hastane işi için teklif istedi, perşembe ara".
