@@ -1,4 +1,5 @@
 // Bugün: günlük özet, günün rotası, yakınımdakiler, zamanı gelen projeler, uzun süredir gidilmeyenler, doğum günleri, uyarılar
+import { BUGUN_KARTLAR } from '../basliklar.js';
 import { riskRozeti } from '../vaderisk.js';
 import { ozellikSay } from '../saglik.js';
 import { S } from '../db.js';
@@ -142,9 +143,9 @@ async function kmMasrafa(gun) {
 // Uzun listeler: ilk n satır, kalanı “Tümünü gör” ile
 const kisa = (satirlar, n = 5, cls = 'list') => satirlar.length <= n ? `<ul class="${cls}">${satirlar.join('')}</ul>`
   : `<ul class="${cls}">${satirlar.slice(0, n).join('')}</ul><ul class="${cls}" data-fazla hidden>${satirlar.slice(n).join('')}</ul><button type="button" class="linkbtn tumu" data-tumu>Tümünü gör (${satirlar.length})</button>`;
-const KARTLAR = [['ozet', 'Bugün özeti'], ['etiket', 'Seni etiketlediler'], ['plan', 'Bugünün planı'], ['radar', 'Fırsat radarı'], ['eksik', 'Bugünün soruları'], ['uyari', 'Uyarılar'], ['gorev', 'Görevler'], ['yapilan', 'Bugün yapılanlar'], ['zaman', 'Zamanı gelen projeler'], ['gidilmeyen', 'Uzun süredir gidilmeyenler'], ['yarin', 'Yarın'], ['dogum', 'Doğum günleri'], ['rapor', 'Pazartesi özeti']];
+const KARTLAR = BUGUN_KARTLAR;
 const kartAnahtar = h => { const t = (h || '').trim(); if (/^Bugünün planı/.test(t)) return 'plan'; if (/^Bugün özeti/.test(t)) return 'ozet'; if (/görevler$|^Görevler/i.test(t) && !/^Bugün/.test(t)) return 'gorev'; if (/^Bugün yapılanlar/.test(t)) return 'yapilan'; if (/^Zamanı gelen/.test(t)) return 'zaman'; if (/^Uzun süredir/.test(t)) return 'gidilmeyen'; if (/^Yarın/.test(t)) return 'yarin'; if (/^Doğum/.test(t)) return 'dogum'; if (/^Uyarılar/.test(t)) return 'uyari'; if (/haftanın raporu|^Haftan\b/.test(t)) return 'rapor'; if (/^Seni etiketlediler/.test(t)) return 'etiket'; if (/^Fırsat radarı/.test(t)) return 'radar'; if (/^Bugünün soruları/.test(t)) return 'eksik'; return null; };
-const kartAyar = () => ({ sira: [], gizli: [], ...(ayar('bugun_kartlar') || {}) });
+const kartAyar = () => { const k = ayar('bugun_kartlar'), rg = !sahipMi() ? app.yetki?.yetkiler?._gorunum : null; return { sira: [], gizli: k ? [] : (rg?.kartGizli || []), ...(k || {}) }; };
 function kartDuzeniUygula(el) {
   const a = kartAyar(), dash = el.querySelector('.dash'); if (!dash) return;
   const sira = [...a.sira, ...KARTLAR.map(([k]) => k).filter(k => !a.sira.includes(k))];

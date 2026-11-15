@@ -79,6 +79,7 @@
     _eskiRpc: async (n, a) => n === 'yonetici_mi' ? { data: !!localStorage.getItem('__YONETICI'), error: null }
       : n === 'yonetim_hesaplar' ? { data: [...new Set(Object.values(DB).flat().map(r => r?.owner).filter(Boolean))].map(o => ({ owner: o, eposta: o + '@x.com', firma: o === 'u1' ? 'Sahip Firma' : 'Firma ' + o, tur: 'test', durum: 'aktif', kayit: '2026-10-01', son_giris: '2026-10-23', son_islem: '2026-10-23', kurulum: true, ekip: 0, projeler: (DB.projeler || []).filter(r => r.owner === o).length, firmalar: (DB.firmalar || []).filter(r => r.owner === o).length, kisiler: 0, ziyaretler: (DB.ziyaretler || []).filter(r => r.owner === o).length, gorevler: 0, teklifler: 0, siparisler: 0, belgeler: 0 })), error: null }
       : n === 'yonetim_ekip' ? { data: [], error: null }
+      : n === 'uye_hesaplari' ? (() => { const H = JSON.parse(localStorage.getItem('__HESAPLAR') || '[]'), gir = JSON.parse(localStorage.getItem('__GIRDI') || '[]'); return { data: (DB.ekip_uyeleri || []).map(u => { const e = u.eposta.toLowerCase(); return { eposta: e, hesap_var: H.some(h => h.eposta === e) || gir.includes(e), son_giris: gir.includes(e) ? '2026-11-10T08:00:00Z' : null, kad: (DB.kullanici_adlari || []).find(k => k.eposta === e)?.ad || null }; }), error: null }; })()
       : n === 'sirket_bilgisi' ? { data: { id: 'u1', ad: localStorage.getItem('__SIRKET_AD') || 'Deneme Şirketi', kurucu_eposta: 'sahip@x.com', kurucu_ayrildi: false, ben_kurucu: !JSON.parse(localStorage.getItem('__YETKI') || '{}').sirket_yoneticisi, yoneticiler: (DB.ekip_uyeleri || []).filter(u => u.yonetici).map(u => ({ eposta: u.eposta, ad: u.ad })), kullanici_sayisi: (DB.ekip_uyeleri || []).length }, error: null }
       : n === 'ekip_listesi' ? { data: [{ eposta: 'sahip@x.com', ad: 'Veri sahibi', sahip: true }, ...(DB.ekip_uyeleri || []).filter(u => u.aktif).map(u => ({ eposta: u.eposta, ad: u.ad, sahip: false }))], error: null }
       : n === 'baska_satiscida' ? { data: localStorage.getItem('__BASKA') ? [{ ad: 'Gizli Firma AŞ', sorumlu: 'veli@x.com', sorumlu_ad: 'Veli' }] : [], error: null }
@@ -86,6 +87,19 @@
       : n === 'sirket_adi' ? (localStorage.setItem('__SIRKET_AD', a.p_ad), { data: null, error: null })
       : n === 'hesap_kaydol' ? { data: { tur: 'test', durum: localStorage.getItem('__ASKIDA') ? 'askida' : 'aktif' }, error: null } : n === 'benim_yetkilerim' ? { data: JSON.parse(localStorage.getItem('__YETKI') || 'null') || { sahip: 'u1', ben_sahip: true }, error: null } : n === 'yetki_surum' ? { data: 15, error: null } : n === 'giris_epostasi' ? { data: a?.ad === 'burak' ? 'sahip@x.com' : null, error: null } : n === 'yedek_guvenli' ? { data: true, error: null } : { data: [], error: null },
     storage: { from: () => ({ upload: async () => ({ error: null }), createSignedUrl: async () => ({ data: null, error: { message: 'yok' } }), list: async () => ({ data: [], error: null }), remove: async () => ({}) }) },
-    functions: { invoke: async () => ({ data: null }) },
+    // Sahte "kullanici" fonksiyonu: hesap aç / şifre sıfırla (yapılanlar __HESAPLAR'da)
+    functions: { invoke: async (ad, o = {}) => {
+      if (ad !== 'kullanici') return { data: null };
+      const b = o.body || {}, H = JSON.parse(localStorage.getItem('__HESAPLAR') || '[]');
+      if (localStorage.getItem('__FONKSIYON_YOK')) return { data: null, error: { name: 'FunctionsFetchError', message: 'Failed to send a request to the Edge Function' } };
+      if (b.islem === 'olustur') {
+        if ((DB.kullanici_adlari || []).some(k => k.ad === b.kad)) return { data: null, error: { message: 'Edge Function returned a non-2xx status code', context: { json: async () => ({ hata: 'Bu kullanıcı adı alınmış. Başka bir ad dene.' }) } } };
+        const eposta = b.eposta || b.kad + '@kullanici.saha-takip.invalid';
+        (DB.kullanici_adlari ||= []).push({ ad: b.kad, eposta }); H.push({ islem: 'olustur', kad: b.kad, eposta, sifre: b.sifre, sahip: b.sahip }); localStorage.setItem('__HESAPLAR', JSON.stringify(H)); kaydet();
+        return { data: { tamam: true, eposta, kad: b.kad } };
+      }
+      if (b.islem === 'sifre') { H.push({ islem: 'sifre', eposta: b.eposta, sifre: b.sifre }); localStorage.setItem('__HESAPLAR', JSON.stringify(H)); return { data: { tamam: true } }; }
+      return { data: null };
+    } },
   }) };
 })();

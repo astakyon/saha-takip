@@ -2,7 +2,7 @@
 import { ayar, ayarYaz } from './ayar.js';
 import { app } from './state.js';
 import { esc, toast } from './ui.js';
-import { rotaIzinli } from './yetki.js';
+import { rotaIzinli, sahipMi } from './yetki.js';
 import { BASLIKLAR, SEKME_AD, baslikOf, VARS_ANA } from './basliklar.js';
 
 export const SABIT = ['bugun', 'ayarlar'];     // gizlenemez
@@ -14,7 +14,9 @@ export function menuDuzeni(R = app.rotalar || {}) {
   const gizli = new Set((m.gizli || []).filter(k => R[k] && !SABIT.includes(k)));
   const gorunur = b => b.r.some(r => R[r] && !gizli.has(r) && rotaIzinli(r));
   let ana = Array.isArray(m.ana) && m.ana.length ? [...new Set(m.ana.map(k => BASLIKLAR.find(b => b.k === k) ? k : baslikOf(k)?.k).filter(Boolean))] : [...VARS_ANA];
-  if (app.yetki?.yetkiler?._rol === 'Bayi' && !m.ana?.length) ana = ['bugun', 'urunler', ...ana.filter(k => !['bugun', 'urunler'].includes(k))];   // bayi rolündeki üyeye ana çubukta Ürünler (Bayi paneli)
+  const rg = !sahipMi() ? app.yetki?.yetkiler?._gorunum : null;
+  if (!m.ana?.length && rg?.menu?.length) ana = [...rg.menu];   // rolün belirlediği alt menü (kişi kendisi değiştirmediyse)
+  if (app.yetki?.yetkiler?._rol === 'Bayi' && !m.ana?.length && !rg?.menu?.length) ana = ['bugun', 'urunler', ...ana.filter(k => !['bugun', 'urunler'].includes(k))];   // bayi rolündeki üyeye ana çubukta Ürünler (Bayi paneli)
   ana = ana.filter(k => { const b = BASLIKLAR.find(x => x.k === k); return b && gorunur(b); }).slice(0, ANA_EN_COK);
   return { gizli, ana, gorunur, ozel: !!(m.gizli?.length || m.ana?.length) };
 }

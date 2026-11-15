@@ -14,7 +14,7 @@ export const adNormal = s => String(s || '').trim().toLocaleLowerCase('tr').repl
 // Supabase hata mesajları → Türkçe
 export function hataMetni(err) {
   const m = String(err?.message || err || '');
-  if (/Invalid login/i.test(m)) return 'Kullanıcı adı, e-posta ya da şifre hatalı.';
+  if (/Invalid login/i.test(m)) return 'Kullanıcı adı ya da şifre hatalı. Unuttuysan yöneticinden şifreni sıfırlamasını iste.';
   if (/not confirmed/i.test(m)) return 'E-posta adresin henüz onaylanmamış. Gelen kutundaki onay bağlantısına dokun (gereksiz klasörüne de bak).';
   if (/already registered|already been registered/i.test(m)) return 'Bu e-postayla zaten hesap var. "Şifremi unuttum" ile yeni şifre belirleyebilirsin.';
   if (/security purposes|rate limit|too many/i.test(m)) return 'Çok sık denendi. Bir dakika bekleyip tekrar dene.';
@@ -68,10 +68,11 @@ export function loginView(el, done) {
     el.innerHTML = `<div class="login"><div class="login-card"><div class="brand"><span class="bulb big" aria-hidden="true"></span><h1>Saha Takip</h1></div>
       ${cikis ? `<p class="davet">${esc(cikis)}</p>` : ''}${mesaj}
       ${mod === 'ilk' ? `<p class="davet"><b>Saha Takip'e davet edildin.</b> İlk girişte kendine bir şifre belirle. Sonraki girişlerde bu e-posta ve şifreyi kullanırsın.</p>` : ''}
-      <div class="seg giris-mod" role="tablist" aria-label="Giriş yöntemi">${[['sifre', 'Şifreyle'], ['baglanti', 'Bağlantıyla'], ['ilk', 'İlk giriş']].map(([k, t]) => `<button type="button" role="tab" data-mod="${k}" class="${mod === k ? 'on' : ''}" aria-selected="${mod === k}">${t}</button>`).join('')}</div>
+      <div class="seg giris-mod" role="tablist" aria-label="Giriş yöntemi">${[['sifre', 'Giriş'], ['baglanti', 'E-posta bağlantısı'], ['ilk', 'E-postayla davet']].map(([k, t]) => `<button type="button" role="tab" data-mod="${k}" class="${mod === k ? 'on' : ''}" aria-selected="${mod === k}">${t}</button>`).join('')}</div>
       ${mod === 'sifre' ? `<form class="form" data-giris novalidate>
-          <div class="fld"><label for="l-e">E-posta ya da kullanıcı adı</label><input id="l-e" autocomplete="username" autocapitalize="none" spellcheck="false" required value="${esc(son)}" ${son ? '' : 'autofocus'}></div>
+          <div class="fld"><label for="l-e">Kullanıcı adı</label><input id="l-e" autocomplete="username" autocapitalize="none" spellcheck="false" required value="${esc(son)}" ${son ? '' : 'autofocus'}></div>
           ${sifreKutusu('l-p', 'Şifre', 'current-password', son ? 'autofocus' : '')}
+          <small class="hint giris-ipucu">Kullanıcı adını yöneticin verir. E-postayla açılmış hesaplar e-posta adresiyle de girebilir.</small>
           <label class="chk"><input type="checkbox" data-hatirla ${son || !ls.al(SON + '-yok') ? 'checked' : ''}> <span>Adımı bu cihazda hatırla</span></label>
           <div class="btnrow"><button class="btn primary" type="submit">Giriş yap</button><button class="btn ghost" type="button" data-unuttum>Şifremi unuttum</button></div></form>`
       : mod === 'baglanti' ? `<form class="form" data-otp novalidate>
@@ -83,14 +84,14 @@ export function loginView(el, done) {
           ${sifreKutusu('l-ip', 'Yeni şifre (en az 8 karakter, harf ve rakam)', 'new-password')}
           ${sifreKutusu('l-ip2', 'Yeni şifre (tekrar)', 'new-password')}
           <div class="btnrow"><button class="btn primary" type="submit">Hesabımı oluştur</button></div>
-          <p class="hint">Hesap oluşturunca e-postana onay bağlantısı gelebilir; ona dokunup buraya dönersin. Hesabın zaten varsa "Şifreyle" sekmesinden gir ya da "Şifremi unuttum"u kullan.</p></form>`}
+          <p class="hint">Hesap oluşturunca e-postana onay bağlantısı gelebilir; ona dokunup buraya dönersin. Hesabın zaten varsa "Giriş" sekmesinden gir ya da "Şifremi unuttum"u kullan.</p></form>`}
       <details><summary>Bağlantı ayarları</summary><p class="muted">${esc((cfg.url || '').replace('https://', ''))}</p>${connForm(cfg)}</details></div></div>`;
     bindConn(el); gozBagla(el);
     el.querySelectorAll('[data-mod]').forEach(b => b.onclick = () => { mod = b.dataset.mod; cikis = ''; ciz(); });
     const kilit = async (form, is) => { const btn = form.querySelector('[type=submit]'); btn.disabled = true; try { await is(); } catch (e) { toast(hataMetni(e), 'err'); } finally { if (btn.isConnected) btn.disabled = false; } };
     el.querySelector('[data-giris]')?.addEventListener('submit', e => { e.preventDefault(); const f = e.target; kilit(f, async () => {
       const kim = f.querySelector('#l-e').value.trim(), p = f.querySelector('#l-p').value;
-      if (!kim || !p) throw new Error('E-posta ya da kullanıcı adını ve şifreni yaz.');
+      if (!kim || !p) throw new Error('Kullanıcı adını ve şifreni yaz.');
       const eposta = await epostaBul(kim);
       await app.db.signIn(eposta, p);
       const hat = f.querySelector('[data-hatirla]').checked; ls.yaz(SON, hat ? kim : ''); ls.yaz(SON + '-yok', hat ? '' : '1');
@@ -126,6 +127,7 @@ export async function sifremiUnuttum(kim, sonra) {
   if (!kim) return toast('Önce e-posta ya da kullanıcı adını yaz, sonra "Şifremi unuttum"a dokun.', 'err');
   try {
     const eposta = await epostaBul(kim);
+    if (/@kullanici\.saha-takip\.invalid$/.test(eposta)) return toast('Bu hesabın e-postası yok; şifreni yöneticin sıfırlar (Şirket profili → Kullanıcılar → Şifreyi sıfırla).', 'err');
     const { error } = await app.db.c.auth.resetPasswordForEmail(eposta, { redirectTo: donusAdresi() });
     if (error) throw error;
     sonra?.(`<p class="davet ok">Şifre yenileme bağlantısı <b>${esc(maskele(eposta))}</b> adresine gönderildi. Bağlantıya dokununca uygulama açılır ve yeni şifreni belirlersin.</p>`);
@@ -133,20 +135,21 @@ export async function sifremiUnuttum(kim, sonra) {
 }
 
 // ---------- Şifre yenileme bağlantısından dönüş: yeni şifre belirle ----------
-export function yeniSifreEkrani(el, done) {
+export function yeniSifreEkrani(el, done, { zorunlu = false } = {}) {
   el.innerHTML = `<div class="login"><div class="login-card"><div class="brand"><span class="bulb big" aria-hidden="true"></span><h1>Yeni şifre</h1></div>
-    <p class="muted">${esc(app.db.user()?.email || '')}</p>
+    ${zorunlu ? `<p class="davet"><b>Hoş geldin${app.db.user()?.user_metadata?.kullanici_adi ? ', ' + esc(app.db.user().user_metadata.kullanici_adi) : ''}.</b> Yöneticinin verdiği geçici şifreyle girdin. Devam etmek için kendine yeni bir şifre belirle; sonraki girişlerde bunu kullanacaksın.</p>` : `<p class="muted">${esc(app.db.user()?.email || '')}</p>`}
     <form class="form" data-yeni novalidate>${sifreKutusu('y-p', 'Yeni şifre (en az 8 karakter, harf ve rakam)', 'new-password', 'autofocus')}${sifreKutusu('y-p2', 'Yeni şifre (tekrar)', 'new-password')}
-    <div class="btnrow"><button class="btn primary" type="submit">Şifreyi kaydet</button><button class="btn ghost" type="button" data-sonra>Şimdi değil</button></div></form></div></div>`;
+    <div class="btnrow"><button class="btn primary" type="submit">Şifreyi kaydet</button>${zorunlu ? '<button class="btn ghost" type="button" data-cik>Çıkış yap</button>' : '<button class="btn ghost" type="button" data-sonra>Şimdi değil</button>'}</div></form></div></div>`;
   gozBagla(el);
-  el.querySelector('[data-sonra]').onclick = () => done();
+  el.querySelector('[data-sonra]')?.addEventListener('click', () => done());
+  el.querySelector('[data-cik]')?.addEventListener('click', async () => { try { await app.db.c.auth.signOut(); } catch {} location.reload(); });
   el.querySelector('[data-yeni]').onsubmit = async e => {
     e.preventDefault();
     const p = el.querySelector('#y-p').value, p2 = el.querySelector('#y-p2').value;
     if (!sifreUygun(p)) return toast('Şifre en az 8 karakter olmalı, harf ve rakam içermeli.', 'err');
     if (p !== p2) return toast('İki şifre aynı değil.', 'err');
-    const { error } = await app.db.c.auth.updateUser({ password: p });
-    if (error) return toast(hataMetni(error), 'err');
+    const { error } = await app.db.c.auth.updateUser({ password: p, ...(zorunlu ? { data: { sifre_degistir: false } } : {}) });
+    if (error) return toast(/different from the old/i.test(error.message) ? 'Yeni şifre geçici şifreyle aynı olamaz.' : hataMetni(error), 'err');
     toast('Yeni şifren kaydedildi.'); done();
   };
 }

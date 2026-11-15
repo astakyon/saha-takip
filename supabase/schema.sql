@@ -1675,5 +1675,26 @@ create policy "sil" on public.bayi_talepleri for delete to authenticated using (
 revoke all on public.bayi_talepleri from anon;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 36 $f$;
 
+-- ===================== Sürüm 37: kullanıcı adı ve şifreyle hesap =====================
+-- "kullanici" Edge Function'ı şirket yetkilisinin isteğiyle ekip üyesine hesap açar ve şifresini sıfırlar.
+-- Bunun için hesabın kimliğini e-postasından bulur; bu işlev yalnızca sunucu tarafında (service_role) çağrılabilir,
+-- uygulamadan çağrılamaz.
+create or replace function public.kullanici_kimligi(p_eposta text) returns uuid language sql stable security definer set search_path = public, auth as $f$
+  select id from auth.users where lower(email) = lower(trim(p_eposta)) limit 1
+$f$;
+revoke all on function public.kullanici_kimligi(text) from public, anon, authenticated;
+grant execute on function public.kullanici_kimligi(text) to service_role;
+-- Ekip listesinde "henüz giriş yapmadı" ile "kullanıcı adı yok" ayrımı için: şirket yetkilisi, üyelerinin hesabı var mı görür
+create or replace function public.uye_hesaplari(p_sahip uuid) returns table (eposta text, hesap_var boolean, son_giris timestamptz, kad text) language sql stable security definer set search_path = public, auth as $f$
+  select lower(e.eposta), u.id is not null, u.last_sign_in_at, k.ad
+  from public.ekip_uyeleri e
+  left join auth.users u on lower(u.email) = lower(e.eposta)
+  left join public.kullanici_adlari k on lower(k.eposta) = lower(e.eposta)
+  where e.owner = p_sahip and public.sirket_yetkilisi(p_sahip)
+$f$;
+revoke all on function public.uye_hesaplari(uuid) from public, anon;
+grant execute on function public.uye_hesaplari(uuid) to authenticated;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 37 $f$;
+
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 91): kullanıcı adı ve şifreyle giriş, roller, sekmeli şirket profili
+
+**Supabase'de: (1) güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 37), (2) Edge Functions → "Deploy a new function" → "Via Editor" → adı `kullanici` → `supabase/functions/kullanici/index.ts` içeriğini yapıştır → Deploy.** (service_role anahtarı uygulamaya girmez; fonksiyon onu Supabase'in içinde kendiliğinden kullanır.)
+
+- **Şirket profili sekmeli:** Genel (şirket adı, yöneticiler, ekip şeması, son değişiklikler) · **Kullanıcılar** · **Roller** · **Ekipler** · Otomasyonlar · Döviz kuru.
+- **Kullanıcılar:** "Kişi ekle" → ad soyad (kullanıcı adı kendiliğinden önerilir: Ayşe Şahin → ayse.sahin), rol, ekip, **geçici şifre** (kendiliğinden üretilir), e-posta isteğe bağlı. **Hesabı aç** deyince giriş bilgileri çıkar; **WhatsApp ile gönder** mesajında uygulama bağlantısı (telefonu şirketin veritabanına bağlar ve kullanıcı adını doldurur), kullanıcı adı ve geçici şifre olur. Kişi ilk girişte kendi şifresini belirlemeden devam edemez.
+- Liste satırında ad, kullanıcı adı, rol ve durum: **Aktif**, **İlk girişi bekliyor**, **Hesabı yok**, **Pasif**; son giriş. Kişiyi açınca **Şifreyi sıfırla** (yeni geçici şifre) ya da **Kullanıcı adıyla hesap aç**. E-postası olmayan hesaplarda "Şifremi unuttum" yerine yönetici sıfırlar.
+- **Giriş ekranı** kullanıcı adı öncelikli; e-postalı eski hesaplar e-postayla da girer.
+- **Roller:** istediğin kadar rol ekle (ad, açıklama, ekranlar Kapalı/Görür/Düzenler, kayıt kapsamı, gizli alanlar). Yeni **Görünüm** bölümü: **açılış ekranı**, **alt menü** (en fazla 5 başlık) ve **Bugün kartları**. Rolü kaydedince o roldeki herkes birlikte güncellenir; kişi kendi menüsünü sonradan değiştirebilir. **Bu rol gibi gör** ile önizlenir.
+
 ## Güncelleme notu (sürüm 90): şirket barı
 
 - **Telefonda** şirket (profil) kartı alt menüden çıktı; sayfanın **en üstünde ince bir bar** olarak duruyor (şirket adı, sektör ve iller; dokununca Şirket profili; birden çok şirket varsa yanında Şirket değiştir). Sayfa kayınca kaybolur, sekmeler üstte kalır; haritada gizlenir. Alt menü düğmeleri tam genişliği kullanıyor.

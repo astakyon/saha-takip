@@ -134,6 +134,8 @@ const saltOku = k => document.body.classList.toggle('salt-oku', !!app.db?.bakila
 async function route() {
   // Dış kullanıcı (bayi) açılışta kendi taleplerini görür
   if (!lastView && app.yetki?.dis && !sahipMi() && /^(#\/?)?(bugun)?$/.test(location.hash)) { history.replaceState(null, '', '#/talepler'); }
+  // Rolün açılış ekranı (ilk açılışta, adres boşsa ya da Bugün ise)
+  else if (!lastView && !sahipMi() && app.yetki?.yetkiler?._gorunum?.acilis && /^(#\/?)?(bugun)?$/.test(location.hash) && rotaIzinli(app.yetki.yetkiler._gorunum.acilis)) history.replaceState(null, '', '#/' + app.yetki.yetkiler._gorunum.acilis);
   const parts = (location.hash.replace(/^#\/?/, '') || 'bugun').split('/');
   const [k, id] = parts;
   const dt = { proje: 'projeler', firma: 'firmalar', kisi: 'kisiler' }[k];
@@ -233,7 +235,7 @@ function davetAl() {
   const d = q.get('davet'); if (!d) return;
   try {
     const j = JSON.parse(decodeURIComponent(escape(atob(d.replace(/-/g, '+').replace(/_/g, '/')))));
-    if (/^https:\/\//.test(j.u) && j.k) { setConfig({ mode: 'supabase', url: j.u, key: j.k }); if (j.e) sessionStorage.setItem('saha-davet', j.e); if (j.y) sessionStorage.setItem('saha-yeni', '1'); }
+    if (/^https:\/\//.test(j.u) && j.k) { setConfig({ mode: 'supabase', url: j.u, key: j.k }); if (j.e) sessionStorage.setItem('saha-davet', j.e); if (j.y) sessionStorage.setItem('saha-yeni', '1'); if (j.kad) localStorage.setItem('saha-son-giris', j.kad); }
   } catch {}
   history.replaceState(null, '', location.pathname + location.hash);
 }
@@ -284,6 +286,8 @@ async function boot() {
     if (authHata) { try { sessionStorage.setItem('saha-cikis-mesaj', /expired|invalid/i.test(authHata) ? 'E-postadaki bağlantının süresi dolmuş ya da daha önce kullanılmış. Yeni bağlantı iste.' : authHata); } catch {} }
     if (app.db.mode === 'supabase' && !ok) { document.getElementById('nav').innerHTML = ''; return (await import('./giris.js')).loginView(view, boot); }
     if (app.db.mode === 'supabase' && (kurtarma || app.db.kurtarma)) { kurtarma = false; app.db.kurtarma = false; document.getElementById('nav').innerHTML = ''; return (await import('./giris.js')).yeniSifreEkrani(view, boot); }
+    // Yöneticinin verdiği geçici şifreyle ilk giriş: önce kendi şifreni belirle
+    if (app.db.mode === 'supabase' && app.db.user?.()?.user_metadata?.sifre_degistir) { document.getElementById('nav').innerHTML = ''; return (await import('./giris.js')).yeniSifreEkrani(view, boot, { zorunlu: true }); }
     if (app.db.mode === 'supabase') {
       const g = await import('./guvenlik.js');
       if (await g.otoCikisGerekli()) return;

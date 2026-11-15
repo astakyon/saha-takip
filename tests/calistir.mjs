@@ -328,17 +328,21 @@ const DB = () => {
   await p.goto(U + '#/sirket/ekip'); await w(1500);
   const sekmeEkip = await p.evaluate(() => ({ h: location.hash, on: document.querySelector('[data-fsk].on')?.dataset.fsk, sek: [...document.querySelectorAll('[data-fsk]')].map(b => b.dataset.fsk).join(',') }));
   await p.screenshot({ path: 'tests/cikti/sirket-ekip.png', fullPage: true });
-  kontrol('Ayarlar sadeleşti (Ekip, Mesaj, Firma profili, Döviz kuru, Araç çıktı; Bildirimler ayrı); Ekip ve yetkiler şirket profilinde', ayarEkipYok && sekmeEkip.h === '#/sirket/ekip' && sekmeEkip.on === 'ekip' && sekmeEkip.sek === 'genel,ekip,otomasyon,kur', JSON.stringify({ ayarEkipYok, sekmeEkip }));
+  kontrol('Ayarlar sadeleşti (Ekip, Mesaj, Firma profili, Döviz kuru, Araç çıktı; Bildirimler ayrı); Ekip ve yetkiler şirket profilinde', ayarEkipYok && sekmeEkip.h === '#/sirket/ekip' && sekmeEkip.on === 'ekip' && sekmeEkip.sek === 'genel,ekip,roller,ekipler,otomasyon,kur', JSON.stringify({ ayarEkipYok, sekmeEkip }));
+  await p.goto(U + '#/sirket/genel'); await w(1200);
   const kart = await p.isVisible('.sirket-kart');
   await p.fill('#sk-ad', 'Yeni Şirket AŞ'); await p.click('[data-sk-ad]'); await w(300);
   const ad = await p.evaluate(() => localStorage.getItem('__SIRKET_AD'));
+  await p.goto(U + '#/sirket/ekip'); await w(1200);
   await p.click('[data-uye="ali@x.com"] summary'); await p.check('[data-uye="ali@x.com"] [data-yonetici]'); await p.click('[data-uye="ali@x.com"] [data-kaydet]'); await w(600);
   const yon = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).ekip_uyeleri[0].yonetici);
   const etiket = await p.isVisible('[data-uye="ali@x.com"] .yon-r');
   kontrol('Şirket kartı görünüyor, şirket adı kaydediliyor, kullanıcı şirket yöneticisi yapılabiliyor', kart && ad === 'Yeni Şirket AŞ' && yon === true && etiket, JSON.stringify({ kart, ad, yon, etiket }));
   // K2: hazır roller eklenir, kullanıcıya rol verilir, rol değişince kullanıcı güncellenir
+  await p.goto(U + '#/sirket/roller'); await w(1200);
   await p.click('[data-hazirrol]'); await w(1200);
   const roller = await p.evaluate(() => (JSON.parse(localStorage.getItem('__DB')).roller || []).map(r => r.ad));
+  await p.goto(U + '#/sirket/ekip'); await w(1200);
   await p.click('[data-uye="ali@x.com"] summary').catch(() => {}); await w(200);
   const satisId = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).roller.find(r => r.ad === 'Satış').id);
   await p.uncheck('[data-uye="ali@x.com"] [data-yonetici]');
@@ -346,6 +350,7 @@ const DB = () => {
   const agacGizli = await p.isHidden('[data-uye="ali@x.com"] [data-agac]');
   await p.click('[data-uye="ali@x.com"] [data-kaydet]'); await w(800);
   const ali1 = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).ekip_uyeleri[0]);
+  await p.goto(U + '#/sirket/roller'); await w(1200);
   await p.click(`.rol-k[data-rol="${satisId}"] summary`); await w(200);
   await p.evaluate(id => document.querySelector(`.rol-k[data-rol="${id}"] [data-ek="harita"] [data-v=""]`).click(), satisId);
   await p.click(`.rol-k[data-rol="${satisId}"] [data-rolkaydet]`); await w(1200);
@@ -353,21 +358,66 @@ const DB = () => {
   const ali2 = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).ekip_uyeleri[0].yetkiler);
   kontrol('Hazır roller ekleniyor, kullanıcı rol alıyor, rol değişince kullanıcı da değişiyor', roller.length === 5 && ali1.rol_id === satisId && ali1.yetkiler._rol === 'Satış' && ali1.yetkiler.projeler === 'yaz' && agacGizli && ali1.yetkiler._ekran?.harita === 'oku' && !ali2._ekran?.harita, JSON.stringify({ roller, agacGizli, ali1: { rol: ali1.rol_id === satisId, y: ali1.yetkiler._rol }, h2: ali2._ekran?.harita }));
   // K3: ekip ekle, kullanıcıyı ekibe koy, rol kapsamı "Sadece kendinin", kayıt devri
+  await p.goto(U + '#/sirket/ekipler'); await w(1200);
   await p.click('.ekipler-bol details.card-ic summary'); await p.fill('[data-yeniekip] [data-ekad]', 'Satış Adana'); await p.click('[data-ekekle]'); await w(1200);
   const ekip = await p.evaluate(() => (JSON.parse(localStorage.getItem('__DB')).ekipler || [])[0]);
+  await p.goto(U + '#/sirket/ekip'); await w(1200);
   await p.click('[data-uye="ali@x.com"] summary').catch(() => {}); await w(200);
   await p.selectOption('[data-uye="ali@x.com"] [data-uyeekip]', ekip.id); await p.click('[data-uye="ali@x.com"] [data-kaydet]'); await w(700);
   const sid = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).roller.find(r => r.ad === 'Satış').id);
+  await p.goto(U + '#/sirket/roller'); await w(1200);
   await p.click(`.rol-k[data-rol="${sid}"] summary`).catch(() => {}); await w(200);
   await p.click(`.rol-k[data-rol="${sid}"] [data-kapsam] [data-v="kendi"]`); await p.click(`.rol-k[data-rol="${sid}"] [data-rolkaydet]`); await w(1200);
   const k3 = await p.evaluate(() => { const d = JSON.parse(localStorage.getItem('__DB')); return { ekip: d.ekip_uyeleri[0].ekip_id, kapsam: d.roller.find(r => r.ad === 'Satış').yetkiler._kapsam, aliKapsam: d.ekip_uyeleri[0].yetkiler._kapsam }; });
   await p.evaluate(() => { window.__DB.firmalar[0].sorumlu = 'ali@x.com'; localStorage.setItem('__DB', JSON.stringify(window.__DB)); });
+  await p.goto(U + '#/sirket/ekip'); await w(1200);
   await p.click('[data-uye="ali@x.com"] summary').catch(() => {}); await w(200);
   if (!(await p.isVisible('[data-uye="ali@x.com"] [data-devret]'))) await p.click('[data-uye="ali@x.com"] summary');
   await p.click('[data-uye="ali@x.com"] [data-devret]'); await p.click('[data-uye="ali@x.com"] [data-devyap]'); await w(800);
   const devir = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).firmalar[0].sorumlu);
   kontrol('Ekip ekleniyor, kullanıcı ekibe konuyor, rol kapsamı kaydediliyor ve kişiye yayılıyor, kayıtlar devrediliyor', k3.ekip === ekip?.id && k3.kapsam === 'kendi' && k3.aliKapsam === 'kendi' && devir === 'sahip@x.com', JSON.stringify({ k3, devir }));
+  // Kullanıcı adı ve geçici şifreyle hesap açma
+  await p.goto(U + '#/sirket/ekip'); await w(1200);
+  await p.click('[data-kisiekle]'); await p.fill('#ku-a', 'Ayşe Şahin'); await w(100);
+  const kadOneri = await p.inputValue('#ku-k');
+  await p.selectOption('[data-yeni] [data-uyerol]', sid); await p.click('[data-yeni] [type=submit]'); await w(1500);
+  const ha = await p.evaluate(() => ({ H: JSON.parse(localStorage.getItem('__HESAPLAR') || '[]'), uye: JSON.parse(localStorage.getItem('__DB')).ekip_uyeleri.find(u => /ayse/.test(u.eposta)), bilgi: document.querySelector('.giris-bilgi')?.textContent || '' }));
+  await p.locator('[data-ekleform]').screenshot({ path: 'tests/cikti/hesap-ac.png' }).catch(() => {});
+  await p.click('[data-tamam]'); await w(1200);
+  const satir = await p.evaluate(() => { const d = document.querySelector('[data-uye$="saha-takip.invalid"]'); return d ? { kad: d.querySelector('.uye-kad')?.textContent, durum: d.querySelector('.durum-r')?.textContent, rol: d.querySelector('.uye-rol')?.textContent } : null; });
+  // Aynı kullanıcı adı ikinci kez alınamaz
+  await p.click('[data-kisiekle]'); await p.fill('#ku-a', 'Ayşe Şahin'); await p.selectOption('[data-yeni] [data-uyerol]', sid); await p.click('[data-yeni] [type=submit]'); await w(1000);
+  const ikinci = await p.evaluate(() => JSON.parse(localStorage.getItem('__HESAPLAR') || '[]').length);
+  await p.click('[data-eklevaz]').catch(() => {});
+  // Şifre sıfırlama
+  await p.click('[data-uye$="saha-takip.invalid"] summary'); await p.click('[data-uye$="saha-takip.invalid"] [data-sifirla]'); await w(800);
+  const sifirla = await p.evaluate(() => ({ H: JSON.parse(localStorage.getItem('__HESAPLAR') || '[]').at(-1), kutu: !!document.querySelector('[data-uye$="saha-takip.invalid"] .giris-bilgi') }));
+  await p.screenshot({ path: 'tests/cikti/kullanicilar.png', fullPage: true });
+  kontrol('Kullanıcılar: ad yazınca kullanıcı adı önerisi, kullanıcı adı ve geçici şifreyle hesap (e-postasız), rol ve giriş bilgileri; satırda kullanıcı adı, rol, "ilk girişi bekliyor"; aynı ad ikinci kez alınamıyor; şifre sıfırlama',
+    kadOneri === 'ayse.sahin' && ha.H[0]?.kad === 'ayse.sahin' && /^[a-z]{2}[0-9a-z]{2}-[a-z0-9]{6}$/.test(ha.H[0]?.sifre || '') && ha.uye?.eposta === 'ayse.sahin@kullanici.saha-takip.invalid' && ha.uye?.rol_id === sid && /ayse\.sahin/.test(ha.bilgi) && ha.bilgi.includes(ha.H[0].sifre)
+    && satir?.kad === 'ayse.sahin' && /İlk girişi bekliyor/.test(satir?.durum || '') && /Satış/.test(satir?.rol || '') && ikinci === 1 && sifirla.H?.islem === 'sifre' && sifirla.kutu, JSON.stringify({ kadOneri, ha: { ...ha, H: ha.H.map(h => ({ ...h, sifre: h.sifre?.length })) }, satir, ikinci, sifirla: !!sifirla.kutu }));
+  // Rol görünümü: açılış ekranı, alt menü, Bugün kartları
+  await p.goto(U + '#/sirket/roller'); await w(1200);
+  await p.click(`.rol-k[data-rol="${sid}"] summary`).catch(() => {}); await w(200);
+  await p.selectOption(`.rol-k[data-rol="${sid}"] [data-gacilis]`, 'projeler');
+  for (const k of ['bugun', 'projeler', 'firmalar']) await p.check(`.rol-k[data-rol="${sid}"] [data-gmenu="${k}"]`);
+  await p.uncheck(`.rol-k[data-rol="${sid}"] [data-gkart="radar"]`);
+  await p.click(`.rol-k[data-rol="${sid}"] [data-rolkaydet]`); await w(1200);
+  const rg = await p.evaluate(id => { const d = JSON.parse(localStorage.getItem('__DB')); return { rol: d.roller.find(r => r.id === id).yetkiler._gorunum, ayse: d.ekip_uyeleri.find(u => /ayse/.test(u.eposta)).yetkiler._gorunum }; }, sid);
+  kontrol('Rol görünümü kaydediliyor ve roldeki kişilere yayılıyor (açılış ekranı, alt menü, gizli Bugün kartı)', rg.rol?.acilis === 'projeler' && rg.rol?.menu?.join() === 'bugun,projeler,firmalar' && rg.rol?.kartGizli?.join() === 'radar' && rg.ayse?.acilis === 'projeler', JSON.stringify(rg));
   kontrol('Şirket ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+// Rol görünümü kişide: açılış ekranı ve alt menü
+{
+  const DBR = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { _rol: "Satış", projeler: "yaz", firmalar: "yaz", kisiler: "yaz", ziyaretler: "yaz", gorevler: "yaz", _ekran: { projeler: "yaz", firmalar: "yaz", kisiler: "yaz", ziyaretler: "yaz", gorevler: "yaz", harita: "oku" }, _gorunum: { acilis: "projeler", menu: ["bugun", "projeler", "firmalar"], kartGizli: ["radar"] } } }));');
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DBR });
+  await p.setViewportSize({ width: 412, height: 860 }); await p.goto(U); await w(1800);
+  const r1 = await p.evaluate(() => ({ hash: location.hash, menu: [...document.querySelectorAll('#nav .nav-main > a')].map(a => a.getAttribute('href')) }));
+  await p.goto(U + '#/bugun'); await w(1200);
+  const r2 = await p.evaluate(() => ({ radar: [...document.querySelectorAll('.dash > section')].filter(s => !s.hidden && /Fırsat radarı/.test(s.querySelector('h2')?.textContent || '')).length }));
+  kontrol('Kişi rolünün görünümüyle açılıyor: açılış ekranı Projeler, alt menü rolünkü, rolde gizli Bugün kartı gizli', r1.hash === '#/projeler' && r1.menu.slice(0, 3).join() === '#/bugun,#/projeler,#/firmalar' && r2.radar === 0, JSON.stringify({ r1, r2 }));
+  kontrol('Rol görünümünde hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
 

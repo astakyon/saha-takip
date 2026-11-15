@@ -5,14 +5,14 @@ import { esc, toast, confirmBox, num } from '../ui.js';
 import { ayarYaz } from '../ayar.js';
 import { sahipMi } from '../yetki.js';
 
-// Sekmeler: Genel · Ekip ve yetkiler · Mesaj ve teklif şablonları · Döviz kuru. Seçili sekme adreste: #/sirket/<sekme>
+// Sekmeler: Genel · Kullanıcılar · Roller · Ekipler · Otomasyonlar · Döviz kuru. Seçili sekme adreste: #/sirket/<sekme>
 export async function sirketView(el) {
   const { profil, profilVar, SEKTOR, ESKI } = await import('../profil.js');
   const p = profil(), yetkili = sahipMi();
   const bugun = new Date(), ayBasi = new Date(bugun.getFullYear(), bugun.getMonth(), 1).toISOString().slice(0, 10);
   const acik = (S.projeler || []).filter(x => !['Sipariş', 'Kayıp', 'İptal'].includes(x.durum)).length;
   const kart = (ad, deger, alt = '') => `<div class="sk-sayi"><b>${deger}</b><span>${ad}</span>${alt ? `<small>${alt}</small>` : ''}</div>`;
-  const SEKMELER = [['genel', 'Genel', true], ['ekip', 'Ekip ve yetkiler', yetkili], ['otomasyon', 'Otomasyonlar', yetkili], ['kur', 'Döviz kuru', true]].filter(x => x[2]);
+  const SEKMELER = [['genel', 'Genel', true], ['ekip', 'Kullanıcılar', yetkili], ['roller', 'Roller', yetkili], ['ekipler', 'Ekipler', yetkili], ['otomasyon', 'Otomasyonlar', yetkili], ['kur', 'Döviz kuru', true]].filter(x => x[2]);
   el.innerHTML = `<div class="fs-sayfa sk-sayfa"><header class="vh sk-bas"><div class="sk-kimlik"><span class="sk-logo" aria-hidden="true">${esc((p.firma || 'Ş').slice(0, 1).toLocaleUpperCase('tr'))}</span>
       <div><p class="muted">Şirket profili</p><h1>${esc(p.firma || 'Şirketin')}</h1><p class="sum">${esc([SEKTOR[p.sektor], p.marka ? 'Temsil: ' + p.marka : '', (p.iller || []).join(', ')].filter(Boolean).join(' · '))}</p></div></div>
       <div class="vh-act">${(app.db?.sirketler || []).length > 1 ? `<button class="btn ghost" data-sirketsec>Şirket değiştir (${app.db.sirketler.length})</button>` : ''}${yetkili ? '<button class="btn primary" data-pduz>Profili düzenle</button>' : ''}</div></header>
@@ -27,13 +27,14 @@ export async function sirketView(el) {
       <section class="card sk-ozet"><h2>Kayıtlar</h2><div class="sk-sayilar">
         ${kart('Firma', num((S.firmalar || []).length))}${kart('Kişi', num((S.kisiler || []).length))}${kart('Açık proje', num(acik), 'toplam ' + num((S.projeler || []).length))}
         ${kart('Bu ay ziyaret', num((S.ziyaretler || []).filter(z => (z.tarih || '') >= ayBasi).length))}${kart('Teklif', num((S.teklifler || []).length))}${kart('Sipariş', num((S.siparisler || []).length))}</div></section>
+      ${yetkili ? '<section class="card sk-sirket" data-skart></section>' : ''}
       <section class="card sk-ekip" data-ekip><h2>Ekibim</h2><p class="hint">Yükleniyor…</p></section>
+      ${yetkili ? '<section class="card sk-sondeg" data-sondeg></section>' : ''}
     </div></div>
 
-    ${yetkili ? `<div class="fs-ic" data-fs="ekip" role="tabpanel" hidden>
-      <section class="card"><h2>Kullanıcılar ve yetkiler</h2><div data-kullanici></div></section>
-      <section class="card" data-sondeg></section>
-    </div>` : ''}
+    ${yetkili ? `<div class="fs-ic" data-fs="ekip" role="tabpanel" hidden><section class="card"><h2>Kullanıcılar</h2><div data-kullanici></div></section></div>
+    <div class="fs-ic" data-fs="roller" role="tabpanel" hidden><section class="card"><h2>Roller</h2><p class="hint">Rol; bir grup kişinin hangi ekranları göreceğini, hangi kayıtlara erişeceğini ve uygulamayı açınca ne göreceğini belirler. İstediğin kadar rol ekleyebilirsin (Satış Adana, Muhasebe, Bayi…). Rolü değiştirince o roldeki herkes birlikte güncellenir.</p><div data-roller></div></section></div>
+    <div class="fs-ic" data-fs="ekipler" role="tabpanel" hidden><section class="card"><h2>Ekipler</h2><div data-ekipler></div></section></div>` : ''}
 
     ${yetkili ? `<div class="fs-ic" data-fs="otomasyon" role="tabpanel" hidden><section class="card sk-kur"><h2>Otomasyonlar</h2><div data-otomasyon></div></section></div>` : ''}
     <div class="fs-ic" data-fs="kur" role="tabpanel" hidden><section class="card sk-kur"><h2>Döviz kuru</h2><p class="hint">Tutarların TL ve USD karşılıkları bu kurla hesaplanır; ekipteki herkes aynı kuru görür.</p><div data-kur></div></section></div>
@@ -47,8 +48,10 @@ export async function sirketView(el) {
   });
   const { sekmeKur } = await import('../sayfa.js');
   sekmeKur(el, { taban: 'sirket', ilk: 'genel', sekme: location.hash.replace(/^#\/?/, '').split('/')[1], KUR: {
-    genel: () => ekibim(el.querySelector('[data-ekip]'), p),
-    ekip: async () => { (await import('./kullanicilar.js')).kullaniciAyarlari(el.querySelector('[data-kullanici]')); (await import('../gecmis.js')).sonDegisiklikler(el.querySelector('[data-sondeg]')); },
+    genel: async () => { ekibim(el.querySelector('[data-ekip]'), p); if (yetkili && app.db.mode === 'supabase') { (await import('./kullanicilar.js')).kullaniciAyarlari(el.querySelector('[data-skart]'), 'sirket'); (await import('../gecmis.js')).sonDegisiklikler(el.querySelector('[data-sondeg]')); } else el.querySelector('[data-skart]')?.remove(); },
+    ekip: async () => (await import('./kullanicilar.js')).kullaniciAyarlari(el.querySelector('[data-kullanici]'), 'kullanicilar'),
+    roller: async () => (await import('./kullanicilar.js')).kullaniciAyarlari(el.querySelector('[data-roller]'), 'roller'),
+    ekipler: async () => (await import('./kullanicilar.js')).kullaniciAyarlari(el.querySelector('[data-ekipler]'), 'ekipler'),
     kur: async () => (await import('../kur.js')).kurAyarlari(el.querySelector('[data-kur]')),
     otomasyon: async () => (await import('../otomasyon.js')).otomasyonAyarlari(el.querySelector('[data-otomasyon]')),
   } });
@@ -66,7 +69,7 @@ async function ekibim(kok, p) {
     const roller = new Map(); for (const u of aktif) roller.set(rolu(u), (roller.get(rolu(u)) || 0) + 1);
     const { ekipSemasi } = await import('../orgsema.js');
     const satir = (ad, eposta, rol) => `<tr><td><b>${esc(ad)}</b></td><td>${esc(eposta || '')}</td><td>${esc(rol)}</td></tr>`;
-    kok.innerHTML = `<div class="sk-ekip-bas"><h2>Ekibim</h2><button type="button" class="btn sm ghost" data-git="ekip">Kullanıcı ekle, rol ve yetki ver</button></div>
+    kok.innerHTML = `<div class="sk-ekip-bas"><h2>Ekibim</h2><button type="button" class="btn sm ghost" data-git="ekip">Kullanıcıları yönet</button></div>
       <div class="org-ozet"><b>${aktif.length + (kurucu ? 1 : 0)} kişi</b>${kurucu ? '<span class="chip">Kurucu · 1</span>' : ''}${[...roller].map(([r, n]) => `<span class="chip">${esc(r)} · ${n}</span>`).join('')}${pasif.length ? `<span class="chip">Pasif · ${pasif.length}</span>` : ''}</div>
       ${ekipSemasi({ firma: b?.ad || p.firma, kurucu, yoneticiler: aktif.filter(u => u.yonetici), uyeler: aktif })}
       <div class="tablo-kap"><table class="tbl sk-tablo"><thead><tr><th>Kişi</th><th>E-posta</th><th>Rol</th></tr></thead><tbody>

@@ -18,3 +18,6 @@ export const SEKME_AD = { bugun: 'Bugün', harita: 'Harita', bolgeler: 'Sanayi b
   sirket: 'Şirket profili', urunler: 'Stok ve fiyat', bayi: 'Bayi paneli', katalog: 'Katalog', rakip: 'Rakip fiyatları', araclar: 'Hesap araçları', panel: 'Panel', rapor: 'Haftalık rapor', kontrol: 'Veri kontrolü', masraflar: 'Masraf ve km', dosyalar: 'Dosyalar', yonetim: 'Yönetim' };
 export const baslikOf = rota => BASLIKLAR.find(b => b.r.includes(rota)) || null;
 export const VARS_ANA = ['bugun', 'harita', 'projeler', 'firmalar', 'satis'];
+
+// Bugün ekranının kartları (rol görünümü ve kart düzeni için)
+export const BUGUN_KARTLAR = [['ozet', 'Bugün özeti'], ['etiket', 'Seni etiketlediler'], ['plan', 'Bugünün planı'], ['radar', 'Fırsat radarı'], ['eksik', 'Bugünün soruları'], ['uyari', 'Uyarılar'], ['gorev', 'Görevler'], ['yapilan', 'Bugün yapılanlar'], ['zaman', 'Zamanı gelen projeler'], ['gidilmeyen', 'Uzun süredir gidilmeyenler'], ['yarin', 'Yarın'], ['dogum', 'Doğum günleri'], ['rapor', 'Pazartesi özeti']];
