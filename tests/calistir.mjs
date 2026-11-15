@@ -408,6 +408,18 @@ const DB = () => {
   kontrol('Şirket ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Geçici şifreyle ilk giriş: yeni şifre belirlemeden devam edilemez
+{
+  const DBS = new Function('(' + DB.toString() + ')(); localStorage.setItem("__SIFRE_DEGISTIR", "1");');
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DBS });
+  await p.goto(U + '#/bugun'); await w(1800);
+  const s1 = await p.evaluate(() => ({ h1: document.querySelector('.login-card h1')?.textContent, metin: document.querySelector('.login-card .davet')?.textContent || '', vazgec: !!document.querySelector('[data-sonra]'), cik: !!document.querySelector('[data-cik]'), nav: document.getElementById('nav').innerHTML.length }));
+  await p.fill('#y-p', 'YeniSifre9'); await p.fill('#y-p2', 'YeniSifre9'); await p.click('[data-yeni] [type=submit]'); await w(600);
+  const s2 = await p.evaluate(() => (window.__auth || []).find(a => a[0] === 'sifre'));
+  kontrol('Geçici şifreyle ilk girişte yeni şifre ekranı zorunlu ("Şimdi değil" yok, çıkış var); yeni şifre kaydediliyor', s1.h1 === 'Yeni şifre' && /ayse\.sahin/.test(s1.metin) && !s1.vazgec && s1.cik && s1.nav === 0 && s2?.[1] === 'YeniSifre9', JSON.stringify({ s1, s2 }));
+  kontrol('İlk şifre ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Rol görünümü kişide: açılış ekranı ve alt menü
 {
   const DBR = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { _rol: "Satış", projeler: "yaz", firmalar: "yaz", kisiler: "yaz", ziyaretler: "yaz", gorevler: "yaz", _ekran: { projeler: "yaz", firmalar: "yaz", kisiler: "yaz", ziyaretler: "yaz", gorevler: "yaz", harita: "oku" }, _gorunum: { acilis: "projeler", menu: ["bugun", "projeler", "firmalar"], kartGizli: ["radar"] } } }));');

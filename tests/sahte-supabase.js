@@ -56,7 +56,7 @@
       if (this.op === 'delete') { DB[this.t] = T.filter(r => !this.f.every(f => f(r))); kaydet(); return { data: null, error: null }; }
     }
   }
-  const user = { id: localStorage.getItem('__YETKI') ? 'u2' : 'u1', email: localStorage.getItem('__YETKI') ? 'uye@x.com' : 'sahip@x.com', last_sign_in_at: new Date().toISOString() };
+  const user = { id: localStorage.getItem('__YETKI') ? 'u2' : 'u1', email: localStorage.getItem('__YETKI') ? 'uye@x.com' : 'sahip@x.com', last_sign_in_at: new Date().toISOString(), user_metadata: localStorage.getItem('__SIFRE_DEGISTIR') ? { sifre_degistir: true, kullanici_adi: 'ayse.sahin' } : {} };
   window.supabase = { createClient: () => ({
     auth: { getSession: async () => ({ data: { session: localStorage.getItem('__OTURUMYOK') ? null : { user } } }),
       signInWithPassword: async ({ email, password }) => { (window.__auth ||= []).push(['giris', email]); if (password !== 'dogru123') return { data: {}, error: { message: 'Invalid login credentials' } }; localStorage.removeItem('__OTURUMYOK'); return { data: { session: { user } }, error: null }; },
