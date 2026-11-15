@@ -546,6 +546,41 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 20) Teklif onay bağlantısı ----------
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB });
+  await p.setViewportSize({ width: 1280, height: 900 }); await p.goto(U + '#/teklifler'); await w(1500);
+  await p.evaluate(async () => { const { app } = await import('./js/state.js'); await app.db.save('teklifler', { id: 't7', teklif_no: 'T-7', firma_id: 'f2', proje_id: 'p1', kisi_id: 'k1', tarih: '2026-11-10', gecerlilik: '2099-01-01', durum: 'Taslak', para_birimi: 'USD', kdv: 20, iskonto: 0, kalemler: [{ ad: 'HBL 120W', adet: 10, birim_fiyat: 100 }], toplam: 1000 }); });
+  await p.evaluate(async () => (await import('./js/views/teklif.js')).teklifForm({ id: 't7' })); await w(600);
+  await p.evaluate(() => document.querySelector('.drawer.open [data-a="baglanti"]').click()); await w(900);
+  await p.evaluate(() => document.querySelector('.drawer.open [data-yeni]').click()); await w(1200);
+  const ob1 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const b = JSON.parse(localStorage.getItem('__DB')).teklif_baglantilari || []; const m = await import('./js/onaybaglanti.js');
+    return { n: b.length, anahtar: b[0]?.anahtar?.length, html: /HBL 120W/.test(b[0]?.icerik?.html || ''), genel: b[0]?.icerik?.genel, son: b[0]?.son_tarih, durum: S.teklifler.find(t => t.id === 't7').durum, satir: document.querySelectorAll('.drawer.open .ob-l li').length, adres: m.baglantiAdresi(b[0].anahtar), b: b[0] }; });
+  await p.click('.drawer.open .x[data-close]'); await w(800);
+  const rozet = await p.evaluate(() => document.querySelector('.card-btn[data-id="t7"] .ob-r')?.textContent);
+  // Müşteri sayfası: sunucu yanıtı testte taklit edilir (şemadaki işlevler Postgres'te ayrıca denendi)
+  const m = await tarayici.newPage(); const yanit = [];
+  await m.route(/x\.supabase\.co\/rest\/v1\/rpc\//, async r => { const ad = r.request().url().split('/rpc/')[1], g = JSON.parse(r.request().postData() || '{}');
+    if (g.p_anahtar !== ob1.b.anahtar) return r.fulfill({ json: { hata: 'gecersiz' } });
+    if (ad === 'teklif_goster') return r.fulfill({ json: { ...ob1.b.icerik, son_tarih: ob1.b.son_tarih, yanit: null } });
+    yanit.push(g); return r.fulfill({ json: { tamam: true, yanit: g.p_yanit } }); });
+  const adres = ob1.adres.replace(/^.*\/teklif\.html/, U.replace('index.html', 'teklif.html'));
+  m.on('pageerror', e => hatalar.push('müşteri: ' + e.message));
+  await m.goto(adres); await w(1200);
+  const mus1 = await m.evaluate(() => ({ no: document.getElementById('no').textContent, toplam: document.getElementById('toplam').textContent, belge: !document.getElementById('belgeKart').hidden, onay: !document.getElementById('bOnay').hidden }));
+  await m.click('#bOnay'); await m.fill('#ad', 'Ali Örnek'); await m.click('#gonder'); await w(700);
+  const mus2 = await m.evaluate(() => document.getElementById('mesaj').textContent);
+  await m.screenshot({ path: 'tests/cikti/teklif-musteri.png', fullPage: false });
+  await m.goto('about:blank'); await m.goto(adres.replace(/a=[0-9a-f]+/, 'a=' + 'f'.repeat(48))); await w(800);
+  const mus3 = await m.evaluate(() => document.getElementById('mesaj').textContent);
+  await m.close();
+  kontrol('Teklif onay bağlantısı: oluşturuluyor (48 karakter anahtar, PDF ile aynı içerik, teklif Gönderildi), listede rozet; müşteri sayfası teklifi gösteriyor, onay gidiyor, yanlış anahtarda uyarı',
+    ob1.n === 1 && ob1.anahtar === 48 && ob1.html && Math.round(ob1.genel) === 1200 && ob1.son === '2099-01-01' && ob1.durum === 'Gönderildi' && ob1.satir === 1 && /teklif\.html#a=[0-9a-f]{48}&p=x&k=k$/.test(ob1.adres) && /gönderildi/i.test(rozet || '')
+    && mus1.no === 'T-7' && /1\.200,00/.test(mus1.toplam) && mus1.belge && mus1.onay && yanit.length === 1 && yanit[0].p_yanit === 'Onay' && yanit[0].p_ad === 'Ali Örnek' && /onaylandı/i.test(mus2) && /geçersiz/i.test(mus3), JSON.stringify({ ...ob1, b: undefined, rozet, mus1, yanit, mus2, mus3 }));
+  kontrol('Onay bağlantısında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
 // ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
 {
   const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');

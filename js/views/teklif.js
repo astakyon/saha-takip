@@ -49,7 +49,7 @@ export function teklifForm(init = {}, after) {
   };
   t.kalemler = t.kalemler || [];
   const panel = openDrawer(`<header class="dh"><div><p class="muted">${t._new ? 'Yeni teklif' : 'Teklif'}</p><h2 id="drawer-title">${esc(t.teklif_no || 'Teklif')}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
-    ${t._new ? '' : `<div class="dh-actions"><button class="btn sm" data-a="pdf">PDF / yazdır</button><button class="btn sm" data-a="wa">WhatsApp</button><button class="btn sm" data-a="revize">Revize et</button><button class="btn sm ghost" data-a="kopya">Kopyasını oluştur</button><button class="btn sm ghost danger" data-a="sil">Sil</button></div>`}
+    ${t._new ? '' : `<div class="dh-actions"><button class="btn sm" data-a="pdf">PDF / yazdır</button><button class="btn sm" data-a="wa">WhatsApp</button><button class="btn sm" data-a="baglanti" title="Müşteri teklifi bağlantıdan açıp onaylar">Onay bağlantısı</button><button class="btn sm" data-a="revize">Revize et</button><button class="btn sm ghost" data-a="kopya">Kopyasını oluştur</button><button class="btn sm ghost danger" data-a="sil">Sil</button></div>`}
     ${(() => { if (t._new) return ''; const rv = S.teklifler.filter(x => revKok(x.teklif_no) === revKok(t.teklif_no)).sort((a, b) => revNo(a.teklif_no) - revNo(b.teklif_no)); return rv.length > 1 ? `<div class="rev-list"><b>Revizyonlar</b>${rv.map(x => `<button type="button" class="chip ${x.id === t.id ? 'on' : ''}" data-rev="${x.id}">${esc(x.teklif_no)} · ${esc(x.durum)} · ${para(x.toplam, x.para_birimi)}</button>`).join('')}</div>` : ''; })()}
     <form class="dbody form" novalidate>${renderForm(FORM, t)}
       <fieldset class="fs"><legend>Ürünler</legend>
@@ -116,6 +116,7 @@ export function teklifForm(init = {}, after) {
   panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     const a = b.dataset.a;
     if (a === 'pdf') teklifYazdir(t0);
+    if (a === 'baglanti') { closeDrawer(); (await import('../onaybaglanti.js')).baglantiPenceresi(byId('teklifler', t0.id) || t0, () => app.refresh()); }
     if (a === 'wa') { const k = byId('kisiler', t0.kisi_id); window.open(waLink(k?.telefon || byId('firmalar', t0.firma_id)?.telefon || '', teklifMetni(t0)), '_blank', 'noopener'); }
     if (a === 'revize') { const { id, created_at, updated_at, ...r } = t0; const kok = revKok(t0.teklif_no); const n = Math.max(1, ...S.teklifler.filter(x => revKok(x.teklif_no) === kok).map(x => revNo(x.teklif_no))) + 1; teklifForm({ ...r, teklif_no: `${kok}-R${n}`, tarih: today(), gecerlilik: gunEkle(today(), 15), durum: 'Taslak', kalemler: (t0.kalemler || []).map(k => ({ ...k })), notlar: [t0.notlar, `${t0.teklif_no} teklifinin revizyonu.`].filter(Boolean).join('\n') }, after); }
     if (a === 'kopya') { const { id, created_at, updated_at, ...r } = t0; teklifForm({ ...r, teklif_no: yeniTeklifNo(), tarih: today(), gecerlilik: gunEkle(today(), 15), durum: 'Taslak', kalemler: (t0.kalemler || []).map(k => ({ ...k })) }); }
@@ -191,6 +192,7 @@ export function tekliflerView(el) {
       <span class="cb-bot"><b class="num">${para(t.toplam, t.para_birimi)}</b><small class="${t.durum === 'Gönderildi' && t.gecerlilik && t.gecerlilik < t0 ? 'neg' : 'muted'}">${tarih(t.tarih)}${t.gecerlilik ? ' · geçerlilik ' + tarih(t.gecerlilik) : ''}</small></span></button></li>`).join('')}</ul>`
       : '<div class="empty"><p>Teklif yok. “Yeni teklif” ile ürün ekleyip PDF ya da WhatsApp olarak gönderebilirsin.</p></div>';
     el.querySelectorAll('[data-id]').forEach(b => b.onclick = () => teklifForm({ id: b.dataset.id }));
+    if (app.db?.mode === 'supabase') import('../onaybaglanti.js').then(async m => { const d = await m.durumHaritasi(); el.querySelectorAll('.card-btn[data-id]').forEach(b => { const r = m.durumRozeti(d.get(b.dataset.id)); if (r) b.querySelector('.cb-top')?.insertAdjacentHTML('beforeend', r); }); });
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { f.durum = b.dataset.d; saveFilters(); el.querySelectorAll('[data-d]').forEach(x => x.classList.toggle('on', x === b)); draw(); });

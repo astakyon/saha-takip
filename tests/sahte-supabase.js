@@ -24,6 +24,7 @@
     update(row) { this.op = 'update'; this.row = row; return this; }
     delete() { this.op = 'delete'; return this; }
     maybeSingle() { this.tek = true; return this; }
+    single() { this.tek = true; return this; }
     then(res, rej) { try { return Promise.resolve(this.calis()).then(res, rej); } catch (e) { return Promise.reject(e).then(res, rej); } }
     catch(f) { return this.then(x => x, f); }
     calis() {
@@ -46,7 +47,7 @@
       if (this.op === 'upsert') {
         const out = [];
         for (const row of [].concat(this.rows)) { const i = T.findIndex(r => r.id === row.id); const n = { ...(i >= 0 ? T[i] : { created_at: simdi(), owner: (JSON.parse(localStorage.getItem('__YETKI') || 'null')?.sahip) || (localStorage.getItem('__YETKI') ? 'u2' : 'u1') }), ...row }; if (UPD(this.t)) n.updated_at = simdi(); if (i >= 0) T[i] = n; else T.push(n); out.push(n); }
-        kaydet(); return { data: this.donus ? out.map(r => ({ updated_at: r.updated_at })) : null, error: null };
+        kaydet(); const d = this.donus === '*' ? JSON.parse(JSON.stringify(out)) : this.donus ? out.map(r => ({ updated_at: r.updated_at })) : null; return { data: this.tek && Array.isArray(d) ? d[0] : d, error: null };
       }
       if (this.op === 'update') {
         const l = T.filter(r => this.f.every(f => f(r))); for (const r of l) { Object.assign(r, this.row); if (UPD(this.t)) r.updated_at = simdi(); }

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Teklif</title>
+<style>
+  :root { --ink: #1D2B36; --muted: #5E6E7A; --line: #DCE2E6; --paper: #F3F5F6; --lumen: #F5B800; --green: #15803D; --red: #B91C1C; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  .bar { background: var(--ink); color: #fff; padding: 14px 16px; }
+  .bar b { font-size: 17px; display: block; }
+  .bar small { opacity: .75; }
+  main { max-width: 860px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .kart { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .ozet { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .ozet div small { display: block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+  .ozet div b { font-size: 16px; }
+  .toplam b { font-size: 22px !important; }
+  iframe { width: 100%; border: 0; border-radius: 10px; background: #fff; min-height: 70vh; display: block; }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+  button { font: inherit; font-weight: 700; border-radius: 10px; padding: 12px 18px; border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
+  button.onay { background: var(--green); border-color: var(--green); color: #fff; }
+  button:disabled { opacity: .55; cursor: default; }
+  label { display: block; font-weight: 600; font-size: 14px; margin: 10px 0 4px; }
+  input, textarea { width: 100%; font: inherit; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  textarea { min-height: 90px; }
+  .durum { border-radius: 12px; padding: 14px 16px; font-weight: 600; }
+  .durum.yesil { background: #E7F6EC; color: var(--green); }
+  .durum.sari { background: #FFF4D1; color: #7A5600; }
+  .durum.kirmizi { background: #FDECEC; color: var(--red); }
+  .hint { color: var(--muted); font-size: 13px; }
+  [hidden] { display: none !important; }
+  @media print { .bar, .kart:not(.belge), .btns, .durum { display: none !important; } main { padding: 0; } .belge { border: 0; padding: 0; } }
+</style>
+</head>
+<body>
+<div class="bar"><b id="gonderen">Teklif</b><small id="alt">Yükleniyor…</small></div>
+<main>
+  <div id="mesaj" class="durum" hidden></div>
+  <section class="kart" id="ozetKart" hidden>
+    <div class="ozet">
+      <div><small>Teklif no</small><b id="no"></b></div>
+      <div><small>Proje</small><b id="proje"></b></div>
+      <div><small>Geçerlilik</small><b id="gec"></b></div>
+      <div class="toplam"><small>Genel toplam (KDV dahil)</small><b id="toplam"></b></div>
+    </div>
+  </section>
+  <section class="kart" id="yanitKart" hidden>
+    <div class="btns">
+      <button type="button" class="onay" id="bOnay">Onaylıyorum</button>
+      <button type="button" id="bRevize">Revize istiyorum</button>
+      <button type="button" id="bPdf">PDF indir / yazdır</button>
+    </div>
+    <form id="form" hidden>
+      <label for="ad">Adınız soyadınız</label><input id="ad" autocomplete="name" maxlength="120">
+      <label for="not" id="notEtiket">Notunuz (isteğe bağlı)</label><textarea id="not" maxlength="2000"></textarea>
+      <div class="btns" style="margin-top:12px"><button type="submit" class="onay" id="gonder">Gönder</button><button type="button" id="vazgec">Vazgeç</button></div>
+    </form>
+    <p class="hint">Yanıtınız teklifi gönderen kişiye iletilir. Bu sayfa yalnızca bu teklifi gösterir.</p>
+  </section>
+  <section class="kart belge" id="belgeKart" hidden><iframe id="belge" title="Teklif belgesi" sandbox="allow-same-origin allow-modals"></iframe></section>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const h = new URLSearchParams(location.hash.slice(1));
+  const anahtar = h.get('a'), ref = h.get('p'), key = h.get('k');
+  const PB = { USD: '$', EUR: '€', TRY: '₺' };
+  const para = (v, pb) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(+v || 0) + ' ' + (PB[pb] || pb || '');
+  const tarih = d => d ? new Date(d + (String(d).length === 10 ? 'T00:00' : '')).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+  const mesaj = (m, s) => { const e = $('mesaj'); e.textContent = m; e.className = 'durum ' + s; e.hidden = false; };
+  if (!anahtar || !/^[a-z0-9]{1,40}$/i.test(ref || '') || !key) { $('alt').textContent = ''; return mesaj('Bağlantı eksik ya da hatalı. Teklifi gönderen kişiden bağlantıyı yeniden isteyin.', 'kirmizi'); }
+  const rpc = (ad, govde) => fetch(`https://${ref}.supabase.co/rest/v1/rpc/${ad}`, { method: 'POST', headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' }, body: JSON.stringify(govde) })
+    .then(async r => { const j = await r.json().catch(() => null); if (!r.ok) throw new Error(j?.message || 'Sunucuya ulaşılamadı.'); return j; });
+  let d = null, tur = null;
+  const ciz = () => {
+    document.title = `Teklif ${d.teklif_no || ''}`.trim();
+    $('gonderen').textContent = d.gonderen || 'Teklif';
+    $('alt').textContent = [d.musteri && 'Sayın ' + d.musteri, d.hazirlayan].filter(Boolean).join(' · ');
+    $('no').textContent = d.teklif_no || '—'; $('proje').textContent = d.proje || '—';
+    $('gec').textContent = tarih(d.gecerlilik || d.son_tarih); $('toplam').textContent = para(d.genel, d.para_birimi);
+    $('ozetKart').hidden = false;
+    if (d.html) { $('belge').srcdoc = d.html; $('belgeKart').hidden = false; $('belge').onload = () => { try { $('belge').style.height = Math.max(600, $('belge').contentDocument.documentElement.scrollHeight + 20) + 'px'; } catch {} }; }
+    if (d.yanit) {
+      mesaj(d.yanit === 'Onay' ? `Teklif ${tarih(String(d.yanit_zaman).slice(0, 10))} tarihinde onaylandı${d.yanit_ad ? ' (' + d.yanit_ad + ')' : ''}. Teşekkür ederiz.` : `Revize isteğiniz ${tarih(String(d.yanit_zaman).slice(0, 10))} tarihinde iletildi. Yeni teklif size ayrıca gönderilecek.`, d.yanit === 'Onay' ? 'yesil' : 'sari');
+      $('yanitKart').hidden = false; $('bOnay').hidden = $('bRevize').hidden = true;
+    } else $('yanitKart').hidden = false;
+  };
+  rpc('teklif_goster', { p_anahtar: anahtar }).then(j => {
+    if (!j || j.hata) {
+      $('alt').textContent = '';
+      return mesaj(j?.hata === 'iptal' ? 'Bu teklif bağlantısı iptal edilmiş. Güncel teklif için gönderen kişiyle görüşün.' : j?.hata === 'sure' ? `Bu teklifin geçerlilik süresi ${tarih(j.son_tarih)} tarihinde doldu. Güncel teklif için ${j.gonderen || 'gönderen firma'} ile görüşün.` : 'Bağlantı geçersiz. Teklifi gönderen kişiden bağlantıyı yeniden isteyin.', 'kirmizi');
+    }
+    d = j; ciz();
+  }).catch(e => { $('alt').textContent = ''; mesaj('Teklif yüklenemedi: ' + e.message + ' İnternet bağlantınızı kontrol edip sayfayı yenileyin.', 'kirmizi'); });
+  const formAc = t => { tur = t; $('form').hidden = false; $('notEtiket').textContent = t === 'Onay' ? 'Notunuz (isteğe bağlı)' : 'Neyin değişmesini istiyorsunuz?'; $('gonder').textContent = t === 'Onay' ? 'Onayı gönder' : 'Revize isteğini gönder'; $('gonder').className = t === 'Onay' ? 'onay' : ''; (t === 'Onay' ? $('ad') : $('not')).focus(); };
+  $('bOnay').onclick = () => formAc('Onay');
+  $('bRevize').onclick = () => formAc('Revize');
+  $('vazgec').onclick = () => { $('form').hidden = true; };
+  $('bPdf').onclick = () => { try { $('belge').contentWindow.focus(); $('belge').contentWindow.print(); } catch { window.print(); } };
+  $('form').onsubmit = async e => {
+    e.preventDefault();
+    if (tur === 'Revize' && !$('not').value.trim()) return $('not').focus();
+    $('gonder').disabled = true;
+    try {
+      const j = await rpc('teklif_yanitla', { p_anahtar: anahtar, p_yanit: tur, p_not: $('not').value, p_ad: $('ad').value });
+      if (!j || j.hata) throw new Error(j?.hata === 'yanitlandi' ? 'Bu teklif daha önce yanıtlanmış.' : j?.hata === 'sure' ? 'Teklifin geçerlilik süresi dolmuş.' : 'Yanıt kaydedilemedi.');
+      d = { ...d, yanit: tur, yanit_zaman: new Date().toISOString(), yanit_ad: $('ad').value.trim() || null };
+      $('form').hidden = true; ciz();
+    } catch (err) { mesaj(err.message, 'kirmizi'); $('gonder').disabled = false; }
+  };
+})();
+</script>
+</body>
+</html>

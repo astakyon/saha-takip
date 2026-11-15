@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 76): Teklif onay bağlantısı
+
+**Supabase'de güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 35: teklif_baglantilari tablosu, teklif_goster ve teklif_yanitla işlevleri).**
+
+- Teklif penceresinde **Onay bağlantısı**: bağlantı oluştur, kopyala ya da WhatsApp ile gönder. Müşteri bağlantıyı telefonunda açar, teklifi PDF'teki haliyle görür; **Onaylıyorum**, **Revize istiyorum** ya da **PDF indir** der.
+- Onaylarsa teklif kendiliğinden **Kabul** olur. Onayda da revize isteğinde de bağlantıyı oluşturana o güne yüksek öncelikli görev düşer (müşterinin adı ve notuyla). Değişiklik geçmişinde "Müşteri (onay bağlantısı)" olarak görünür.
+- Bağlantı penceresinde her bağlantının durumu: kaç kez açıldı, son açılma, yanıt. Teklifler listesinde rozet: "Bağlantı gönderildi", "Açıldı 2×", "Bağlantıdan onaylandı", "Revize istendi". Taslak teklif bağlantı oluşturulunca Gönderildi olur.
+- Güvenlik: müşteri teklifler tablosuna hiç erişmez; bağlantı oluşturulurken teklifin müşteriye gidecek hali (PDF ile aynı) donmuş kopya olarak saklanır. Anahtar 48 karakterlik rastgele dizgedir, tahmin edilemez. Bağlantı teklifin geçerlilik tarihinde (yoksa 30 gün sonra) kapanır, istediğin an **İptal et** ile kapatılır, yanıt bir kez verilir. Teklifi sonra değiştirirsen yeni bağlantı oluştur. Tutarları göremeyen ekip üyeleri bağlantıları da göremez.
+- Bağlantı adresinde Supabase proje kodu ve herkese açık (anon) anahtar bulunur; bu anahtar zaten uygulamanın tarayıcıda kullandığı anahtardır ve veriler satır güvenliğiyle korunur.
+
 ## Güncelleme notu (sürüm 75): Haftalık saha planı
 
 - **Bugün → Hafta planı** sekmesi: haftanın her gününe bölge seç (Adana, Mersin, Hatay, Osmaniye…), soldaki **öneri listesinden** firmayı güne sürükle ya da gün düğmesine dokun. Sarı gün düğmesi, o gün seçtiğin bölgeyle aynı ildeki günü gösterir.

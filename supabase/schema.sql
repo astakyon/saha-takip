@@ -1523,5 +1523,84 @@ create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) retu
 $f$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 34 $f$;
 
+-- ===================== Sürüm 35: teklif onay bağlantısı =====================
+-- Teklif müşteriye bağlantıyla gider. Bağlantı oluşturulurken teklifin müşteriye gösterilecek hali (icerik) donmuş kopya olarak
+-- saklanır; müşteri teklifler tablosuna hiç erişmez. Anahtar 32+ karakterlik rastgele dizgedir; iptal edilebilir, son tarihi vardır.
+-- Müşteri (giriş yapmadan) yalnızca iki işlev çağırabilir: teklif_goster ve teklif_yanitla.
+create table if not exists public.teklif_baglantilari (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default public.veri_sahibi() references auth.users(id) on delete cascade,
+  teklif_id uuid not null references public.teklifler(id) on delete cascade,
+  anahtar text not null unique check (length(anahtar) >= 32),
+  son_tarih date, iptal boolean not null default false,
+  icerik jsonb not null default '{}',
+  olusturan text default public.benim_epostam(),
+  acilma int not null default 0, ilk_acilma timestamptz, son_acilma timestamptz,
+  yanit text check (yanit in ('Onay', 'Revize')), yanit_not text, yanit_ad text, yanit_zaman timestamptz,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+alter table public.teklif_baglantilari enable row level security;
+create index if not exists teklif_baglantilari_owner_idx on public.teklif_baglantilari (owner);
+create index if not exists teklif_baglantilari_teklif_idx on public.teklif_baglantilari (teklif_id);
+drop trigger if exists touch on public.teklif_baglantilari;
+create trigger touch before update on public.teklif_baglantilari for each row execute function public.touch_updated_at();
+-- Ekipte teklifleri gören ve tutarları görebilen okur; teklif yazabilen oluşturur ve iptal eder
+drop policy if exists "oku" on public.teklif_baglantilari;
+drop policy if exists "ekle" on public.teklif_baglantilari;
+drop policy if exists "degistir" on public.teklif_baglantilari;
+drop policy if exists "sil" on public.teklif_baglantilari;
+create policy "oku" on public.teklif_baglantilari for select to authenticated using (public.yetki(owner, 'teklifler', 'oku') and public.hassas_acik(owner, 'tutar'));
+create policy "ekle" on public.teklif_baglantilari for insert to authenticated with check (public.yetki(owner, 'teklifler', 'yaz') and public.hassas_acik(owner, 'tutar'));
+create policy "degistir" on public.teklif_baglantilari for update to authenticated using (public.yetki(owner, 'teklifler', 'yaz')) with check (public.yetki(owner, 'teklifler', 'yaz'));
+create policy "sil" on public.teklif_baglantilari for delete to authenticated using (public.yetki(owner, 'teklifler', 'yaz'));
+revoke all on public.teklif_baglantilari from anon;
+
+-- Müşteri teklifi açar: geçerli bağlantıysa donmuş kopyayı döndürür ve açılmayı sayar
+create or replace function public.teklif_goster(p_anahtar text) returns jsonb language plpgsql security definer set search_path = public as $f$
+declare b public.teklif_baglantilari;
+begin
+  if p_anahtar is null or length(p_anahtar) < 32 then return jsonb_build_object('hata', 'gecersiz'); end if;
+  select * into b from public.teklif_baglantilari where anahtar = p_anahtar;
+  if not found then return jsonb_build_object('hata', 'gecersiz'); end if;
+  if b.iptal then return jsonb_build_object('hata', 'iptal'); end if;
+  if b.son_tarih is not null and b.son_tarih < current_date and b.yanit is null then return jsonb_build_object('hata', 'sure', 'son_tarih', b.son_tarih, 'gonderen', b.icerik -> 'gonderen'); end if;
+  update public.teklif_baglantilari set acilma = acilma + 1, ilk_acilma = coalesce(ilk_acilma, now()), son_acilma = now() where id = b.id;
+  return b.icerik || jsonb_build_object('son_tarih', b.son_tarih, 'yanit', b.yanit, 'yanit_zaman', b.yanit_zaman, 'yanit_ad', b.yanit_ad);
+end $f$;
+revoke all on function public.teklif_goster(text) from public;
+grant execute on function public.teklif_goster(text) to anon, authenticated;
+
+-- Müşteri yanıtlar: Onay → teklif Kabul olur. Onayda da revizede de bağlantıyı oluşturana görev açılır (notu ve adıyla).
+-- Teklifin kendi notlarına yazılmaz (notlar PDF'te müşteriye görünür).
+create or replace function public.teklif_yanitla(p_anahtar text, p_yanit text, p_not text default null, p_ad text default null) returns jsonb language plpgsql security definer set search_path = public as $f$
+declare b public.teklif_baglantilari; t public.teklifler; v_baslik text;
+begin
+  if p_yanit not in ('Onay', 'Revize') then return jsonb_build_object('hata', 'gecersiz'); end if;
+  select * into b from public.teklif_baglantilari where anahtar = p_anahtar and length(p_anahtar) >= 32 for update;
+  if not found or b.iptal then return jsonb_build_object('hata', 'gecersiz'); end if;
+  if b.son_tarih is not null and b.son_tarih < current_date then return jsonb_build_object('hata', 'sure'); end if;
+  if b.yanit is not null then return jsonb_build_object('hata', 'yanitlandi', 'yanit', b.yanit); end if;
+  update public.teklif_baglantilari set yanit = p_yanit, yanit_not = left(nullif(trim(p_not), ''), 2000), yanit_ad = left(nullif(trim(p_ad), ''), 120), yanit_zaman = now() where id = b.id;
+  select * into t from public.teklifler where id = b.teklif_id;
+  if found then
+    if p_yanit = 'Onay' then
+      update public.teklifler set durum = 'Kabul' where id = t.id;
+      v_baslik := 'Teklif onaylandı: ' || coalesce(t.teklif_no, '') || ' · siparişi takip et';
+    else
+      v_baslik := 'Revize istendi: ' || coalesce(t.teklif_no, '');
+    end if;
+    insert into public.gorevler (owner, baslik, son_tarih, oncelik, durum, firma_id, proje_id, kisi_id, notlar, atanan, sorumlu, ekip_id, kaynak)
+    values (b.owner, v_baslik, current_date, 'Yüksek', 'Açık', t.firma_id, t.proje_id, t.kisi_id,
+      nullif(concat_ws(E'\n', case when p_ad is not null and trim(p_ad) <> '' then 'Yanıtlayan: ' || left(trim(p_ad), 120) end, left(nullif(trim(p_not), ''), 2000)), ''),
+      b.olusturan, t.sorumlu, t.ekip_id, 'baglanti:' || b.id);
+    insert into public.degisiklikler (owner, tablo, kayit_id, islem, kim, ozet)
+    values (b.owner, 'teklifler', t.id, 'UPDATE', 'Müşteri (onay bağlantısı)', case when p_yanit = 'Onay' then 'Teklif bağlantıdan onaylandı' else 'Bağlantıdan revize istendi' end);
+  end if;
+  return jsonb_build_object('tamam', true, 'yanit', p_yanit);
+end $f$;
+revoke all on function public.teklif_yanitla(text, text, text, text) from public;
+grant execute on function public.teklif_yanitla(text, text, text, text) to anon, authenticated;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 35 $f$;
+
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();
