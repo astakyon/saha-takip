@@ -13,7 +13,8 @@ import { haftaVerisi, haftaBasi } from './rapor.js';
 import { F, saveFilters } from '../state.js';
 import { sahipMi } from '../yetki.js';
 import { etiketKarti } from '../yorum.js';
-import { radarKarti, radarBagla } from '../radar.js';
+import { radarKarti, radarBagla, radarListesi, TURLER as RADAR_TUR } from '../radar.js';
+import { hedefDurumu } from '../hedef.js';
 
 // Segmente göre ziyaret sıklığı: A 30, B 60, C 90 gün; segmentsiz firmalarda 45 gün
 export const SIKLIK = { A: 30, B: 60, C: 90 };
@@ -85,17 +86,41 @@ export function dogumGunleri(gun = 7) {
   }).filter(x => x.kalan <= gun).sort((a, b) => a.kalan - b.kalan);
 }
 
-// Pazartesi–Çarşamba: geçen haftanın raporu hazır kartı (açılınca ya da kapatılınca o hafta bir daha çıkmaz)
-function raporKarti() {
-  const t = today(), gun = (new Date(t + 'T00:00').getDay() + 6) % 7; if (gun > 2) return '';
+// Pazartesi özeti (Pazartesi–Çarşamba, haftanın ilk açılışında): geçen hafta ne oldu, bu hafta neler var, dikkat edilecekler,
+// çeyrek hedefi ve (yöneticiye) ekibin geçen haftası. Kapatılınca ya da rapor açılınca o hafta bir daha çıkmaz.
+export function haftaOzeti(t = today()) {
+  const hb = haftaBasi(t), hs = gunEkle(hb, 6), d = haftaVerisi(gunEkle(hb, -7));
+  const buPlan = S.ziyaretler.filter(z => zDurum(z) === 'Planlandı' && z.tarih >= t && z.tarih <= hs);
+  const buTeklif = S.teklifler.filter(x => x.durum === 'Gönderildi' && x.gecerlilik && x.gecerlilik >= t && x.gecerlilik <= hs);
+  const buGorev = S.gorevler.filter(g => g.durum !== 'Tamam' && g.son_tarih && g.son_tarih <= hs);
+  let radar = []; try { radar = radarListesi().slice(0, 3); } catch {}
+  let hedef = null; try { const h = hedefDurumu(t); if (h.g.hedef > 0) hedef = { yuzde: Math.round(h.g.gercek / h.g.hedef * 100), kalan: h.kalan, c: h.c }; } catch {}
+  const ekip = {};
+  if (sahipMi() && (app.ekip || []).length) for (const z of d.ziy) { const k = (z.sorumlu || '').toLowerCase() || 'ben'; ekip[k] = (ekip[k] || 0) + 1; }
+  return { d, hb, hs, buPlan, buTeklif, buGorev, radar, hedef, ekip };
+}
+export function raporKarti(t = today()) {
+  const gun = (new Date(t + 'T00:00').getDay() + 6) % 7; if (gun > 2) return '';
   let gor = null; try { gor = localStorage.getItem('saha-rapor-gor'); } catch {}
   if (gor === haftaBasi(t)) return '';
-  const d = haftaVerisi(gunEkle(haftaBasi(t), -7));
-  if (!d.ziy.length && !d.sip.length && !d.gec.length) return '';
-  return `<section class="card wide rapor-kart"><div class="card-h"><h2>Geçen haftanın raporu hazır</h2><button type="button" class="x" data-raporkapat aria-label="Kartı kapat">×</button></div>
-    <p class="muted">${tarih(d.bas)} – ${tarih(d.son)}</p>
-    <div class="ledger-mini"><div><b>${d.ziy.length}</b><span>ziyaret · ${d.gunler.length} gün</span></div><div><b>${d.sip.length}</b><span>sipariş${d.sipUsd ? ' · ' + usd(d.sipUsd) : ''}</span></div><div><b>${d.kazan.length}</b><span>kazanılan proje</span></div><div><b>${d.kayb.length}</b><span>kaybedilen</span></div><div><b>${d.yeniP.length}</b><span>yeni proje</span></div></div>
-    <div class="btnrow"><button type="button" class="btn primary" data-raporac>Raporu aç</button><span class="hint">PDF, Excel ya da WhatsApp ile gönderebilirsin.</span></div></section>`;
+  const o = haftaOzeti(t), d = o.d;
+  const gecenBos = !d.ziy.length && !d.sip.length && !d.gec.length && !d.tek.length;
+  if (gecenBos && !o.buPlan.length && !o.buTeklif.length && !o.radar.length) return '';
+  const ben = (app.db.user?.()?.email || '').toLowerCase(), ad = e => e === 'ben' || e === ben ? 'Sen' : (app.ekip || []).find(u => (u.eposta || '').toLowerCase() === e)?.ad || e.split('@')[0];
+  const ekipS = Object.entries(o.ekip).sort((a, b) => b[1] - a[1]);
+  return `<section class="card wide rapor-kart"><div class="card-h"><h2>Haftan · ${tarih(o.hb)} – ${tarih(gunEkle(o.hb, 4))}</h2><button type="button" class="x" data-raporkapat aria-label="Kartı kapat">×</button></div>
+    <div class="hz">
+      <div><h3>Geçen hafta <small class="muted">${tarih(d.bas)} – ${tarih(d.son)}</small></h3>
+        <div class="ledger-mini"><div><b>${d.ziy.length}</b><span>ziyaret · ${d.gunler.length} gün</span></div><div><b>${d.tek.length}</b><span>teklif${d.tekUsd ? ' · ' + usd(d.tekUsd) : ''}</span></div><div><b>${d.sip.length}</b><span>sipariş${d.sipUsd ? ' · ' + usd(d.sipUsd) : ''}</span></div><div><b>${d.kazan.length}</b><span>kazanılan</span></div><div><b>${d.kayb.length}</b><span>kaybedilen</span></div></div>
+        ${ekipS.length ? `<p class="hint">Ekip: ${ekipS.map(([k, n]) => `${esc(ad(k))} ${n}`).join(' · ')} ziyaret</p>` : ''}</div>
+      <div><h3>Bu hafta</h3><ul class="hz-l">
+        <li><b>${o.buPlan.length}</b> planlı ziyaret${!o.buPlan.length ? ' · <a href="#/plan">haftayı planla</a>' : ''}</li>
+        ${o.buTeklif.length ? `<li><b>${o.buTeklif.length}</b> teklifin geçerliliği doluyor</li>` : ''}
+        ${o.buGorev.length ? `<li><b>${o.buGorev.length}</b> açık görev (bu hafta ya da gecikmiş)</li>` : ''}
+        ${o.hedef ? `<li>${o.hedef.c}. çeyrek hedefinin <b>%${o.hedef.yuzde}</b>'i${o.hedef.kalan ? ` · kalan ${usd(o.hedef.kalan)}` : ''}</li>` : ''}</ul>
+        ${o.radar.length ? `<h3>Dikkat</h3><ul class="hz-l">${o.radar.map(x => `<li><a href="${x.href}">${esc(x.baslik)}</a> <span class="muted">${esc(RADAR_TUR[x.tur].ad.toLowerCase())}${x.tur === 'teklif' ? ' · ' + esc(x.alt.split(' · ').at(-1)) : x.tur === 'sessiz' ? ' · ' + esc(x.alt.split(' · ')[1] || '') : ''}</span></li>`).join('')}</ul>` : ''}</div>
+    </div>
+    <div class="btnrow"><button type="button" class="btn primary" data-raporac>Geçen haftanın raporu</button><a class="btn ghost" href="#/plan" data-raporplan>Hafta planı</a></div></section>`;
 }
 
 // Günün km'si masraflara yazıldı mı (o tarihte km girilmiş masraf var mı)
@@ -112,8 +137,8 @@ async function kmMasrafa(gun) {
 // Uzun listeler: ilk n satır, kalanı “Tümünü gör” ile
 const kisa = (satirlar, n = 5, cls = 'list') => satirlar.length <= n ? `<ul class="${cls}">${satirlar.join('')}</ul>`
   : `<ul class="${cls}">${satirlar.slice(0, n).join('')}</ul><ul class="${cls}" data-fazla hidden>${satirlar.slice(n).join('')}</ul><button type="button" class="linkbtn tumu" data-tumu>Tümünü gör (${satirlar.length})</button>`;
-const KARTLAR = [['ozet', 'Bugün özeti'], ['etiket', 'Seni etiketlediler'], ['plan', 'Bugünün planı'], ['radar', 'Fırsat radarı'], ['uyari', 'Uyarılar'], ['gorev', 'Görevler'], ['yapilan', 'Bugün yapılanlar'], ['zaman', 'Zamanı gelen projeler'], ['gidilmeyen', 'Uzun süredir gidilmeyenler'], ['yarin', 'Yarın'], ['dogum', 'Doğum günleri'], ['rapor', 'Geçen haftanın raporu']];
-const kartAnahtar = h => { const t = (h || '').trim(); if (/^Bugünün planı/.test(t)) return 'plan'; if (/^Bugün özeti/.test(t)) return 'ozet'; if (/görevler$|^Görevler/i.test(t) && !/^Bugün/.test(t)) return 'gorev'; if (/^Bugün yapılanlar/.test(t)) return 'yapilan'; if (/^Zamanı gelen/.test(t)) return 'zaman'; if (/^Uzun süredir/.test(t)) return 'gidilmeyen'; if (/^Yarın/.test(t)) return 'yarin'; if (/^Doğum/.test(t)) return 'dogum'; if (/^Uyarılar/.test(t)) return 'uyari'; if (/haftanın raporu/.test(t)) return 'rapor'; if (/^Seni etiketlediler/.test(t)) return 'etiket'; if (/^Fırsat radarı/.test(t)) return 'radar'; return null; };
+const KARTLAR = [['ozet', 'Bugün özeti'], ['etiket', 'Seni etiketlediler'], ['plan', 'Bugünün planı'], ['radar', 'Fırsat radarı'], ['uyari', 'Uyarılar'], ['gorev', 'Görevler'], ['yapilan', 'Bugün yapılanlar'], ['zaman', 'Zamanı gelen projeler'], ['gidilmeyen', 'Uzun süredir gidilmeyenler'], ['yarin', 'Yarın'], ['dogum', 'Doğum günleri'], ['rapor', 'Pazartesi özeti']];
+const kartAnahtar = h => { const t = (h || '').trim(); if (/^Bugünün planı/.test(t)) return 'plan'; if (/^Bugün özeti/.test(t)) return 'ozet'; if (/görevler$|^Görevler/i.test(t) && !/^Bugün/.test(t)) return 'gorev'; if (/^Bugün yapılanlar/.test(t)) return 'yapilan'; if (/^Zamanı gelen/.test(t)) return 'zaman'; if (/^Uzun süredir/.test(t)) return 'gidilmeyen'; if (/^Yarın/.test(t)) return 'yarin'; if (/^Doğum/.test(t)) return 'dogum'; if (/^Uyarılar/.test(t)) return 'uyari'; if (/haftanın raporu|^Haftan\b/.test(t)) return 'rapor'; if (/^Seni etiketlediler/.test(t)) return 'etiket'; if (/^Fırsat radarı/.test(t)) return 'radar'; return null; };
 const kartAyar = () => ({ sira: [], gizli: [], ...(ayar('bugun_kartlar') || {}) });
 function kartDuzeniUygula(el) {
   const a = kartAyar(), dash = el.querySelector('.dash'); if (!dash) return;
@@ -223,6 +248,7 @@ export function bugunView(el) {
   el.querySelectorAll('[data-tumu]').forEach(b => b.onclick = () => { b.previousElementSibling.hidden = false; b.remove(); });
   el.querySelectorAll('[data-kmyaz]').forEach(b => b.onclick = () => kmMasrafa(b.dataset.kmyaz));
   el.querySelector('[data-raporac]')?.addEventListener('click', () => { const g = gunEkle(haftaBasi(today()), -7); try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} const fr = F('rapor', {}); fr.bas = g; saveFilters(); location.hash = '#/rapor'; });
+  el.querySelector('[data-raporplan]')?.addEventListener('click', () => { try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} });
   el.querySelector('[data-raporkapat]')?.addEventListener('click', e => { try { localStorage.setItem('saha-rapor-gor', haftaBasi(today())); } catch {} e.target.closest('section').remove(); });
   el.querySelector('[data-yedekgit]')?.addEventListener('click', () => { try { sessionStorage.setItem('ayar-sekme', 'veri'); } catch {} });
   el.querySelector('[data-yakin]')?.addEventListener('click', () => yakinimdakiler());

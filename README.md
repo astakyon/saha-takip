@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 80): Pazartesi özeti
+
+- Haftanın ilk açılışında (Pazartesi–Çarşamba) Bugün ekranının üstünde **Haftan** kartı: geçen hafta (ziyaret ve gün sayısı, teklif ve tutarı, sipariş ve tutarı, kazanılan, kaybedilen), bu hafta (planlı ziyaret, geçerliliği dolan teklif, açık görev, çeyrek hedefinin yüzdesi ve kalan), **Dikkat** (Fırsat radarının ilk üçü). Ekibi olan yöneticiye ekibin geçen haftaki ziyaret sayıları da yazılır.
+- **Geçen haftanın raporu** (PDF, Excel, WhatsApp) ve **Hafta planı** kartın içinden açılır. Kapatınca o hafta bir daha çıkmaz.
+- Özet telefonda hesaplanır, hiçbir yere gönderilmez. (Uygulama kapalıyken pazartesi sabahı bildirim göndermek için sunucuda zamanlanmış görev gerekir; ayrıca istenirse eklenebilir.)
+
 ## Güncelleme notu (sürüm 79): Ekip haritası ve canlı akış
 
 - **Raporlar → Ekip haritası:** seçilen gün ekibin ziyaret noktaları haritada (renk kişiye göre, kesikli çizgi o günün güzergâhı; içeride olan nabız atar), **kişi özeti** (yapılan/planlı ziyaret, içeride geçen süre, tahmini yol, teklif, tamamlanan görev; "şu an Atlas Proje'de, 10:30'dan beri") ve saat sırasıyla **akış** (giriş, çıkış ve süre, ziyaret sonucu, teklif, tamamlanan görev). Kişiye göre süzülür, önceki günlere gidilir.

@@ -552,6 +552,14 @@ const DB = () => {
   const hpTasma = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   await p.setViewportSize({ width: 1280, height: 900 });
   kontrol('Haftalık saha planı: öneriler (A müşterisi, teklif), güne bölge seçilip firma ekleniyor, öneriden düşüyor, otomatik dağıt bölgeye göre planlıyor, telefonda taşmıyor', hp1.gun === 5 && hp1.oneri.includes('f2') && hp1.oneri.includes('f1') && ileri.length >= 2 && hp2.z && hp2.gunde && !hp2.oneride && hp3 && hpTasma <= 1, JSON.stringify({ hp1, ileri, hp2, hp3, hpTasma }));
+  // Pazartesi özeti: geçen hafta, bu hafta, dikkat (radar), hedef
+  const hz = await p.evaluate(async () => { const { haftaOzeti, raporKarti } = await import('./js/views/bugun.js'); const { haftaBasi } = await import('./js/views/rapor.js'); const { today, gunEkle } = await import('./js/ui.js');
+    const pzt = gunEkle(haftaBasi(today()), 7); const o = haftaOzeti(pzt); const div = document.createElement('div'); div.innerHTML = raporKarti(pzt); const per = raporKarti(gunEkle(pzt, 3));
+    return { radar: o.radar.length, h2: div.querySelector('h2')?.textContent, dikkat: !!div.querySelector('.hz-l a[href^="#/proje/"]'), plan: !!div.querySelector('[data-raporplan]'), per }; });
+  await p.goto(U + '#/bugun'); await w(900);
+  await p.evaluate(async () => { const { raporKarti } = await import('./js/views/bugun.js'); const { haftaBasi } = await import('./js/views/rapor.js'); const { today, gunEkle } = await import('./js/ui.js'); document.querySelector('.dash').insertAdjacentHTML('afterbegin', raporKarti(gunEkle(haftaBasi(today()), 7))); });
+  await (await p.$('.rapor-kart')).screenshot({ path: 'tests/cikti/pazartesi-ozeti.png' });
+  kontrol('Pazartesi özeti kartı: geçen hafta, bu hafta, dikkat edilecekler (radardan), hafta planına geçiş; perşembe çıkmıyor', hz.radar > 0 && /^Haftan · /.test(hz.h2 || '') && hz.dikkat && hz.plan && hz.per === '', JSON.stringify(hz));
   kontrol('Radarda hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
