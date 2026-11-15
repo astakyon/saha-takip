@@ -52,7 +52,7 @@ export function teklifForm(init = {}, after) {
   const panel = openDrawer(`<header class="dh"><div><p class="muted">${t._new ? 'Yeni teklif' : 'Teklif'}</p><h2 id="drawer-title">${esc(t.teklif_no || 'Teklif')}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     ${t._new ? '' : `<div class="dh-actions"><button class="btn sm" data-a="pdf">PDF / yazdır</button><button class="btn sm" data-a="wa">WhatsApp</button><button class="btn sm" data-a="baglanti" title="Müşteri teklifi bağlantıdan açıp onaylar">Onay bağlantısı</button><button class="btn sm" data-a="revize">Revize et</button><button class="btn sm ghost" data-a="kopya">Kopyasını oluştur</button><button class="btn sm ghost danger" data-a="sil">Sil</button></div>`}
     ${(() => { if (t._new) return ''; const rv = S.teklifler.filter(x => revKok(x.teklif_no) === revKok(t.teklif_no)).sort((a, b) => revNo(a.teklif_no) - revNo(b.teklif_no)); return rv.length > 1 ? `<div class="rev-list"><b>Revizyonlar</b>${rv.map(x => `<button type="button" class="chip ${x.id === t.id ? 'on' : ''}" data-rev="${x.id}">${esc(x.teklif_no)} · ${esc(x.durum)} · ${para(x.toplam, x.para_birimi)}</button>`).join('')}</div>` : ''; })()}
-    <form class="dbody form" novalidate>${renderForm(FORM, t)}
+    <form class="dbody form" novalidate><div data-vrisk></div>${renderForm(FORM, t)}
       <fieldset class="fs"><legend>Ürünler</legend>
         <div class="kalem-ekle"><input data-ara list="tk-ul" placeholder="Ürün kodu ya da açıklama yaz (örn. HBL 152)" aria-label="Ürün ekle" autocomplete="off"><datalist id="tk-ul">${S.urunler.filter(u => urunBilgi(u.aciklama).w || u.birim_fiyat_usd).map(u => `<option value="${esc(u.kod + ' · ' + u.aciklama)}">`).join('')}</datalist><button type="button" class="btn sm" data-bos>Serbest kalem</button></div>
         <div data-kalemler></div>
@@ -62,6 +62,7 @@ export function teklifForm(init = {}, after) {
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button>${t._new ? '<button type="button" class="btn" data-kaydet-pdf>Kaydet ve PDF</button>' : ''}<button type="submit" class="btn primary">Kaydet</button></div>
     </form>`, { wide: true });
   panel.querySelectorAll('[data-rev]').forEach(b => b.onclick = () => { if (b.dataset.rev !== t.id) teklifForm({ id: b.dataset.rev }, after); });
+  import('../vaderisk.js').then(m => m.riskBagla(panel, 'teklif', t.firma_id)).catch(() => {});
   const form = panel.querySelector('form');
   bindForm(form, [...FORM, ...NOT_FORM], t, { onChange: o => { Object.assign(t, { iskonto: o.iskonto, kdv: o.kdv, para_birimi: o.para_birimi }); toplam(); } });
   const kbox = form.querySelector('[data-kalemler]');

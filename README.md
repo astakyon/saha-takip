@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 88): tahsilat ve vade riski
+
+- Firma bazında risk, Satış → Tahsilat kayıtlarından: gecikmiş alacak (yaklaşık USD), en uzun gecikme ve geçmişte vadeden ortalama kaç gün sonra ödediği.
+  - **Yüksek risk:** 60 günden uzun ya da 50.000 $ üstü gecikme. **Dikkat:** 15 günden uzun gecikme. **Geç öder:** en az 3 kapanmış faturada ortalama 30+ gün geç ödeme.
+- Nerede görünür: **teklif penceresinde** uyarı (firma değişince güncellenir; "vade ve ödeme koşulunu buna göre belirle"), **ziyaret penceresinde** ("tahsilatı da konuş"), **firma sayfası** başlığında ve **Bugün'ün planında** rozet, **Panel'de Vade riski** kartı.
+- Tahsilat kaydı olmayan firmada hiçbir şey çıkmaz; cari ekstresi Tahsilat ekranından Excel ile yüklenebilir. Şema değişikliği yok.
+
 ## Güncelleme notu (sürüm 87): Bugünün soruları
 
 - Bugün ekranında yeni kart: her gün en fazla **3 kısa soru**, yerinde cevaplanır: kayıp projede neden ve işi alan marka, açık projede tutar, beklenen tarihi 60 günden çok geçmiş projede durum (1 ay ileri at / Beklemede / Kaybettik), takip yılı, aktif firmanın segmenti (A/B/C). Bir firmada içerideyken firmanın konumu yoksa giriş konumunu firmaya kaydetmeyi sorar.

@@ -1828,3 +1828,13 @@ body.giris-var #view { padding-top: 64px; }
 .eksik-a { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .eksik-a select, .eksik-a input { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; max-width: 180px; background: var(--card); color: var(--ink); }
 .eksik-a .linkbtn { margin-left: auto; font-size: 13px; color: var(--muted); }
+
+/* Vade riski */
+.vr-rozet { font-style: normal; font-size: 11.5px; font-weight: 700; color: #fff; background: var(--c); border-radius: 99px; padding: 1px 8px; margin-left: 8px; vertical-align: 3px; white-space: nowrap; }
+.rt .vr-rozet { vertical-align: 1px; }
+.vr-uyari { border-left: 4px solid var(--c); background: color-mix(in srgb, var(--c) 9%, var(--card)); border-radius: 8px; padding: 8px 10px; margin: 0 0 10px; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; }
+.vr-uyari b { color: var(--c); }
+.vr-uyari a { font-size: 12.5px; font-weight: 600; }
+.vr-l li { display: flex; gap: 10px; align-items: center; }
+.vr-l a.grow { display: flex; flex-direction: column; min-width: 0; }
+.vr-n { width: 4px; align-self: stretch; border-radius: 2px; background: var(--c); flex: none; }

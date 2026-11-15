@@ -794,6 +794,35 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 26) Tahsilat ve vade riski ----------
+{
+  const DB14 = () => {
+    const ts = '2026-10-01T08:00:00Z', o = x => ({ owner: 'u1', updated_at: ts, created_at: ts, ...x });
+    const g = n => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+    localStorage.setItem('__DB', JSON.stringify({
+      firmalar: [o({ id: 'f1', ad: 'Geciken İnşaat', lat: 37, lng: 35.3 }), o({ id: 'f2', ad: 'Geç Öder Elektrik' }), o({ id: 'f3', ad: 'Düzgün Yapı' })], kisiler: [], gorevler: [], teklifler: [], projeler: [], ekip_uyeleri: [],
+      ziyaretler: [o({ id: 'z1', firma_id: 'f1', tarih: g(0), durum: 'Planlandı' })],
+      tahsilatlar: [o({ id: 'h1', firma_id: 'f1', tarih: g(-130), vade: g(-70), tutar: 20000, odenen: 0, para_birimi: 'USD' }), o({ id: 'h2', firma_id: 'f1', tarih: g(-20), vade: g(40), tutar: 5000, odenen: 0, para_birimi: 'USD' }),
+        ...[1, 2, 3].map(i => o({ id: 'p' + i, firma_id: 'f2', tarih: g(-200 + i * 30), vade: g(-150 + i * 30), tutar: 1000, odenen: 1000, odeme_tarihi: g(-110 + i * 30), para_birimi: 'USD' })),
+        o({ id: 'h3', firma_id: 'f3', tarih: g(-10), vade: g(20), tutar: 3000, odenen: 0, para_birimi: 'USD' })] }));
+  };
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB14 });
+  await p.setViewportSize({ width: 1280, height: 900 }); await p.goto(U + '#/bugun'); await w(1500);
+  const r1 = await p.evaluate(async () => { const m = await import('./js/vaderisk.js'); const a = m.firmaRiski('f1'), b = m.firmaRiski('f2'), d = m.firmaRiski('f3'); return { a: [a.seviye, Math.round(a.gecikmis), a.maxGun], b: [b.seviye, b.ortGec], d: d.seviye, liste: m.riskListesi().map(x => x.fid), planRozet: !!document.querySelector('.route .vr-rozet') }; });
+  await p.goto(U + '#/panel'); await w(1200); const r2 = await p.evaluate(() => [...document.querySelectorAll('.vr-k .vr-l li')].length);
+  await p.evaluate(async () => (await import('./js/views/teklif.js')).teklifForm({ firma_id: 'f1' })); await w(700);
+  const r3 = await p.evaluate(() => document.querySelector('.drawer.open [data-vrisk]')?.textContent || '');
+  await p.screenshot({ path: 'tests/cikti/vade-riski-teklif.png' });
+  await p.fill('.drawer.open [name=firma_id]', 'Düzgün Yapı'); await p.dispatchEvent('.drawer.open [name=firma_id]', 'change'); await w(300);
+  const r4 = await p.evaluate(() => document.querySelector('.drawer.open [data-vrisk]')?.textContent || '');
+  await p.click('.drawer.open .x[data-close]'); await w(400);
+  await p.goto(U + '#/firma/f1'); await w(1200); const r5 = await p.evaluate(() => document.querySelector('h1 .vr-rozet')?.textContent || '');
+  kontrol('Vade riski: 70 gün gecikmiş firma yüksek risk, düzenli 40 gün geç ödeyen "geç öder", düzgün firma risksiz; Panel kartı, Bugün planında rozet, teklif penceresinde uyarı (firma değişince güncelleniyor), firma sayfasında rozet',
+    r1.a.join() === 'yuksek,20000,70' && r1.b.join() === 'gec,40' && r1.d === null && r1.liste.join() === 'f1,f2' && r1.planRozet && r2 === 2 && /Yüksek risk/.test(r3) && /20\.000 \$ gecikmiş/.test(r3) && r4 === '' && /20\.000/.test(r5), JSON.stringify({ r1, r2, r3, r4, r5 }));
+  kontrol('Vade riskinde hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
 // ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
 {
   const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');

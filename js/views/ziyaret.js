@@ -82,9 +82,10 @@ export function ziyaretForm(init = {}, after) {
   const z = { ...z0, durum: zDurum(z0) };
   const panel = openDrawer(`<header class="dh" style="--c:${durumRenk(z.durum)}"><div><p class="muted">${z._new ? 'Yeni ziyaret' : `${tarih(z.tarih)}${z.giris ? ' · ' + esc(girisOzeti(z)) : z.saat ? ' · ' + esc(z.saat) : ''} · ${esc(z.durum)}`}</p><h2 id="drawer-title">${esc(firmaAd(z.firma_id) || 'Ziyaret kaydı')}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     ${z._new ? '' : `<div class="dh-actions">${z.durum === 'Planlandı' ? '<button class="btn sm primary" data-done>Yapıldı olarak işaretle</button>' : ''}<button class="btn sm ghost danger" data-sil>Sil</button></div>`}
-    <form class="dbody form" novalidate>${renderForm(ZIYARET_FORM, z)}
+    <form class="dbody form" novalidate><div data-vrisk></div>${renderForm(ZIYARET_FORM, z)}
     <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`, { onClose: () => {} });
   const form = panel.querySelector('form');
+  import('../vaderisk.js').then(m => m.riskBagla(panel, 'ziyaret', z.firma_id)).catch(() => {});
   bindForm(form, ZIYARET_FORM, z);
   yetkiliBagla(form);
   // Yapılan yeni ziyarette konumu otomatik al

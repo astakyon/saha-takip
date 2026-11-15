@@ -1,4 +1,5 @@
 // Bugün: günlük özet, günün rotası, yakınımdakiler, zamanı gelen projeler, uzun süredir gidilmeyenler, doğum günleri, uyarılar
+import { riskRozeti } from '../vaderisk.js';
 import { ozellikSay } from '../saglik.js';
 import { S } from '../db.js';
 import { app } from '../state.js';
@@ -212,7 +213,7 @@ export function bugunView(el) {
       ${etiketKarti()}
       ${ozetKarti}
       ${!planli.length ? '' : `<section class="card wide"><h2>Bugünün planı</h2>
-        ${planli.length ? `<ol class="route">${sirali.map((x, i) => `<li><span class="rn">${i + 1}</span><span class="rt"><b>${x.z.saat ? esc(x.z.saat) + ' · ' : ''}${esc(firmaAd(x.z.firma_id) || 'Ziyaret')}</b><small>${esc([byId('kisiler', x.z.kisi_id)?.ad_soyad, x.z.amac, byId('projeler', x.z.proje_id)?.ad].filter(Boolean).join(' · '))}</small></span>
+        ${planli.length ? `<ol class="route">${sirali.map((x, i) => `<li><span class="rn">${i + 1}</span><span class="rt"><b>${x.z.saat ? esc(x.z.saat) + ' · ' : ''}${esc(firmaAd(x.z.firma_id) || 'Ziyaret')}</b>${riskRozeti(x.z.firma_id)}<small>${esc([byId('kisiler', x.z.kisi_id)?.ad_soyad, x.z.amac, byId('projeler', x.z.proje_id)?.ad].filter(Boolean).join(' · '))}</small></span>
           <span class="ra"><a class="btn sm ghost" href="${directionsUrl(x.p[0], x.p[1])}" target="_blank" rel="noopener">Yol</a>${x.z.firma_id ? `<button type="button" class="btn sm primary" data-giris="${x.z.firma_id}" data-gerek="yaz:ziyaretler">Giriş</button>` : ''}<button type="button" class="btn sm" data-yapildi="${x.z.id}">Yapıldı</button></span></li>`).join('')}</ol>
           ${planli.length > sirali.length ? `<p class="hint">${planli.length - sirali.length} ziyaretin konumu bilinmiyor (firmanın yeri haritada işaretli değil); rotaya eklenmedi: ${planli.filter(z => !ziyaretYeri(z)).map(z => esc(firmaAd(z.firma_id) || 'Ziyaret')).join(', ')}.</p>` : ''}
           <div class="btnrow">${rota ? `<a class="btn primary" href="${rota}" target="_blank" rel="noopener">Günün rotasını Google Haritalar'da aç</a>` : ''}<a class="btn ghost" href="#/plan">Hafta planı</a></div>

@@ -1,4 +1,5 @@
 import { S, uuid } from '../db.js';
+import { riskKarti } from '../vaderisk.js';
 import { kayipKarti, kayipTamamla } from '../kayip.js';
 import { app, F, saveFilters } from '../state.js';
 import { hedefKalanKarti } from '../hedef.js';
@@ -54,6 +55,7 @@ export function panelView(el) {
   <div class="dash">
     ${hedefKalanKarti(t)}
     ${radarKarti({ n: 8 })}
+    ${riskKarti()}
     <section class="card wide"><h2>Çeyrek bazında sipariş ve hedef</h2>
       <div class="qbars">${[0, 1, 2, 3].map(i => `<div class="qb"><div class="qb-cols"><span class="bar target" style="height:${hed[i] / maxQ * 100}%" title="Hedef ${usd(hed[i])}"></span><span class="bar real ${gercek[i] >= hed[i] && hed[i] ? 'ok' : ''}" style="height:${gercek[i] / maxQ * 100}%" title="Gerçekleşen ${usd(gercek[i])}"></span></div>
         <b>${i + 1}. çeyrek</b><small>${usd(gercek[i])}${hed[i] ? ` · %${num(gercek[i] / hed[i] * 100)}` : ''}</small></div>`).join('')}</div>
