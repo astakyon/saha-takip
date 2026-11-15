@@ -178,6 +178,7 @@ export function tekliflerView(el) {
     <div class="filters"><input type="search" data-q placeholder="Teklif no, firma, proje ara" value="${esc(f.q)}" aria-label="Tekliflerde ara">
       <div class="seg" role="group" aria-label="Durum">${['Tümü', ...TEKLIF_DURUM.map(d => d.k)].map(d => `<button type="button" data-d="${d}" class="${f.durum === d ? 'on' : ''}">${d}</button>`).join('')}</div></div>
     <div data-rows></div>`;
+  let sinir = 200;   // uzun listede ilk 200 kart; "Daha fazla göster" ile artar
   const draw = () => {
     const l = S.teklifler.filter(t => (f.durum === 'Tümü' || t.durum === f.durum) && match(f.q, t.teklif_no, firmaAd(t.firma_id), byId('projeler', t.proje_id)?.ad, t.notlar)).sort((a, b) => (b.tarih || '').localeCompare(a.tarih || '') || (b.teklif_no || '').localeCompare(a.teklif_no || ''));
     const acik = l.filter(t => ['Taslak', 'Gönderildi'].includes(t.durum) && t.para_birimi === 'USD');
@@ -186,12 +187,14 @@ export function tekliflerView(el) {
     const oran = kabul.length + red.length ? Math.round(kabul.length / (kabul.length + red.length) * 100) : null;
     const usdTop = a => new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(a.filter(t => (t.para_birimi || 'USD') === 'USD').reduce((s, t) => s + (+t.toplam || 0), 0));
     el.querySelector('[data-sum]').innerHTML = `${l.length} teklif · bekleyen ${new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(acik.reduce((a, t) => a + (+t.toplam || 0), 0))} $ · kazanma oranı <b>${oran == null ? '—' : '%' + oran}</b> <span class="muted">(${kabul.length} kabul ${usdTop(kabul)} $, ${red.length} red ${usdTop(red)} $; revizyonlarda son hali sayılır)</span>`;
-    const t0 = today();
-    el.querySelector('[data-rows]').innerHTML = l.length ? `<ul class="cards">${l.map(t => `<li><button type="button" class="card-btn" data-id="${t.id}"><span class="cb-top"><b>${esc(t.teklif_no || 'Teklif')}</b>${S.teklifler.some(x => x !== t && revKok(x.teklif_no) === revKok(t.teklif_no)) ? `<em class="rol-r">${revNo(t.teklif_no) > 1 ? 'Revizyon ' + revNo(t.teklif_no) : 'İlk teklif'}</em>` : ''}${tpill(t.durum)}</span>
+    const t0 = today(), kokSay = new Map(); for (const x of S.teklifler) { const k = revKok(x.teklif_no); kokSay.set(k, (kokSay.get(k) || 0) + 1); }
+    const goster = l.slice(0, sinir);
+    el.querySelector('[data-rows]').innerHTML = l.length ? `<ul class="cards">${goster.map(t => `<li><button type="button" class="card-btn" data-id="${t.id}"><span class="cb-top"><b>${esc(t.teklif_no || 'Teklif')}</b>${kokSay.get(revKok(t.teklif_no)) > 1 ? `<em class="rol-r">${revNo(t.teklif_no) > 1 ? 'Revizyon ' + revNo(t.teklif_no) : 'İlk teklif'}</em>` : ''}${tpill(t.durum)}</span>
       <span>${esc(firmaAd(t.firma_id) || '—')}</span><small class="muted">${esc(byId('projeler', t.proje_id)?.ad || '')}</small>
-      <span class="cb-bot"><b class="num">${para(t.toplam, t.para_birimi)}</b><small class="${t.durum === 'Gönderildi' && t.gecerlilik && t.gecerlilik < t0 ? 'neg' : 'muted'}">${tarih(t.tarih)}${t.gecerlilik ? ' · geçerlilik ' + tarih(t.gecerlilik) : ''}</small></span></button></li>`).join('')}</ul>`
+      <span class="cb-bot"><b class="num">${para(t.toplam, t.para_birimi)}</b><small class="${t.durum === 'Gönderildi' && t.gecerlilik && t.gecerlilik < t0 ? 'neg' : 'muted'}">${tarih(t.tarih)}${t.gecerlilik ? ' · geçerlilik ' + tarih(t.gecerlilik) : ''}</small></span></button></li>`).join('')}</ul>${l.length > sinir ? `<div class="btnrow"><button type="button" class="btn ghost" data-dahafazla>Daha fazla göster (${l.length - sinir})</button></div>` : ''}`
       : '<div class="empty"><p>Teklif yok. “Yeni teklif” ile ürün ekleyip PDF ya da WhatsApp olarak gönderebilirsin.</p></div>';
     el.querySelectorAll('[data-id]').forEach(b => b.onclick = () => teklifForm({ id: b.dataset.id }));
+    el.querySelector('[data-dahafazla]')?.addEventListener('click', () => { sinir += 200; draw(); });
     if (app.db?.mode === 'supabase') import('../onaybaglanti.js').then(async m => { const d = await m.durumHaritasi(); el.querySelectorAll('.card-btn[data-id]').forEach(b => { const r = m.durumRozeti(d.get(b.dataset.id)); if (r) b.querySelector('.cb-top')?.insertAdjacentHTML('beforeend', r); }); });
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };

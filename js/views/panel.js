@@ -146,14 +146,18 @@ export function bayiKarnesi(Y, rol = 'bayi_id') {
   const ids = new Set(S.projeler.map(p => p[rol]).filter(Boolean));
   if (rol === 'bayi_id') for (const f of S.firmalar) if ((f.tipler || []).includes('Bayi')) ids.add(f.id);
   const t = today();
+  // Tek geçişte: firmaya göre projeler ve son ziyaret
+  const pGrup = new Map(); for (const p of S.projeler) if (p[rol] && (!p.takip_yili || +p.takip_yili === Y || ACIK.includes(p.durum))) (pGrup.get(p[rol]) || pGrup.set(p[rol], []).get(p[rol])).push(p);
+  const sonZ = new Map(); for (const z of S.ziyaretler) if (z.firma_id && (z.durum || 'Yapıldı') === 'Yapıldı' && (!sonZ.has(z.firma_id) || z.tarih > sonZ.get(z.firma_id))) sonZ.set(z.firma_id, z.tarih);
+  const sipY = S.siparisler.filter(s => s.tarih?.startsWith(String(Y)) && s.para_birimi === 'USD' && !s.rapor_disi);
   return [...ids].map(id => byId('firmalar', id)).filter(Boolean).map(f => {
-    const ps = S.projeler.filter(p => p[rol] === f.id && (!p.takip_yili || +p.takip_yili === Y || ACIK.includes(p.durum)));
+    const ps = pGrup.get(f.id) || [];
     const rk = {}; for (const p of ps) if (p.durum === 'Kayıp' && p.rakip_marka) rk[p.rakip_marka] = (rk[p.rakip_marka] || 0) + 1;
     const won = ps.filter(p => p.durum === 'Sipariş'), lost = ps.filter(p => p.durum === 'Kayıp');
     const ilk = fold(f.ad).split(/\s+/)[0];
-    const sp = S.siparisler.filter(s => s.tarih?.startsWith(String(Y)) && s.para_birimi === 'USD' && !s.rapor_disi && (s.firma_id === f.id || (ilk.length > 2 && fold(s.musteri_adi || '').startsWith(ilk))));
+    const sp = sipY.filter(s => (s.firma_id === f.id || (ilk.length > 2 && fold(s.musteri_adi || '').startsWith(ilk))));
     const stok = rol !== 'bayi_id' ? 0 : S.urunler.filter(u => u.depo && fold(u.depo).startsWith(ilk)).reduce((a, u) => a + (+u.stok || 0) * (+u.birim_fiyat_usd || 0), 0);
-    const son = S.ziyaretler.filter(z => z.firma_id === f.id && (z.durum || 'Yapıldı') === 'Yapıldı').map(z => z.tarih).sort().pop() || null;
+    const son = sonZ.get(f.id) || null;
     return { f, n: ps.length, acik: sum(ps.filter(p => ACIK.includes(p.durum)), p => p.tutar_usd), w: won.length, wT: sum(won, p => p.siparis_tutari_usd || p.tutar_usd), l: lost.length, lT: sum(lost, p => p.bizim_teklif_usd || p.tutar_usd),
       oran: won.length + lost.length ? Math.round(won.length / (won.length + lost.length) * 100) : null, sip: sum(sp, s => s.net_deger), sipN: sp.length, stok, rakip: Object.entries(rk).sort((a, b) => b[1] - a[1]).map(([m, n]) => `${m} (${n})`).slice(0, 2).join(', '), son, gun: son ? Math.round((new Date(t) - new Date(son)) / 864e5) : null };
   }).filter(k => k.n || k.sip).sort((a, b) => b.sip - a.sip || b.acik - a.acik || b.n - a.n).slice(0, 40);

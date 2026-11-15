@@ -75,9 +75,17 @@ export const ZIYARET_AMAC = ['Sipariş', 'Pazarlık', 'Teklif', 'Fiyat görüşm
 
 // ---------- Biçimlendirme ----------
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-export const usd = n => gizliBolum('tutar') ? '•••' : n == null || n === '' || isNaN(n) ? '—' : new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(n) + ' $';
-export const num = n => n == null || n === '' ? '—' : new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(n);
-export const tarih = d => d ? new Date(d.length === 10 ? d + 'T00:00' : d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+// Biçimlendiriciler bir kez kurulur (her çağrıda yeniden kurmak büyük listelerde yavaştı)
+const NF0 = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }), NF2 = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 });
+const DF = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }), tarihBellek = new Map();
+export const usd = n => gizliBolum('tutar') ? '•••' : n == null || n === '' || isNaN(n) ? '—' : NF0.format(n) + ' $';
+export const num = n => n == null || n === '' ? '—' : NF2.format(n);
+export const tarih = d => {
+  if (!d) return '—';
+  let v = tarihBellek.get(d); if (v !== undefined) return v;
+  const x = new Date(d.length === 10 ? d + 'T00:00' : d); v = isNaN(x) ? 'Invalid Date' : DF.format(x);
+  if (tarihBellek.size > 20000) tarihBellek.clear(); tarihBellek.set(d, v); return v;
+};
 export const isoLocal = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
 export const today = () => isoLocal(new Date());
 export const gunEkle = (s, n) => { const d = new Date(s + 'T00:00'); d.setDate(d.getDate() + n); return isoLocal(d); };
@@ -87,7 +95,16 @@ export const fold = s => trLower(s).normalize('NFD').replace(/[̀-ͯ]/g, '').rep
 const birHarf = (a, b) => { if (Math.abs(a.length - b.length) > 1) return false; let i = 0, j = 0, f = 0; while (i < a.length && j < b.length) { if (a[i] === b[j]) { i++; j++; continue; } if (++f > 1) return false; if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; } } return f + (a.length - i) + (b.length - j) <= 1; };
 export const kelimeUyar = (w, hay) => hay.includes(w) || (w.length >= 4 && hay.split(/[^a-z0-9]+/).some(t => t.length >= w.length - 1 && (birHarf(w, t.slice(0, w.length)) || birHarf(w, t.slice(0, w.length + 1)) || birHarf(w, t.slice(0, w.length - 1)))));
 export const match = (q, ...fields) => { const f = fold(q).trim(); if (!f) return true; const hay = fold(fields.filter(Boolean).join(' ')); return f.split(/\s+/).every(w => kelimeUyar(w, hay)); };
-export const byId = (t, id) => id ? S[t].find(x => x.id === id) : null;
+// Kimliğe göre kayıt: tablo başına dizin (dizi değişince ya da uzunluğu değişince yeniden kurulur; yerinde değiştirilen satır her seferinde doğrulanır)
+const DIZIN = {};
+export const byId = (t, id) => {
+  if (!id) return null; const a = S[t]; if (!a) return undefined;
+  let c = DIZIN[t];
+  if (!c || c.a !== a || c.n !== a.length) { c = DIZIN[t] = { a, n: a.length, m: new Map() }; a.forEach((x, i) => { if (x && !c.m.has(x.id)) c.m.set(x.id, i); }); }
+  const i = c.m.get(id); if (i === undefined) return undefined;
+  const x = a[i]; if (x && x.id === id) return x;
+  c.n = -1; return a.find(y => y.id === id);
+};
 export const firmaAd = id => byId('firmalar', id)?.ad || '';
 
 export function pill(d) { return `<span class="pill" style="--c:${durumRenk(d)}">${esc(d)}</span>`; }

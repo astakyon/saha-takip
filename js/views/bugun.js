@@ -73,8 +73,10 @@ export function gidilmeyenler(gun = null) {
   const t = today(), son = sonZiyaret();
   const aktif = new Set();
   for (const p of S.projeler) if (ACIK.includes(p.durum) || p.durum === 'Sipariş') for (const k of ['emut_id', 'gemut_id', 'alici_id', 'bayi_id', 'projeci_id', 'danisman_id']) if (p[k]) aktif.add(p[k]);
+  const pSay = new Map();
+  for (const p of S.projeler) if (ACIK.includes(p.durum)) for (const id of new Set([p.emut_id, p.gemut_id, p.alici_id, p.bayi_id].filter(Boolean))) pSay.set(id, (pSay.get(id) || 0) + 1);
   return S.firmalar.filter(f => aktif.has(f.id) || (f.tipler || []).some(x => ['Bayi', 'Emüt', 'Malzeme Alıcısı'].includes(x)))
-    .map(f => ({ f, son: son.get(f.id) || null, gun: son.get(f.id) ? gunFarki(son.get(f.id), t) : null, proje: S.projeler.filter(p => ACIK.includes(p.durum) && [p.emut_id, p.gemut_id, p.alici_id, p.bayi_id].includes(f.id)).length }))
+    .map(f => ({ f, son: son.get(f.id) || null, gun: son.get(f.id) ? gunFarki(son.get(f.id), t) : null, proje: pSay.get(f.id) || 0 }))
     .filter(x => x.gun === null || x.gun > (gun ?? siklik(x.f))).sort((a, b) => (b.proje - a.proje) || ((b.gun ?? 9999) - (a.gun ?? 9999)));
 }
 export function dogumGunleri(gun = 7) {

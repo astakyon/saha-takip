@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 83): hız ve telefon düzeni
+
+- Büyük veriyle (400 firma, 1.800 proje, 6.000 ziyaret, 1.200 teklif, 2.500 görev; yavaş telefon benzetimi) ölçüldü ve hızlandırıldı: Ziyaretler ekranı yaklaşık 10 kat (1,1 sn → 0,1 sn), Teklifler 25 kat (1,7 sn → 0,07 sn), Panel 4 kat, Hafta planı 2,5 kat, Bugün 2 kat hızlı açılıyor.
+- Nasıl: kayda kimlikle erişim dizinli yapıldı, tarih ve para biçimlendiriciler bir kez kuruluyor, firma başına tekrar tekrar tüm projeleri tarayan hesaplar tek geçişe indirildi, Ziyaretler ve Teklifler listesi ilk 150/200 kayıtla açılıp "Daha fazla göster" ile uzuyor.
+- Tüm ekranlar telefonda (390 px) tarandı: taşma ve hata yok. Ekip haritası ve Kayıp ve rakip tabloları dar ekranda sıkışmak yerine yana kayıyor; sayfa sonu + düğmesinin altında kalmıyor.
+
 ## Güncelleme notu (sürüm 82): Pazartesi özeti bildirimi
 
 - Her pazartesi 08:00'de (Türkiye) telefona bildirim: geçen hafta kaç ziyaret, teklif ve sipariş; bu hafta kaç planlı ziyaret, süresi dolan teklif ve açık görev. Uygulama kapalıyken de gelir; dokununca uygulama açılır ("Haftan" kartı ya da plan yoksa Hafta planı).

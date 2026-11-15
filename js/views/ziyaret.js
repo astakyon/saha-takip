@@ -126,16 +126,18 @@ export function ziyaretlerView(el) {
     <div class="timeline" data-rows></div>`;
   const list = () => S.ziyaretler.filter(z => (f.ay === 'Tümü' || z.tarih.startsWith(f.ay)) && (f.durum === 'Tümü' || zDurum(z) === f.durum) && match(f.q, firmaAd(z.firma_id), byId('kisiler', z.kisi_id)?.ad_soyad, z.notlar, z.sonuc, z.sonuc_tipi, byId('projeler', z.proje_id)?.ad, z.amac))
     .sort((a, b) => b.tarih.localeCompare(a.tarih) || (b.saat || '').localeCompare(a.saat || ''));
+  let sinir = 150;   // uzun listede ilk 150 ziyaret; "Daha fazla göster" ile artar
   const draw = () => {
     const l = list(); el.querySelector('[data-sum]').textContent = `${l.length} ziyaret · ${S.ziyaretler.filter(z => zDurum(z) === 'Planlandı' && z.tarih >= today()).length} planlı ziyaret bekliyor`;
     let last = '';
-    el.querySelector('[data-rows]').innerHTML = l.length ? l.map(z => {
+    el.querySelector('[data-rows]').innerHTML = l.length ? l.slice(0, sinir).map(z => {
       const d = z.tarih !== last ? `<h3 class="tl-day">${new Date(z.tarih + 'T00:00').toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</h3>` : ''; last = z.tarih;
       return d + ziyaretKart(z);
-    }).join('') : '<div class="empty"><p>Ziyaret kaydı yok. Sahadayken “Ziyaret kaydet” ile firma, kişi ve notu gir; konum otomatik eklenir.</p></div>';
+    }).join('') + (l.length > sinir ? `<div class="btnrow"><button type="button" class="btn ghost" data-dahafazla>Daha fazla göster (${l.length - sinir})</button></div>` : '') : '<div class="empty"><p>Ziyaret kaydı yok. Sahadayken “Ziyaret kaydet” ile firma, kişi ve notu gir; konum otomatik eklenir.</p></div>';
     el.querySelectorAll('[data-zid]').forEach(b => b.onclick = () => ziyaretForm({ id: b.dataset.zid }));
+    el.querySelector('[data-dahafazla]')?.addEventListener('click', () => { sinir += 300; draw(); });
   };
-  let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
+  let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; sinir = 150; saveFilters(); draw(); }, 200); };
   el.querySelector('[data-ay]').onchange = e => { f.ay = e.target.value; saveFilters(); draw(); };
   el.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { f.durum = b.dataset.d; saveFilters(); el.querySelectorAll('[data-d]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
   el.querySelector('[data-new]').onclick = () => ziyaretForm({});

@@ -84,11 +84,17 @@ export function radarListesi({ hepsi = false } = {}) {
   // 4) Uzaklaşan A / key account müşteriler
   const sz = new Map();
   for (const z of S.ziyaretler || []) if ((z.durum || 'Yapıldı') === 'Yapıldı' && z.firma_id && (!sz.has(z.firma_id) || z.tarih > sz.get(z.firma_id))) sz.set(z.firma_id, z.tarih);
+  // Firma başına: projesi var mı, açık işlerinin değeri (tek geçişte)
+  const projeli = new Set(), acikD = new Map(), ACIK_D = new Set(SICAK.concat('Proje', 'Beklemede'));
+  for (const p of S.projeler || []) {
+    for (const k of ['emut_id', 'gemut_id', 'alici_id', 'bayi_id']) if (p[k]) projeli.add(p[k]);
+    if (ACIK_D.has(p.durum)) { const v = deger(p); for (const id of new Set([p.emut_id, p.gemut_id, p.alici_id, p.bayi_id, p.projeci_id, p.danisman_id].filter(Boolean))) acikD.set(id, (acikD.get(id) || 0) + v); }
+  }
   for (const f of (S.firmalar || []).filter(f => f.segment === 'A' || f.key_account)) {
     const s = sz.get(f.id), aralik = f.segment === 'A' ? 30 : +ayar('ziyaret_siklik', 45) || 45, gun = s ? gunFarki(s, t) : null;
     if (gun !== null && gun <= aralik) continue;
-    if (gun === null && !(S.projeler || []).some(p => [p.emut_id, p.gemut_id, p.alici_id, p.bayi_id].includes(f.id))) continue;
-    const acikDeger = (S.projeler || []).filter(p => SICAK.concat('Proje', 'Beklemede').includes(p.durum) && [p.emut_id, p.gemut_id, p.alici_id, p.bayi_id, p.projeci_id, p.danisman_id].includes(f.id)).reduce((a, p) => a + deger(p), 0);
+    if (gun === null && !projeli.has(f.id)) continue;
+    const acikDeger = acikD.get(f.id) || 0;
     l.push({ k: 'uzak:' + f.id, tur: 'uzak', href: `#/firma/${f.id}`, baslik: f.ad, tutar: null,
       alt: [f.segment ? f.segment + ' müşterisi' : 'Key account', gun === null ? 'hiç ziyaret kaydı yok' : `${gun} gündür gidilmedi (aralık ${aralik} gün)`, acikDeger ? `açık işlerin değeri ${usd(acikDeger)}` : ''].filter(Boolean).join(' · '),
       puan: Math.max(acikDeger, 5000) * (1 + Math.min(gun ?? aralik * 2, 365) / aralik / 2), eylem: { tip: 'planla', firma_id: f.id } });

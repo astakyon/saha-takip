@@ -1807,3 +1807,11 @@ body.giris-var #view { padding-top: 64px; }
 .ra-hucre { display: inline-block; min-width: 28px; padding: 2px 6px; border-radius: 6px; background: rgba(185, 28, 28, var(--a)); font-weight: 600; text-align: center; }
 .tbl-wrap { overflow-x: auto; }
 .sql-kutu { width: 100%; font: 12px/1.45 ui-monospace, monospace; margin: 6px 0; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--line-2); resize: vertical; }
+
+/* Dar ekranda geniş tablolar yatay kayar (hücreler sıkışmaz) */
+@media (max-width: 640px) {
+  .ra-t { min-width: 680px; }
+  .eh-t { min-width: 460px; }
+  .eh-t td:first-child { min-width: 150px; }
+  #view { padding-bottom: 96px; }
+}
