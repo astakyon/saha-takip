@@ -677,6 +677,8 @@ const DB = () => {
   const ehTasma = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   kontrol('Ekip haritası: kişi özeti (ziyaret, içeride süre, teklif, görev), şu an içeride olan, saat sırasıyla akış, kişiye göre süzme, telefonda taşmıyor',
     eh.satir.length === 2 && /gorkem/.test(eh.satir[0]) && /Atlas Proje/.test(eh.canli || '') && eh.akis.length === 7 && /Görev tamamlandı/.test(eh.akis[0]) && eh.kisi === 3 && eh2 === 3 && ehTasma <= 1, JSON.stringify({ eh, eh2, ehTasma }));
+  const zs = await p.evaluate(async () => (await import('./js/push.js')).zamanlamaSql('https://abc.supabase.co/', 'ANON', 'GIZLI'));
+  kontrol('Pazartesi bildirimi zamanlama SQL\'i: pazartesi 05:00 UTC, bildir fonksiyonu, anahtar başlıkları, haftalık olay', /cron\.schedule\('saha-pazartesi-ozeti', '0 5 \* \* 1'/.test(zs) && zs.includes("url := 'https://abc.supabase.co/functions/v1/bildir'") && zs.includes("'x-cron-anahtar', 'GIZLI'") && zs.includes("'Bearer ANON'") && zs.includes('{"olay":"haftalik"}'), zs);
   kontrol('Ekip haritasında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }

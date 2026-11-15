@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 82): Pazartesi özeti bildirimi
+
+- Her pazartesi 08:00'de (Türkiye) telefona bildirim: geçen hafta kaç ziyaret, teklif ve sipariş; bu hafta kaç planlı ziyaret, süresi dolan teklif ve açık görev. Uygulama kapalıyken de gelir; dokununca uygulama açılır ("Haftan" kartı ya da plan yoksa Hafta planı).
+- Herkese kendi özeti gider: veri sahibine şirketin tamamı, ekip üyesine yalnızca kendi kayıtları. **Tutar ve müşteri adı gönderilmez.**
+- Ayarlar → Genel → Bildirimler: "Pazartesi sabahı haftalık özet" seçeneği (cihaz başına kapatılabilir) ve **Şimdi bir özet gönder** düğmesi.
+- **Kurulum (bir kez, veri sahibi):** Ayarlar → Bildirimler → **Zamanlamayı kur**. (1) `supabase/functions/bildir/index.ts` dosyasının güncel halini bildir fonksiyonuna yeniden yükle, (2) üretilen **CRON_ANAHTAR** değerini Edge Functions → Secrets'a ekle, (3) gösterilen SQL'i SQL Editor'de çalıştır (pg_cron ve pg_net ile pazartesi 05:00 UTC). service_role anahtarı kullanılmaz.
+
 ## Güncelleme notu (sürüm 81): Kayıp ve rakip istihbaratı
 
 - **Raporlar → Kayıp ve rakip:** yıl, il ve sektöre göre süzülen pano. Üstte kaybedilen ve kazanılan tutar, kazanma oranı, en çok kaybettiğimiz rakip ve rakibin ortalama fiyat farkı.

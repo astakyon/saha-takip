@@ -68,7 +68,7 @@ export async function pushAyarlari(root) {
   const yenile = () => pushAyarlari(root);
   // Hangi bildirimler gelsin (bu cihaz için)
   if (sub && izin === 'granted' && kurulu) {
-    const TUR = [['atandi', 'Bana görev atandığında'], ...(sahipMi() ? [['tamamlandi', 'Ekipten biri görevi tamamladığında']] : []), ['yorum', 'Bir yorumda etiketlendiğimde']];
+    const TUR = [['atandi', 'Bana görev atandığında'], ...(sahipMi() ? [['tamamlandi', 'Ekipten biri görevi tamamladığında']] : []), ['yorum', 'Bir yorumda etiketlendiğimde'], ['haftalik', 'Pazartesi sabahı haftalık özet']];
     let ter = {}; try { const { data } = await app.db.c.from('push_abonelikleri').select('tercihler').eq('endpoint', sub.endpoint).maybeSingle(); ter = data?.tercihler || {}; } catch {}
     root.insertAdjacentHTML('beforeend', `<h4>Bu cihaza gelsin</h4><div class="bil-ter">${TUR.map(([k, t]) => `<label class="chk"><input type="checkbox" data-ter="${k}" ${ter[k] !== false ? 'checked' : ''}> <span>${t}</span></label>`).join('')}</div>`);
     root.querySelectorAll('[data-ter]').forEach(c => c.onchange = async () => {
@@ -77,6 +77,8 @@ export async function pushAyarlari(root) {
       if (error) { c.checked = !c.checked; return toast(/tercihler/.test(error.message) ? 'Bunun için Supabase SQL Editor\'de güncel schema.sql dosyasını çalıştır (sürüm 14).' : 'Kaydedilemedi: ' + error.message, 'err'); }
       toast('Bildirim tercihi kaydedildi.');
     });
+    root.insertAdjacentHTML('beforeend', pazartesiHtml());
+    pazartesiBagla(root);
   }
   root.querySelector('[data-pac]')?.addEventListener('click', async e => { e.target.disabled = true; try { await aboneOl(); toast('Bu cihazda anlık bildirim açıldı.'); } catch (err) { toast(err.message, 'err'); } yenile(); });
   root.querySelector('[data-pkapat]')?.addEventListener('click', async () => { await abonelikKapat(); toast('Bu cihazda kapatıldı.'); yenile(); });
@@ -97,4 +99,48 @@ function kurulumHtml() {
       <li>Edge Functions → <b>Deploy a new function</b> → <b>Via Editor</b> → adı <b>bildir</b> → GitHub'daki <code>supabase/functions/bildir/index.ts</code> içeriğini yapıştır → <b>Deploy</b>.</li>
       <li><button type="button" class="btn sm ghost" data-pkontrol>Kurulumu kontrol et</button></li>
     </ol></div>`;
+}
+
+// ---------- Pazartesi özeti bildirimi ----------
+// Her pazartesi 08:00'de (Türkiye) Supabase'deki zamanlanmış görev "bildir" fonksiyonunu çağırır; fonksiyon her kişiye
+// kendi haftasının özetini gönderir (yalnızca sayılar; tutar ve müşteri adı yok). Kurulum bir kez, veri sahibi yapar.
+function pazartesiHtml() {
+  return `<h4>Pazartesi özeti</h4><p class="hint">Her pazartesi 08:00'de telefona: geçen hafta kaç ziyaret, teklif ve sipariş; bu hafta kaç planlı ziyaret, süresi dolan teklif ve açık görev. Tutar ve müşteri adı gönderilmez.</p>
+    <div class="btnrow"><button type="button" class="btn sm" data-hdeneme>Şimdi bir özet gönder</button>${sahipMi() ? '<button type="button" class="btn sm ghost" data-hkur>Zamanlamayı kur</button>' : ''}</div><div data-hkurulum></div>`;
+}
+function rastgele() { const b = new Uint8Array(24); crypto.getRandomValues(b); return Array.from(b, x => x.toString(16).padStart(2, '0')).join(''); }
+export function zamanlamaSql(url, anahtar, cron) {
+  const fn = url.replace(/\/+$/, '') + '/functions/v1/bildir';
+  return `-- Saha Takip: pazartesi özeti (her pazartesi 08:00 Türkiye = 05:00 UTC). Bir kez çalıştır; tekrar çalıştırmak günceller.
+create extension if not exists pg_cron;
+create extension if not exists pg_net with schema extensions;
+select cron.schedule('saha-pazartesi-ozeti', '0 5 * * 1', $cron$
+  select net.http_post(
+    url := '${fn}',
+    headers := jsonb_build_object('Content-Type', 'application/json', 'apikey', '${anahtar}', 'Authorization', 'Bearer ${anahtar}', 'x-cron-anahtar', '${cron}'),
+    body := '{"olay":"haftalik"}'::jsonb)
+$cron$);
+-- Kapatmak için: select cron.unschedule('saha-pazartesi-ozeti');`;
+}
+function pazartesiBagla(root) {
+  root.querySelector('[data-hdeneme]')?.addEventListener('click', async e => {
+    e.target.disabled = true;
+    const d = await gonder('haftalik_deneme');
+    toast(d?.gonderilen ? 'Özet bu cihaza gönderildi.' : d?.not || ('Gönderilemedi: ' + (d?.hata || 'bildir fonksiyonunu güncel haliyle yeniden yüklemen gerekebilir.')), d?.gonderilen ? '' : 'err');
+    e.target.disabled = false;
+  });
+  root.querySelector('[data-hkur]')?.addEventListener('click', async () => {
+    const { getConfig } = await import('./db.js'); const c = getConfig() || {};
+    const cron = rastgele(), sql = zamanlamaSql(c.url || '', c.key || '', cron), yeniAnahtar = /^sb_publishable_/.test(c.key || '');
+    const kutu = root.querySelector('[data-hkurulum]');
+    kutu.innerHTML = `<ol class="kurulum">
+      <li>GitHub'daki güncel <code>supabase/functions/bildir/index.ts</code> içeriğiyle <b>bildir</b> fonksiyonunu yeniden yükle (Edge Functions → bildir → Code → yapıştır → Deploy).</li>
+      <li>Edge Functions → <b>Secrets</b> → yeni: <b>CRON_ANAHTAR</b> = <div class="anahtar"><div><input readonly value="${esc(cron)}" aria-label="CRON_ANAHTAR"><button type="button" class="btn sm" data-kopya="${esc(cron)}">Kopyala</button></div></div></li>
+      ${yeniAnahtar ? '<li>Uygulaman yeni tür anahtar (sb_publishable) kullandığı için bildir fonksiyonunun ayarlarında <b>Verify JWT</b> seçeneğini kapat. Fonksiyon her isteği kendisi doğrular.</li>' : ''}
+      <li>SQL Editor'de şunu bir kez çalıştır:<textarea readonly rows="9" class="sql-kutu" aria-label="Zamanlama SQL">${esc(sql)}</textarea><button type="button" class="btn sm" data-kopya-sql>SQL'i kopyala</button></li>
+      <li>Hepsi bu. Denemek için "Şimdi bir özet gönder".</li></ol>
+      <p class="hint">Anahtar bu cihazda üretildi ve hiçbir yere gönderilmedi; yalnızca senin Supabase'ine girilir. Kurulumu yeniden yaparsan yeni anahtarı Secrets'ta da güncelle.</p>`;
+    kutu.querySelectorAll('[data-kopya]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.kopya); toast('Kopyalandı.'); } catch { b.previousElementSibling.select(); } });
+    kutu.querySelector('[data-kopya-sql]').onclick = async () => { try { await navigator.clipboard.writeText(sql); toast('SQL kopyalandı.'); } catch { kutu.querySelector('.sql-kutu').select(); } };
+  });
 }
