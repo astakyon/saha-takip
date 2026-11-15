@@ -319,7 +319,7 @@ async function boot() {
   hizliKur();
   if ('ontouchstart' in window) import('./dokunma.js').then(m => m.dokunmaKur());
   if (kurulum) sz.sihirbazAc({ sonra: () => { renderNav(navSon); app.refresh?.(); import('./yardim.js').then(m => m.tanitimGerekirse()); } });
-  else if (Object.values(S).some(a => a.length) || !sahipMi()) import('./yardim.js').then(m => m.tanitimGerekirse());
+  else if (Object.values(S).some(a => a.length) || !sahipMi()) import('./yardim.js').then(m => m.acilisYardimi());
   if (act === 'ziyaret') import('./views/ziyaret.js').then(m => m.ziyaretForm({}));
   if (act === 'ara') aramaAc();
   if (pay) paylasimPaneli(pay);

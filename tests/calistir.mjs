@@ -38,7 +38,7 @@ async function sayfa({ supabase = false, hazirla } = {}) {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });
   await c.route(/cdnjs|jsdelivr|googleapis|gstatic|openstreetmap|arcgis|nominatim|frankfurter|supabase\.co|eaeaydinlatma|unpkg/, r => { const u = r.request().url(); if (u.includes('supabase-js')) return r.fulfill({ body: sahteSupa, contentType: 'application/javascript' }); if (u.includes('leaflet')) return r.fulfill({ body: sahteLeaflet, contentType: 'application/javascript' }); if (u.endsWith('.js')) return r.fulfill({ body: '', contentType: 'application/javascript' }); return r.abort(); });
   await c.addInitScript(({ supabase, hazirla }) => {
-    localStorage.setItem('saha-tanitim', '1'); if (localStorage.getItem('__hazir')) return; localStorage.setItem('__hazir', '1');
+    localStorage.setItem('saha-tanitim', '1'); if (!localStorage.getItem('saha-gorulen-surum')) localStorage.setItem('saha-gorulen-surum', '999'); if (localStorage.getItem('__hazir')) return; localStorage.setItem('__hazir', '1');
     if (supabase) localStorage.setItem('saha-config', JSON.stringify({ mode: 'supabase', url: 'https://x.supabase.co', key: 'k' }));
     if (hazirla) (0, eval)('(' + hazirla + ')')();
   }, { supabase, hazirla: hazirla ? hazirla.toString() : null });
@@ -679,6 +679,13 @@ const DB = () => {
     eh.satir.length === 2 && /gorkem/.test(eh.satir[0]) && /Atlas Proje/.test(eh.canli || '') && eh.akis.length === 7 && /Görev tamamlandı/.test(eh.akis[0]) && eh.kisi === 3 && eh2 === 3 && ehTasma <= 1, JSON.stringify({ eh, eh2, ehTasma }));
   const zs = await p.evaluate(async () => (await import('./js/push.js')).zamanlamaSql('https://abc.supabase.co/', 'ANON', 'GIZLI'));
   kontrol('Pazartesi bildirimi zamanlama SQL\'i: pazartesi 05:00 UTC, bildir fonksiyonu, anahtar başlıkları, haftalık olay', /cron\.schedule\('saha-pazartesi-ozeti', '0 5 \* \* 1'/.test(zs) && zs.includes("url := 'https://abc.supabase.co/functions/v1/bildir'") && zs.includes("'x-cron-anahtar', 'GIZLI'") && zs.includes("'Bearer ANON'") && zs.includes('{"olay":"haftalik"}'), zs);
+  // Yenilikler: eski sürümden gelen kullanıcıya bir kez
+  await p.evaluate(() => localStorage.setItem('saha-gorulen-surum', '78')); await p.reload(); await w(2600);
+  const yn = await p.evaluate(() => ({ acik: document.querySelector('.drawer.open h2')?.textContent, n: document.querySelectorAll('.drawer.open .yenilik-l li').length, ilk: document.querySelector('.drawer.open .yenilik-l b')?.textContent }));
+  await p.evaluate(() => [...document.querySelectorAll('.drawer.open .yenilik-l li')].find(li => /Kayıp ve rakip/.test(li.textContent)).querySelector('[data-yi]').click()); await w(1000);
+  const yn2 = await p.evaluate(() => ({ hash: location.hash, gor: localStorage.getItem('saha-gorulen-surum') }));
+  await p.reload(); await w(2600); const yn3 = await p.evaluate(() => !document.querySelector('.drawer.open .yenilik-l'));
+  kontrol('Yenilikler: yeni sürümde bir kez açılıyor (yalnızca görülmemişler, en yeni üstte), Göster ilgili ekrana götürüyor, tekrar açılmıyor', yn.acik === 'Yenilikler' && yn.n === 4 && yn.ilk === 'Daha hızlı' && yn2.hash === '#/rakipanaliz' && yn2.gor === '83' && yn3, JSON.stringify({ yn, yn2, yn3 }));
   kontrol('Ekip haritasında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }

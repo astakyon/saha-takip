@@ -32,6 +32,11 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 84): Yenilikler penceresi
+
+- Yeni sürüm ilk açıldığında bir kez **Yenilikler** penceresi: o güne kadar görmediğin yeni özellikler, en yenisi üstte; her birinde ilgili ekrana götüren **Göster** düğmesi. Sonra her ekrandaki **?** → **Yenilikler** ile yeniden açılır.
+- Uygulamayı ilk kez kullanan yalnızca 4 adımlık tanıtımı görür, yenilikler listesini görmez.
+
 ## Güncelleme notu (sürüm 83): hız ve telefon düzeni
 
 - Büyük veriyle (400 firma, 1.800 proje, 6.000 ziyaret, 1.200 teklif, 2.500 görev; yavaş telefon benzetimi) ölçüldü ve hızlandırıldı: Ziyaretler ekranı yaklaşık 10 kat (1,1 sn → 0,1 sn), Teklifler 25 kat (1,7 sn → 0,07 sn), Panel 4 kat, Hafta planı 2,5 kat, Bugün 2 kat hızlı açılıyor.
