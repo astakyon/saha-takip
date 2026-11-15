@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 87): Bugünün soruları
+
+- Bugün ekranında yeni kart: her gün en fazla **3 kısa soru**, yerinde cevaplanır: kayıp projede neden ve işi alan marka, açık projede tutar, beklenen tarihi 60 günden çok geçmiş projede durum (1 ay ileri at / Beklemede / Kaybettik), takip yılı, aktif firmanın segmenti (A/B/C). Bir firmada içerideyken firmanın konumu yoksa giriş konumunu firmaya kaydetmeyi sorar.
+- Sorular önem sırasıyla gelir (sıcak ve büyük projeler önce), her gün değişir. **Atla** o soruyu 30 gün sormaz; 3 cevaptan sonra "Bugünlük bu kadar" der, istersen **Bir tane daha**. Tamamı Veri kontrolü ekranında.
+- Bugün kartları düzenle menüsünden kapatılabilir.
+
 ## Güncelleme notu (sürüm 86): aynı anda düzenlemede alan alan birleştirme
 
 - Bir kaydı sen açtıktan sonra başka biri (ya da öbür cihazın) değiştirdiyse artık "seninki mi onunki mi" diye bütün kaydı sormuyor:

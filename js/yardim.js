@@ -79,6 +79,8 @@ export const YENILIKLER = [
   { s: 79, t: 'Ekip haritası', m: 'Gün içinde kim nerede giriş yaptı, saat sırasıyla olanlar ve kişi başına özet.', r: '#/ekiphar', d: 'Raporlar → Ekip haritası' },
   { s: 80, t: 'Pazartesi özeti', m: 'Haftanın ilk açılışında geçen hafta, bu hafta ve dikkat edilecekler tek kartta. İstersen pazartesi sabahı bildirim olarak da gelir.', r: '#/bugun', d: 'Bugün' },
   { s: 81, t: 'Kayıp ve rakip', m: 'Hangi rakibe, hangi nedenle, hangi il ve sektörde kaybettiğin; fiyat farkı ve rakibe karşı kazandıkların.', r: '#/rakipanaliz', d: 'Raporlar → Kayıp ve rakip' },
+  { s: 86, t: 'Aynı anda düzenleme', m: 'Bir kaydı iki kişi aynı anda değiştirirse farklı alanlar sormadan birleşir; aynı alan değiştiyse yalnızca o alan iki değeriyle sorulur. İnternetsiz değişiklikler de böyle birleşir.', r: null, d: '' },
+  { s: 87, t: 'Bugünün soruları', m: 'Bugün ekranında her gün en fazla 3 kısa soru: kayıp nedeni, proje tutarı, gecikmiş tarih, firma segmenti. Yerinde cevapla; radar ve analizler doğru çalışsın.', r: '#/bugun', d: 'Bugün' },
   { s: 83, t: 'Daha hızlı', m: 'Çok kayıt olduğunda Ziyaretler, Teklifler, Panel ve Bugün ekranları belirgin biçimde daha hızlı açılıyor.', r: null, d: '' },
 ];
 export function yenilikleriGoster(hepsi = false) {

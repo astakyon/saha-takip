@@ -763,6 +763,37 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 25) Bugünün soruları (eksik veri) ----------
+{
+  const DB13 = () => {
+    const ts = '2026-10-01T08:00:00Z', o = x => ({ owner: 'u1', updated_at: ts, created_at: ts, ...x });
+    localStorage.setItem('__DB', JSON.stringify({
+      firmalar: [o({ id: 'f1', ad: 'Yıldız Elektrik', tipler: ['Emüt'] })], kisiler: [], ziyaretler: [], gorevler: [], teklifler: [], ekip_uyeleri: [],
+      projeler: [o({ id: 'k1', ad: 'Hastane', durum: 'Kayıp', tutar_usd: 300000, takip_yili: 2026 }), o({ id: 'a1', ad: 'Okul', durum: 'Sıcak', emut_id: 'f1', takip_yili: 2026 }),
+        o({ id: 'a2', ad: 'Depo', durum: 'Proje', tutar_usd: 1000, emut_id: 'f1' }), o({ id: 'a3', ad: 'Otel', durum: 'İhale', tutar_usd: 5000, takip_yili: 2026, beklenen_tarih: '2026-01-10', emut_id: 'f1' })] }));
+  };
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB13 });
+  await p.setViewportSize({ width: 1280, height: 900 }); await p.goto(U + '#/bugun'); await w(1500);
+  const e1 = await p.evaluate(() => ({ n: document.querySelectorAll('[data-eksik] li[data-ek]').length, k: [...document.querySelectorAll('[data-eksik] li[data-ek]')].map(l => l.dataset.ek) }));
+  await (await p.$('[data-eksik]')).screenshot({ path: 'tests/cikti/bugunun-sorulari.png' });
+  // Kayıp: neden + marka
+  await p.selectOption('[data-ek="kayip:k1"] [data-a="kayip_nedeni"]', 'Fiyat'); await p.fill('[data-ek="kayip:k1"] [data-a="rakip_marka"]', 'Philips');
+  await p.click('[data-ek="kayip:k1"] [data-kaydet]'); await w(900);
+  // Tutar
+  await p.fill('[data-ek="tutar:a1"] [data-a="tutar_usd"]', '45000'); await p.click('[data-ek="tutar:a1"] [data-kaydet]'); await w(900);
+  const e2 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const k1 = S.projeler.find(x => x.id === 'k1'), a1 = S.projeler.find(x => x.id === 'a1'); return { k1: [k1.kayip_nedeni, k1.rakip_marka], a1: a1.tutar_usd, k: [...document.querySelectorAll('[data-eksik] li[data-ek]')].map(l => l.dataset.ek), sayi: document.querySelector('[data-eksik] h2')?.textContent }; });
+  // Atla → 30 gün sorulmaz; üçüncüyü cevapla → bugünlük bitti
+  const atlanan = e2.k[0];
+  await p.click(`[data-ek="${atlanan}"] [data-atla]`); await w(800);
+  const e3 = await p.evaluate(() => [...document.querySelectorAll('[data-eksik] li[data-ek]')].map(l => l.dataset.ek));
+  await p.evaluate(() => document.querySelector('[data-eksik] li[data-ek] [data-hizli]').click()); await w(900);
+  const e4 = await p.evaluate(() => document.querySelector('[data-eksik]')?.textContent || '');
+  kontrol('Bugünün soruları: en fazla 3 soru (kayıp nedeni/marka, tutar, gecikmiş tarih, yıl, segment), yerinde kaydediliyor, Atla 30 gün sormuyor, günlük 3 cevaptan sonra "bugünlük bu kadar"',
+    e1.n === 3 && e1.k.includes('kayip:k1') && e2.k1.join() === 'Fiyat,Philips' && e2.a1 === 45000 && /2\/3/.test(e2.sayi) && !e3.includes(atlanan) && /Bugünlük bu kadar/.test(e4), JSON.stringify({ e1, e2, e3, e4: e4.slice(0, 120) }));
+  kontrol('Bugünün sorularında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
 // ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
 {
   const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');
