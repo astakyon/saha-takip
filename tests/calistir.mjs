@@ -328,7 +328,7 @@ const DB = () => {
   await p.goto(U + '#/sirket/ekip'); await w(1500);
   const sekmeEkip = await p.evaluate(() => ({ h: location.hash, on: document.querySelector('[data-fsk].on')?.dataset.fsk, sek: [...document.querySelectorAll('[data-fsk]')].map(b => b.dataset.fsk).join(',') }));
   await p.screenshot({ path: 'tests/cikti/sirket-ekip.png', fullPage: true });
-  kontrol('Ayarlar sadeleşti (Ekip, Mesaj, Firma profili, Döviz kuru, Araç çıktı; Bildirimler ayrı); Ekip ve yetkiler şirket profilinde', ayarEkipYok && sekmeEkip.h === '#/sirket/ekip' && sekmeEkip.on === 'ekip' && sekmeEkip.sek === 'genel,ekip,roller,ekipler,otomasyon,kur', JSON.stringify({ ayarEkipYok, sekmeEkip }));
+  kontrol('Ayarlar sadeleşti (Ekip, Mesaj, Firma profili, Döviz kuru, Araç çıktı; Bildirimler ayrı); Ekip ve yetkiler şirket profilinde', ayarEkipYok && sekmeEkip.h === '#/sirket/ekip' && sekmeEkip.on === 'ekip' && sekmeEkip.sek === 'genel,ekip,roller,ekipler,degisiklik,otomasyon,kur', JSON.stringify({ ayarEkipYok, sekmeEkip }));
   await p.goto(U + '#/sirket/genel'); await w(1200);
   const kart = await p.isVisible('.sirket-kart');
   await p.fill('#sk-ad', 'Yeni Şirket AŞ'); await p.click('[data-sk-ad]'); await w(300);
@@ -367,7 +367,7 @@ const DB = () => {
   const sid = await p.evaluate(() => JSON.parse(localStorage.getItem('__DB')).roller.find(r => r.ad === 'Satış').id);
   await p.goto(U + '#/sirket/roller'); await w(1200);
   await p.click(`.rol-k[data-rol="${sid}"] summary`).catch(() => {}); await w(200);
-  await p.click(`.rol-k[data-rol="${sid}"] [data-kapsam] [data-v="kendi"]`); await p.click(`.rol-k[data-rol="${sid}"] [data-rolkaydet]`); await w(1200);
+  await p.click(`.rol-k[data-rol="${sid}"] [data-ypk="kayit"]`); await p.click(`.rol-k[data-rol="${sid}"] [data-kapsam] [data-v="kendi"]`); await p.click(`.rol-k[data-rol="${sid}"] [data-rolkaydet]`); await w(1200);
   const k3 = await p.evaluate(() => { const d = JSON.parse(localStorage.getItem('__DB')); return { ekip: d.ekip_uyeleri[0].ekip_id, kapsam: d.roller.find(r => r.ad === 'Satış').yetkiler._kapsam, aliKapsam: d.ekip_uyeleri[0].yetkiler._kapsam }; });
   await p.evaluate(() => { window.__DB.firmalar[0].sorumlu = 'ali@x.com'; localStorage.setItem('__DB', JSON.stringify(window.__DB)); });
   await p.goto(U + '#/sirket/ekip'); await w(1200);
@@ -399,12 +399,22 @@ const DB = () => {
   // Rol görünümü: açılış ekranı, alt menü, Bugün kartları
   await p.goto(U + '#/sirket/roller'); await w(1200);
   await p.click(`.rol-k[data-rol="${sid}"] summary`).catch(() => {}); await w(200);
-  await p.selectOption(`.rol-k[data-rol="${sid}"] [data-gacilis]`, 'projeler');
+  await p.click(`.rol-k[data-rol="${sid}"] [data-ypk="gorunum"]`); await p.selectOption(`.rol-k[data-rol="${sid}"] [data-gacilis]`, 'projeler');
   for (const k of ['bugun', 'projeler', 'firmalar']) await p.check(`.rol-k[data-rol="${sid}"] [data-gmenu="${k}"]`);
   await p.uncheck(`.rol-k[data-rol="${sid}"] [data-gkart="radar"]`);
   await p.click(`.rol-k[data-rol="${sid}"] [data-rolkaydet]`); await w(1200);
   const rg = await p.evaluate(id => { const d = JSON.parse(localStorage.getItem('__DB')); return { rol: d.roller.find(r => r.id === id).yetkiler._gorunum, ayse: d.ekip_uyeleri.find(u => /ayse/.test(u.eposta)).yetkiler._gorunum }; }, sid);
   kontrol('Rol görünümü kaydediliyor ve roldeki kişilere yayılıyor (açılış ekranı, alt menü, gizli Bugün kartı)', rg.rol?.acilis === 'projeler' && rg.rol?.menu?.join() === 'bugun,projeler,firmalar' && rg.rol?.kartGizli?.join() === 'radar' && rg.ayse?.acilis === 'projeler', JSON.stringify(rg));
+  await p.goto(U + '#/sirket/ekip'); await w(1200);
+  await p.fill('[data-kulara]', 'ayse'); await w(100);
+  const ara = await p.evaluate(() => [...document.querySelectorAll('[data-uye]')].filter(d => !d.hidden).map(d => d.dataset.uye));
+  await p.fill('[data-kulara]', ''); await p.click('[data-kulsuz="bekle"]'); await w(100);
+  const bekle = await p.evaluate(() => [...document.querySelectorAll('[data-uye]')].filter(d => !d.hidden).map(d => d.dataset.durum));
+  await p.click('[data-kulsuz=""]'); await p.click('[data-uye="ali@x.com"] summary');
+  const rk = await p.evaluate(() => document.querySelector('[data-uye="ali@x.com"] .rol-kutu')?.textContent || '');
+  await p.goto(U + '#/sirket/degisiklik'); await w(1200);
+  const sd = await p.evaluate(() => ({ on: document.querySelector('[data-fsk].on')?.dataset.fsk, h: document.querySelector('[data-fs="degisiklik"] h2')?.textContent, genelde: !!document.querySelector('[data-fs="genel"] [data-sondeg]') }));
+  kontrol('Kullanıcı arama ve durum süzgeci; kişi kartında rolün ekranları; Son değişiklikler ayrı sekme', ara.length === 1 && /ayse/.test(ara[0]) && bekle.length >= 1 && bekle.every(d => ['bekle', 'uyari'].includes(d)) && /Satış/.test(rk) && /Düzenler/i.test(rk) && sd.on === 'degisiklik' && sd.h === 'Son değişiklikler' && !sd.genelde, JSON.stringify({ ara, bekle, rk: rk.slice(0, 80), sd }));
   kontrol('Şirket ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }

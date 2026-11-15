@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 92)
+
+- Şirket profili → **Son değişiklikler** ayrı sekme oldu (Genel'den taşındı).
+- **Kullanıcılar** sadeleşti: arama ve durum süzgeci (Aktif / Bekleyen / Pasif), baş harfli satırlar, rol altında ekip. Kişi kartı dört bölüm: Kişi · Rol ve ekip · Ne görür? · Giriş. "Ne görür?" rolün düzenlediği ve gördüğü ekranları etiketlerle gösterir; ekran ağacı yalnızca "Bu kişiye özel ayar" ya da rolsüz kişide açılır. Yeni kullanıcıda ilk rol hazır seçili gelir.
+- **Roller** sadeleşti: rol listesi kişi sayısıyla; rol ayarı sekmeli (Ekranlar · Kayıtlar ve gizlilik · Açılış ve menü · Özet). Ekranlar başlık başlık kutularda, her başlığa "tümü" seçimi; hazır şablonlar tek bir "Şablondan doldur" listesinde.
+- Veritabanı değişikliği yok (schema.sql sürüm 37 olarak kalır).
+
 ## Güncelleme notu (sürüm 91): kullanıcı adı ve şifreyle giriş, roller, sekmeli şirket profili
 
 **Supabase'de: (1) güncel `supabase/schema.sql` dosyasını çalıştır (sürüm 37), (2) Edge Functions → "Deploy a new function" → "Via Editor" → adı `kullanici` → `supabase/functions/kullanici/index.ts` içeriğini yapıştır → Deploy.** (service_role anahtarı uygulamaya girmez; fonksiyon onu Supabase'in içinde kendiliğinden kullanır.)

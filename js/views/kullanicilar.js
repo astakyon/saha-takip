@@ -27,7 +27,7 @@ const disOku = k => k.querySelector('[data-uyedis]') ? { dis_firma_id: k.querySe
 const ekipSecici = (u = {}) => EKIPLER_DB?.length ? `<div class="fld"><label>Ekip</label><select data-uyeekip aria-label="Ekip"><option value="">Ekip yok</option>${ekipSecenekleri(u.ekip_id)}</select></div>` : '';
 const ekipYolu = id => { const l = []; let e = EKIPLER_DB?.find(x => x.id === id), n = 0; while (e && n++ < 20) { l.unshift(e.ad); e = EKIPLER_DB.find(x => x.id === e.ust_ekip_id); } return l.join(' › '); };
 const ekipSecenekleri = (sec, haric) => (EKIPLER_DB || []).filter(e => e.id !== haric).map(e => ({ e, y: ekipYolu(e.id) })).sort((a, b) => a.y.localeCompare(b.y, 'tr')).map(({ e, y }) => `<option value="${e.id}" ${sec === e.id ? 'selected' : ''}>${esc(y)}</option>`).join('');
-const uyeRolSecici = (u = {}) => `<div class="fld"><label>Rol</label><select data-uyerol aria-label="Rol"><option value="">Rol yok (kişiye özel ayar)</option>${ROLLER_DB.map(r => `<option value="${r.id}" ${u.rol_id === r.id ? 'selected' : ''}>${esc(r.ad)}</option>`).join('')}</select>
+const uyeRolSecici = (u = {}) => `<div class="fld"><label>Rol</label><select data-uyerol aria-label="Rol">${ROLLER_DB.map(r => `<option value="${r.id}" ${u.rol_id === r.id ? 'selected' : ''}>${esc(r.ad)}</option>`).join('')}<option value="" ${u.rol_id || (u.yeni && ROLLER_DB.length) ? '' : 'selected'}>Rolsüz (ekranları tek tek seç)</option></select>
   <label class="chk" data-ozel-l ${u.rol_id ? '' : 'hidden'}><input type="checkbox" data-ozel ${u.ozel ? 'checked' : ''}> <span>Bu kişiye özel ayar yap <small class="muted">(rol değişince bu kişi etkilenmez)</small></span></label></div>`;
 // Rol seçimine göre ekran ağacını göster/gizle; rolden gelen ayarı ağaca yazar
 function uyeRolBagla(k) {
@@ -38,10 +38,23 @@ function uyeRolBagla(k) {
     ozelL.hidden = !r; const kendi = !r || ozel.checked;
     agac.hidden = !kendi;
     if (r && yaz) { secimYaz(k, ekranSecimi(r.yetkiler), r.yetkiler._gizli || []); const d = k.querySelector('[data-disa]'); if (d) d.checked = r.yetkiler._disa === true; const kp = r.yetkiler._kapsam || 'tum'; k.querySelectorAll('[data-kapsam] button').forEach(b => { b.classList.toggle('on', b.dataset.v === kp); b.setAttribute('aria-pressed', b.dataset.v === kp); }); }
-    if (bilgi) bilgi.innerHTML = r && !ozel.checked ? `<p class="hint"><b>${esc(r.ad)}</b> rolünün yetkileri geçerli: ${esc(rolOzeti(r)) || 'hiçbir ekran açık değil'}. Rolü değiştirmek için Roller sekmesini kullan.</p>` : '';
+    const yon = k.querySelector('[data-yonetici]')?.checked;
+    if (bilgi) bilgi.innerHTML = yon ? '<p class="hint"><b>Şirket yöneticisi</b> her ekranı görür ve düzenler; rol ayarı onun için geçerli olmaz.</p>' : r && !ozel.checked ? rolKutusu(r) : '';
+    if (yon) agac.hidden = true;
   };
-  sel.onchange = () => guncelle(true); ozel.onchange = () => guncelle(true);
+  sel.onchange = () => guncelle(true); ozel.onchange = () => guncelle(true); k.querySelector('[data-yonetici]')?.addEventListener('change', () => guncelle(false));
   guncelle(false);
+}
+function rolKutusu(r) {
+  const s = ekranSecimi(r.yetkiler || {}), ad = k => esc(SEKME_AD[k] || k), tum = Object.keys(EKRANLAR);
+  const yaz = tum.filter(k => s[k] === 'yaz'), oku = tum.filter(k => s[k] === 'oku');
+  const kp = { ekip: 'Ekibinin kayıtları', kendi: 'Yalnız kendi kayıtları' }[r.yetkiler?._kapsam] || 'Tüm şirketin kayıtları';
+  const gz = (r.yetkiler?._gizli || []).map(k => GIZLENEBILIR.find(x => x.k === k)?.ad).filter(Boolean);
+  return `<div class="rol-kutu"><p><b>${esc(r.ad)}</b> rolünün ayarı geçerli <small class="muted">· değiştirmek için Roller sekmesi</small></p>
+    ${yaz.length ? `<div class="rk-satir"><span>Düzenler</span><div class="chips">${yaz.map(k => `<em class="ck yaz">${ad(k)}</em>`).join('')}</div></div>` : ''}
+    ${oku.length ? `<div class="rk-satir"><span>Görür</span><div class="chips">${oku.map(k => `<em class="ck oku">${ad(k)}</em>`).join('')}</div></div>` : ''}
+    ${!yaz.length && !oku.length ? '<p class="warn">Bu rolde hiçbir ekran açık değil.</p>' : ''}
+    <div class="rk-satir"><span>Kayıtlar</span><div>${esc(kp)}${gz.length ? ' · gizli: ' + esc(gz.join(', ')) : ''}</div></div></div>`;
 }
 const rolOzeti = r => { const s = ekranSecimi(r.yetkiler || {}); const kp = { ekip: 'Ekibinin kayıtları · ', kendi: 'Yalnız kendi kayıtları · ' }[r.yetkiler?._kapsam] || ''; return kp + Object.keys(EKRANLAR).filter(k => s[k]).map(k => (SEKME_AD[k] || k) + (s[k] === 'yaz' ? '' : ' (görür)')).join(', '); };
 // Kaydedilecek kullanıcı alanları (rol, kişiye özel, yetkiler)
@@ -68,7 +81,6 @@ const HAZIR = {
 };
 for (const h of Object.values(HAZIR)) for (const k of Object.keys(h.e)) if (!EKRANLAR[k]) delete h.e[k];
 const HAZIR_ROLLER = ['Muhasebe', 'Satış', 'Satış destek', 'Proje', 'Bayi'];
-const HAZIR_ROL = { 'Bayi': 'Bayi', 'Saha ekibi': 'Ekip arkadaşı', 'Proje firması': 'Proje firması', 'Sadece görüntüleme': 'Yönetici', 'Tam yetki': 'Ekip arkadaşı' };
 const b64 = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 // Giriş bilgisi bağlantısı: bu cihazı şirketin veritabanına bağlar, kullanıcı adını doldurur (şifre içermez)
 export function girisLinki(kad) {
@@ -134,38 +146,41 @@ export async function kullaniciAyarlari(root, bolum = 'kullanicilar') {
     root.innerHTML = EKIPLER_DB ? ekipBolumu(uyeler) : '<p class="warn">Ekipler için Supabase\'de güncel schema.sql dosyasını çalıştır.</p>';
     ekipleriBagla(root, yenile); return;
   }
-  root.innerHTML = `<div class="kul-ust"><p class="kul-say"><b>${uyeler.filter(u => u.aktif).length}</b> aktif kullanıcı${durumSay.ilk ? ` · <b>${durumSay.ilk}</b> ilk girişini bekliyor` : ''}${durumSay.hesapsiz ? ` · <b>${durumSay.hesapsiz}</b> hesabı açılmamış` : ''}${uyeler.some(u => !u.aktif) ? ` · ${uyeler.filter(u => !u.aktif).length} pasif` : ''}</p>
-      <button type="button" class="btn primary" data-kisiekle>Kişi ekle</button></div>
-    <div class="kul-ekle" data-ekleform hidden>
-      <form class="form" data-yeni novalidate><h3>Yeni kullanıcı</h3><div class="grid">
-        <div class="fld"><label for="ku-a">Ad soyad</label><input id="ku-a" placeholder="ör. Ali Yılmaz" autocomplete="off"></div>
-        ${kadVar ? '<div class="fld"><label for="ku-k">Kullanıcı adı</label><input id="ku-k" autocapitalize="none" spellcheck="false" maxlength="30" placeholder="ör. ali.yilmaz"><small>Girişte bunu yazar. Küçük harf, rakam, nokta, tire.</small></div>' : ''}
-        ${ROLLER_DB ? uyeRolSecici({}) : `<div class="fld"><label for="ku-r">Rol / ünvan</label>${rolSecici('', 'ku-r')}</div>`}${ekipSecici({})}
-        <div class="fld"><label for="ku-s">Geçici şifre</label><div class="liste-ekle"><input id="ku-s" class="mono" value="${geciciSifre()}" autocomplete="off" spellcheck="false"><button type="button" class="btn sm ghost" data-yenisifre>Yenile</button></div><small>Kişi ilk girişte kendi şifresini belirler.</small></div>
-        <div class="fld"><label for="ku-e">E-posta (isteğe bağlı)</label><input id="ku-e" type="email" placeholder="yoksa boş bırak"><small>Varsa şifresini kendisi de yenileyebilir; yoksa sen sıfırlarsın.</small></div>
-        ${disSecici({})}</div>
-      <div data-rolbilgi></div><div data-agac>
-      <div class="fld"><label>Hazır şablon</label><div class="chips">${Object.keys(HAZIR).map(h => `<button type="button" class="chip" data-hazir="${h}">${h}</button>`).join('')}</div></div>
-      ${yetkiDuzeni({})}</div>
-      <div class="btnrow"><button type="submit" class="btn primary">Hesabı aç</button><button type="button" class="btn ghost" data-eklevaz>Vazgeç</button></div></form>
+  const pasifN = uyeler.filter(u => !u.aktif).length;
+  root.innerHTML = `<div class="kul-ust"><p class="kul-say"><b>${uyeler.filter(u => u.aktif).length}</b> aktif kullanıcı${durumSay.ilk ? ` · <b>${durumSay.ilk}</b> ilk girişini bekliyor` : ''}${durumSay.hesapsiz ? ` · <b>${durumSay.hesapsiz}</b> hesabı açılmamış` : ''}${pasifN ? ` · ${pasifN} pasif` : ''}</p>
+      <button type="button" class="btn primary" data-kisiekle>+ Kişi ekle</button></div>
+    <div class="kul-ekle card-ic" data-ekleform hidden>
+      <form class="form" data-yeni novalidate><h3>Yeni kullanıcı</h3>
+        <section class="uye-b"><h4>1 · Kişi</h4><div class="grid">
+          <div class="fld"><label for="ku-a">Ad soyad</label><input id="ku-a" placeholder="ör. Ali Yılmaz" autocomplete="off"></div>
+          ${kadVar ? '<div class="fld"><label for="ku-k">Kullanıcı adı</label><input id="ku-k" autocapitalize="none" spellcheck="false" maxlength="30" placeholder="ör. ali.yilmaz"><small>Addan önerilir. Küçük harf, rakam, nokta, tire.</small></div>' : ''}
+          <div class="fld"><label for="ku-s">Geçici şifre</label><div class="liste-ekle"><input id="ku-s" class="mono" value="${geciciSifre()}" autocomplete="off" spellcheck="false"><button type="button" class="btn sm ghost" data-yenisifre>Yenile</button></div><small>İlk girişte kendi şifresini belirler.</small></div>
+          <div class="fld"><label for="ku-e">E-posta <span class="muted">(isteğe bağlı)</span></label><input id="ku-e" type="email" placeholder="yoksa boş bırak"></div></div></section>
+        <section class="uye-b"><h4>2 · Rol ve ekip</h4><div class="grid">${ROLLER_DB ? uyeRolSecici({ yeni: true }) : `<div class="fld"><label for="ku-r">Rol / ünvan</label>${rolSecici('', 'ku-r')}</div>`}${ekipSecici({})}${disSecici({})}</div>
+          ${ROLLER_DB && !ROLLER_DB.length ? '<p class="hint">Henüz rol yok. <b>Roller</b> sekmesinden rol eklersen (Satış, Muhasebe, Bayi…) kişiye tek seçimle yetki verirsin.</p>' : ''}</section>
+        <section class="uye-b"><h4>3 · Ne görür?</h4><div data-rolbilgi></div><div data-agac>${yetkiDuzeni({})}</div></section>
+        <div class="btnrow"><button type="submit" class="btn primary">Hesabı aç</button><button type="button" class="btn ghost" data-eklevaz>Vazgeç</button></div></form>
       <div data-yenibilgi hidden></div></div>
-    ${ROLLER_DB && !ROLLER_DB.length ? '<p class="hint">Henüz rol yok. Önce <b>Roller</b> sekmesinden rol ekle (Satış, Muhasebe, Bayi…); kişiye rol vermek tek tek ekran seçmekten kolaydır.</p>' : ''}
-    <div class="uyeler">${uyeler.length ? `<div class="uye-baslik" aria-hidden="true"><span>Kişi</span><span>Kullanıcı adı</span><span>Rol</span><span>Durum</span></div>` : ''}${uyeler.slice().sort((a, b) => (b.aktif - a.aktif) || rolAl(a).localeCompare(rolAl(b), 'tr') || (a.ad || a.eposta).localeCompare(b.ad || b.eposta, 'tr')).map(u => uyeKarti(u, kadVar)).join('') || '<p class="hint">Henüz kimse eklenmedi. "Kişi ekle" ile kullanıcı adı ve geçici şifreyle hesap aç.</p>'}</div>
-    <p class="hint">Eklediğin kişi <b>yalnızca rolünün açtığı ekranları</b> görür; kapalı ekranların kayıtları telefonuna hiç gönderilmez. Senin ayarlarını, kullanıcı listesini ve Veri kontrolünü hiçbir üye görmez. <b>Bu kişi gibi gör</b> ile kişinin ekranını kendi telefonunda deneyebilirsin.</p>`;
+    ${uyeler.length > 1 ? `<div class="kul-arac"><input type="search" data-kulara placeholder="Kişi, kullanıcı adı, rol ara" aria-label="Kullanıcı ara"><div class="seg" role="group" aria-label="Duruma göre">${[['', 'Hepsi'], ['ok', 'Aktif'], ['bekle', 'Bekleyen'], ['pasif', 'Pasif']].map(([v, t], i) => `<button type="button" data-kulsuz="${v}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div></div>` : ''}
+    <div class="uyeler">${uyeler.length ? `<div class="uye-baslik" aria-hidden="true"><span>Kişi</span><span>Kullanıcı adı</span><span>Rol · ekip</span><span>Durum</span></div>` : ''}${uyeler.slice().sort((a, b) => (b.aktif - a.aktif) || rolAl(a).localeCompare(rolAl(b), 'tr') || (a.ad || a.eposta).localeCompare(b.ad || b.eposta, 'tr')).map(u => uyeKarti(u, kadVar)).join('') || '<p class="hint">Henüz kimse eklenmedi. “Kişi ekle” ile kullanıcı adı ve geçici şifreyle hesap aç.</p>'}<p class="hint" data-kulbos hidden>Aramaya uyan kişi yok.</p></div>
+    <p class="hint">Kişi yalnızca rolünün açtığı ekranları görür; kapalı ekranların kayıtları telefonuna hiç gönderilmez. Satıra dokunup <b>Bu kişi gibi gör</b> ile kişinin ekranını deneyebilirsin.</p>`;
+  { const ara = root.querySelector('[data-kulara]'); let suz = '';
+    const uygula = () => { const q = (ara?.value || '').trim().toLocaleLowerCase('tr'); let n = 0; root.querySelectorAll('[data-uye]').forEach(d => { const ok = (!q || d.dataset.ara.includes(q)) && (!suz || d.dataset.durum === suz || (suz === 'bekle' && ['bekle', 'uyari'].includes(d.dataset.durum))); d.hidden = !ok; n += ok; }); const b = root.querySelector('[data-kulbos]'); if (b) b.hidden = !!n; };
+    ara?.addEventListener('input', uygula);
+    root.querySelectorAll('[data-kulsuz]').forEach(b => b.onclick = () => { suz = b.dataset.kulsuz; root.querySelectorAll('[data-kulsuz]').forEach(x => x.classList.toggle('on', x === b)); uygula(); }); }
   rolBagla(root);
   const ekleKutu = root.querySelector('[data-ekleform]');
-  root.querySelector('[data-kisiekle]').onclick = () => { ekleKutu.hidden = false; root.querySelector('[data-kisiekle]').hidden = true; ekleKutu.querySelector('#ku-a').focus(); };
+  root.querySelector('[data-kisiekle]').onclick = () => { ekleKutu.hidden = false; root.querySelector('[data-kisiekle]').hidden = true; root.querySelectorAll('[data-uye][open]').forEach(d => d.open = false); ekleKutu.querySelector('#ku-a').focus(); };
   ekleKutu.querySelector('[data-eklevaz]').onclick = () => { ekleKutu.hidden = true; root.querySelector('[data-kisiekle]').hidden = false; };
   ekleKutu.querySelector('[data-yenisifre]').onclick = () => { ekleKutu.querySelector('#ku-s').value = geciciSifre(); };
   { const a = ekleKutu.querySelector('#ku-a'), k = ekleKutu.querySelector('#ku-k'); let elle = false; k?.addEventListener('input', () => { elle = true; }); a.addEventListener('input', () => { if (k && !elle) k.value = adNormal(a.value).replace(/[^a-z0-9._-]/g, '').slice(0, 30); }); }
   import('../guvenlik.js').then(async g => {
     const sg = await g.sonGirisler();
-    root.querySelectorAll('[data-uye]').forEach(k => { const s = k.querySelector('[data-songiris]'); if (!s) return; if (!sg) { s.remove(); return; } s.textContent = g.sonGirisMetni(sg[k.dataset.uye.toLowerCase()]); });
+    root.querySelectorAll('[data-uye]').forEach(k => { const s = k.querySelector('[data-songiris]'); if (!s) return; const u = uyeler.find(x => x.eposta === k.dataset.uye), r = sg?.[k.dataset.uye.toLowerCase()] || (u?._sonGiris ? { son_giris: u._sonGiris } : null); if (!sg && !r) { s.remove(); return; } s.textContent = g.sonGirisMetni(r); });
     if (!sg && uyeler.length) root.querySelector('.uyeler')?.insertAdjacentHTML('afterend', '<p class="hint">Son giriş tarihlerini görmek için Supabase SQL Editor\'de güncel <b>schema.sql</b> dosyasını çalıştır (sürüm 11).</p>');
   });
   app.db.c.rpc('yetki_surum').then(({ data, error }) => { if (error || (data || 0) < 15) root.insertAdjacentHTML('afterbegin', '<p class="warn">Sunucu kuralları eski: kapalı ekranların fotoğrafları, belgeleri ve ayarları ekip üyesine hâlâ açılabilir. Supabase SQL Editor\'de güncel <b>schema.sql</b> dosyasını çalıştır (sürüm 15).</p>'); }, () => {});
   const yeni = root.querySelector('[data-yeni]');
-  yeni.querySelectorAll('[data-hazir]').forEach(b => b.onclick = () => { const h = HAZIR[b.dataset.hazir]; secimYaz(yeni, h.e, h.g); const r = yeni.querySelector('#ku-r'); if (!rolOku(yeni) && HAZIR_ROL[b.dataset.hazir]) { r.value = HAZIR_ROL[b.dataset.hazir]; r.dispatchEvent(new Event('change')); } yeni.querySelectorAll('[data-hazir]').forEach(x => x.classList.toggle('on', x === b)); });
   yetkiBagla(yeni); uyeRolBagla(yeni);
   yeni.onsubmit = async e => {
     e.preventDefault();
@@ -221,7 +236,6 @@ export async function kullaniciAyarlari(root, bolum = 'kullanicilar') {
       kutu.innerHTML = `<div class="fld"><label>${esc(u.ad || u.eposta)} kişisinin sorumlu olduğu bütün kayıtlar kime geçsin?</label><select data-devhedef><option value="">Otomatik: ekip yöneticisine (yoksa kurucuya)</option>${hedefler.map(x => `<option value="${esc(x.eposta)}">${esc(x.ad)} · ${esc(x.eposta)}</option>`).join('')}</select></div><div class="btnrow"><button type="button" class="btn sm primary" data-devyap>Devret</button></div>`;
       kutu.querySelector('[data-devyap]').onclick = async () => { const h = kutu.querySelector('[data-devhedef]').value || null; if (!confirmBox(`${u.ad || u.eposta} kişisinin kayıtları ${h || 'ekip yöneticisine'} devredilsin mi?`)) return; await devret(u.eposta, h); kutu.hidden = true; };
     });
-    k.querySelectorAll('[data-hazir]').forEach(b => b.onclick = () => { const h = HAZIR[b.dataset.hazir]; secimYaz(k, h.e, h.g); k.querySelectorAll('[data-hazir]').forEach(x => x.classList.toggle('on', x === b)); });
     k.querySelector('[data-onizle]').onclick = () => { if (!confirmBox(`${u.ad || u.eposta} bu ayarlarla ne görüyor, bunu kendi telefonunda göreceksin. Önizlemede değişiklik kaydedilmez; alttaki düğmeyle çıkarsın. Başlansın mı?`)) return; onizlemeBaslat({ ...u, yetkiler: yetkiOku(k) }); };
     k.querySelector('[data-sil]').onclick = async () => { if (!confirmBox(`${u.ad || u._kad || u.eposta} kullanıcılardan çıkarılsın mı? Artık verilerini göremez.`)) return; await app.db.c.from('ekip_uyeleri').delete().eq('id', u.id); toast('Kullanıcı çıkarıldı.'); yenile(); };
     k.querySelector('[data-sifirla]')?.addEventListener('click', async () => {
@@ -250,18 +264,25 @@ export async function kullaniciAyarlari(root, bolum = 'kullanicilar') {
 // ---------- Ekran ağacı: başlık → ekranlar, her biri Kapalı / Görür / Düzenler ----------
 const GRUPLAR = BASLIKLAR.map(b => ({ ...b, r: b.r.filter(r => EKRANLAR[r]) })).filter(b => b.r.length);
 const seg3 = (k, v) => `<span class="seg3" role="group" data-ek="${k}" aria-label="${esc(SEKME_AD[k] || k)}">${[['', 'Kapalı'], ['oku', 'Görür'], ...(EKRANLAR[k]?.salt ? [] : [['yaz', 'Düzenler']])].map(([d, t]) => `<button type="button" data-v="${d}" class="${(v || '') === d ? 'on' : ''}" aria-pressed="${(v || '') === d}">${t}</button>`).join('')}</span>`;
-const grupSeg = g => `<span class="seg3" role="group" data-grup="${g.k}" aria-label="${esc(g.t)} tümü">${[['', 'Hepsi kapalı'], ['oku', 'Görür'], ['yaz', 'Düzenler']].map(([d, t]) => `<button type="button" data-v="${d}">${t}</button>`).join('')}</span>`;
-function yetkiDuzeni(y) {
+const grupSeg = g => `<span class="seg3 seg3-grup" role="group" data-grup="${g.k}" aria-label="${esc(g.t)} tümü">${[['', 'Kapalı'], ['oku', 'Görür'], ['yaz', 'Düzenler']].map(([d, t]) => `<button type="button" data-v="${d}">${t}</button>`).join('')}</span>`;
+// Yetki paneli: sekmeler hâlinde Ekranlar · Kayıtlar ve gizlilik · (Açılış ve menü) · Özet. Bütün alanlar sayfada durur, yalnızca görünür olan değişir.
+function yetkiDuzeni(y, { gorunum = false, g = {} } = {}) {
   const secim = ekranSecimi(y), gizli = y?._gizli || [], kp = y?._kapsam || 'tum';
-  return `<div class="fld"><label>Hangi kayıtları görsün?</label><span class="seg3 kapsam-seg" role="group" data-kapsam aria-label="Kayıt kapsamı">${KAPSAM.map(([v, t]) => `<button type="button" data-v="${v}" class="${kp === v ? 'on' : ''}" aria-pressed="${kp === v}">${t}</button>`).join('')}</span><small class="muted">Tüm şirketin: açık ekranlardaki bütün kayıtlar · Ekibinin: kendi ekibi ve alt ekiplerinin kayıtları · Sadece kendinin: sorumlusu olduğu kayıtlar. Başka satışçının firması aramada yalnızca adıyla “başka satışçıda” görünür.</small></div>
-    <div class="fld"><label>Hangi ekranları görsün?</label>
-    <p class="hint">Kapalı ekran kişinin menüsünde, aramasında, + menüsünde ve diğer ekranların içinde hiç görünmez; verisi telefonuna gelmez. Bugün ekranı ve kendi Ayarlar'ı herkeste açıktır, içinde yalnızca açık ekranların kayıtları görünür.</p>
-    <div class="ekran-agac">${GRUPLAR.map(g => `<details data-g="${g.k}"><summary><b>${esc(g.t)}</b><small data-gsay></small></summary>
-      <div class="ek-satir"><span><b>Tümü</b></span>${grupSeg(g)}</div>
-      ${g.r.map(r => `<div class="ek-satir"><span>${esc(SEKME_AD[r] || r)}</span><small>${esc(EKRANLAR[r].d || '')}</small>${seg3(r, secim[r])}</div>`).join('')}</details>`).join('')}</div></div>
-    <div class="fld"><label>Açık ekranlarda da gizlensin</label>${GIZLENEBILIR.map(x => `<label class="chk"><input type="checkbox" data-gz="${x.k}" ${gizli.includes(x.k) ? 'checked' : ''}> <span><b>${esc(x.ad)}</b><small class="muted"> · ${esc(x.d)}</small></span></label>`).join('')}</div>
-    ${disaKutusu(y?._disa === true)}<p class="hint">Kapalıyken kişi ekranda görebildiği kayıtları Excel'e ya da sunuma aktaramaz. Yedek alma her zaman yalnızca sende.</p>
-    <div class="yetki-ozet" data-yozet aria-live="polite"></div>`;
+  const SEK = [['ekran', 'Ekranlar'], ['kayit', 'Kayıtlar ve gizlilik'], ...(gorunum ? [['gorunum', 'Açılış ve menü']] : []), ['ozet', 'Özet']];
+  return `<div class="yp" data-yp><div class="yp-sekme" role="tablist">${SEK.map(([k, t], i) => `<button type="button" role="tab" data-ypk="${k}" class="${i ? '' : 'on'}" aria-selected="${!i}">${t}${k === 'ekran' ? ' <small data-ypsay></small>' : ''}</button>`).join('')}</div>
+    <div class="yp-ic" data-ypp="ekran">
+      <div class="yp-ust"><p class="hint">Her ekran için seç: <b>Kapalı</b> (menüde yok, verisi telefona gelmez) · <b>Görür</b> · <b>Düzenler</b>.</p>
+        <select data-sablon aria-label="Şablondan doldur"><option value="">Şablondan doldur…</option>${Object.keys(HAZIR).map(h => `<option>${esc(h)}</option>`).join('')}</select></div>
+      <div class="ekran-agac">${GRUPLAR.map(gr => `<div class="ek-grup" data-g="${gr.k}"><div class="ek-gbas"><b>${esc(gr.t)}</b><small data-gsay></small>${gr.r.length > 1 ? grupSeg(gr) : ''}</div>
+        ${gr.r.map(r => `<div class="ek-satir"><span>${esc(SEKME_AD[r] || r)}<small>${esc(EKRANLAR[r].d || '')}</small></span>${seg3(r, secim[r])}</div>`).join('')}</div>`).join('')}</div>
+      <p class="hint">Bugün ekranı ve kişinin kendi Ayarlar'ı herkeste açıktır; içinde yalnızca açık ekranların kayıtları görünür.</p></div>
+    <div class="yp-ic" data-ypp="kayit" hidden>
+      <div class="fld"><label>Hangi kayıtları görsün?</label><span class="seg3 kapsam-seg" role="group" data-kapsam aria-label="Kayıt kapsamı">${KAPSAM.map(([v, t]) => `<button type="button" data-v="${v}" class="${kp === v ? 'on' : ''}" aria-pressed="${kp === v}">${t}</button>`).join('')}</span>
+        <small class="muted">Tüm şirketin: açık ekranlardaki bütün kayıtlar · Ekibinin: kendi ekibi ve alt ekiplerinin kayıtları · Sadece kendinin: sorumlusu olduğu kayıtlar.</small></div>
+      <div class="fld"><label>Açık ekranlarda da gizlensin</label>${GIZLENEBILIR.map(x => `<label class="chk"><input type="checkbox" data-gz="${x.k}" ${gizli.includes(x.k) ? 'checked' : ''}> <span><b>${esc(x.ad)}</b><small class="muted"> · ${esc(x.d)}</small></span></label>`).join('')}</div>
+      <div class="fld"><label>Dışa aktarma</label>${disaKutusu(y?._disa === true)}<small class="muted">Kapalıyken Excel'e ya da sunuma aktaramaz. Yedek alma her zaman yalnızca şirket yöneticisinde.</small></div></div>
+    ${gorunum ? `<div class="yp-ic" data-ypp="gorunum" hidden>${gorunumDuzeni(g)}</div>` : ''}
+    <div class="yp-ic" data-ypp="ozet" hidden><div class="yetki-ozet" data-yozet aria-live="polite"></div></div></div>`;
 }
 const secimOku = kok => Object.fromEntries([...kok.querySelectorAll('[data-ek]')].map(s => [s.dataset.ek, s.querySelector('button.on')?.dataset.v || null]).filter(([, v]) => v));
 const gizliOku = kok => [...kok.querySelectorAll('[data-gz]:checked')].map(i => i.dataset.gz);
@@ -275,7 +296,8 @@ function secimYaz(kok, e, g) {
 const TABLO_AD = { projeler: 'Projeler', proje_gecmis: 'Proje durum geçmişi', firmalar: 'Firmalar', kisiler: 'Kişiler', ziyaretler: 'Ziyaretler', gorevler: 'Görevler', bolgeler: 'Sanayi bölgeleri', siparisler: 'Siparişler', hedefler: 'Hedefler', teklifler: 'Teklifler', urunler: 'Stok ve fiyatlar', stok_gecmis: 'Stok geçmişi', urun_aileleri: 'Ürün aileleri', rakip_fiyatlar: 'Rakip fiyatları', tahsilatlar: 'Tahsilat', numuneler: 'Numuneler', servis_kayitlari: 'Servis kayıtları', masraflar: 'Masraflar', belgeler: 'Dosyalar' };
 function ozetYaz(kok) {
   const secim = secimOku(kok), kutu = kok.querySelector('[data-yozet]'); if (!kutu) return;
-  kok.querySelectorAll('details[data-g]').forEach(d => { const rs = [...d.querySelectorAll('[data-ek]')], acik = rs.filter(s => secim[s.dataset.ek]).length; d.querySelector('[data-gsay]').textContent = acik ? `${acik}/${rs.length} açık` : 'kapalı'; });
+  kok.querySelectorAll('[data-g]').forEach(d => { const rs = [...d.querySelectorAll('[data-ek]')], acik = rs.filter(s => secim[s.dataset.ek]).length; d.querySelector('[data-gsay]').textContent = acik ? `${acik}/${rs.length} açık` : 'kapalı'; d.classList.toggle('kapali', !acik); });
+  { const n = Object.values(secim).filter(Boolean).length, say = kok.querySelector('[data-ypsay]'); if (say) say.textContent = n ? `(${n} açık)` : '(hiçbiri)'; }
   const ad = k => SEKME_AD[k] || k, tum = Object.keys(EKRANLAR);
   const yaz = tum.filter(k => secim[k] === 'yaz'), oku = tum.filter(k => secim[k] === 'oku'), kapali = tum.filter(k => !secim[k]);
   const tablolar = ekranTablolari(secim), tl = Object.entries(tablolar);
@@ -283,16 +305,19 @@ function ozetYaz(kok) {
   kutu.innerHTML = !yaz.length && !oku.length ? '<b>Henüz hiçbir ekran açık değil.</b> Kişi giriş yapınca yalnızca boş bir Bugün ekranı görür.'
     : `${yaz.length ? `<div><b>Düzenler:</b> ${esc(yaz.map(ad).join(', '))}</div>` : ''}${oku.length ? `<div><b>Yalnızca görür:</b> ${esc(oku.map(ad).join(', '))}</div>` : ''}
       <div class="kapali"><b>Hiç görmez:</b> ${esc(kapali.map(ad).join(', ') || '—')}, Veri kontrolü, kullanıcılar ve senin ayarların</div>
+      <div><b>Kayıtlar:</b> ${esc(KAPSAM.find(x => x[0] === (kok.querySelector('[data-kapsam] button.on')?.dataset.v || 'tum'))?.[1] || 'Tüm şirketin')}</div>
       ${g.length ? `<div><b>Ayrıca gizli:</b> ${esc(g.join(', '))}</div>` : ''}
       <details><summary>Telefonuna gelen kayıtlar (${tl.length})</summary><p class="hint">Açık ekranların çalışması için gereken kayıtlar sunucudan bu kişiye gönderilir; listede olmayanlar hiçbir şekilde gönderilmez.</p>${esc(tl.map(([t, v]) => (TABLO_AD[t] || t) + (v === 'yaz' ? ' (düzenler)' : ' (görür)')).join(', '))}</details>`;
 }
 function yetkiBagla(kok) {
-  kok.querySelectorAll('[data-ek] button').forEach(b => b.onclick = () => { b.parentElement.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); kok.querySelectorAll('[data-hazir]').forEach(x => x.classList.remove('on')); ozetYaz(kok); });
+  kok.querySelectorAll('[data-yp]').forEach(yp => yp.querySelectorAll('[data-ypk]').forEach(b => b.onclick = () => { yp.querySelectorAll('[data-ypk]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); }); yp.querySelectorAll('[data-ypp]').forEach(p => p.hidden = p.dataset.ypp !== b.dataset.ypk); }));
+  kok.querySelectorAll('[data-sablon]').forEach(s => s.onchange = () => { const h = HAZIR[s.value]; if (!h) return; secimYaz(kok, h.e, h.g); const ad = kok.querySelector('[data-rolad]'); if (ad && !ad.value.trim()) ad.value = s.value; toast(`“${s.value}” şablonu uygulandı; istediğin ekranı değiştirebilirsin.`); s.value = ''; });
+  kok.querySelectorAll('[data-ek] button').forEach(b => b.onclick = () => { b.parentElement.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); ozetYaz(kok); });
   kok.querySelectorAll('[data-grup] button').forEach(b => b.onclick = () => {
-    const d = b.closest('details'); d.querySelectorAll('[data-ek]').forEach(s => { const v = b.dataset.v === 'yaz' && EKRANLAR[s.dataset.ek]?.salt ? 'oku' : b.dataset.v; s.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x.dataset.v === v); x.setAttribute('aria-pressed', x.dataset.v === v); }); });
+    const d = b.closest('[data-g]'); d.querySelectorAll('[data-ek]').forEach(s => { const v = b.dataset.v === 'yaz' && EKRANLAR[s.dataset.ek]?.salt ? 'oku' : b.dataset.v; s.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x.dataset.v === v); x.setAttribute('aria-pressed', x.dataset.v === v); }); });
     ozetYaz(kok);
   });
-  kok.querySelectorAll('[data-kapsam] button').forEach(b => b.onclick = () => b.parentElement.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }));
+  kok.querySelectorAll('[data-kapsam] button').forEach(b => b.onclick = () => { b.parentElement.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); ozetYaz(kok); });
   kok.querySelectorAll('[data-gz]').forEach(i => i.onchange = () => ozetYaz(kok));
   ozetYaz(kok);
 }
@@ -305,19 +330,25 @@ async function kadKaydet(eposta, deger, eski) {
   if (!kullaniciAdiGecerli(ad)) return 'Kullanıcı adı 3–30 karakter olmalı: küçük harf, rakam, nokta, tire.';
   return kullaniciAdiKaydet(eposta, ad);
 }
+const basHarf = t => esc(String(t || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0] || '').join('').toLocaleUpperCase('tr') || '?');
 function uyeKarti(u, kadVar) {
-  const secim = ekranSecimi(u.yetkiler);
-  const ozet = Object.keys(EKRANLAR).filter(k => secim[k]).map(k => (SEKME_AD[k] || k) + (secim[k] === 'yaz' ? '' : ' (görür)')).join(', ');
   const durum = !u.aktif ? ['Pasif', 'pasif'] : u._hesap === false ? ['Hesabı yok', 'uyari'] : u._hesap && !u._sonGiris ? ['İlk girişi bekliyor', 'bekle'] : ['Aktif', 'ok'];
-  return `<details class="uye uye-satir" data-uye="${esc(u.eposta)}"><summary><span class="uye-ad"><b>${esc(u.ad || u._kad || u.eposta)}</b><em class="rol-r yon-r" ${u.yonetici ? '' : 'hidden'}>Şirket yöneticisi</em><small class="muted">${SENTETIK.test(u.eposta) ? 'e-postasız hesap' : esc(u.eposta)}</small></span>
-    <span class="uye-kad">${u._kad ? esc(u._kad) : '<small class="muted">—</small>'}</span><span class="uye-rol"><em class="rol-r" ${rolAl(u) ? '' : 'hidden'}>${esc(rolAl(u))}</em>${rolAl(u) ? '' : '<small class="muted">rol yok</small>'}</span>
+  const ekip = u.ekip_id ? ekipYolu(u.ekip_id) : '', sentetik = SENTETIK.test(u.eposta);
+  return `<details class="uye uye-satir" data-uye="${esc(u.eposta)}" data-durum="${durum[1]}" data-ara="${esc([u.ad, u._kad, u.eposta, rolAl(u), ekip].join(' ').toLocaleLowerCase('tr'))}"><summary><span class="uye-ad"><i class="uye-av" aria-hidden="true">${basHarf(u.ad || u._kad || u.eposta)}</i><span><b>${esc(u.ad || u._kad || u.eposta)}</b><em class="rol-r yon-r" ${u.yonetici ? '' : 'hidden'}>Şirket yöneticisi</em><small class="muted">${sentetik ? 'e-postasız hesap' : esc(u.eposta)}</small></span></span>
+    <span class="uye-kad">${u._kad ? esc(u._kad) : '<small class="muted">—</small>'}</span><span class="uye-rol"><em class="rol-r" ${rolAl(u) ? '' : 'hidden'}>${esc(rolAl(u))}</em>${rolAl(u) ? '' : '<small class="muted">rol yok</small>'}${ekip ? `<small class="muted">${esc(ekip)}</small>` : ''}</span>
     <span class="uye-durum"><em class="durum-r ${durum[1]}">${durum[0]}</em><small class="muted" data-songiris>…</small></span></summary>
-    <div class="grid"><div class="fld"><label>Ad</label><input data-ad value="${esc(u.ad || '')}"></div>${kadVar ? `<div class="fld"><label>Kullanıcı adı</label><input data-kad autocapitalize="none" spellcheck="false" maxlength="30" placeholder="ör. ali.drv" value="${esc(u._kad || '')}"></div>` : ''}${ROLLER_DB ? uyeRolSecici(u) : `<div class="fld"><label>Rol / ünvan</label>${rolSecici(rolAl(u))}</div>`}${ekipSecici(u)}${disSecici(u)}<div class="fld is-chk"><label class="chk"><input type="checkbox" data-aktif ${u.aktif ? 'checked' : ''}> <span>Erişimi açık</span></label></div></div>
-    ${'yonetici' in u ? `<label class="chk yon-chk"><input type="checkbox" data-yonetici ${u.yonetici ? 'checked' : ''}> <span><b>Şirket yöneticisi</b><small class="muted"> · her şeyi görür ve düzenler, kullanıcıları ve şirket ayarlarını yönetir; aşağıdaki ekran seçimi onun için geçerli olmaz</small></span></label>` : ''}
-    <div data-rolbilgi></div><div data-agac><div class="fld"><label>Hazır şablon</label><div class="chips">${Object.keys(HAZIR).map(h => `<button type="button" class="chip" data-hazir="${h}">${h}</button>`).join('')}</div></div>
-    ${yetkiDuzeni(u.yetkiler)}</div>
-    <div class="btnrow"><button type="button" class="btn sm primary" data-kaydet>Kaydet</button>${u._hesap === false ? `<button type="button" class="btn sm" data-hesapac>Kullanıcı adıyla hesap aç</button>` : u._hesap ? '<button type="button" class="btn sm" data-sifirla>Şifreyi sıfırla</button>' : ''}${SENTETIK.test(u.eposta) ? '' : '<button type="button" class="btn sm ghost" data-davet>E-posta daveti</button>'}<button type="button" class="btn sm ghost" data-onizle>Bu kişi gibi gör</button>${EKIPLER_DB ? '<button type="button" class="btn sm ghost" data-devret>Kayıtlarını devret</button>' : ''}<button type="button" class="btn sm ghost danger" data-sil>Çıkar</button></div><div class="devret-kutu" data-devretk hidden></div>
-    <div data-link class="davet-kutu" hidden></div></details>`;
+    <div class="uye-ic">
+      <section class="uye-b"><h4>Kişi</h4><div class="grid"><div class="fld"><label>Ad soyad</label><input data-ad value="${esc(u.ad || '')}"></div>${kadVar ? `<div class="fld"><label>Kullanıcı adı</label><input data-kad autocapitalize="none" spellcheck="false" maxlength="30" placeholder="ör. ali.yilmaz" value="${esc(u._kad || '')}"><small>Girişte bunu yazar.</small></div>` : ''}</div>
+        <p class="muted uye-eposta">${sentetik ? 'E-postası yok; şifresini sen sıfırlarsın.' : 'E-posta: ' + esc(u.eposta)}</p>
+        <label class="chk"><input type="checkbox" data-aktif ${u.aktif ? 'checked' : ''}> <span>Erişimi açık <small class="muted">· kapatırsan giriş yapamaz, kayıtları şirkette kalır</small></span></label></section>
+      <section class="uye-b"><h4>Rol ve ekip</h4><div class="grid">${ROLLER_DB ? uyeRolSecici(u) : `<div class="fld"><label>Rol / ünvan</label>${rolSecici(rolAl(u))}</div>`}${ekipSecici(u)}${disSecici(u)}</div>
+        ${'yonetici' in u ? `<label class="chk yon-chk"><input type="checkbox" data-yonetici ${u.yonetici ? 'checked' : ''}> <span><b>Şirket yöneticisi</b><small class="muted"> · her şeyi görür ve düzenler, kullanıcıları ve şirket ayarlarını yönetir</small></span></label>` : ''}</section>
+      <section class="uye-b"><h4>Ne görür?</h4><div data-rolbilgi></div><div data-agac>${yetkiDuzeni(u.yetkiler)}</div></section>
+      <section class="uye-b"><h4>Giriş</h4><p class="hint" data-girisdurum>${u._hesap === false ? 'Bu kişinin henüz hesabı yok. Kullanıcı adı yazıp hesap aç; giriş bilgilerini WhatsApp ile gönderirsin.' : u._hesap && !u._sonGiris ? 'Hesabı açık, henüz giriş yapmadı. Giriş bilgilerini kaybettiyse yeni geçici şifre oluştur.' : 'Şifresini unutursa yeni geçici şifre oluştur; ilk girişte kendi şifresini belirler.'}</p>
+        <div class="btnrow">${u._hesap === false ? `<button type="button" class="btn sm" data-hesapac>Kullanıcı adıyla hesap aç</button>` : u._hesap ? '<button type="button" class="btn sm" data-sifirla>Yeni geçici şifre</button>' : ''}${sentetik ? '' : '<button type="button" class="btn sm ghost" data-davet>E-posta daveti</button>'}</div>
+        <div data-link class="davet-kutu" hidden></div></section>
+    </div>
+    <div class="uye-alt"><button type="button" class="btn sm primary" data-kaydet>Kaydet</button><button type="button" class="btn sm ghost" data-onizle>Bu kişi gibi gör</button><span class="grow"></span>${EKIPLER_DB ? '<button type="button" class="btn sm ghost" data-devret>Kayıtlarını devret</button>' : ''}<button type="button" class="btn sm ghost danger" data-sil>Çıkar</button></div><div class="devret-kutu" data-devretk hidden></div></details>`;
 }
 
 // ---------- Şirket: adı, kurucusu, yöneticileri ----------
@@ -350,11 +381,11 @@ const ANA_SINIR = 5;
 function gorunumDuzeni(g = {}) {
   const rotalar = Object.keys(SEKME_AD).filter(k => k === 'bugun' || EKRANLAR[k] || ['talepler', 'plan', 'ekiphar', 'rakipanaliz'].includes(k));
   const menu = g.menu || [], gizli = g.kartGizli || [];
-  return `<fieldset class="gorunum-fs" data-gorunum><legend>Görünüm</legend>
+  return `<div class="gorunum" data-gorunum>
     <p class="hint">Bu roldeki kişi uygulamayı açınca ne görsün? Kişi kendi menüsünü ve Bugün kartlarını sonradan değiştirebilir.</p>
     <div class="grid"><div class="fld"><label>Açılış ekranı</label><select data-gacilis aria-label="Açılış ekranı"><option value="">Bugün</option>${rotalar.filter(k => k !== 'bugun').map(k => `<option value="${k}" ${g.acilis === k ? 'selected' : ''}>${esc(SEKME_AD[k])}</option>`).join('')}</select><small>Ekran rolde kapalıysa Bugün açılır.</small></div></div>
     <div class="fld"><label>Alt menü (telefonda en fazla ${ANA_SINIR})</label><div class="chips gor-chips">${BASLIKLAR.map(b => `<label class="chip-chk"><input type="checkbox" data-gmenu="${b.k}" ${menu.includes(b.k) ? 'checked' : ''}><span>${esc(b.t)}</span></label>`).join('')}</div><small>Hiçbiri seçilmezse varsayılan menü. Rolde kapalı başlıklar kişide zaten görünmez.</small></div>
-    <div class="fld"><label>Bugün ekranındaki kartlar</label><div class="chips gor-chips">${BUGUN_KARTLAR.map(([k, t]) => `<label class="chip-chk"><input type="checkbox" data-gkart="${k}" ${gizli.includes(k) ? '' : 'checked'}><span>${esc(t)}</span></label>`).join('')}</div></div></fieldset>`;
+    <div class="fld"><label>Bugün ekranındaki kartlar</label><div class="chips gor-chips">${BUGUN_KARTLAR.map(([k, t]) => `<label class="chip-chk"><input type="checkbox" data-gkart="${k}" ${gizli.includes(k) ? '' : 'checked'}><span>${esc(t)}</span></label>`).join('')}</div></div></div>`;
 }
 function gorunumOku(k) {
   const f = k.querySelector('[data-gorunum]'); if (!f) return undefined;
@@ -370,19 +401,18 @@ function gorunumBagla(k) {
 // ---------- K2: Roller ----------
 function rolBolumu(uyeler) {
   if (!ROLLER_DB) return '';
-  const say = id => uyeler.filter(u => u.rol_id === id && u.aktif).length;
-  return `<section class="roller-bol"><h3>Roller <span class="muted">${ROLLER_DB.length}</span></h3>
-    <p class="hint">Rol, bir grup kişinin hangi ekranları göreceğini belirler. Rolün ayarını değiştirince o roldeki herkes birlikte güncellenir. Kişiye özel ayarı olanlar etkilenmez.</p>
-    <div class="roller">${ROLLER_DB.map(r => `<details class="uye rol-k" data-rol="${r.id}"><summary><span class="uye-ad"><b>${esc(r.ad)}</b><small class="muted">${say(r.id)} kişi${r.aciklama ? ' · ' + esc(r.aciklama) : ''}</small></span><small class="muted">${esc(rolOzeti(r) || 'hiçbir ekran açık değil')}</small></summary>
-      <div class="grid"><div class="fld"><label>Rol adı</label><input data-rolad value="${esc(r.ad)}"></div><div class="fld"><label>Açıklama</label><input data-rolacik value="${esc(r.aciklama || '')}" placeholder="ör. faturalar ve tahsilat"></div></div>
-      <div class="fld"><label>Hazır şablon</label><div class="chips">${Object.keys(HAZIR).map(h => `<button type="button" class="chip" data-hazir="${h}">${h}</button>`).join('')}</div></div>
-      ${yetkiDuzeni(r.yetkiler)}${gorunumDuzeni(r.yetkiler?._gorunum)}
-      <div class="btnrow"><button type="button" class="btn sm primary" data-rolkaydet>Kaydet</button><button type="button" class="btn sm ghost" data-rolgor>Bu rol gibi gör</button><button type="button" class="btn sm ghost danger" data-rolsil>Sil</button></div></details>`).join('') || '<p class="hint">Henüz rol yok.</p>'}</div>
-    <div class="btnrow">${HAZIR_ROLLER.some(h => !ROLLER_DB.some(r => r.ad === h)) ? `<button type="button" class="btn sm" data-hazirrol>Hazır rolleri ekle (${HAZIR_ROLLER.filter(h => !ROLLER_DB.some(r => r.ad === h)).join(', ')})</button>` : ''}</div>
-    <details class="card-ic"><summary><b>Yeni rol</b></summary><div class="form" data-rol="" data-yenirol>
+  const kisiler = id => uyeler.filter(u => u.rol_id === id && u.aktif);
+  const kisa = r => { const s = ekranSecimi(r.yetkiler || {}), v = Object.values(s); const y = v.filter(x => x === 'yaz').length, o = v.filter(x => x === 'oku').length; return [y ? `${y} ekran düzenler` : '', o ? `${o} ekran görür` : '', { ekip: 'ekibinin kayıtları', kendi: 'yalnız kendi kayıtları' }[r.yetkiler?._kapsam] || ''].filter(Boolean).join(' · ') || 'hiçbir ekran açık değil'; };
+  const eksikHazir = HAZIR_ROLLER.filter(h => !ROLLER_DB.some(r => r.ad === h));
+  return `<section class="roller-bol">
+    <div class="kul-ust"><p class="kul-say"><b>${ROLLER_DB.length}</b> rol</p><div class="btnrow">${eksikHazir.length ? `<button type="button" class="btn sm ghost" data-hazirrol title="${esc(eksikHazir.join(', '))}">Hazır rolleri ekle (${eksikHazir.length})</button>` : ''}<button type="button" class="btn primary" data-rolac>+ Yeni rol</button></div></div>
+    <div class="card-ic rol-yeni" data-yenirolk hidden><div class="form" data-rol="" data-yenirol><h3>Yeni rol</h3>
       <div class="grid"><div class="fld"><label>Rol adı</label><input data-rolad placeholder="ör. Satış Adana"></div><div class="fld"><label>Açıklama</label><input data-rolacik placeholder="isteğe bağlı"></div></div>
-      <div class="fld"><label>Hazır şablon</label><div class="chips">${Object.keys(HAZIR).map(h => `<button type="button" class="chip" data-hazir="${h}">${h}</button>`).join('')}</div></div>
-      ${yetkiDuzeni({})}${gorunumDuzeni({})}<div class="btnrow"><button type="button" class="btn primary" data-rolekle>Rolü ekle</button></div></div></details></section>`;
+      ${yetkiDuzeni({}, { gorunum: true })}<div class="btnrow"><button type="button" class="btn primary" data-rolekle>Rolü ekle</button><button type="button" class="btn ghost" data-rolvaz>Vazgeç</button></div></div></div>
+    <div class="roller">${ROLLER_DB.map(r => { const k = kisiler(r.id); return `<details class="uye rol-k" data-rol="${r.id}"><summary><span class="uye-ad"><i class="uye-av rol-av" aria-hidden="true">${basHarf(r.ad)}</i><span><b>${esc(r.ad)}</b><small class="muted">${esc(r.aciklama || kisa(r))}</small></span></span><span class="rol-kisi"><span><b>${k.length}</b> kişi</span>${k.length ? `<small class="muted">${esc(k.slice(0, 3).map(u => u.ad || u._kad || u.eposta).join(', '))}${k.length > 3 ? '…' : ''}</small>` : ''}</span></summary>
+      <div class="uye-ic"><div class="grid"><div class="fld"><label>Rol adı</label><input data-rolad value="${esc(r.ad)}"></div><div class="fld"><label>Açıklama</label><input data-rolacik value="${esc(r.aciklama || '')}" placeholder="ör. faturalar ve tahsilat"></div></div>
+      ${yetkiDuzeni(r.yetkiler, { gorunum: true, g: r.yetkiler?._gorunum })}</div>
+      <div class="uye-alt"><button type="button" class="btn sm primary" data-rolkaydet>Kaydet</button><button type="button" class="btn sm ghost" data-rolgor>Bu rol gibi gör</button><span class="grow"></span><button type="button" class="btn sm ghost danger" data-rolsil>Sil</button></div></details>`; }).join('') || '<p class="hint">Henüz rol yok. “Hazır rolleri ekle” ile başla ya da yeni rol oluştur.</p>'}</div></section>`;
 }
 function rolleriBagla(root, uyeler, yenile0) {
   const bol = root.querySelector('.roller-bol'); if (!bol) return;
@@ -391,10 +421,10 @@ function rolleriBagla(root, uyeler, yenile0) {
   // Rolün kaydı: kişilere yayılması sunucuda olur; eski sunucu ya da deneme için burada da yazılır
   const roldekiler = async id => { const { data } = await app.db.c.from('ekip_uyeleri').select('id,rol_id,ozel,aktif').eq('owner', sahip); return (data || []).filter(u => u.rol_id === id); };
   const yay = async (r) => { for (const u of (await roldekiler(r.id)).filter(u => !u.ozel)) await app.db.c.from('ekip_uyeleri').update({ yetkiler: { ...r.yetkiler, _rol: r.ad } }).eq('id', u.id); };
-  bol.querySelectorAll('[data-rol]').forEach(k => {
-    yetkiBagla(k); gorunumBagla(k);
-    k.querySelectorAll('[data-hazir]').forEach(b => b.onclick = () => { const h = HAZIR[b.dataset.hazir]; secimYaz(k, h.e, h.g); k.querySelectorAll('[data-hazir]').forEach(x => x.classList.toggle('on', x === b)); const ad = k.querySelector('[data-rolad]'); if (!ad.value.trim()) ad.value = b.dataset.hazir; });
-  });
+  bol.querySelectorAll('[data-rol]').forEach(k => { yetkiBagla(k); gorunumBagla(k); });
+  const yk = bol.querySelector('[data-yenirolk]'), ac = bol.querySelector('[data-rolac]');
+  ac.onclick = () => { yk.hidden = false; ac.hidden = true; bol.querySelectorAll('.rol-k[open]').forEach(d => d.open = false); yk.querySelector('[data-rolad]').focus(); };
+  bol.querySelector('[data-rolvaz]').onclick = () => { yk.hidden = true; ac.hidden = false; };
   bol.querySelectorAll('.rol-k').forEach(k => {
     const r = ROLLER_DB.find(x => x.id === k.dataset.rol);
     k.querySelector('[data-rolkaydet]').onclick = async () => {

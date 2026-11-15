@@ -43,7 +43,8 @@ export function kayitGecmisi(kutu, tablo, id) {
 }
 // Ayarlar → Kullanıcılar: son değişiklikler (kişiye göre süzülebilir)
 export async function sonDegisiklikler(kutu) {
-  if (!gecmisVar() || !kutu) return;
+  if (!kutu) return;
+  if (!gecmisVar()) { kutu.innerHTML = '<h2>Son değişiklikler</h2><p class="hint">Değişiklik geçmişini şirket yöneticileri görür.</p>'; return; }
   let kim = '';
   const ciz = async () => {
     let q = app.db.c.from('degisiklikler').select('*').eq('owner', app.db.sahip).order('zaman', { ascending: false }).limit(60);
