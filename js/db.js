@@ -1,3 +1,4 @@
+import { birlestir, cakismaMetni, alanAdi } from './cakisma.js';
 // Veri katmanı: Supabase (bulut) veya Deneme (bu cihazın tarayıcısı)
 export const TABLES = {
   firmalar: ['id','sorumlu','ekip_id','ad','tipler','il','ilce','belde','osb','bolge_id','adres','lat','lng','konum_yaklasik','telefon','eposta','web','vergi_no','segment','sektor','key_account','notlar','fotolar','google_place_id','google_url'],
@@ -309,20 +310,44 @@ class SupaAdapter {
     return all;
   }
   async cache() { DB_DURUM.surum++; if (this.onizleme) return; clearTimeout(this._ct); this._ct = setTimeout(() => idbSet('cache:' + this.user()?.id, S), 400); }
-  async queue(op) { const q = (await idbGet('outbox')) || []; q.push(op); await idbSet('outbox', q); }
+  async queue(op) {
+    const q = (await idbGet('outbox')) || [];
+    // Aynı kayıt internetsizken ikinci kez değiştiyse ilk değişikliğin çıkış noktası (base) korunur; yoksa ikincisi körlemesine yazardı
+    if (op.row && !op.base) { const once = q.findLast?.(x => x.t === op.t && x.row?.id === op.row.id && x.base); if (once) op.base = once.base; }
+    q.push(op); await idbSet('outbox', q);
+  }
   async flush() {
     const q = (await idbGet('outbox')) || []; if (!q.length || !navigator.onLine) return;
     const rest = [];
     for (const op of q) {
       try {
         if (op.op === 'del') { const r = await this.c.from(op.t).delete().eq('id', op.id); if (r.error) throw r.error; }
+        else if (op.base?.updated_at) await this.cevrimdisiYaz(op);
         else if (op.op === 'upd') { const r = await this.c.from(op.t).update(strip(op.t, op.row)).eq('id', op.row.id); if (r.error) throw r.error; }
         else await upsertSafe(this.c, op.t, op.row);
-      } catch (e) { const ag = /fetch|network|Failed/i.test(e?.message || ''); rest.push(ag ? op : { ...op, hata: schemaErr(e).message, deneme: (op.deneme || 0) + 1 }); }
+      } catch (e) { const ag = /fetch|network|Failed/i.test(e?.message || ''); rest.push(ag ? op : e?.cakisma ? { ...op, hata: e.message, cakisma: e.cakisma, deneme: (op.deneme || 0) + 1 } : { ...op, hata: schemaErr(e).message, deneme: (op.deneme || 0) + 1 }); }
     }
     await idbSet('outbox', rest);
     window.dispatchEvent(new CustomEvent('outbox-gonderim', { detail: rest.length }));
   }
+  // İnternetsizken yapılan değişiklik: arada başkası değiştirdiyse alan alan birleştir; aynı alan çatışırsa bekletir ve sorar
+  async cevrimdisiYaz(op) {
+    const { t, row, base } = op;
+    const r = await this.c.from(t).update(strip(t, row)).eq('id', row.id).eq('updated_at', base.updated_at).select('updated_at');
+    if (r.error) throw r.error;
+    if (r.data?.length) return this.yerelGuncelle(t, row.id, { updated_at: r.data[0].updated_at });
+    const { data: guncel, error } = await this.c.from(t).select(this.secim(t)).eq('id', row.id).maybeSingle();
+    if (error) throw error;
+    if (!guncel) { await upsertSafe(this.c, t, row); return; }
+    const b = birlestir(base, row, guncel);
+    if (b.catisan.length && !op.secim) throw Object.assign(new Error(`Çakışma: ${[...new Set(b.catisan.map(alanAdi))].join(', ')} alanını sen internetsizken başka biri de değiştirdi. Hangisi kalsın?`), { cakisma: b.catisan, guncel });
+    const yaz = op.secim === 'onunki' ? b.onunki : b.seninki;
+    let ts = guncel.updated_at;
+    if (Object.keys(yaz).length > 1) { const r2 = await this.c.from(t).update(strip(t, yaz)).eq('id', row.id).select('updated_at'); if (r2.error) throw r2.error; ts = r2.data?.[0]?.updated_at || ts; }
+    this.yerelGuncelle(t, row.id, { ...guncel, ...yaz, updated_at: ts });
+  }
+  yerelGuncelle(t, id, alan) { const j = S[t]?.findIndex(x => x.id === id); if (j >= 0) { S[t][j] = { ...S[t][j], ...alan }; this.cache(); } }
+  async bekleyenSec(i, secim) { const q = (await idbGet('outbox')) || []; if (q[i]) { q[i] = { ...q[i], secim, hata: null, cakisma: null }; await idbSet('outbox', q); } await this.flush(); }
   async pending() { return ((await idbGet('outbox')) || []).length; }
   async bekleyenler() { return (await idbGet('outbox')) || []; }
   async bekleyenSil(i) { const q = (await idbGet('outbox')) || []; q.splice(i, 1); await idbSet('outbox', q); window.dispatchEvent(new CustomEvent('outbox', { detail: 0 })); }
@@ -352,19 +377,26 @@ class SupaAdapter {
           if (e2) throw e2;
           if (!guncel) { if (sadeceGuncelle) throw new Error('row-level security: güncelleme yetkisi yok'); const d = await upsertSafe(this.c, t, row); sunucuZamani(d?.[0]?.updated_at); }
           else {
-            const saat = new Date(guncel.updated_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-            if (window.confirm(`Bu kaydı sen açtıktan sonra başka biri değiştirdi (${saat}).\n\nTamam: senin değişikliğin kaydedilsin (onunkinin üzerine yazılır).\nİptal: onun hali kalsın, seninki kaydedilmesin.`)) {
-              const r2 = await this.c.from(t).update(strip(t, row)).eq('id', row.id).select('updated_at'); if (r2.error) throw r2.error; sunucuZamani(r2.data?.[0]?.updated_at);
-            } else {
-              const j = S[t].findIndex(x => x.id === row.id); if (j >= 0) S[t][j] = guncel; this.cache();
-              throw Object.assign(new Error('Kayıt başkası tarafından değiştirilmişti; güncel hali yüklendi, seninki kaydedilmedi.'), { cakisma: true });
+            // Alan alan birleştir: farklı alanlar değiştiyse ikisi de kalır, sormadan; aynı alan farklı değiştiyse sor
+            const b = birlestir(onceki, row, guncel);
+            let yaz = b.seninki;
+            if (b.catisan.length) {
+              const saat = new Date(guncel.updated_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+              yaz = window.confirm(cakismaMetni(b, row, guncel, saat)) ? b.seninki : b.onunki;
             }
+            const birlesik = { ...guncel, ...yaz };
+            if (Object.keys(yaz).length > 1) {
+              const r2 = await this.c.from(t).update(strip(t, yaz)).eq('id', row.id).select('updated_at'); if (r2.error) throw r2.error;
+              birlesik.updated_at = r2.data?.[0]?.updated_at || guncel.updated_at;
+            }
+            const j = S[t].findIndex(x => x.id === row.id); if (j >= 0) S[t][j] = birlesik; Object.assign(full, birlesik); this.cache();
+            import('./ui.js').then(m => m.toast(b.catisan.length ? 'Kaydedildi; başkasının değişiklikleriyle birleştirildi.' : 'Başka biri de bu kaydı değiştirmişti; iki değişiklik birleştirildi.')).catch(() => {});
           }
         }
       } else if (sadeceGuncelle) { const r = await this.c.from(t).update(strip(t, row)).eq('id', row.id).select('id,updated_at'); if (r.error) throw r.error; if (!r.data?.length) throw new Error('row-level security: güncelleme yetkisi yok'); sunucuZamani(r.data[0].updated_at); }
       else { const d = await upsertSafe(this.c, t, row); sunucuZamani(d?.[0]?.updated_at); }
     } catch (e) {
-      if (e && e.message && /fetch|network|Failed/i.test(e.message)) { const j = S[t].findIndex(x => x.id === row.id); if (j >= 0) S[t][j] = { ...S[t][j], updated_at: null }; full.updated_at = null; this.cache(); await this.queue({ op: sadeceGuncelle ? 'upd' : 'up', t, row, zaman: Date.now() }); window.dispatchEvent(new CustomEvent('outbox', { detail: 1 })); }
+      if (e && e.message && /fetch|network|Failed/i.test(e.message)) { const j = S[t].findIndex(x => x.id === row.id); if (j >= 0) S[t][j] = { ...S[t][j], updated_at: null }; full.updated_at = null; this.cache(); await this.queue({ op: sadeceGuncelle ? 'upd' : 'up', t, row, zaman: Date.now(), ...(onceki?.updated_at && GUNCEL.has(t) ? { base: onceki } : {}) }); window.dispatchEvent(new CustomEvent('outbox', { detail: 1 })); }
       else if (e?.cakisma) throw e;
       else {
         // Kaydedilemeyen değişikliği ekrandan geri al

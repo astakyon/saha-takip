@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 86): aynı anda düzenlemede alan alan birleştirme
+
+- Bir kaydı sen açtıktan sonra başka biri (ya da öbür cihazın) değiştirdiyse artık "seninki mi onunki mi" diye bütün kaydı sormuyor:
+  - **Farklı alanları** değiştirdiyseniz (sen notu, o durumu) ikisi de kalır, hiçbir şey sorulmaz.
+  - **Aynı alanı** farklı değiştirdiyseniz yalnızca o alan, iki değer yan yana sorulur ("Notlar: onunki «…», seninki «…»"); diğer değişikliklerin her durumda kaydedilir.
+- **İnternetsizken** yapılan değişiklik bağlantı gelince eskiden körlemesine yazılıyordu; arada başkası değiştirdiyse onunki siliniyordu. Artık aynı şekilde birleştiriliyor. Aynı alan çatışırsa kayıt **Bekleyen kayıtlar**da "Benimki kalsın / Onunki kalsın" seçimiyle bekliyor.
+- Aynı kayıt internetsizken birkaç kez değiştirilirse ilk değişikliğin çıkış noktası korunuyor.
+
 ## Güncelleme notu (sürüm 85): özellik kullanımı ölçümü
 
 - Ayarlar → Görünüm → **Kullanım** kartı artık ekranların yanında ekran içindeki özellikleri de sayıyor: radar Planla/Ertele, hafta planına ekleme ve Otomatik dağıt, ziyarete giriş-çıkış, Konuşarak kaydet, onay bağlantısı, teklif PDF/WhatsApp, bayi talebi, Pazartesi özeti, firma/proje/kişi sayfaları. "Özellikler" bölümünde hangisinin hiç kullanılmadığı görünür.

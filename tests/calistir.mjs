@@ -726,6 +726,43 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 24) Çakışma: alan alan birleştirme ----------
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB });
+  const mesajlar = []; p.on('dialog', d => mesajlar.push(d.message()));
+  await p.goto(U + '#/projeler'); await w(1500);
+  const sonuc = await p.evaluate(async () => {
+    const { app } = await import('./js/state.js'); const { S } = await import('./js/db.js');
+    const c = app.db.c, pid = S.projeler[0].id, sunucu = async () => JSON.parse(JSON.stringify((await c.from('projeler').select('*').eq('id', pid).maybeSingle()).data));
+    const yerel = () => S.projeler.find(x => x.id === pid);
+    const bekle = ms => new Promise(r => setTimeout(r, ms));
+    await bekle(20);
+    // 1) Başkası durumu, ben notu değiştirdim → ikisi de kalır, sormadan
+    await c.from('projeler').update({ durum: 'Sıcak' }).eq('id', pid); await bekle(20);
+    await app.db.save('projeler', { ...yerel(), notlar: 'benim notum' });
+    const s1 = await sunucu();
+    // 2) İkimiz de notu değiştirdik → sorar (Tamam: seninki)
+    await bekle(20); await c.from('projeler').update({ notlar: 'onun notu' }).eq('id', pid); await bekle(20);
+    await app.db.save('projeler', { ...yerel(), notlar: 'benim ikinci notum' });
+    const s2 = await sunucu();
+    // 3) İnternetsizken tutarı değiştirdim, bu arada başkası durumu değiştirdi → gönderilince birleşir
+    window.__cevrimdisi = true; await app.db.save('projeler', { ...yerel(), tutar_usd: 777 }); window.__cevrimdisi = false;
+    await bekle(20); await c.from('projeler').update({ durum: 'İhale' }).eq('id', pid);
+    await app.db.flush(); const s3 = await sunucu(), k3 = (await app.db.bekleyenler()).length;
+    // 4) İnternetsizken durumu değiştirdim, başkası da durumu değiştirdi → bekletir, seçince yazar
+    window.__cevrimdisi = true; await app.db.save('projeler', { ...yerel(), durum: 'Sipariş' }); await app.db.save('projeler', { ...yerel(), notlar: 'ikinci çevrimdışı' }); window.__cevrimdisi = false;
+    await bekle(20); await c.from('projeler').update({ durum: 'Kayıp' }).eq('id', pid);
+    await app.db.flush(); const b4 = await app.db.bekleyenler();
+    await app.db.bekleyenSec(0, 'seninki'); const s4 = await sunucu(), k4 = (await app.db.bekleyenler()).length;
+    return { s1: [s1.durum, s1.notlar], s2: s2.notlar, s3: [s3.tutar_usd, s3.durum], k3, b4: b4.map(o => [!!o.cakisma, !!o.base]), s4: [s4.durum, s4.notlar], k4 };
+  });
+  kontrol('Çakışma: farklı alanlar sormadan birleşiyor; aynı alan değerleriyle soruluyor; internetsiz değişiklik gönderilince birleşiyor; aynı alan çatışırsa bekletilip seçimle yazılıyor',
+    sonuc.s1.join() === 'Sıcak,benim notum' && sonuc.s2 === 'benim ikinci notum' && mesajlar.length === 1 && /Notlar: onunki «onun notu», seninki «benim ikinci notum»/.test(mesajlar[0])
+    && sonuc.s3.join() === '777,İhale' && sonuc.k3 === 0 && sonuc.b4.length === 2 && sonuc.b4[0][0] && sonuc.b4[1][1] && sonuc.s4.join() === 'Sipariş,ikinci çevrimdışı' && sonuc.k4 === 0, JSON.stringify({ sonuc, mesajlar }));
+  kontrol('Çakışma denemesinde hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
 // ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
 {
   const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');
