@@ -22,6 +22,7 @@ const ROUTES = {
   harita:    { t: 'Harita', ico: 'map', v: yukle('views/map.js', 'mapView'), main: true, g: 'Saha' },
   projeler:  { t: 'Projeler', ico: 'folder', v: yukle('views/projeler.js', 'projelerView'), main: true, g: 'Saha' },
   takvim:    { t: 'Takvim', ico: 'cal', v: yukle('views/ziyaret.js', 'takvimView'), main: true, g: 'Saha' },
+  plan:      { t: 'Hafta planı', ico: 'cal', v: yukle('views/haftaplan.js', 'haftaplanView'), g: 'Saha' },
   firmalar:  { t: 'Firmalar', ico: 'building', v: yukle('views/firmalar.js', 'firmalarView'), main: true, g: 'Saha' },
   ziyaretler:{ t: 'Ziyaretler', ico: 'pin', v: yukle('views/ziyaret.js', 'ziyaretlerView'), g: 'Saha' },
   gorevler:  { t: 'Görevler', ico: 'check', v: yukle('views/ziyaret.js', 'gorevlerView'), g: 'Saha' },

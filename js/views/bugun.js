@@ -169,7 +169,7 @@ export function bugunView(el) {
   const gun = new Date(t + 'T00:00').toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
   // Boş kartlar yerine tek özet: bugün yapılacak bir şey yoksa kısa satırlar ve tek dokunuşla eylem
   const bos = [
-    !planli.length && `<li data-gerek="ziyaretler"><span>Bugün için planlı ziyaret yok</span><a class="btn sm ghost" href="#/takvim" data-gerek="yaz:ziyaretler">Planla</a></li>`,
+    !planli.length && `<li data-gerek="ziyaretler"><span>Bugün için planlı ziyaret yok</span><a class="btn sm ghost" href="#/plan" data-gerek="yaz:ziyaretler">Planla</a></li>`,
     !gorev.length && !ekipAcik.length && `<li><span>${uye ? 'Sana atanmış açık görev yok' : 'Bugün için açık görev yok'}</span></li>`,
     !yapilan.length && `<li data-gerek="ziyaretler"><span>Bugün henüz ziyaret kaydı yok</span><button type="button" class="btn sm ghost" data-yeni2 data-gerek="yaz:ziyaretler">Ziyaret kaydet</button></li>`,
     !yarinZ.length && !yarinG.length && `<li data-gerek="ziyaretler,gorevler"><span>Yarın için plan yok</span></li>`,
@@ -186,7 +186,7 @@ export function bugunView(el) {
         ${planli.length ? `<ol class="route">${sirali.map((x, i) => `<li><span class="rn">${i + 1}</span><span class="rt"><b>${x.z.saat ? esc(x.z.saat) + ' · ' : ''}${esc(firmaAd(x.z.firma_id) || 'Ziyaret')}</b><small>${esc([byId('kisiler', x.z.kisi_id)?.ad_soyad, x.z.amac, byId('projeler', x.z.proje_id)?.ad].filter(Boolean).join(' · '))}</small></span>
           <span class="ra"><a class="btn sm ghost" href="${directionsUrl(x.p[0], x.p[1])}" target="_blank" rel="noopener">Yol</a>${x.z.firma_id ? `<button type="button" class="btn sm primary" data-giris="${x.z.firma_id}" data-gerek="yaz:ziyaretler">Giriş</button>` : ''}<button type="button" class="btn sm" data-yapildi="${x.z.id}">Yapıldı</button></span></li>`).join('')}</ol>
           ${planli.length > sirali.length ? `<p class="hint">${planli.length - sirali.length} ziyaretin konumu bilinmiyor (firmanın yeri haritada işaretli değil); rotaya eklenmedi: ${planli.filter(z => !ziyaretYeri(z)).map(z => esc(firmaAd(z.firma_id) || 'Ziyaret')).join(', ')}.</p>` : ''}
-          <div class="btnrow">${rota ? `<a class="btn primary" href="${rota}" target="_blank" rel="noopener">Günün rotasını Google Haritalar'da aç</a>` : ''}<a class="btn ghost" href="#/takvim">Haftalık takvim</a></div>
+          <div class="btnrow">${rota ? `<a class="btn primary" href="${rota}" target="_blank" rel="noopener">Günün rotasını Google Haritalar'da aç</a>` : ''}<a class="btn ghost" href="#/plan">Hafta planı</a></div>
           ${sirali.length > 10 ? '<p class="hint">Google Haritalar tek rotada en fazla 10 durak gösterir; ilk 10 durak eklendi.</p>' : ''}`
         : ''}
       </section>`}

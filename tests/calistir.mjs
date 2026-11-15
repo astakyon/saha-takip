@@ -507,7 +507,7 @@ const DB = () => {
     const ts = '2026-10-01T08:00:00Z', o = x => ({ owner: 'u1', updated_at: ts, created_at: ts, ...x });
     const g = n => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
     localStorage.setItem('__DB', JSON.stringify({
-      firmalar: [o({ id: 'f1', ad: 'Örnek Bayi', tipler: ['Bayi'] }), o({ id: 'f2', ad: 'Büyük Emüt', tipler: ['Emüt'], segment: 'A' })],
+      firmalar: [o({ id: 'f1', ad: 'Örnek Bayi', tipler: ['Bayi'], il: 'Mersin' }), o({ id: 'f2', ad: 'Büyük Emüt', tipler: ['Emüt'], segment: 'A', il: 'Adana' })],
       kisiler: [], ziyaretler: [], gorevler: [],
       projeler: [o({ id: 'p2', ad: 'Hastane Ek Bina', durum: 'Sıcak', tutar_usd: 320000, emut_id: 'f2' }), o({ id: 'p3', ad: 'Küçük Depo', durum: 'Teklif Verildi', tutar_usd: 4000, emut_id: 'f1' })],
       teklifler: [o({ id: 't2', proje_id: 'p3', firma_id: 'f1', teklif_no: 'T-2', tarih: g(-12), gecerlilik: g(3), durum: 'Gönderildi', toplam: 4000, para_birimi: 'USD' })],
@@ -526,6 +526,22 @@ const DB = () => {
   await p.click('.drawer.open .x[data-close]'); await w(400);
   await p.goto(U + '#/panel'); await w(1200); const r4 = await p.evaluate(() => !!document.querySelector('.radar-k'));
   kontrol('Fırsat radarı: sessiz sıcak proje en üstte, karar verici, teklif süresi ve A müşterisi listede; ertelenen gizleniyor; Panel\'de de var', r1.kart && r1.ilk === 'Hastane Ek Bina' && ['sessiz', 'karar', 'teklif', 'uzak'].every(t => r1.turler.includes(t)) && r2 && r3.length === 1 && r3[0] === 'teklif:t2' && r4, JSON.stringify({ r1, r2, r3, r4 }));
+  // Haftalık saha planı
+  await p.goto(U + '#/plan'); await w(1000); await p.evaluate(() => document.querySelector('[data-w="7"]').click()); await w(900);
+  const hp1 = await p.evaluate(() => ({ gun: document.querySelectorAll('.hp-gun').length, oneri: [...document.querySelectorAll('.hp-o')].map(x => x.dataset.of), gunler: [...document.querySelectorAll('.hp-gun')].map(x => x.dataset.gun) }));
+  const ileri = await p.evaluate(async () => { const { today } = await import('./js/ui.js'); return [...document.querySelectorAll('.hp-gun')].map(x => x.dataset.gun).filter(d => d >= today()); });
+  await p.selectOption(`[data-bolge="${ileri[0]}"]`, 'Adana'); await w(900);
+  await p.evaluate(d => document.querySelector(`.hp-o[data-of="f2"] [data-ekle="${d}"]`).click(), ileri[0]); await w(900);
+  const hp2 = await p.evaluate(async d => { const { S } = await import('./js/db.js'); return { z: S.ziyaretler.some(z => z.firma_id === 'f2' && z.tarih === d && z.durum === 'Planlandı'), gunde: !!document.querySelector(`.hp-gun[data-gun="${d}"] .hp-z`), oneride: !!document.querySelector('.hp-o[data-of="f2"]') }; }, ileri[0]);
+  await p.selectOption(`[data-bolge="${ileri[1]}"]`, 'Mersin'); await w(900);
+  await p.evaluate(() => { document.querySelector('[data-il="Tümü"]')?.click(); }); await w(500);
+  await p.evaluate(() => document.querySelector('[data-dagit]').click()); await w(1200);
+  const hp3 = await p.evaluate(async d => { const { S } = await import('./js/db.js'); return S.ziyaretler.some(z => z.firma_id === 'f1' && z.tarih === d && z.durum === 'Planlandı'); }, ileri[1]);
+  await p.screenshot({ path: 'tests/cikti/hafta-plani.png', fullPage: true });
+  await p.setViewportSize({ width: 390, height: 844 }); await w(300);
+  const hpTasma = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  await p.setViewportSize({ width: 1280, height: 900 });
+  kontrol('Haftalık saha planı: öneriler (A müşterisi, teklif), güne bölge seçilip firma ekleniyor, öneriden düşüyor, otomatik dağıt bölgeye göre planlıyor, telefonda taşmıyor', hp1.gun === 5 && hp1.oneri.includes('f2') && hp1.oneri.includes('f1') && ileri.length >= 2 && hp2.z && hp2.gunde && !hp2.oneride && hp3 && hpTasma <= 1, JSON.stringify({ hp1, ileri, hp2, hp3, hpTasma }));
   kontrol('Radarda hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }

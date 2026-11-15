@@ -8,7 +8,7 @@ import { S } from './db.js';
 export const MODULLER = [
   { k: 'projeler', ad: 'Projeler', t: ['projeler', 'proje_gecmis'], rota: ['projeler', 'referanslar'] },
   { k: 'firmalar', ad: 'Firmalar ve kişiler', t: ['firmalar', 'kisiler'], rota: ['firmalar', 'kisiler'] },
-  { k: 'ziyaretler', ad: 'Ziyaretler ve görevler', t: ['ziyaretler', 'gorevler'], rota: ['ziyaretler', 'gorevler', 'takvim', 'rapor'] },
+  { k: 'ziyaretler', ad: 'Ziyaretler ve görevler', t: ['ziyaretler', 'gorevler'], rota: ['ziyaretler', 'gorevler', 'takvim', 'plan', 'rapor'] },
   { k: 'bolgeler', ad: 'Sanayi bölgeleri', t: ['bolgeler'], rota: ['bolgeler'] },
   { k: 'siparisler', ad: 'Siparişler, hedefler ve panel', t: ['siparisler', 'hedefler'], rota: ['siparisler', 'panel'] },
   { k: 'teklifler', ad: 'Teklifler', t: ['teklifler'], rota: ['teklifler'] },
@@ -30,6 +30,7 @@ export const EKRANLAR = {
   firmalar:   { t: ['firmalar', 'kisiler'], o: [], d: 'Firma listesi ve kartı, firmadaki kişiler' },
   kisiler:    { t: ['kisiler'], o: ['firmalar'], d: 'Kişi listesi, telefon ve e-postalar' },
   takvim:     { t: ['ziyaretler', 'gorevler'], o: ['firmalar', 'projeler'], d: 'Planlı ziyaretler ve görevler takvimde' },
+  plan:       { t: ['ziyaretler'], o: ['firmalar', 'projeler', 'teklifler'], d: 'Haftalık saha planı: günlere bölge, önerilerden planlı ziyaret' },
   ziyaretler: { t: ['ziyaretler'], o: ['firmalar', 'projeler'], d: 'Ziyaret kayıtları ve notları' },
   gorevler:   { t: ['gorevler'], o: ['firmalar', 'projeler'], d: 'Görev listesi (kendisine atanan görevleri her zaman görür)' },
   teklifler:  { t: ['teklifler'], o: ['firmalar', 'projeler', 'urunler'], d: 'Teklifler, kalemler ve fiyatlar' },

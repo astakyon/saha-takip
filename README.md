@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 75): Haftalık saha planı
+
+- **Bugün → Hafta planı** sekmesi: haftanın her gününe bölge seç (Adana, Mersin, Hatay, Osmaniye…), soldaki **öneri listesinden** firmayı güne sürükle ya da gün düğmesine dokun. Sarı gün düğmesi, o gün seçtiğin bölgeyle aynı ildeki günü gösterir.
+- Öneriler: Fırsat radarı, ziyaret aralığı geçen firmalar ve zamanı gelen projeler; firma başına bir satır, ile göre süzülür. Bu hafta zaten planlanmış firma listede çıkmaz.
+- **Otomatik dağıt:** bölgesi seçili günlere o ildeki en önemli önerileri koyar (günde en fazla 4).
+- Planlı ziyaretler günler arasında sürüklenerek taşınır, × ile plandan çıkarılır. Her gün için **Rotayı aç** Google Haritalar'da sıralı rota açar. Üstte haftanın özeti: plan, yapıldı, kaçan.
+- Planlar uygulamadaki planlı ziyaretlerdir; Google Takvim'e gönderilmez. Şema değişikliği yok.
+
 ## Güncelleme notu (sürüm 74): Fırsat radarı
 
 - **Bugün** ve **Panel** ekranında yeni kart: kaçmak üzere olan işler tek listede, önem sırasıyla. Dört tür: uzun süredir hareket olmayan sıcak projeler (varsayılan 14 gün), karar vericisi belirsiz, ulaşılmamış ya da rakipçi olan projeler, geçerliliği dolan ve cevap gelmemiş teklifler, ziyaret aralığı geçmiş A ve key account müşteriler.
