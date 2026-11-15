@@ -32,6 +32,11 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 90): şirket barı
+
+- **Telefonda** şirket (profil) kartı alt menüden çıktı; sayfanın **en üstünde ince bir bar** olarak duruyor (şirket adı, sektör ve iller; dokununca Şirket profili; birden çok şirket varsa yanında Şirket değiştir). Sayfa kayınca kaybolur, sekmeler üstte kalır; haritada gizlenir. Alt menü düğmeleri tam genişliği kullanıyor.
+- **Bilgisayarda** soldaki menüde şirket adı kesilmeden, gerekirse iki satırda yazılıyor.
+
 ## Güncelleme notu (sürüm 89): Ziyarete hazırlık
 
 - Bugün'ün planındaki her ziyarette **Hazırlık**, firma sayfasında **Ziyarete hazırlık**: firmanın son 12 ayı (ziyaret, teklif ve tutarı, sipariş ve tutarı, kazanılan/kaybedilen), **konuşulacaklar** (vade riski, açık ve gecikmiş görevler, cevap bekleyen teklifler, sessiz sıcak projeler, satış haritası uyarıları, müşteride bekleyen numune, açık servis kaydı), açık projeler, **kiminle** (karar vericiler önce, telefon, 14 gün içindeki doğum günü), son iki görüşmenin notları, bu firmada kaybedilen markalar. Altta Yol, Firma sayfası, **Giriş yap**.

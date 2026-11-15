@@ -434,7 +434,7 @@ const DB = () => {
   await Promise.all([p.waitForNavigation({ timeout: 8000 }).catch(() => null), p.click('dialog.sirket-dlg [data-sirket="u9"]')]); await w(1500);
   const secili = await p.evaluate(() => localStorage.getItem('__SECILI'));
   await p.setViewportSize({ width: 390, height: 844 }); await p.goto(U + '#/sirket'); await w(1500);
-  const telDug = await p.isVisible('[data-sirketsec]');
+  const telDug = await p.evaluate(() => [...document.querySelectorAll('[data-sirketsec]')].some(b => b.offsetParent !== null));
   kontrol('K5: birden çok şirkete erişen kişi menüden (telefonda şirket profilinden) şirket değiştiriyor', dug && liste.length === 2 && /EAE Bölge.*şu an açık/.test(liste[0]) && secili === 'u9' && telDug, JSON.stringify({ dug, liste, secili, telDug }));
   kontrol('Şirket değiştirmede hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
@@ -835,6 +835,24 @@ const DB = () => {
   kontrol('Ziyarete hazırlık: Bugün planından ve firma sayfasından açılıyor; tahsilat, gecikmiş görev, cevap bekleyen teklif konuşulacaklarda; karar verici/kişi ve doğum günü, açık proje; Giriş yap ziyareti başlatıyor',
     hz.h === 'Geciken İnşaat' && hz.konu.some(k => /^Tahsilat/.test(k)) && hz.konu.some(k => /Numune listesini sor/.test(k)) && hz.konu.some(k => /Teklif T-9 cevap bekliyor/.test(k)) && /5 gün sonra doğum günü/.test(hz.kisi) && hz.proje && /A segmenti/.test(hz.alt) && hzG === 'f1' && hzF === 'Geciken İnşaat', JSON.stringify({ hz, hzG, hzF }));
   kontrol('Vade riskinde hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
+// ---------- 27) Şirket barı: telefonda üstte, bilgisayarda menüde tam ad ----------
+{
+  const DBP = () => { const ts = '2026-10-01T08:00:00Z'; localStorage.setItem('__DB', JSON.stringify({ projeler: [{ id: 'p1', owner: 'u1', ad: 'Proje', durum: 'Sıcak', updated_at: ts }], firmalar: [], kisiler: [], ziyaretler: [], gorevler: [], ekip_uyeleri: [],
+    ayarlar: [{ id: 'a1', owner: 'u1', anahtar: 'firma_profil', deger: { firma: 'EAE Aydınlatma Elektrik Sanayi', sektor: 'aydinlatma', iller: ['Adana', 'Mersin', 'Hatay', 'Osmaniye'] }, updated_at: ts }] })); };
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DBP });
+  await p.setViewportSize({ width: 412, height: 900 }); await p.goto(U + '#/bugun'); await w(1500);
+  const m = await p.evaluate(() => { const fb = document.getElementById('firma-bar'), r = fb?.getBoundingClientRect(), navF = document.querySelector('#nav .nav-firma'), sekme = document.querySelector('#view .sekmeler, #view .ust-sekme, #view [role=tablist]');
+    return { gorunur: !!fb && getComputedStyle(fb).display !== 'none', ust: r ? Math.round(r.top) : null, ad: fb?.querySelector('b')?.textContent, navda: navF ? getComputedStyle(navF).display : 'yok', navGen: [...document.querySelectorAll('#nav .nav-main > a')].map(a => Math.round(a.getBoundingClientRect().width)) }; });
+  await p.screenshot({ path: 'tests/cikti/sirket-bari-telefon.png' });
+  await p.goto(U + '#/harita'); await w(900); const mh = await p.evaluate(() => getComputedStyle(document.getElementById('firma-bar')).display);
+  await p.setViewportSize({ width: 1280, height: 800 }); await p.goto(U + '#/bugun'); await w(900);
+  const d = await p.evaluate(() => { const b = document.querySelector('#nav .nav-firma b'); return { bar: getComputedStyle(document.getElementById('firma-bar')).display, kesik: b ? b.scrollHeight > b.clientHeight + 1 || b.scrollWidth > b.clientWidth + 1 : null, metin: b?.textContent }; });
+  await (await p.$('#nav')).screenshot({ path: 'tests/cikti/sirket-menude.png' });
+  kontrol('Şirket kartı: telefonda sayfanın en üstünde bar (alt menüde değil, haritada gizli), bilgisayarda menüde ad kesilmeden', m.gorunur && m.ust === 0 && /EAE Aydınlatma/.test(m.ad) && m.navda === 'none' && m.navGen.every(x => x >= 60) && mh === 'none' && d.bar === 'none' && d.kesik === false, JSON.stringify({ m, mh, d }));
+  kontrol('Şirket barında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
 

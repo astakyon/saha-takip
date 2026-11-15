@@ -114,7 +114,11 @@ function renderNav(cur) {
       <button type="button" class="nav-inst" data-inst ${canInstall() ? '' : 'hidden'}>${icon('down')}<span>Telefona yükle</span></button>
       <a href="#/ayarlar" class="nav-duzen" data-menuduzen>${icon('gear', 18)}<span>Menüyü düzenle</span></a></div>`;
   nav.querySelector('[data-navara]').onclick = () => aramaAc();
-  nav.querySelector('[data-sirketsec]')?.addEventListener('click', async () => (await import('./sirketsec.js')).sirketSecAc());
+  // Telefonda şirket (profil) alt menüde değil, sayfanın en üstünde ince bir bar olarak görünür
+  let fb = document.getElementById('firma-bar');
+  if (!fb) { fb = document.createElement('div'); fb.id = 'firma-bar'; document.getElementById('view').before(fb); }
+  fb.innerHTML = navFirma(); fb.hidden = !fb.innerHTML;
+  for (const kok of [nav, fb]) kok.querySelector('[data-sirketsec]')?.addEventListener('click', async () => (await import('./sirketsec.js')).sirketSecAc());
   // Bekleyen kayıt rozeti menüden bağımsız (telefonda menü başlığı gizli olduğu için)
   if (!document.getElementById('bekleyen')) { const b = document.createElement('button'); b.type = 'button'; b.id = 'bekleyen'; b.className = 'bekleyen'; b.hidden = true; b.title = 'Buluta gönderilmeyi bekleyen kayıtlar'; b.onclick = async () => (await import('./bekleyen.js')).bekleyenPaneli(); document.body.appendChild(b); }
   bekleyenGuncelle();
