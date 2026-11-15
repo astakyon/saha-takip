@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 93)
+
+- **Profilim** (`#/profilim`), şirket profilinden ayrı kişisel sayfa: kişi kartı (ad, ünvan, rol, şirket, kullanıcı adı, giriş e-postası, telefon), "Kartvizitimi gönder", **Ne görebilirim?** (rolün düzenlediği / gördüğü ekranlar, kayıt kapsamı, gizli bilgiler), **Bilgilerim** (ad, ünvan, telefon, iletişim e-postası, imza), **Giriş ve şifre**, **Güvenlik**, **Çıkış**.
+- Kişisel bilgiler Supabase hesabının `user_metadata` alanında saklanır (her kişiye özel; şema değişikliği yok). Mesajlardaki `{benim}` imzası önce buradan okunur.
+- Menüde kim olarak girdiğin: bilgisayarda sol menünün en altında ad, rol ve çıkış düğmesi; telefonda üst barın sağında baş harfli yuvarlak.
+- Ayarlar → Hesap'taki giriş bilgileri ve güvenlik Profilim'e taşındı; orada yönlendirme kaldı. Çıkış, bu cihazdaki kayıt kopyasını siler, gönderilmeyi bekleyen kayıtları korur.
+
 ## Güncelleme notu (sürüm 92)
 
 - Şirket profili → **Son değişiklikler** ayrı sekme oldu (Genel'den taşındı).

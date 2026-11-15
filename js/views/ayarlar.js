@@ -14,7 +14,7 @@ import { ayar, ayarYaz } from '../ayar.js';
 import { sahipMi } from '../yetki.js';
 import { menuAyarlari, menuDuzeni } from '../menu.js';
 import { SEKME_AD } from '../basliklar.js';
-import { connForm, bindConn, hesapGirisAyarlari } from '../giris.js';
+import { connForm, bindConn } from '../giris.js';
 
 const ORDER = SIRA;
 const ETIKET = { bolgeler: 'sanayi bölgesi', firmalar: 'firma', kisiler: 'kişi', projeler: 'proje', proje_gecmis: 'durum geçmişi', ziyaretler: 'ziyaret', gorevler: 'görev', urunler: 'ürün', stok_gecmis: 'stok geçmişi', rakip_fiyatlar: 'rakip fiyatı', siparisler: 'sipariş', hedefler: 'hedef', teklifler: 'teklif', numuneler: 'numune', servis_kayitlari: 'servis kaydı', masraflar: 'masraf', urun_aileleri: 'ürün ailesi', ayarlar: 'ayar', tahsilatlar: 'tahsilat kaydı', belgeler: 'belge' };
@@ -37,7 +37,7 @@ export async function ayarlarView(el) {
   if (TASINDI[f.sekme] || f.sekme === 'profil') f.sekme = 'hesap';
   if (!S.projeler.length && !S.firmalar.length && !f._ilk) { f.sekme = 'veri'; f._ilk = 1; }
   const BOLUM = [
-    ['hesap', 'Hesap ve güvenlik', 'Bulut bağlantısı, iki adımlı doğrulama, otomatik çıkış', 'user'],
+    ['hesap', 'Hesap', 'Bulut bağlantısı; giriş ve güvenlik Profilim\'de', 'user'],
     ['gorunum', 'Görünüm ve menü', 'Tema, yazı boyutu, menüdeki ekranlar', 'sun'],
     ['listeler', 'Listeler', 'Firma tipleri, rakip markaları, kayıp nedenleri, aşamalar', 'tag', true],
     ['veri', 'Veri ve yedek', 'Yedek, geri yükleme, Excel, başlangıç verisi', 'down', true],
@@ -64,8 +64,7 @@ export async function ayarlarView(el) {
       : `<p>Şu an <b>deneme modundasın</b>: veriler yalnızca bu tarayıcıda durur. Telefon ve bilgisayarda ortak kullanmak için Supabase bilgilerini gir.</p>${connForm(cfg)}`}
     </section>
     ${sahipMi() ? '' : `<section class="card" data-tab="hesap"><h2>Ekip üyesi</h2><p>Bu hesapla veri sahibinin sana açtığı bölümleri görüyorsun. Yeni bölüm için veri sahibinden yetki iste.</p></section>`}
-    ${sup ? '<section class="card" data-tab="hesap"><h2>Giriş bilgileri</h2><div data-girisayar><p class="hint">Yükleniyor…</p></div></section>' : ''}
-    <section class="card" data-tab="hesap"><h2>Güvenlik</h2><div data-guvenlik></div></section>
+    ${sup ? '<section class="card" data-tab="hesap"><h2>Profilim</h2><p>Kim olarak girdiğin, kullanıcı adın, şifren, iki adımlı doğrulama ve çıkış <b>Profilim</b> sayfasında.</p><div class="btnrow"><a class="btn" href="#/profilim">Profilime git</a></div></section>' : ''}
     <section class="card wide-card" data-tab="listeler"><h2>Seçim listeleri</h2><div data-listeler></div></section>
     <section class="card" data-tab="gorunum" id="menu-karti"><h2>Menü</h2><div data-menu></div></section>
     <section class="card" data-tab="gorunum"><h2>Kullanım</h2><div data-kullanim></div></section>
@@ -146,14 +145,12 @@ export async function ayarlarView(el) {
   el.querySelector('[data-geribildirim]').onclick = async () => (await import('../geribildirim.js')).geriBildirimAc();
   if (app.yonetici) el.querySelectorAll('[data-yonetici]').forEach(s => s.hidden = false);
   if (menuAc) el.querySelector('.menu-d')?.setAttribute('open', '');
-  import('../guvenlik.js').then(m => m.guvenlikAyarlari(el.querySelector('[data-guvenlik]')));
-  hesapGirisAyarlari(el.querySelector('[data-girisayar]'));
   if (menuAc) setTimeout(() => el.querySelector('#menu-karti')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   bildirimAyarlari(el.querySelector('[data-bildirim]'));
   el.querySelector('[data-kml]').onclick = () => kmlIndir();
   el.querySelector('[data-gimport]').onclick = () => iceAktarPaneli(() => ayarlarView(el));
   el.querySelector('[data-install]')?.addEventListener('click', install);
-  el.querySelector('[data-out]')?.addEventListener('click', async () => { await app.db.signOut(); location.reload(); });
+  el.querySelector('[data-out]')?.addEventListener('click', async () => (await import('./profilim.js')).cikisSor());
   el.querySelector('[data-seed]').onclick = () => seedYukle(el);
   el.querySelector('[data-migrate]')?.addEventListener('click', () => migrate(el));
   el.querySelector('[data-xlsx]').onclick = () => {

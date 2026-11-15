@@ -2,6 +2,7 @@
 import { S } from './db.js';
 import { esc, byId, firmaAd, toast, openDrawer, closeDrawer, waLink, tarih, today } from './ui.js';
 import { ayar, ayarYaz } from './ayar.js';
+import { app } from './state.js';
 
 export const VARSAYILAN_SABLON = [
   { ad: 'Ziyaret sonrası teşekkür', metin: 'Merhaba {ad} Bey/Hanım, bugün zaman ayırdığınız için teşekkür ederim. {proje} ile ilgili konuştuğumuz konuları takip edip size en kısa sürede dönüş yapacağım. İyi çalışmalar, {benim}' },
@@ -13,7 +14,7 @@ export const VARSAYILAN_SABLON = [
   { ad: 'Bayram tebriği', metin: 'Merhaba {ad} Bey/Hanım, bayramınızı en içten dileklerimle kutlarım. Sevdiklerinizle birlikte sağlıklı ve huzurlu bir bayram geçirmenizi dilerim. {benim}' },
 ];
 export const sablonlar = () => { const s = ayar('wa_sablonlar'); return Array.isArray(s) && s.length ? s : VARSAYILAN_SABLON; };
-export const benimAdim = () => ayar('benim_adim') || '';
+export const benimAdim = () => app.db?.user?.()?.user_metadata?.imza || ayar('benim_adim') || '';
 
 export function doldur(metin, { kisi, firma, proje, alanlar = {} } = {}) {
   const ilk = (kisi?.ad || (kisi?.ad_soyad || '').replace(/\s*(Bey|Hanım)$/i, '').split(/\s+/)[0] || '').trim();
@@ -65,7 +66,8 @@ export function sablonDuzenleyici(root) {
     root.querySelector('[data-ekle]').onclick = () => { list.push({ ad: 'Yeni şablon', metin: 'Merhaba {ad} Bey/Hanım, ' }); ciz(); };
     root.querySelector('[data-sifirla]').onclick = () => { list = VARSAYILAN_SABLON.map(x => ({ ...x })); ciz(); };
     root.querySelector('[data-kaydet]').onclick = async () => {
-      await ayarYaz('benim_adim', root.querySelector('#benim').value.trim() || null);
+      const im = root.querySelector('#benim').value.trim() || null; await ayarYaz('benim_adim', im);
+      if (app.db?.mode === 'supabase' && app.db.user()) { const m = { ...(app.db.user().user_metadata || {}), imza: im }; const { error } = await app.db.c.auth.updateUser({ data: m }); if (!error) app.db.user().user_metadata = m; }
       await ayarYaz('wa_sablonlar', list.filter(x => x.ad.trim() && x.metin.trim()));
       toast('Mesaj şablonları kaydedildi.');
     };

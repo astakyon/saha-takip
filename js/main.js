@@ -8,6 +8,7 @@ import { paylasimAl, paylasimPaneli } from './paylas.js';
 import { hataKaydet, kullanimSay, hataGonder } from './saglik.js';
 import { rotaIzinli, sahipMi, rotaYazilabilir, izin, yetkiUygula, gerekUygula, onizlemede, onizlemeBitir } from './yetki.js';
 import { menuDuzeni } from './menu.js';
+import { benBilgisi, basHarfleri } from './ben.js';
 import { BASLIKLAR, SEKME_AD, baslikOf } from './basliklar.js';
 import { hizliKur, aramaAc } from './hizli.js';
 import { filtreIzle } from './filtre.js';
@@ -50,6 +51,7 @@ const ROUTES = {
   yonetim:   { t: 'Yönetim', ico: 'building', v: yukle('views/yonetim.js', 'yonetimView'), g: 'Rapor' },
   ayarlar:   { t: 'Ayarlar', ico: 'gear', v: yukle('views/ayarlar.js', 'ayarlarView'), g: 'Rapor' },
   sirket:    { t: 'Şirket profili', ico: 'building', v: yukle('views/sirket.js', 'sirketView'), g: 'Rapor' },
+  profilim:  { t: 'Profilim', ico: 'user', v: yukle('views/profilim.js', 'profilimView'), g: 'Rapor' },
 };
 const detay = (yol, ad) => async (...a) => (await import('./' + yol))[ad](...a);
 const DETAIL = { proje: detay('views/projeler.js', 'projeDetay'), firma: detay('views/firmalar.js', 'firmaDetay'), kisi: detay('views/firmalar.js', 'kisiDetay') };
@@ -96,6 +98,12 @@ function navFirma() {
   const alt = p?.firma ? [SEKTOR[p.sektor], (p.iller || []).slice(0, 3).join(', ') + ((p.iller || []).length > 3 ? '…' : '')].filter(Boolean).join(' · ') : '';
   return `<div class="nav-firma-kap"><a href="#/sirket" class="nav-firma ${navSon === 'sirket' ? 'on' : ''}" data-navfirma title="Şirket profili"><span class="nav-firma-ik" aria-hidden="true">${esc(ad.slice(0, 1).toLocaleUpperCase('tr'))}</span><span><b>${esc(ad)}</b><small>${esc(alt)}</small></span></a>${cok ? `<button type="button" class="nav-sirketsec" data-sirketsec title="Şirket değiştir" aria-label="Şirket değiştir (${app.db.sirketler.length} şirket)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></button>` : ''}</div>`;
 }
+// Menünün altında (telefonda üst barın sağında): kim olarak girdiğin; dokununca Profilim
+function navBen(kucuk = false) {
+  const b = benBilgisi(), on = navSon === 'profilim' ? 'on' : '';
+  if (kucuk) return `<a href="#/profilim" class="fb-ben ${on}" data-navben title="${esc(b.ad + ' · ' + b.rol)}" aria-label="Profilim: ${esc(b.ad)}"><i>${esc(basHarfleri(b.ad))}</i></a>`;
+  return `<div class="nav-ben"><a href="#/profilim" class="nav-ben-a ${on}" data-navben title="Profilim"><i class="nav-ben-av" aria-hidden="true">${esc(basHarfleri(b.ad))}</i><span><b>${esc(b.ad)}</b><small>${esc([b.rol, b.kad].filter(Boolean).join(' · '))}</small></span></a>${b.yerel ? '' : `<button type="button" class="nav-cikis" data-navcikis title="Çıkış yap" aria-label="Çıkış yap"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/></svg></button>`}</div>`;
+}
 function renderNav(cur) {
   const nav = document.getElementById('nav');
   const { ana, gorunur } = menuDuzeni(ROUTES);
@@ -112,12 +120,14 @@ function renderNav(cur) {
       <button class="nav-more ${!ana.includes(aktif) ? 'on' : ''}" type="button" aria-haspopup="true">${icon('more')}<span>Diğer</span></button></div>
     <div class="nav-rest">${digerB.map(item).join('')}
       <button type="button" class="nav-inst" data-inst ${canInstall() ? '' : 'hidden'}>${icon('down')}<span>Telefona yükle</span></button>
-      <a href="#/ayarlar" class="nav-duzen" data-menuduzen>${icon('gear', 18)}<span>Menüyü düzenle</span></a></div>`;
+      <a href="#/ayarlar" class="nav-duzen" data-menuduzen>${icon('gear', 18)}<span>Menüyü düzenle</span></a></div>
+    ${navBen()}`;
   nav.querySelector('[data-navara]').onclick = () => aramaAc();
   // Telefonda şirket (profil) alt menüde değil, sayfanın en üstünde ince bir bar olarak görünür
   let fb = document.getElementById('firma-bar');
   if (!fb) { fb = document.createElement('div'); fb.id = 'firma-bar'; document.getElementById('view').before(fb); }
-  fb.innerHTML = navFirma(); fb.hidden = !fb.innerHTML;
+  fb.innerHTML = `<div class="fb-ic">${navFirma() || '<span class="fb-bos">Saha Takip</span>'}${navBen(true)}</div>`; fb.hidden = false;
+  nav.querySelector('[data-navcikis]')?.addEventListener('click', async () => (await import('./views/profilim.js')).cikisSor());
   for (const kok of [nav, fb]) kok.querySelector('[data-sirketsec]')?.addEventListener('click', async () => (await import('./sirketsec.js')).sirketSecAc());
   // Bekleyen kayıt rozeti menüden bağımsız (telefonda menü başlığı gizli olduğu için)
   if (!document.getElementById('bekleyen')) { const b = document.createElement('button'); b.type = 'button'; b.id = 'bekleyen'; b.className = 'bekleyen'; b.hidden = true; b.title = 'Buluta gönderilmeyi bekleyen kayıtlar'; b.onclick = async () => (await import('./bekleyen.js')).bekleyenPaneli(); document.body.appendChild(b); }

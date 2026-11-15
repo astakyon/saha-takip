@@ -15,7 +15,7 @@ export const BASLIKLAR = [
 // Başlık içindeki sekme adları (kısa)
 export const SEKME_AD = { bugun: 'Bugün', harita: 'Harita', bolgeler: 'Sanayi bölgeleri', projeler: 'Projeler', referanslar: 'Referanslar', firmalar: 'Firmalar', kisiler: 'Kişiler',
   takvim: 'Takvim', rakipanaliz: 'Kayıp ve rakip', ekiphar: 'Ekip haritası', talepler: 'Bayi talepleri', plan: 'Hafta planı', ziyaretler: 'Ziyaretler', gorevler: 'Görevler', teklifler: 'Teklifler', siparisler: 'Siparişler', tahsilat: 'Tahsilat', numuneler: 'Numuneler', servis: 'Servis',
-  sirket: 'Şirket profili', urunler: 'Stok ve fiyat', bayi: 'Bayi paneli', katalog: 'Katalog', rakip: 'Rakip fiyatları', araclar: 'Hesap araçları', panel: 'Panel', rapor: 'Haftalık rapor', kontrol: 'Veri kontrolü', masraflar: 'Masraf ve km', dosyalar: 'Dosyalar', yonetim: 'Yönetim' };
+  sirket: 'Şirket profili', profilim: 'Profilim', urunler: 'Stok ve fiyat', bayi: 'Bayi paneli', katalog: 'Katalog', rakip: 'Rakip fiyatları', araclar: 'Hesap araçları', panel: 'Panel', rapor: 'Haftalık rapor', kontrol: 'Veri kontrolü', masraflar: 'Masraf ve km', dosyalar: 'Dosyalar', yonetim: 'Yönetim' };
 export const baslikOf = rota => BASLIKLAR.find(b => b.r.includes(rota)) || null;
 export const VARS_ANA = ['bugun', 'harita', 'projeler', 'firmalar', 'satis'];
 

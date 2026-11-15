@@ -59,7 +59,7 @@ export async function sirketView(el) {
 }
 
 async function ekibim(kok, p) {
-  if (app.db.mode !== 'supabase') { kok.innerHTML = '<h2>Ekibim</h2><p class="hint">Ekip, bulut bağlantısı kurulunca görünür (Ayarlar → Hesap ve güvenlik).</p>'; return; }
+  if (app.db.mode !== 'supabase') { kok.innerHTML = '<h2>Ekibim</h2><p class="hint">Ekip, bulut bağlantısı kurulunca görünür (Ayarlar → Hesap).</p>'; return; }
   if (!sahipMi()) { kok.innerHTML = `<h2>Ekibim</h2><p class="hint">Ekibi şirket yöneticileri görür.</p>`; return; }
   try {
     const [{ data: b }, { data: uyeler, error }] = await Promise.all([app.db.c.rpc('sirket_bilgisi'), app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif,yonetici,yetkiler').eq('owner', app.db.sahip)]);

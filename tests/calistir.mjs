@@ -418,6 +418,35 @@ const DB = () => {
   kontrol('Şirket ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Profilim: kim olarak girildi, kişisel bilgiler (hesapta saklanır), menüde "ben", çıkış
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB });
+  await p.goto(U + '#/bugun'); await w(1500);
+  const ben0 = await p.evaluate(() => ({ fb: document.querySelector('#firma-bar .fb-ben')?.getAttribute('href'), nav: !!document.querySelector('#nav .nav-ben') }));
+  await p.click('#firma-bar .fb-ben'); await w(1200);
+  const pr0 = await p.evaluate(() => ({ h: location.hash, rol: document.querySelector('.pr-kart .rol-r')?.textContent, ep: document.querySelector('.pr-dl')?.textContent || '', yetki: document.querySelector('[data-yetkim]')?.textContent || '', giris: !!document.querySelector('[data-girisayar] #h-ad'), guv: !!document.querySelector('[data-guvenlik] [data-hepsi]') }));
+  await p.fill('#pr-ad', 'Burak Deneme'); await p.fill('#pr-un', 'Bölge satış sorumlusu'); await p.fill('#pr-tel', '05321112233'); await p.fill('#pr-im', 'Burak Deneme · EAE'); await p.click('[data-bilgi] [type=submit]'); await w(900);
+  const pr1 = await p.evaluate(async () => ({ meta: JSON.parse(localStorage.getItem('__META') || '{}'), h1: document.querySelector('[data-prad]')?.textContent, av: document.querySelector('#firma-bar .fb-ben i')?.textContent, imza: (await import('./js/sablon.js')).benimAdim() }));
+  await p.goto(U + '#/ayarlar'); await w(900);
+  const ayar = await p.evaluate(() => ({ eski: !!document.querySelector('[data-girisayar], [data-guvenlik]'), link: !!document.querySelector('[data-tab="hesap"] a[href="#/profilim"]') }));
+  await p.goto(U + '#/profilim'); await w(1000);
+  await p.click('.pr-cikis [data-cikis]'); await w(1500);
+  const cikis = await p.evaluate(() => localStorage.getItem('__CIKIS'));
+  kontrol('Profilim: üst barda kişi düğmesi, rol ve giriş e-postası, kendi yetkileri, giriş ve güvenlik burada; ad/ünvan/telefon/imza hesapta saklanır; Ayarlar\'da yönlendirme; Bu cihazda çıkış',
+    ben0.fb === '#/profilim' && ben0.nav && pr0.h === '#/profilim' && pr0.rol === 'Şirket kurucusu' && /sahip@x\.com/.test(pr0.ep) && /Her ekranı/.test(pr0.yetki) && pr0.giris && pr0.guv
+    && pr1.meta.ad === 'Burak Deneme' && pr1.meta.unvan === 'Bölge satış sorumlusu' && pr1.meta.telefon === '05321112233' && pr1.h1 === 'Burak Deneme' && pr1.av === 'BD' && pr1.imza === 'Burak Deneme · EAE'
+    && !ayar.eski && ayar.link && cikis === 'local', JSON.stringify({ ben0, pr0: { ...pr0, yetki: pr0.yetki.slice(0, 40) }, pr1, ayar, cikis }));
+  kontrol('Profilim ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); localStorage.setItem('__YETKI', JSON.stringify({ sahip: 'u1', ben_sahip: false, ad: 'Üye Kişi', yetkiler: { projeler: 'yaz', firmalar: 'oku', _rol: 'Satış', _ekran: { projeler: 'yaz', firmalar: 'oku' }, _kapsam: 'kendi', _gizli: ['tutar'] } }));`) });
+  await p.goto(U + '#/profilim'); await w(1500);
+  const u = await p.evaluate(() => ({ h1: document.querySelector('[data-prad]')?.textContent, rol: document.querySelector('.pr-kart .rol-r')?.textContent, y: document.querySelector('[data-yetkim]')?.textContent || '', av: document.querySelector('#firma-bar .fb-ben i')?.textContent }));
+  kontrol('Ekip üyesi Profilim\'de adını, rolünü ve açık ekranlarını görüyor (düzenler / görür / kayıt kapsamı / gizli)', u.h1 === 'Üye Kişi' && u.rol === 'Satış' && /Düzenler/.test(u.y) && /Projeler/.test(u.y) && /Görür/.test(u.y) && /sorumlusu olduğun/.test(u.y) && /Tutar/.test(u.y) && u.av === 'ÜK', JSON.stringify(u));
+  kontrol('Ekip üyesi Profilim\'de hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Geçici şifreyle ilk giriş: yeni şifre belirlemeden devam edilemez
 {
   const DBS = new Function('(' + DB.toString() + ')(); localStorage.setItem("__SIFRE_DEGISTIR", "1");');

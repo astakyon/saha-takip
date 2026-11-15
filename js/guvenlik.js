@@ -128,3 +128,5 @@ export function gorundum() {
   const k = 'saha-gorundum', son = +(ls.get(k) || 0); if (Date.now() - son < 3600000) return;
   app.db.c.rpc('gorundum').then(({ error }) => { if (!error) ls.set(k, Date.now()); }).catch(() => {});
 }
+// Profilim / menü: bu cihazda çıkış (kayıt kopyası silinir, bekleyen değişiklikler korunur)
+export const oturumuKapat = (mesaj = 'Çıkış yaptın.') => cikis(mesaj);

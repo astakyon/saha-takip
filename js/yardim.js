@@ -31,7 +31,8 @@ const Y = {
   kontrol: ['Veri kontrolü', 'Eksik, çelişkili ya da mükerrer kayıtları bulur; çoğunu tek dokunuşla düzeltirsin (birleştir, bağla, tarihi güncelle).'],
   masraflar: ['Masraf ve km', 'Yakıt, yemek, otopark… Fişin fotoğrafını ekleyebilirsin; günlük km ziyaret noktalarından hesaplanır.'],
   dosyalar: ['Dosyalar', 'Yüklediğin belgeler, fotoğraflar, Excel ve PowerPoint çıktıları gruplar halinde.'],
-  ayarlar: ['Ayarlar', 'Hesap ve güvenlik, görünüm ve menü, ekip, listeler, veri ve yedek, bağlantılar, mesaj şablonları. Telefonda önce bölümü seç.'],
+  ayarlar: ['Ayarlar', 'Hesap (bulut bağlantısı), görünüm ve menü, ekip, listeler, veri ve yedek, bağlantılar, mesaj şablonları. Telefonda önce bölümü seç.'],
+  profilim: ['Profilim', 'Kim olarak girdiğin, rolün ve görebildiğin ekranlar; adın, ünvanın, telefonun ve imzan; kullanıcı adı, şifre, iki adımlı doğrulama ve çıkış. Şirket profilinden ayrıdır.'],
 };
 const rota = () => (location.hash.replace(/^#\/?/, '') || 'bugun').split('/')[0];
 export function yardimAc(k = rota()) {
@@ -81,6 +82,7 @@ export const YENILIKLER = [
   { s: 81, t: 'Kayıp ve rakip', m: 'Hangi rakibe, hangi nedenle, hangi il ve sektörde kaybettiğin; fiyat farkı ve rakibe karşı kazandıkların.', r: '#/rakipanaliz', d: 'Raporlar → Kayıp ve rakip' },
   { s: 83, t: 'Daha hızlı', m: 'Çok kayıt olduğunda Ziyaretler, Teklifler, Panel ve Bugün ekranları belirgin biçimde daha hızlı açılıyor.', r: null, d: '' },
   { s: 86, t: 'Aynı anda düzenleme', m: 'Bir kaydı iki kişi aynı anda değiştirirse farklı alanlar sormadan birleşir; aynı alan değiştiyse yalnızca o alan iki değeriyle sorulur. İnternetsiz değişiklikler de böyle birleşir.', r: null, d: '' },
+  { s: 93, t: 'Profilim', m: 'Kim olarak girdiğini her an görürsün: bilgisayarda menünün altında, telefonda üst barın sağında baş harflerin. Dokununca Profilim açılır: rolün, görebildiğin ekranlar, adın, ünvanın, telefonun, imzan, kullanıcı adı ve şifre, güvenlik ve çıkış. Şirket profilinden ayrıdır.', r: '#/profilim', d: 'Menü → adın (telefonda sağ üstteki yuvarlak)' },
   { s: 92, t: 'Daha düzenli kullanıcılar ve roller', m: 'Kullanıcılar listesinde arama ve durum süzgeci var; kişi kartı Kişi · Rol ve ekip · Ne görür? · Giriş bölümlerine ayrıldı ve rolün açtığı ekranları renkli etiketlerle gösterir. Rol ayarı sekmelere bölündü: Ekranlar, Kayıtlar ve gizlilik, Açılış ve menü, Özet. Son değişiklikler şirket profilinde ayrı sekme.', r: '#/sirket/ekip', d: 'Şirket profili → Kullanıcılar · Roller · Son değişiklikler' },
   { s: 91, t: 'Kullanıcı adı ve roller', m: 'Şirket profili artık sekmeli: Kullanıcılar, Roller, Ekipler. Kişiye kullanıcı adı ve geçici şifreyle hesap açılır (e-posta gerekmez), şifreyi yönetici sıfırlar. Her rol kendi açılış ekranını, alt menüsünü ve Bugün kartlarını belirler.', r: '#/sirket/ekip', d: 'Şirket profili → Kullanıcılar · Roller' },
   { s: 89, t: 'Ziyarete hazırlık', m: 'Ziyaretten önce firmanın son 12 ayı ve konuşulacaklar tek ekranda: tahsilat, açık görev, cevap bekleyen teklif, sessiz projeler, kişiler ve doğum günleri, son görüşmeler.', r: '#/bugun', d: 'Bugün planı → Hazırlık · firma sayfası' },

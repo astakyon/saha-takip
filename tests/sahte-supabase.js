@@ -56,14 +56,14 @@
       if (this.op === 'delete') { DB[this.t] = T.filter(r => !this.f.every(f => f(r))); kaydet(); return { data: null, error: null }; }
     }
   }
-  const user = { id: localStorage.getItem('__YETKI') ? 'u2' : 'u1', email: localStorage.getItem('__YETKI') ? 'uye@x.com' : 'sahip@x.com', last_sign_in_at: new Date().toISOString(), user_metadata: localStorage.getItem('__SIFRE_DEGISTIR') ? { sifre_degistir: true, kullanici_adi: 'ayse.sahin' } : {} };
+  const user = { id: localStorage.getItem('__YETKI') ? 'u2' : 'u1', email: localStorage.getItem('__YETKI') ? 'uye@x.com' : 'sahip@x.com', last_sign_in_at: new Date().toISOString(), user_metadata: { ...(localStorage.getItem('__SIFRE_DEGISTIR') ? { sifre_degistir: true, kullanici_adi: 'ayse.sahin' } : {}), ...JSON.parse(localStorage.getItem('__META') || '{}') } };
   window.supabase = { createClient: () => ({
     auth: { getSession: async () => ({ data: { session: localStorage.getItem('__OTURUMYOK') ? null : { user } } }),
       signInWithPassword: async ({ email, password }) => { (window.__auth ||= []).push(['giris', email]); if (password !== 'dogru123') return { data: {}, error: { message: 'Invalid login credentials' } }; localStorage.removeItem('__OTURUMYOK'); return { data: { session: { user } }, error: null }; },
       signInWithOtp: async o => { (window.__auth ||= []).push(['otp', o.email, o.options?.emailRedirectTo]); return { error: null }; },
       resetPasswordForEmail: async (e, o) => { (window.__auth ||= []).push(['reset', e, o?.redirectTo]); return { error: null }; },
       signUp: async o => { (window.__auth ||= []).push(['kayit', o.email]); return { data: { user: { identities: [{}] }, session: null }, error: null }; },
-      updateUser: async o => { (window.__auth ||= []).push(['sifre', o.password]); return { data: {}, error: null }; }, onAuthStateChange: () => {}, mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: 'aal1', nextLevel: 'aal1' } }), listFactors: async () => ({ data: { totp: [], all: [] } }) }, signOut: async () => ({}) },
+      updateUser: async o => { if (o.password) (window.__auth ||= []).push(['sifre', o.password]); if (o.data) { (window.__auth ||= []).push(['meta', o.data]); user.user_metadata = { ...user.user_metadata, ...o.data }; localStorage.setItem('__META', JSON.stringify(user.user_metadata)); } return { data: { user }, error: null }; }, onAuthStateChange: () => {}, mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: 'aal1', nextLevel: 'aal1' } }), listFactors: async () => ({ data: { totp: [], all: [] } }) }, signOut: async o => { localStorage.setItem('__CIKIS', o?.scope || 'varsayilan'); return {}; } },
     from: t => new Q(t),
     // K4 sahte sunucu: localStorage.__HASSAS varsa projelerde tutar sütunları sunucuda gizli
     rpc(n, a) { const H = localStorage.getItem('__HASSAS'), Y = JSON.parse(localStorage.getItem('__YETKI') || 'null'), acik = !(Y && Y.ben_sahip === false && (Y.yetkiler?._gizli || []).includes('tutar')), HK = ['tutar_usd', 'siparis_tutari_usd', 'bizim_teklif_usd', 'rakip_birim_fiyat', 'rakip_toplam_usd'];
