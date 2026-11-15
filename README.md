@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 81): Kayıp ve rakip istihbaratı
+
+- **Raporlar → Kayıp ve rakip:** yıl, il ve sektöre göre süzülen pano. Üstte kaybedilen ve kazanılan tutar, kazanma oranı, en çok kaybettiğimiz rakip ve rakibin ortalama fiyat farkı.
+- **Rakipler tablosu:** her rakip için kaybettiğimiz proje ve tutar, o rakibe karşı kazandıklarımız, rakibin kazandığı pay, en sık kayıp nedeni, ortalama fiyat farkı (bizim teklif ile rakip toplamı girili kayıplarda) ve çeyreklere göre kayıp gidişatı. Satıra dokununca rakibin kaybettiğimiz ve kazandığımız projeleri açılır.
+- **Neden, il, sektör** dağılımları ve **il × rakip**, **sektör × rakip** tabloları ("Mersin'de lojistikte Pelsan'a kaybediyoruz").
+- "Kazandıklarımız": Ürünler → Rakip fiyatları ekranında projeye bağlanan rakip kaydı ya da projede yazılı rakip markası olan siparişler. Eksik kayıp bilgisi tek dokunuşla tamamlanır; Excel çıktısı var. Panel'deki kayıp kartından da bu ekrana geçilir. Şema değişikliği yok.
+
 ## Güncelleme notu (sürüm 80): Pazartesi özeti
 
 - Haftanın ilk açılışında (Pazartesi–Çarşamba) Bugün ekranının üstünde **Haftan** kartı: geçen hafta (ziyaret ve gün sayısı, teklif ve tutarı, sipariş ve tutarı, kazanılan, kaybedilen), bu hafta (planlı ziyaret, geçerliliği dolan teklif, açık görev, çeyrek hedefinin yüzdesi ve kalan), **Dikkat** (Fırsat radarının ilk üçü). Ekibi olan yöneticiye ekibin geçen haftaki ziyaret sayıları da yazılır.

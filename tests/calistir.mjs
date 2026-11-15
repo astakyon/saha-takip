@@ -681,6 +681,38 @@ const DB = () => {
   await c.close();
 }
 
+// ---------- 23) Kayıp ve rakip istihbaratı ----------
+{
+  const DB12 = () => {
+    const o = (x, i) => ({ owner: 'u1', updated_at: '2026-0' + (i % 9 + 1) + '-15T08:00:00Z', created_at: '2026-01-01T08:00:00Z', ...x });
+    localStorage.setItem('__DB', JSON.stringify({
+      firmalar: [], kisiler: [], ziyaretler: [], ekip_uyeleri: [],
+      projeler: [o({ id: 'k1', ad: 'Hastane A', durum: 'Kayıp', il: 'Adana', sektor: 'Sağlık', rakip_marka: 'Philips', kayip_nedeni: 'Fiyat', bizim_teklif_usd: 100000, rakip_toplam_usd: 88000 }, 1),
+        o({ id: 'k2', ad: 'Depo B', durum: 'Kayıp', il: 'Mersin', sektor: 'Lojistik', rakip_marka: 'Pelsan', kayip_nedeni: 'Fiyat', bizim_teklif_usd: 50000, rakip_toplam_usd: 45000 }, 4),
+        o({ id: 'k3', ad: 'Okul C', durum: 'Kayıp', il: 'Adana', sektor: 'Eğitim', rakip_marka: 'Philips', kayip_nedeni: 'Şartname dışı kaldık', tutar_usd: 30000 }, 7),
+        o({ id: 'k4', ad: 'Fabrika D', durum: 'Kayıp', il: 'Hatay', tutar_usd: 20000 }, 8),
+        o({ id: 's1', ad: 'Otel E', durum: 'Sipariş', il: 'Adana', tutar_usd: 70000, siparis_tutari_usd: 70000 }, 5), o({ id: 'a1', ad: 'Açık F', durum: 'Sıcak', il: 'Adana', tutar_usd: 1 }, 2)],
+      rakip_fiyatlar: [o({ id: 'r1', marka: 'Philips', proje_id: 's1', urun_adi: 'Panel', birim_fiyat: 30, para_birimi: 'USD', tarih: '2026-05-01' }, 3)],
+      proje_gecmis: [] }));
+  };
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB12 });
+  await p.setViewportSize({ width: 1280, height: 900 }); await p.goto(U + '#/rakipanaliz'); await w(1500);
+  const ra = await p.evaluate(async () => { const { analiz } = await import('./js/views/rakipanaliz.js'); const a = analiz({ yil: '2026', il: 'Tümü', sektor: 'Tümü' }); const ph = a.rakipler.find(x => x.m === 'Philips');
+    return { n: a.kayip.length, kazan: a.kazan.length, oran: Math.round(a.oran), ilk: a.rakipler[0].m, phK: ph.kayip.length, phKaz: ph.kazan.length, phFark: Math.round(ph.ortFark), ort: Math.round(a.ortFark), eksik: a.eksik, neden: a.neden[0][0], satir: document.querySelectorAll('.ra-t tr[data-m]').length, son: [...document.querySelectorAll('.ra-t tr[data-m]')].at(-1)?.dataset.m }; });
+  await p.screenshot({ path: 'tests/cikti/kayip-rakip.png', fullPage: true });
+  await p.evaluate(() => document.querySelector('.ra-t tr[data-m="Philips"]').click()); await w(500);
+  const det = await p.evaluate(() => ({ h: document.querySelector('.drawer.open h2')?.textContent, kazan: /Otel E/.test(document.querySelector('.drawer.open')?.textContent || '') }));
+  await p.click('.drawer.open .x[data-close]'); await w(300);
+  await p.selectOption('[data-f="il"]', 'Adana'); await w(600);
+  const ra2 = await p.evaluate(() => document.querySelectorAll('.ra-t tr[data-m]').length);
+  await p.setViewportSize({ width: 390, height: 844 }); await w(300);
+  const raTasma = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  kontrol('Kayıp ve rakip: rakip tablosu (Philips 2 kayıp, 1 kazanılan; ortalama %12 ucuz), neden, eksik bilgi, kazanma oranı, rakip ayrıntısında kazandıklarımız, il süzgeci, telefonda taşmıyor',
+    ra.n === 4 && ra.kazan === 1 && ra.oran === 20 && ra.ilk === 'Philips' && ra.phK === 2 && ra.phKaz === 1 && ra.phFark === 12 && ra.ort === 11 && ra.eksik === 1 && ra.neden === 'Fiyat' && ra.satir === 3 && ra.son === 'Belirtilmemiş' && det.h === 'Philips' && det.kazan && ra2 === 1 && raTasma <= 1, JSON.stringify({ ra, det, ra2, raTasma }));
+  kontrol('Kayıp ve rakip ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+
 // ---------- 12) Kapsamı dar kullanıcı aramada "başka satışçıda" görür ----------
 {
   const DB4 = new Function('(' + DB.toString() + ')(); localStorage.setItem("__YETKI", JSON.stringify({ sahip: "u1", ben_sahip: false, yetkiler: { firmalar: "yaz", kisiler: "yaz", _ekran: { firmalar: "yaz" }, _kapsam: "kendi" } })); localStorage.setItem("__BASKA", "1");');

@@ -6,7 +6,7 @@ import { S } from './db.js';
 
 // Eski sürüm: bölüm → tablolar ve ekranlar (yalnızca _ekran olmayan eski kayıtlar için)
 export const MODULLER = [
-  { k: 'projeler', ad: 'Projeler', t: ['projeler', 'proje_gecmis'], rota: ['projeler', 'referanslar'] },
+  { k: 'projeler', ad: 'Projeler', t: ['projeler', 'proje_gecmis'], rota: ['projeler', 'referanslar', 'rakipanaliz'] },
   { k: 'firmalar', ad: 'Firmalar ve kişiler', t: ['firmalar', 'kisiler'], rota: ['firmalar', 'kisiler'] },
   { k: 'ziyaretler', ad: 'Ziyaretler ve görevler', t: ['ziyaretler', 'gorevler'], rota: ['ziyaretler', 'gorevler', 'takvim', 'plan', 'ekiphar', 'rapor'] },
   { k: 'bolgeler', ad: 'Sanayi bölgeleri', t: ['bolgeler'], rota: ['bolgeler'] },
@@ -45,6 +45,7 @@ export const EKRANLAR = {
   araclar:    { t: [], o: [], salt: true, d: 'Aydınlatma hesap araçları' },
   panel:      { t: ['hedefler'], o: ['siparisler', 'projeler'], d: 'Hedefler, satış grafikleri ve özetler' },
   ekiphar:    { t: [], o: ['ziyaretler', 'gorevler', 'teklifler', 'firmalar'], salt: true, d: 'Ekip haritası: gün içinde kim nerede giriş yaptı, akış ve kişi özeti (kendi kapsamındaki kayıtlar)' },
+  rakipanaliz:{ t: [], o: ['projeler', 'rakip_fiyatlar'], salt: true, d: 'Kayıp ve rakip analizi: rakip, neden, il ve sektör kırılımı, fiyat farkı' },
   rapor:      { t: [], o: ['ziyaretler', 'gorevler', 'projeler', 'firmalar'], salt: true, d: 'Haftalık faaliyet raporu' },
   masraflar:  { t: ['masraflar'], o: [], d: 'Masraf ve km kayıtları' },
   dosyalar:   { t: ['belgeler'], o: [], d: 'Yüklenen dosyalar ve belgeler' },

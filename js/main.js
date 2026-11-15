@@ -41,6 +41,7 @@ const ROUTES = {
   servis:    { t: 'Servis ve şikayet', ico: 'wrench', v: yukle('views/kayitlar.js', 'servisView'), g: 'Satış' },
   panel:     { t: 'Panel', ico: 'chart', v: yukle('views/panel.js', 'panelView'), g: 'Rapor' },
   ekiphar:   { t: 'Ekip haritası', ico: 'map', v: yukle('views/ekiphar.js', 'ekipharView'), g: 'Rapor' },
+  rakipanaliz: { t: 'Kayıp ve rakip', ico: 'chart', v: yukle('views/rakipanaliz.js', 'rakipanalizView'), g: 'Rapor' },
   rapor:     { t: 'Haftalık rapor', ico: 'report', v: yukle('views/rapor.js', 'raporView'), g: 'Rapor' },
   kontrol:   { t: 'Veri kontrolü', ico: 'check', v: yukle('views/kontrol.js', 'kontrolView'), g: 'Rapor' },
   siparisler:{ t: 'Siparişler', ico: 'receipt', v: yukle('views/panel.js', 'siparislerView'), g: 'Rapor' },

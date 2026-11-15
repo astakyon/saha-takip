@@ -23,7 +23,7 @@ export function kayipKarti(Y) {
   return `<section class="card wide" data-kayip><div class="card-h"><h2>Kayıp analizi (${Y}) <span class="muted">${o.l.length} proje · ${usd(o.toplam)}</span></h2>${eksik ? `<button type="button" class="btn sm primary" data-kayiptamam>Eksikleri tamamla (${eksik})</button>` : ''}</div>
     <p class="${o.markaVar < o.l.length * 0.7 ? 'warn' : 'hint'}">${o.l.length} kayıptan ${o.markaVar} tanesinde işi alan marka, ${o.nedenVar} tanesinde kayıp nedeni girili.${o.markaVar < o.l.length * 0.7 ? ' Bilgi eksik olduğu için aşağıdaki dağılım yanıltıcı olabilir; “Eksikleri tamamla” ile birkaç dakikada doldurabilirsin.' : ''}</p>
     <div class="k-grid"><div><h3>İşi alan marka</h3>${bars(o.marka, 'var(--ink)')}</div><div><h3>Neden</h3>${bars(o.neden, '#C2410C')}</div><div><h3>İl</h3>${bars(o.il, '#2563EB')}</div></div>
-    <p class="hint">Tutar: bizim teklifimiz, yoksa proje tutarı (USD). Çubuk uzunluğu tutara göre; sayı proje adedi.</p></section>`;
+    <p class="hint">Tutar: bizim teklifimiz, yoksa proje tutarı (USD). Çubuk uzunluğu tutara göre; sayı proje adedi. <a href="#/rakipanaliz">Ayrıntılı kayıp ve rakip analizi →</a></p></section>`;
 }
 
 // Eksik kayıp bilgisini tamamlama paneli
