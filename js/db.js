@@ -19,7 +19,7 @@ export const TABLES = {
   masraflar: ['id','tarih','tip','tutar','km','aciklama','fis'],
   urun_aileleri: ['id','aile','ad','aciklama','ozellikler','datasheet_url','fotolar'],
   ayarlar: ['id','anahtar','deger'],
-  tahsilatlar: ['id','sorumlu','ekip_id','firma_id','cari','belge_no','tarih','vade','tutar','para_birimi','odenen','durum','odeme_tarihi','notlar'],
+  tahsilatlar: ['id','sorumlu','ekip_id','firma_id','cari','belge_no','tarih','vade','tutar','para_birimi','odenen','durum','odeme_tarihi','notlar','tur'],
   belgeler: ['id','proje_id','firma_id','ad','yol','tur','boyut','notlar','kategori'],
   yorumlar: ['id','tablo','kayit_id','metin','yazan','yazan_ad','etiketler','created_at'],
 };

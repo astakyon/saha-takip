@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 96)
+
+- Yeni menü başlığı **Finans** (`js/views/finans.js`): **Özet** (yıl/ay seçimi; satış, tahsil edilen, açık ve gecikmiş alacak, masraf, net; aylık satış-tahsilat-masraf grafiği; en çok borcu olan cariler), **Cari hesaplar** (firma bazında fatura, ödenen, bakiye, gecikmiş, en uzun gecikme, ortalama ödeme günü; dokununca ekstre: yürüyen bakiye, Excel, PDF/yazdır, WhatsApp), **Yaşlandırma** (vadesi gelmemiş, 0–30, 31–60, 61–90, 90+ gün; firmaya ya da sorumluya göre; Excel), **Tahsilat** (Satış'tan taşındı), **Masraf ve km** (ayrı menüden taşındı), **Kur** (Şirket profilinde de duruyor), **Muhasebeye aktar** (dönem seçip siparişler, faturalar, tahsilatlar, masraflar Excel'de).
+- Tahsilat kaydına **Tür**: Fatura / Ödeme / İade. Ödeme ve iade faturaya bağlı olmadan cari bakiyeyi düşürür, açık alacak sayılmaz.
+- Rol ayarında yeni ekranlar: Finans özeti, Cari hesaplar, Yaşlandırma, Kur, Muhasebeye aktar. Hazır "Muhasebe" rolü bunları içerir. Varsayılan olarak yalnız şirket yöneticisi görür.
+- Menüde Finans'ın yanında vadesi geçmiş fatura sayısı.
+- **schema.sql 38:** `tahsilatlar.tur`. Çalıştırılmazsa uygulama çalışır; tür kaydedilmez.
+
 ## Güncelleme notu (sürüm 95)
 
 - **Satır içi İşle:** Bugün ve Görevler listesinde her açık görevin altında kutu; yazıp Enter → görev tamamlanır, not tarihle görevin notuna ve bağlı proje (yoksa firma) yorumlarına yazılır (`js/isle.js`).

@@ -8,11 +8,13 @@ import { yuklemeKaydet } from '../belgeler.js';
 
 const PB = { USD: '$', EUR: '€', TRY: '₺', TL: '₺' };
 export const para = (v, pb = 'USD') => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0) + ' ' + (PB[pb] || pb || '');
-export const kalan = t => Math.max(0, Math.round(((+t.tutar || 0) - (+t.odenen || 0)) * 100) / 100);
-export const durumu = t => kalan(t) <= 0 ? 'Ödendi' : (+t.odenen > 0 ? 'Kısmi' : 'Açık');
+// Ödeme ve iade kayıtları (tür) faturayı değil cari bakiyeyi düşürür; açık alacak sayılmaz
+export const alacakMi = t => !t.tur || t.tur === 'Fatura';
+export const kalan = t => !alacakMi(t) ? 0 : Math.max(0, Math.round(((+t.tutar || 0) - (+t.odenen || 0)) * 100) / 100);
+export const durumu = t => !alacakMi(t) ? t.tur : kalan(t) <= 0 ? 'Ödendi' : (+t.odenen > 0 ? 'Kısmi' : 'Açık');
 export const gecikme = t => kalan(t) > 0 && t.vade && t.vade < today() ? Math.round((new Date(today()) - new Date(t.vade)) / 864e5) : 0;
 const cariAd = t => firmaAd(t.firma_id) || t.cari || '—';
-const RENK = { 'Açık': '#2563EB', 'Kısmi': '#EA580C', 'Ödendi': '#15803D' };
+const RENK = { 'Açık': '#2563EB', 'Kısmi': '#EA580C', 'Ödendi': '#15803D', 'Ödeme': '#0F766E', 'İade': '#6D28D9' };
 const tpill = t => { const d = durumu(t), g = gecikme(t); return `<span class="pill" style="--c:${g ? '#B91C1C' : RENK[d]}">${g ? g + ' gün gecikti' : d}</span>`; };
 
 // Para birimine göre toplamlar: { USD: 1200, TRY: 5000 }
@@ -23,6 +25,7 @@ export const gecikenler = () => acikTahsilatlar().filter(t => gecikme(t) > 0).so
 
 const FORM = [{ title: 'Fatura / alacak', fields: [
   { k: 'firma_id', l: 'Cari (firma)', t: 'ref', ref: 'firmalar', full: true },
+  { k: 'tur', l: 'Tür', t: 'sel', opts: ['Fatura', 'Ödeme', 'İade'], help: 'Ödeme / iade: faturaya bağlı olmayan, cari bakiyeyi düşüren hareket' },
   { k: 'belge_no', l: 'Fatura / belge no' },
   { k: 'para_birimi', l: 'Para birimi', t: 'sel', opts: ['USD', 'EUR', 'TRY'] },
   { k: 'tarih', l: 'Fatura tarihi', t: 'date' },

@@ -48,6 +48,11 @@ export const EKRANLAR = {
   rakipanaliz:{ t: [], o: ['projeler', 'rakip_fiyatlar'], salt: true, d: 'Kayıp ve rakip analizi: rakip, neden, il ve sektör kırılımı, fiyat farkı' },
   rapor:      { t: [], o: ['ziyaretler', 'gorevler', 'projeler', 'firmalar'], salt: true, d: 'Haftalık faaliyet raporu' },
   masraflar:  { t: ['masraflar'], o: [], d: 'Masraf ve km kayıtları' },
+  finans:     { t: [], o: ['siparisler', 'tahsilatlar', 'masraflar'], salt: true, d: 'Finans özeti: satış, tahsilat, açık ve gecikmiş alacak, masraf, aylık grafik' },
+  cari:       { t: ['tahsilatlar'], o: ['firmalar'], d: 'Firma bazında cari hesap, ekstre (Excel, PDF, WhatsApp)' },
+  yaslandirma:{ t: [], o: ['tahsilatlar', 'firmalar'], salt: true, d: 'Açık alacakların vadeye göre dağılımı (0–30, 31–60, 61–90, 90+ gün)' },
+  kur:        { t: [], o: [], salt: true, d: 'Döviz kuru (değiştirmek şirket yöneticisinde)' },
+  muhasebe:   { t: [], o: ['siparisler', 'tahsilatlar', 'masraflar'], salt: true, d: 'Seçilen dönemin kayıtlarını muhasebe için Excel\'e aktarma' },
   dosyalar:   { t: ['belgeler'], o: [], d: 'Yüklenen dosyalar ve belgeler' },
 };
 // Kişiye gösterilmeyen ekstra bölümler (ekran açık olsa bile)

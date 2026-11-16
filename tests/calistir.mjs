@@ -445,6 +445,34 @@ const DB = () => {
   kontrol('Sürüm 95 ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 96: Finans menüsü (özet, cari hesaplar ve ekstre, yaşlandırma, kur, muhasebeye aktar)
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const gun = n => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10); const ts = new Date().toISOString();
+    d.tahsilatlar = [{ id: 'th1', owner: 'u1', firma_id: 'f1', belge_no: 'F-1', tarih: gun(-130), vade: gun(-100), tutar: 1000, odenen: 200, odeme_tarihi: gun(-20), para_birimi: 'USD', tur: 'Fatura', created_at: ts, updated_at: ts },
+      { id: 'th2', owner: 'u1', firma_id: 'f2', belge_no: 'F-2', tarih: gun(-5), vade: gun(25), tutar: 50000, odenen: 0, para_birimi: 'TRY', tur: 'Fatura', created_at: ts, updated_at: ts },
+      { id: 'th3', owner: 'u1', firma_id: 'f1', belge_no: 'D-9', tarih: gun(-3), tutar: 300, para_birimi: 'USD', tur: 'Ödeme', created_at: ts, updated_at: ts }];
+    d.ayarlar = [{ id: 'a1', owner: 'u1', anahtar: 'kur_elle', deger: { USD: 40, EUR: 45, tarih: gun(0) }, created_at: ts, updated_at: ts }];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/finans'); await w(1500);
+  const oz = await p.evaluate(() => ({ menu: [...document.querySelectorAll('#nav a')].map(a => a.textContent.trim()).join('|'), sekme: [...document.querySelectorAll('.alt-sekme a')].map(a => a.firstChild.textContent.trim()).join('|'), kart: [...document.querySelectorAll('.fn-kart')].map(k => k.innerText.replace(/\s+/g, ' ')).join(' / ') }));
+  await p.goto(U + '#/cari'); await w(1200);
+  const ca = await p.evaluate(() => document.querySelector('[data-cari="f1"]')?.innerText.replace(/\s+/g, ' '));
+  await p.click('[data-cari="f1"]'); await w(600);
+  const ek = await p.evaluate(() => ({ satir: document.querySelectorAll('.drawer.open .ekstre tbody tr').length, son: [...document.querySelectorAll('.drawer.open .ekstre tbody tr')].at(-1)?.innerText.replace(/\s+/g, ' '), btn: [...document.querySelectorAll('.drawer.open [data-x]')].map(b => b.dataset.x).join(',') }));
+  await p.keyboard.press('Escape'); await w(400);
+  await p.goto(U + '#/yaslandirma'); await w(1200);
+  const ya = await p.evaluate(() => ({ d90p: document.querySelector('.fn-d.d90p b')?.textContent, gelmedi: document.querySelector('.fn-d.gelmedi b')?.textContent }));
+  await p.goto(U + '#/muhasebe'); await w(1000);
+  const mh = await p.evaluate(() => document.querySelector('[data-n="fatura"]')?.textContent);
+  await p.goto(U + '#/kur'); await w(1000);
+  const ku = await p.evaluate(() => !!document.querySelector('[data-kur] *'));
+  kontrol('Finans menüsü: Özet, Cari hesaplar, Yaşlandırma, Tahsilat, Masraf ve km, Kur, Muhasebeye aktar; Satış\'ta tahsilat yok; ayrı Masraf menüsü yok',
+    /Finans/.test(oz.menu) && !/Masraf ve km/.test(oz.menu) && oz.sekme === 'Özet|Cari hesaplar|Yaşlandırma|Tahsilat|Masraf ve km|Kur|Muhasebeye aktar' && /Açık alacak 2\.050 \$/.test(oz.kart) && /Gecikmiş alacak 800 \$/.test(oz.kart), JSON.stringify(oz));
+  kontrol('Cari hesap: fatura − ödenen − ayrı ödeme = bakiye; ekstrede yürüyen bakiye; Excel, PDF, WhatsApp; yaşlandırmada 90+ gün; muhasebe sayımı; kur ekranı',
+    /500 \$/.test(ca || '') && ek.satir === 3 && /500,00 \$/.test(ek.son || '') && ek.btn === 'xlsx,pdf,wa' && ya.d90p === '800 $' && ya.gelmedi === '1.250 $' && mh === '(1)' && ku, JSON.stringify({ ca, ek, ya, mh, ku }));
+  kontrol('Finans ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

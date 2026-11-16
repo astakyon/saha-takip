@@ -11,7 +11,7 @@ export function rotaRozet(r) {
   const t = today();
   if (r === 'gorevler') return (S.gorevler || []).filter(g => benimGorev(g) && g.son_tarih && g.son_tarih <= t).length;
   if (r === 'talepler') return app.talepAcik || 0;
-  if (r === 'tahsilat') return app.rozetGecikmis ?? 0;
+  if (r === 'tahsilat') return (S.tahsilatlar || []).filter(x => (!x.tur || x.tur === 'Fatura') && x.vade && x.vade < t && (+x.tutar || 0) - (+x.odenen || 0) > 0.005).length;
   if (r === 'onay') return app.onayBekleyen || 0;
   return 0;
 }

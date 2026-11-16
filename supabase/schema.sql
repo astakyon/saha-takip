@@ -1696,5 +1696,9 @@ revoke all on function public.uye_hesaplari(uuid) from public, anon;
 grant execute on function public.uye_hesaplari(uuid) to authenticated;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 37 $f$;
 
+-- ---------- Sürüm 38: Finans (tahsilat kaydının türü: fatura / ödeme / iade) ----------
+alter table public.tahsilatlar add column if not exists tur text default 'Fatura';
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 38 $f$;
+
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();
