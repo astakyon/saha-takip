@@ -32,6 +32,15 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 97)
+
+- Yeni menü başlığı **Bayi ve partner** (`js/views/bayiag.js`): **Ağ** (liste, il dağılımı, tür ve durum süzgeci, Excel), **Bayi karnesi**, **Bayi talepleri** (Satış'tan taşındı).
+- Yalnızca bayi/partner ağı olan şirkette görünür: Şirket profili → Genel'de "Bayi ve partner ağımız var" açıksa, en az bir bayi atanmışsa ya da şirket profilinde ana bayi yazılıysa. Ağ yokken bu ekranlar adresle de açılmaz. Dış kullanıcı (bayi) her zaman kendi taleplerini görür.
+- **Atama kartı** (`bayiler` tablosu): firma, tür (Bayi, Alt bayi, Distribütör, Çözüm ortağı, Proje ortağı), durum, ana il, bölge, bizden sorumlu kişi, başlangıç ve sözleşme bitişi, iskonto, ödeme vadesi, kredi limiti, para birimi, yıllık hedef, stok deposu adı. Firma sayfası → ⋯ → "Bayi / partner olarak ata".
+- **Bayinin satışı (bize alım):** firmanın siparişleri + siparişte "Bayi / partner (üzerinden)" seçilenler + ana bayi ise eski "ana bayi üzerinden" işaretli siparişler. Ana bayi ağa atanmamışsa Ağ ekranı tek dokunuşla atamayı önerir.
+- **Bayi karnesi:** yıl satışı ve geçen yıl, hedef gerçekleşme, açık alacak ve risk, projeler (açık, kazanılan, kaybedilen ve kaybedilen markalar), stok değeri (depo adıyla), aylık satış grafiği, koşullar (kredi limiti aşımı uyarısı), son ziyaretler, kişiler.
+- **schema.sql 39:** `bayiler` tablosu ve kuralları, `siparisler.bayi_id`, dış kullanıcı kendi bayi kaydını ve kendi üzerinden geçen siparişleri görür.
+
 ## Güncelleme notu (sürüm 96)
 
 - Yeni menü başlığı **Finans** (`js/views/finans.js`): **Özet** (yıl/ay seçimi; satış, tahsil edilen, açık ve gecikmiş alacak, masraf, net; aylık satış-tahsilat-masraf grafiği; en çok borcu olan cariler), **Cari hesaplar** (firma bazında fatura, ödenen, bakiye, gecikmiş, en uzun gecikme, ortalama ödeme günü; dokununca ekstre: yürüyen bakiye, Excel, PDF/yazdır, WhatsApp), **Yaşlandırma** (vadesi gelmemiş, 0–30, 31–60, 61–90, 90+ gün; firmaya ya da sorumluya göre; Excel), **Tahsilat** (Satış'tan taşındı), **Masraf ve km** (ayrı menüden taşındı), **Kur** (Şirket profilinde de duruyor), **Muhasebeye aktar** (dönem seçip siparişler, faturalar, tahsilatlar, masraflar Excel'de).

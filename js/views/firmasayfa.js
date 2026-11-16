@@ -76,6 +76,7 @@ export function firmaSayfa(el, id, sekme0) {
           <div class="fs-menu fs-menu-sag" role="menu" hidden>
             <button type="button" role="menuitem" data-a="numune" data-gerek="yaz:numuneler">${IK.num}<span>Numune ver</span></button><button type="button" role="menuitem" data-a="servis" data-gerek="yaz:servis_kayitlari">${IK.srv}<span>Servis kaydı</span></button>
             <hr><button type="button" role="menuitem" data-a="google" data-gerek="yaz:firmalar">${IK.ara}<span>Google'dan bilgi al</span></button>${x.google_url ? `<a role="menuitem" href="${esc(x.google_url)}" target="_blank" rel="noopener">${IK.yol}<span>Google Haritalar'da aç</span></a>` : ''}
+            <button type="button" role="menuitem" data-a="bayiata" data-gerek="yaz:bayiler">${IK.num}<span>${(S.bayiler || []).some(b => b.firma_id === x.id) ? 'Bayi atamasını düzenle' : 'Bayi / partner olarak ata'}</span></button>
             <hr><button type="button" role="menuitem" class="fs-sil" data-a="sil" data-gerek="yaz:firmalar">${IK.sil}<span>Firmayı sil</span></button></div></div>
       </div>
     </header>
@@ -209,6 +210,7 @@ export function firmaSayfa(el, id, sekme0) {
     if (a === 'numune') numuneForm({ firma_id: x.id, kisi_id: kisiler[0]?.id || null });
     if (a === 'servis') servisForm({ firma_id: x.id });
     if (a === 'ziyaret') ziyaretForm({ firma_id: x.id });
+    if (a === 'bayiata') { const m = await import('./bayiag.js'); const v = m.bayiOf(x.id); return m.bayiAtamaFormu(v ? { id: v.id } : { firma_id: x.id }, () => app.refresh()); }
     if (a === 'google') googleBul({ q: aramaMetni(x), hedef: { table: 'firmalar', rec: x }, sonra: () => app.refresh() });
     if (a === 'sil' && confirmBox(`“${x.ad}” silinsin mi? Projelerdeki bağlantıları boşaltılır.`)) {
       await app.db.del('firmalar', x.id);

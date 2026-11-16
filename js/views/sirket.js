@@ -23,6 +23,7 @@ export async function sirketView(el) {
         <dl class="profil-dl"><dt>Firma</dt><dd>${esc(p.firma || '—')}</dd><dt>Sektör</dt><dd>${esc(SEKTOR[p.sektor] || '—')}</dd>${p.marka ? `<dt>Temsil edilen marka</dt><dd>${esc(p.marka)}</dd>` : ''}
           <dt>Çalışılan iller</dt><dd>${esc((p.iller || []).join(', ') || '—')}</dd><dt>Ana bayi</dt><dd>${esc(p.bayi || '—')}</dd></dl>
         ${p.katalog === 'eae' || p.katalog === 'kendi' ? `<div class="fld"><label>Ürün kataloğu</label><div class="seg" role="group" aria-label="Ürün kataloğu"><button type="button" data-kat="eae" class="${p.katalog === 'eae' ? 'on' : ''}" ${yetkili ? '' : 'disabled'}>Hazır EAE kataloğu</button><button type="button" data-kat="kendi" class="${p.katalog === 'kendi' ? 'on' : ''}" ${yetkili ? '' : 'disabled'}>Kendi kataloğum</button></div><small class="muted">Hazır katalogda EAE ürün aileleri, ürün önerisi ve şartname karşılaştırması açıktır.</small></div>` : ''}
+        ${yetkili ? `<label class="chk"><input type="checkbox" data-bayiagi ${app.bayiAgiFn?.() ? 'checked' : ''}> <span><b>Bayi ve partner ağımız var</b><small class="muted"> · menüde Bayi ve partner açılır: bayi ataması, karne, talepler</small></span></label>` : ''}
         <p class="hint">Bu bilgiler ekipteki herkes için geçerlidir. Rakip markaları ve diğer seçim listeleri Ayarlar → Listeler'de.</p></section>
       <section class="card sk-ozet"><h2>Kayıtlar</h2><div class="sk-sayilar">
         ${kart('Firma', num((S.firmalar || []).length))}${kart('Kişi', num((S.kisiler || []).length))}${kart('Açık proje', num(acik), 'toplam ' + num((S.projeler || []).length))}
@@ -41,6 +42,7 @@ export async function sirketView(el) {
   </div>`;
   el.querySelector('[data-sirketsec]')?.addEventListener('click', async () => (await import('../sirketsec.js')).sirketSecAc());
   el.querySelector('[data-pduz]')?.addEventListener('click', async () => (await import('../sihirbaz.js')).sihirbazAc({ duzenle: true, sonra: () => { app.refresh?.(); } }));
+  el.querySelector('[data-bayiagi]')?.addEventListener('change', async e => { await ayarYaz('bayi_agi', e.target.checked); toast(e.target.checked ? 'Bayi ve partner menüsü açıldı.' : 'Bayi ve partner menüsü kapatıldı (atanmış bayi ya da ana bayi varsa açık kalır).'); location.reload(); });
   el.querySelectorAll('[data-kat]').forEach(b => b.onclick = async () => {
     if (b.classList.contains('on')) return;
     if (b.dataset.kat === 'kendi' && !confirmBox('Hazır EAE kataloğu, ürün önerisi ve şartname karşılaştırması kapatılsın mı? Kendi girdiğin ürün aileleri kalır.')) return;

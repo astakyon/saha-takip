@@ -10,7 +10,7 @@ export const TABLES = {
   urunler: ['id','kod','aciklama','aciklama2','aile','birim','stok','birim_fiyat_usd','stok_tarihi','depo'],
   stok_gecmis: ['id','kod','stok','birim_fiyat_usd','tarih','depo'],
   rakip_fiyatlar: ['id','aile','lumen_aralik','marka','urun_adi','fiyat_metin','birim_fiyat','para_birimi','tarih','kaynak','proje_id','notlar'],
-  siparisler: ['id','sorumlu','ekip_id','siparis_no','belge_no','belge_turu','musteri_no','musteri_adi','firma_id','tarih','teslim_tarihi','referans','net_deger','para_birimi','proje_tanimi','proje_id','drv','siparis_notu','rapor_disi'],
+  siparisler: ['id','sorumlu','ekip_id','siparis_no','belge_no','belge_turu','musteri_no','musteri_adi','firma_id','tarih','teslim_tarihi','referans','net_deger','para_birimi','proje_tanimi','proje_id','drv','siparis_notu','rapor_disi','bayi_id'],
   hedefler: ['id','yil','ceyrek','tutar_usd','resmi_usd','resmi_tl','kur','notlar'],
   bolgeler: ['id','ad','tip','grup','il','ilce','renk','geojson','notlar'],
   teklifler: ['id','sorumlu','ekip_id','proje_id','firma_id','kisi_id','teklif_no','tarih','gecerlilik','para_birimi','iskonto','kdv','kalemler','toplam','durum','notlar'],
@@ -22,6 +22,7 @@ export const TABLES = {
   tahsilatlar: ['id','sorumlu','ekip_id','firma_id','cari','belge_no','tarih','vade','tutar','para_birimi','odenen','durum','odeme_tarihi','notlar','tur'],
   belgeler: ['id','proje_id','firma_id','ad','yol','tur','boyut','notlar','kategori'],
   yorumlar: ['id','tablo','kayit_id','metin','yazan','yazan_ad','etiketler','created_at'],
+  bayiler: ['id','firma_id','tur','il','bolge','sorumlu','baslangic','bitis','durum','iskonto','vade_gun','kredi_limiti','para_birimi','hedef_yil','depo','notlar'],
 };
 const ARRAYS = new Set(['tipler','fotolar','urun_gruplari','etiketler']);
 // updated_at sütunu olan tablolar: bunlarda yalnızca değişen kayıtlar çekilir ve aynı anda düzenleme denetlenir

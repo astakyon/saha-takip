@@ -2049,3 +2049,12 @@ body.giris-var #view { padding-top: 64px; }
 .fn-d.d30 i { background: #F59E0B; } .fn-d.d60 i { background: #EA580C; } .fn-d.d90 i { background: #DC2626; } .fn-d.d90p i { background: #7F1D1D; }
 .fn-yas tr.toplam td { border-top: 2px solid var(--ink); }
 .ekstre td small { font-size: 11.5px; }
+
+/* Sürüm 97: Bayi ve partner */
+.bayi-oneri { border-color: var(--lumen); background: color-mix(in srgb, var(--lumen) 8%, var(--card)); }
+.bayi-il { margin: 0 0 8px; }
+.bayi-t tr[data-bk] { cursor: pointer; } .bayi-t tr[data-bk]:hover { background: var(--bg); }
+.bayi-t small.pos, .hedef-r.pos { color: var(--green); } .bayi-t small.neg, .hedef-r.neg { color: #B91C1C; }
+.bk-izgara { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 14px; align-items: start; }
+.bk-izgara > .card { margin: 0; }
+.bk-grafik { height: 150px; }

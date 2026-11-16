@@ -473,6 +473,33 @@ const DB = () => {
   kontrol('Finans ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 97: Bayi ve partner (yalnızca ağı olan şirkette; atama, ağ listesi, bayi karnesi)
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.ayarlar = [{ id: 'a1', owner: 'u1', anahtar: 'firma_profil', deger: { firma: 'Test Elektrik', sektor: 'aydinlatma', iller: ['Adana'], bayi: '', katalog: 'kendi' }, created_at: ts, updated_at: ts }];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bugun'); await w(1500);
+  const kapali = await p.evaluate(() => ({ menu: /Bayi ve partner/.test(document.getElementById('nav').textContent) }));
+  await p.goto(U + '#/bayiag'); await w(800);
+  const yon = await p.evaluate(() => location.hash);
+  await p.goto(U + '#/sirket/genel'); await w(1500);
+  await p.click('[data-bayiagi]'); await p.waitForLoadState('load'); await w(1800);
+  await p.goto(U + '#/bayiag'); await w(1500);
+  const acik = await p.evaluate(() => ({ h: location.hash, menu: /Bayi ve partner/.test(document.getElementById('nav').textContent), sekme: [...document.querySelectorAll('.alt-sekme a')].map(a => a.firstChild.textContent.trim()).join('|') }));
+  await p.click('[data-ata]'); await w(600);
+  await p.fill('.drawer.open [name=firma_id]', 'Örnek Bayi'); await p.dispatchEvent('.drawer.open [name=firma_id]', 'change');
+  await p.fill('.drawer.open [name=hedef_yil]', '10000'); await p.fill('.drawer.open [name=iskonto]', '12');
+  await p.click('.drawer.open [type=submit]'); await w(1500);
+  const ag = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { n: (S.bayiler || []).length, f: S.bayiler?.[0]?.firma_id, satir: document.querySelector('[data-bk]')?.innerText.replace(/\s+/g, ' ') }; });
+  await p.click('[data-bk]'); await w(1200);
+  const ka = await p.evaluate(() => ({ h: location.hash, h1: document.querySelector('main h1')?.textContent, kart: [...document.querySelectorAll('.fn-kart')].map(k => k.innerText.replace(/\s+/g, ' ')).join(' / '), proje: /Örnek Hastane/.test(document.body.innerText), kosul: /%12/.test(document.body.innerText) }));
+  kontrol('Bayi ve partner menüsü ağ yokken kapalı (adres de açılmaz); Şirket profilinde anahtarla açılır: Ağ, Bayi karnesi, Talepler',
+    !kapali.menu && yon === '#/bugun' && acik.h === '#/bayiag' && acik.menu && acik.sekme === 'Ağ|Bayi karnesi|Bayi talepleri', JSON.stringify({ kapali, yon, acik }));
+  kontrol('Bayi ataması (firma, hedef, iskonto); ağ listesinde yıl satışı ve hedef %; bayi karnesi: satış, hedef, projeler, koşullar',
+    ag.n === 1 && ag.f === 'f1' && /5\.000 \$/.test(ag.satir || '') && /%50/.test(ag.satir || '') && ka.h === '#/bayikarne' && /^Örnek Bayi/.test(ka.h1 || '') && /%50 gerçekleşti/.test(ka.kart) && ka.proje && ka.kosul, JSON.stringify({ ag, ka }));
+  kontrol('Bayi ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });
@@ -1145,7 +1172,7 @@ const DB = () => {
   await p.click('.fs-arac [data-a="ziyaret"]'); await w(600);
   const ekleZ = await p.evaluate(() => ({ drawer: !!document.querySelector('.drawer.open'), firma: document.querySelector('.drawer.open [name=firma_id]')?.value }));
   await p.click('.drawer.open .x[data-close]'); await w(500);
-  kontrol('Firma başlığında simge çubuğu: iletişim, ekle (ziyaret/kişi/görev/teklif), ⋯ (numune, servis, Google, sil; telefonda alttan panel)', /^[123],4,1$/.test(arac.gruplar) && arac.sigdi && telMenu.acik && telMenu.konum === 'fixed' && telMenu.oge.length === 4 && /sil/i.test(telMenu.oge[3]) && telMenu.perde && telKapandi && ekleZ.drawer, JSON.stringify({ arac, telMenu, telKapandi, ekleZ }));
+  kontrol('Firma başlığında simge çubuğu: iletişim, ekle (ziyaret/kişi/görev/teklif), ⋯ (numune, servis, Google, sil; telefonda alttan panel)', /^[123],4,1$/.test(arac.gruplar) && arac.sigdi && telMenu.acik && telMenu.konum === 'fixed' && telMenu.oge.length === 5 && /Bayi \/ partner/.test(telMenu.oge[3]) && /sil/i.test(telMenu.oge[4]) && telMenu.perde && telKapandi && ekleZ.drawer, JSON.stringify({ arac, telMenu, telKapandi, ekleZ }));
   await p.setViewportSize({ width: 1280, height: 900 });
   await p.evaluate(async () => { const { app } = await import('./js/state.js'); for (let i = 0; i < 12; i++) await app.db.save('projeler', { id: 'pz' + i, ad: 'Ek proje ' + i, durum: 'Proje', emut_id: 'f2' }); app.refresh(); }); await w(600);
   await p.click('[data-fsk="projeler"]'); await w(500);

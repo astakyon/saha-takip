@@ -1,6 +1,8 @@
 import { S, makeAdapter, getConfig, setConfig } from './db.js';
 import { app, loadFilters, SURUM } from './state.js';
 import { profil, SEKTOR } from './profil.js';
+import { ayar } from './ayar.js';
+app.bayiAgiFn = () => ayar('bayi_agi') === true || (S.bayiler || []).length > 0 || !!profil().bayi;
 import { esc, toast, closeDrawer } from './ui.js';
 import { listeleriUygula } from './listeler.js';
 import { kisayolAl, canInstall, install, onInstallChange } from './kurulum.js';
@@ -38,6 +40,8 @@ const ROUTES = {
   yaslandirma: { t: 'Alacak yaşlandırma', ico: 'chart', v: yukle('views/finans.js', 'yaslandirmaView'), g: 'Finans' },
   kur:       { t: 'Döviz kuru', ico: 'coins', v: yukle('views/finans.js', 'kurView'), g: 'Finans' },
   muhasebe:  { t: 'Muhasebeye aktar', ico: 'doc', v: yukle('views/finans.js', 'muhasebeView'), g: 'Finans' },
+  bayiag:    { t: 'Bayi ve partner ağı', ico: 'box', v: yukle('views/bayiag.js', 'bayiagView'), g: 'Satış' },
+  bayikarne: { t: 'Bayi karnesi', ico: 'chart', v: yukle('views/bayiag.js', 'bayikarneView'), g: 'Satış' },
   bayi:      { t: 'Bayi paneli', ico: 'box', v: yukle('views/bayi.js', 'bayiView'), g: 'Satış' },
   talepler:  { t: 'Bayi talepleri', ico: 'box', v: yukle('views/talepler.js', 'taleplerView'), g: 'Satış' },
   teklifler: { t: 'Teklifler', ico: 'doc', v: yukle('views/teklif.js', 'tekliflerView'), g: 'Satış' },

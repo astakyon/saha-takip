@@ -1700,5 +1700,64 @@ create or replace function public.yetki_surum() returns int language sql stable 
 alter table public.tahsilatlar add column if not exists tur text default 'Fatura';
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 38 $f$;
 
+-- ---------- Sürüm 39: Bayi ve partner ağı (atama kartı), siparişte bayi ----------
+create table if not exists public.bayiler (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  firma_id uuid not null references public.firmalar(id) on delete cascade,
+  tur text default 'Bayi', il text, bolge text, sorumlu text, baslangic date, bitis date, durum text default 'Aktif',
+  iskonto numeric, vade_gun int, kredi_limiti numeric, para_birimi text default 'USD', hedef_yil numeric, depo text, notlar text,
+  created_at timestamptz default now(), updated_at timestamptz default now(),
+  unique (owner, firma_id)
+);
+alter table public.siparisler add column if not exists bayi_id uuid references public.firmalar(id) on delete set null;
+do $$ declare t text; begin
+  foreach t in array array['bayiler'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists "oku" on public.%I', t);
+    execute format('drop policy if exists "ekle" on public.%I', t);
+    execute format('drop policy if exists "degistir" on public.%I', t);
+    execute format('drop policy if exists "sil" on public.%I', t);
+    execute format('create policy "oku" on public.%I for select to authenticated using (public.yetki(owner, %L, %L))', t, t, 'oku');
+    execute format('create policy "ekle" on public.%I for insert to authenticated with check (public.yetki(owner, %L, %L))', t, t, 'yaz');
+    execute format('create policy "degistir" on public.%I for update to authenticated using (public.yetki(owner, %L, %L)) with check (public.yetki(owner, %L, %L))', t, t, 'yaz', t, 'yaz');
+    execute format('create policy "sil" on public.%I for delete to authenticated using (public.yetki(owner, %L, %L))', t, t, 'yaz');
+    execute format('alter table public.%I alter column owner set default public.veri_sahibi()', t);
+    execute format('create index if not exists %I on public.%I (owner)', t || '_owner_idx', t);
+    execute format('drop trigger if exists touch on public.%I', t);
+    execute format('create trigger touch before update on public.%I for each row execute function public.touch_updated_at()', t);
+    execute format('drop policy if exists "yonetici_oku" on public.%I', t);
+    execute format('create policy "yonetici_oku" on public.%I for select to authenticated using (public.yonetici_mi())', t);
+    execute format('drop policy if exists "dis_oku" on public.%I', t);
+    execute format('drop policy if exists "dis_degistir" on public.%I', t);
+    execute format('drop policy if exists "dis_sil" on public.%I', t);
+    execute format('create policy "dis_oku" on public.%I as restrictive for select to authenticated using (public.dis_uygun(owner, %L, id))', t, t);
+    execute format('create policy "dis_degistir" on public.%I as restrictive for update to authenticated using (public.dis_uygun(owner, %L, id))', t, t);
+    execute format('create policy "dis_sil" on public.%I as restrictive for delete to authenticated using (public.dis_uygun(owner, %L, id))', t, t);
+  end loop;
+end $$;
+-- Dış kullanıcı (bayi): kendi bayi kaydını görür (koşulları, hedefi)
+create or replace function public.dis_uygun(sahip uuid, tablo text, kayit uuid) returns boolean language plpgsql stable security definer set search_path = public as $f$
+declare f uuid := public.dis_firmam(sahip);
+begin
+  if f is null then return true; end if;
+  case tablo
+    when 'projeler' then return public.dis_proje(kayit, f);
+    when 'firmalar' then return kayit = f;
+    when 'kisiler' then return exists (select 1 from public.kisiler k where k.id = kayit and k.firma_id = f);
+    when 'proje_gecmis' then return exists (select 1 from public.proje_gecmis g where g.id = kayit and public.dis_proje(g.proje_id, f));
+    when 'teklifler' then return exists (select 1 from public.teklifler x where x.id = kayit and (x.firma_id = f or public.dis_proje(x.proje_id, f)));
+    when 'siparisler' then return exists (select 1 from public.siparisler x where x.id = kayit and (x.firma_id = f or x.bayi_id = f or public.dis_proje(x.proje_id, f)));
+    when 'numuneler' then return exists (select 1 from public.numuneler x where x.id = kayit and (x.firma_id = f or public.dis_proje(x.proje_id, f)));
+    when 'servis_kayitlari' then return exists (select 1 from public.servis_kayitlari x where x.id = kayit and (x.firma_id = f or public.dis_proje(x.proje_id, f)));
+    when 'tahsilatlar' then return exists (select 1 from public.tahsilatlar x where x.id = kayit and x.firma_id = f);
+    when 'belgeler' then return exists (select 1 from public.belgeler x where x.id = kayit and (x.firma_id = f or public.dis_proje(x.proje_id, f)));
+    when 'urunler', 'stok_gecmis', 'urun_aileleri' then return true;
+    when 'bayiler' then return exists (select 1 from public.bayiler x where x.id = kayit and x.firma_id = f);
+    else return false;
+  end case;
+end $f$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 39 $f$;
+
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

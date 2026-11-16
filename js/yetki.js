@@ -54,6 +54,8 @@ export const EKRANLAR = {
   kur:        { t: [], o: [], salt: true, d: 'Döviz kuru (değiştirmek şirket yöneticisinde)' },
   muhasebe:   { t: [], o: ['siparisler', 'tahsilatlar', 'masraflar'], salt: true, d: 'Seçilen dönemin kayıtlarını muhasebe için Excel\'e aktarma' },
   dosyalar:   { t: ['belgeler'], o: [], d: 'Yüklenen dosyalar ve belgeler' },
+  bayiag:     { t: ['bayiler'], o: ['firmalar', 'siparisler', 'tahsilatlar', 'projeler', 'ziyaretler'], d: 'Bayi ve partner ağı: atama, tür, bölge, koşullar, hedef' },
+  bayikarne:  { t: [], o: ['bayiler', 'firmalar', 'siparisler', 'tahsilatlar', 'projeler', 'teklifler', 'ziyaretler', 'kisiler', 'urunler'], salt: true, d: 'Bayi karnesi: satış, hedef, projeler, cari, stok, ziyaretler' },
 };
 // Kişiye gösterilmeyen ekstra bölümler (ekran açık olsa bile)
 export const GIZLENEBILIR = [
@@ -91,7 +93,11 @@ function eskiRota(k) {
   const m = MODULLER.find(m => m.rota.includes(k));
   return m ? modulIzni(m) : null;
 }
+// Bayi ve partner ekranları yalnızca bayi/partner ağı olan şirkette (Şirket profili anahtarı, atanmış bayi ya da ana bayi)
+export const BAYI_ROTALARI = ['bayiag', 'bayikarne', 'bayistok', 'bayisatis', 'bayihedef', 'bayianaliz', 'talepler'];
+export const bayiAgiAcik = () => !!app.bayiAgiFn?.();
 export function rotaIzinli(k) {
+  if (BAYI_ROTALARI.includes(k) && !app.yetki?.dis && !bayiAgiAcik()) return false;
   if (k === 'yonetim') return !!app.yonetici && !onizlemede();
   if (sahipMi() || HER_ZAMAN.includes(k)) return true;
   if (SAHIBE_OZEL.includes(k)) return false;

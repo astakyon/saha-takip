@@ -265,6 +265,7 @@ const SIPARIS_FORM = [
     { k: 'teslim_tarihi', l: 'Teslim tarihi', t: 'date' },
     { k: 'belge_no', l: 'Satış belgesi', help: 'SAP belge numarası' },
     ...(anaBayiKisa() ? [{ k: 'drv', l: 'Kanal', t: 'chk', cl: anaBayiKisa() + ' üzerinden' }] : []),
+    ...((S.bayiler || []).length ? [{ k: 'bayi_id', l: 'Bayi / partner (üzerinden)', t: 'ref', ref: 'firmalar', help: 'Sipariş bir bayi üzerinden geldiyse: bayinin satışına sayılır' }] : []),
     { k: 'rapor_disi', l: 'Rapor', t: 'chk', cl: 'Çeyrek toplamlarına katma (iade, iptal, mükerrer…)' },
   ]},
   { title: 'Sipariş notu', note: 'Siparişin içeriğinde özel ya da ekstra olması gerekenler: özel renk sıcaklığı, optik, kablo boyu, montaj aparatı, etiket, teslim şartı…', fields: [
