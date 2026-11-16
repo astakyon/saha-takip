@@ -72,6 +72,7 @@ export function tanitimGerekirse() { try { if (localStorage.getItem('saha-taniti
 // ---------- Yenilikler ----------
 // Yeni sürüm ilk açıldığında bir kez: son eklenenler, her birinden ilgili ekrana geçiş. Yardım penceresinden de açılır.
 export const YENILIKLER = [
+  { s: 95, t: "Daha hızlı günlük iş", m: "Görevin altına ne yaptığını yazıp Enter'a basınca görev kapanır, not projenin ya da firmanın geçmişine düşer. Menüde geciken görev sayısı görünür. Proje sayfasında aşamayı tek dokunuşla değiştirirsin; projenin kaç gündür o aşamada olduğu yazar. Satış hunisinde 30 günden uzun bekleyen kart turuncu, 60 günden uzun bekleyen kırmızı. Panel'de açık projeler sorumluya göre. Ziyaret fotoğrafına çekim saati ve konum yazılır.", r: "#/bugun", d: "Bugün · Görevler · Proje sayfası · Projeler → Huni · Panel" },
   { s: 74, t: 'Fırsat radarı', m: 'Kaçmak üzere olan işler tek listede: sessiz kalan sıcak projeler, karar vericisi belirsiz projeler, süresi dolan teklifler, uzun süredir gidilmeyen A müşterileri.', r: '#/bugun', d: 'Bugün ve Panel' },
   { s: 75, t: 'Haftalık saha planı', m: 'Günlere bölge seç, önerilerden firmaları güne sürükle ya da "Otomatik dağıt". Her gün için rota.', r: '#/plan', d: 'Bugün → Hafta planı' },
   { s: 76, t: 'Teklif onay bağlantısı', m: 'Teklifi bağlantıyla gönder; müşteri telefonundan onaylar ya da revize ister, teklif kendiliğinden güncellenir.', r: '#/teklifler', d: 'Teklif → Onay bağlantısı' },

@@ -53,7 +53,7 @@ function control(f, v, obj) {
       return [id, `<input ${name} data-ref="${f.ref}" list="${datalistFor(f.ref)}" value="${esc(cur ? cur[key] : '')}" autocomplete="off" placeholder="${esc(f.ph || 'Yaz veya listeden seç')}">`];
     }
     case 'photos': {
-      return [id, `<div class="photos" data-photos="${f.k}" data-val='${esc(JSON.stringify(v || []))}'><div class="ph-list"></div>
+      return [id, `<div class="photos" data-photos="${f.k}" ${f.damga ? 'data-damga' : ''} data-val='${esc(JSON.stringify(v || []))}'><div class="ph-list"></div>
         <div class="ph-btns"><button type="button" class="btn sm" data-ph-cam>Fotoğraf çek</button><button type="button" class="btn sm ghost" data-ph-gal>Galeriden ekle</button></div></div>`];
     }
     case 'loc': {
@@ -142,7 +142,8 @@ export function bindForm(root, sections, obj, { onChange } = {}) {
       try {
         toast('Fotoğraf yükleniyor…');
         const arr = list();
-        for (const f of files) arr.push(await app.db.upload(f));
+        const damga = box.hasAttribute('data-damga') ? (await import('./damga.js')).damgala : null;
+        for (const f of files) arr.push(await app.db.upload(damga ? await damga(f, { kamera: capture }) : f));
         box.dataset.val = JSON.stringify(arr); draw(); toast('Fotoğraf eklendi.');
       } catch (e) { toast(e.message, 'err'); }
     };

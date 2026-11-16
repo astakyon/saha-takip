@@ -2006,3 +2006,24 @@ body.giris-var #view { padding-top: 64px; }
   main .chip { padding-top: 6px; padding-bottom: 6px; }
   .ptable select.dsel { min-height: 40px; }
 }
+
+/* Sürüm 95: satır içi İşle */
+.isle { display: flex; gap: 6px; flex-basis: 100%; margin: 6px 0 2px; }
+.isle input { flex: 1; min-width: 0; padding: 7px 10px; font-size: 14px; }
+.isle .btn { flex: none; }
+.tasks li, .chk-list li { flex-wrap: wrap; }
+.nav-rozet { font-style: normal; margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; background: #DC2626; color: #fff; font: 700 11.5px/20px var(--f); text-align: center; }
+#nav a { position: relative; }
+@media (max-width: 899px) { #nav .nav-main a .nav-rozet { position: absolute; top: 2px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; line-height: 18px; font-size: 10.5px; padding: 0 5px; } }
+.alt-sekme .nav-rozet { margin-left: 6px; vertical-align: 1px; height: 18px; line-height: 18px; min-width: 18px; font-size: 10.5px; }
+.asama-serit { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 10px 0 0; }
+.asama-serit button { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 99px; padding: 5px 11px; font: 600 12.5px var(--f); cursor: pointer; min-height: 32px; }
+.asama-serit button.on { background: var(--c); border-color: var(--c); color: #fff; }
+.asama-serit button:not(.on):hover { border-color: var(--c); color: var(--c); }
+.asama-gun { margin-left: 6px; color: var(--muted); font-size: 12px; }
+.asama-gun.bekle30 { color: #C2410C; font-weight: 600; } .asama-gun.bekle60 { color: #B91C1C; font-weight: 700; }
+.hcard.bekle30 { border-left: 4px solid #EA580C; } .hcard.bekle60 { border-left: 4px solid #DC2626; }
+.hc-gun { color: var(--muted); }
+.hcard.bekle30 .hc-gun { color: #C2410C; font-weight: 600; } .hcard.bekle60 .hc-gun { color: #B91C1C; font-weight: 700; }
+.huni-not { margin: 0 0 8px; }
+@media (pointer: coarse) { .asama-serit button { min-height: 40px; } }

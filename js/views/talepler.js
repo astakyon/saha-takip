@@ -108,7 +108,7 @@ export async function taleplerView(el) {
   el.querySelector('[data-yeni]')?.addEventListener('click', () => talepFormu({}, yenile));
   if (!bulut()) { el.querySelector('[data-l]').innerHTML = '<div class="empty"><p>Bayi talepleri bulut hesabında (Supabase) çalışır: bayi kendi kullanıcısıyla girip talep açar.</p></div>'; el.querySelector('[data-yeni]')?.remove(); return; }
   let l;
-  try { l = await talepleriGetir(); } catch (e) { el.querySelector('[data-l]').innerHTML = `<p class="warn">${esc(e.message)}</p>`; return; }
+  try { l = await talepleriGetir(); if (!dis) app.talepAcik = l.filter(t => t.durum === 'Yeni').length; } catch (e) { el.querySelector('[data-l]').innerHTML = `<p class="warn">${esc(e.message)}</p>`; return; }
   const ciz = () => {
     const g = dis ? l : l.filter(t => (f.durum === 'Tümü' || (f.durum === 'Açık' ? ['Yeni', 'İnceleniyor'].includes(t.durum) : t.durum === f.durum)) && match(f.q, t.baslik, t.aciklama, firmaAd(t.dis_firma_id), t.il, t.urun));
     if (!dis) el.querySelector('[data-sum]').textContent = `${l.filter(t => t.durum === 'Yeni').length} yeni · ${l.filter(t => t.durum === 'İnceleniyor').length} inceleniyor · toplam ${l.length}`;

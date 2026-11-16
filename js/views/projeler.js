@@ -304,16 +304,30 @@ export async function durumDegistir(p, yeni) {
   } catch (e) { toast(e.message, 'err'); return false; }
 }
 
+// Aşamada bekleme: projenin bulunduğu aşamaya girdiği gün (aşama geçmişinden; yoksa kayıt tarihi)
+export function asamaGirisleri() {
+  const m = new Map();
+  for (const g of S.proje_gecmis || []) { const t = String(g.tarih || '').slice(0, 10); const o = m.get(g.proje_id); if (!o || t > o.t) m.set(g.proje_id, { t, d: g.yeni_durum }); }
+  return m;
+}
+export function asamaGunu(p, gir = asamaGirisleri()) {
+  const g = gir.get(p.id), bas = g && g.d === p.durum ? g.t : String(p.created_at || '').slice(0, 10);
+  return bas ? Math.max(0, Math.round((new Date(today() + 'T00:00') - new Date(bas + 'T00:00')) / 864e5)) : null;
+}
+export const beklemeSinif = (p, gun) => !ACIK.includes(p.durum) || gun == null ? '' : gun >= 60 ? 'bekle60' : gun >= 30 ? 'bekle30' : '';
+export function asamaGunMetni(p) { const g = asamaGunu(p); return g == null ? '' : `<small class="asama-gun ${beklemeSinif(p, g)}">${g === 0 ? 'bugün bu aşamaya geçti' : `${g} gündür bu aşamada`}</small>`; }
+
 // Satış hunisi: aşama sütunları, sürükle-bırak (dokunmatikte kart üzerindeki seçimle)
 const HUNI = ['Proje', 'İhale', 'Teklif Verildi', 'Sıcak', 'Beklemede', 'Sipariş', 'Kayıp'];
 function huni(box, list, yenile) {
   const t = today();
-  box.innerHTML = `<div class="huni">${HUNI.map(d => { const ps = list.filter(p => p.durum === d).sort((a, b) => (b.tutar_usd || 0) - (a.tutar_usd || 0));
+  const gir = asamaGirisleri();
+  box.innerHTML = `<p class="hint huni-not">Kartı sürükleyip başka sütuna bırakarak aşamasını değiştirirsin. Kenarı turuncu (30+ gün) ya da kırmızı (60+ gün) olan kartlar uzun süredir aynı aşamada bekliyor.</p><div class="huni">${HUNI.map(d => { const ps = list.filter(p => p.durum === d).sort((a, b) => (b.tutar_usd || 0) - (a.tutar_usd || 0));
     const top = ps.reduce((s, p) => s + (+p.tutar_usd || 0), 0), ag = ps.reduce((s, p) => s + (+p.tutar_usd || 0) * olasilik(p) / 100, 0);
     return `<section class="hcol" data-col="${d}" style="--c:${durumRenk(d)}" aria-label="${d}"><header><b>${d}</b><span>${ps.length}</span><small>${usd(top)}${ACIK.includes(d) && top ? ` · ağırlıklı ${usd(ag)}` : ''}</small></header>
-      <div class="hcards">${ps.slice(0, 80).map(p => `<article class="hcard" draggable="true" data-id="${p.id}" tabindex="0">
+      <div class="hcards">${ps.slice(0, 80).map(p => `<article class="hcard ${beklemeSinif(p, asamaGunu(p, gir))}" draggable="true" data-id="${p.id}" tabindex="0">
         <b>${esc(p.ad)}</b><small>${esc([firmaAd(p.emut_id) || firmaAd(p.alici_id), p.ilce || p.il].filter(Boolean).join(' · '))}</small>
-        <span class="hc-bot"><span class="num">${usd(p.tutar_usd)}</span>${ACIK.includes(p.durum) ? `<small>%${olasilik(p)}</small>` : ''}${p.beklenen_tarih ? `<small class="${p.beklenen_tarih < t && ACIK.includes(p.durum) ? 'neg' : ''}">${tarih(p.beklenen_tarih)}</small>` : ''}</span>
+        <span class="hc-bot"><span class="num">${usd(p.tutar_usd)}</span>${ACIK.includes(p.durum) ? `<small>%${olasilik(p)}</small>` : ''}${ACIK.includes(p.durum) && asamaGunu(p, gir) != null ? `<small class="hc-gun" title="Bu aşamada geçen gün">${asamaGunu(p, gir)} g</small>` : ''}${p.beklenen_tarih ? `<small class="${p.beklenen_tarih < t && ACIK.includes(p.durum) ? 'neg' : ''}">${tarih(p.beklenen_tarih)}</small>` : ''}</span>
         <select data-tasi aria-label="${esc(p.ad)} aşamasını değiştir">${HUNI.concat('İptal').map(x => `<option ${x === p.durum ? 'selected' : ''}>${x}</option>`).join('')}</select></article>`).join('')}
         ${ps.length > 80 ? `<p class="hint">+${ps.length - 80} proje daha; filtreyle daralt.</p>` : ''}</div></section>`; }).join('')}</div>`;
   const tasi = async (id, d) => { const p = byId('projeler', id); if (p && p.durum !== d && await durumDegistir(p, d)) yenile(); };

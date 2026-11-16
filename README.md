@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 95)
+
+- **Satır içi İşle:** Bugün ve Görevler listesinde her açık görevin altında kutu; yazıp Enter → görev tamamlanır, not tarihle görevin notuna ve bağlı proje (yoksa firma) yorumlarına yazılır (`js/isle.js`).
+- **Menü rozetleri:** başlık ve üst sekmede bekleyen sayısı (bugün ve öncesi son tarihli açık görevler, yeni bayi talepleri) (`js/rozet.js`).
+- **Aşama şeridi:** proje sayfasının üstünde tıklanabilir aşamalar; değişiklik aşama geçmişine yazılır; "X gündür bu aşamada".
+- **Bekleme rengi:** satış hunisinde açık projeler aynı aşamada 30+ gün turuncu, 60+ gün kırmızı kenarlı; kartta gün sayısı. Aşamaya giriş tarihi `proje_gecmis`ten, yoksa kayıt tarihinden.
+- **Panel → Açık projeler – sorumluya göre:** kişi başına açık, sıcak, potansiyel, ağırlıklı tutar ve 30+ gün güncellenmeyen.
+- **Damgalı fotoğraf:** ziyaret fotoğrafının altına çekim zamanı, konum (alınabildiyse) ve galeriden seçildiyse "Galeriden" şeridi (`js/damga.js`).
+- Veritabanı değişikliği yok.
+
 ## Güncelleme notu (sürüm 94)
 
 - **Giriş:** şirketin Supabase adresi ve `anon` (herkese açık) anahtarı `js/db.js` içinde `VARSAYILAN_BAGLANTI` olarak gömülü. Hiç kullanılmamış bir tarayıcıda uygulama doğrudan **kullanıcı adı + şifre** ekranıyla açılır; davet bağlantısı gerekmez. Ekranın altında "Yeni şirket hesabı oluştur" ve "Kayıt olmadan dene" (deneme modu) var; e-posta bağlantısı ve e-posta daveti küçük bağlantılar olarak duruyor. Daha önce bağlantısız (deneme modunda) kullanılmış tarayıcılar olduğu gibi kalır. `service_role` anahtarı uygulamada yoktur; veriyi veritabanı kuralları (RLS) korur.

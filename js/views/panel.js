@@ -1,5 +1,16 @@
 import { S, uuid } from '../db.js';
 import { riskKarti } from '../vaderisk.js';
+// Açık projeler – sorumluya göre: kişi başına açık proje, potansiyel ve ağırlıklı tutar; 30+ gün aynı aşamada bekleyenler
+function sorumluKarti() {
+  const acik = S.projeler.filter(p => ACIK.includes(p.durum));
+  const kisiler = [...new Set(acik.map(p => (p.sorumlu || '').toLowerCase()))];
+  if (!acik.length || (kisiler.length < 2 && !(app.ekip || []).length)) return '';
+  const ad = e => !e ? 'Atanmamış' : (app.ekip || []).find(u => u.eposta?.toLowerCase() === e)?.ad || (e === (app.db.user?.()?.email || '').toLowerCase() ? 'Sen' : e.split('@')[0]);
+  const gun = p => { const b = String(p.updated_at || p.created_at || '').slice(0, 10); return b ? Math.round((Date.now() - new Date(b + 'T00:00')) / 864e5) : 0; };
+  const satir = kisiler.map(e => { const l = acik.filter(p => (p.sorumlu || '').toLowerCase() === e); return { e, n: l.length, top: l.reduce((a, p) => a + (+p.tutar_usd || 0), 0), ag: l.reduce((a, p) => a + (+p.tutar_usd || 0) * olasilik(p) / 100, 0), sicak: l.filter(p => p.durum === 'Sıcak').length, bek: l.filter(p => gun(p) >= 30).length }; }).sort((a, b) => b.ag - a.ag);
+  return `<section class="card sorumlu-k"><div class="card-h"><h2>Açık projeler – sorumluya göre</h2></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Kişi</th><th class="r">Açık</th><th class="r">Sıcak</th><th class="r">Potansiyel</th><th class="r">Ağırlıklı</th><th class="r" title="30 günden uzun güncellenmeyen">Bekleyen</th></tr></thead>
+    <tbody>${satir.map(x => `<tr><td><b>${esc(ad(x.e))}</b></td><td class="r num">${x.n}</td><td class="r num">${x.sicak || ''}</td><td class="r num">${usd(Math.round(x.top))}</td><td class="r num">${usd(Math.round(x.ag))}</td><td class="r num ${x.bek ? 'neg' : ''}">${x.bek || ''}</td></tr>`).join('')}</tbody></table></div></section>`;
+}
 import { kayipKarti, kayipTamamla } from '../kayip.js';
 import { app, F, saveFilters } from '../state.js';
 import { hedefKalanKarti } from '../hedef.js';
@@ -56,6 +67,7 @@ export function panelView(el) {
     ${hedefKalanKarti(t)}
     ${radarKarti({ n: 8 })}
     ${riskKarti()}
+    ${sorumluKarti()}
     <section class="card wide"><h2>Çeyrek bazında sipariş ve hedef</h2>
       <div class="qbars">${[0, 1, 2, 3].map(i => `<div class="qb"><div class="qb-cols"><span class="bar target" style="height:${hed[i] / maxQ * 100}%" title="Hedef ${usd(hed[i])}"></span><span class="bar real ${gercek[i] >= hed[i] && hed[i] ? 'ok' : ''}" style="height:${gercek[i] / maxQ * 100}%" title="Gerçekleşen ${usd(gercek[i])}"></span></div>
         <b>${i + 1}. çeyrek</b><small>${usd(gercek[i])}${hed[i] ? ` · %${num(gercek[i] / hed[i] * 100)}` : ''}</small></div>`).join('')}</div>

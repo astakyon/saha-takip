@@ -1,4 +1,5 @@
 // Bugün: günlük özet, günün rotası, yakınımdakiler, zamanı gelen projeler, uzun süredir gidilmeyenler, doğum günleri, uyarılar
+import { isleKutusu, isleBagla } from '../isle.js';
 import { BUGUN_KARTLAR } from '../basliklar.js';
 import { riskRozeti } from '../vaderisk.js';
 import { ozellikSay } from '../saglik.js';
@@ -196,7 +197,7 @@ export function bugunView(el) {
   const sirali = rotaSirala(planli);
   const rota = rotaUrl(sirali.map(x => x.p));
   const z1 = z => `<li><button type="button" class="linkbtn" data-zid="${z.id}"><b>${z.saat ? esc(z.saat) + ' · ' : ''}${esc(firmaAd(z.firma_id) || 'Ziyaret')}</b></button><span class="muted">${esc([byId('kisiler', z.kisi_id)?.ad_soyad, z.amac, byId('projeler', z.proje_id)?.ad].filter(Boolean).join(' · '))}</span>${z.sonuc_tipi ? `<span class="tag-s res">${esc(z.sonuc_tipi)}</span>` : ''}</li>`;
-  const g1 = g => `<li class="${g.son_tarih < t ? 'late' : ''}"><label class="chk"><input type="checkbox" data-done="${g.id}" aria-label="Tamamlandı"></label><button type="button" class="linkbtn" data-gid="${g.id}">${esc(g.baslik)}</button><span class="muted">${!g.son_tarih ? '' : g.son_tarih < t ? tarih(g.son_tarih) : g.son_tarih === t ? 'bugün' : tarih(g.son_tarih)}</span></li>`;
+  const g1 = g => `<li class="${g.son_tarih < t ? 'late' : ''}"><label class="chk"><input type="checkbox" data-done="${g.id}" aria-label="Tamamlandı"></label><button type="button" class="linkbtn" data-gid="${g.id}">${esc(g.baslik)}</button><span class="muted">${!g.son_tarih ? '' : g.son_tarih < t ? tarih(g.son_tarih) : g.son_tarih === t ? 'bugün' : tarih(g.son_tarih)}</span>${isleKutusu(g)}</li>`;
   const gun = new Date(t + 'T00:00').toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
   // Boş kartlar yerine tek özet: bugün yapılacak bir şey yoksa kısa satırlar ve tek dokunuşla eylem
   const bos = [
@@ -267,6 +268,7 @@ export function bugunView(el) {
   el.querySelectorAll('[data-giris]').forEach(b => b.onclick = async () => (await import('../giriscikis.js')).girisYap({ firma_id: b.dataset.giris }));
   el.querySelectorAll('[data-yapildi]').forEach(b => b.onclick = () => { ziyaretForm({ id: b.dataset.yapildi }); setTimeout(() => document.querySelector('[data-done]')?.click(), 200); });
   el.querySelectorAll('[data-gid]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.gid }));
+  isleBagla(el, () => app.refresh());
   el.querySelectorAll('[data-done]').forEach(c => c.onchange = async () => { const g = byId('gorevler', c.dataset.done); try { const y = { ...g, durum: c.checked ? 'Tamam' : 'Açık', tamamlayan: c.checked ? ben || null : null }; await app.db.save('gorevler', y); import('../push.js').then(m => m.gorevBildir(g, y)); await (await import('../otomasyon.js')).gorevSonrasi(g, y); toast(c.checked ? 'Görev tamamlandı.' : 'Görev yeniden açıldı.'); } catch (e) { c.checked = !c.checked; toast('Kaydedilemedi: ' + e.message, 'err'); } app.refresh(); });
   el.querySelectorAll('[data-planla]').forEach(b => b.onclick = () => ziyaretForm({ firma_id: b.dataset.planla, durum: 'Planlandı', tarih: yarin }));
   el.querySelectorAll('[data-dg]').forEach(b => b.onclick = () => waGonder({ kisi: byId('kisiler', b.dataset.dg), sablonAdi: 'Doğum günü' }));

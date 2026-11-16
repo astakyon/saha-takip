@@ -9,6 +9,7 @@ import { hataKaydet, kullanimSay, hataGonder } from './saglik.js';
 import { rotaIzinli, sahipMi, rotaYazilabilir, izin, yetkiUygula, gerekUygula, onizlemede, onizlemeBitir } from './yetki.js';
 import { menuDuzeni } from './menu.js';
 import { benBilgisi, basHarfleri } from './ben.js';
+import { baslikRozet, rotaRozet, rozetHtml } from './rozet.js';
 import { BASLIKLAR, SEKME_AD, baslikOf } from './basliklar.js';
 import { hizliKur, aramaAc } from './hizli.js';
 import { filtreIzle } from './filtre.js';
@@ -109,7 +110,7 @@ function renderNav(cur) {
   const { ana, gorunur } = menuDuzeni(ROUTES);
   navSon = cur;
   const aktif = baslikOf(cur)?.k;
-  const item = b => { const r = baslikRotasi(b); return r ? `<a href="#/${r}" class="${b.k === aktif ? 'on' : ''}" ${b.k === aktif ? 'aria-current="page"' : ''}>${icon(b.ico)}<span>${b.t}</span></a>` : ''; };
+  const item = b => { const r = baslikRotasi(b); return r ? `<a href="#/${r}" class="${b.k === aktif ? 'on' : ''}" ${b.k === aktif ? 'aria-current="page"' : ''}>${icon(b.ico)}<span>${b.t}</span>${rozetHtml(baslikRozet(b, x => ROUTES[x] && rotaIzinli(x)))}</a>` : ''; };
   const mode = app.db.mode === 'local' ? '<span class="mode-badge">Deneme modu</span>' : !sahipMi() ? `<span class="mode-badge">${app.yetki?.dis ? 'Dış kullanıcı · ' + esc(app.yetki.dis.firma_ad || '') : esc(app.yetki?.yetkiler?._rol || 'Ekip üyesi') + (app.yetki?.ad ? ' · ' + esc(app.yetki.ad) : '')}</span>` : '';
   const anaB = ana.map(k => BASLIKLAR.find(b => b.k === k)).filter(Boolean), digerB = BASLIKLAR.filter(b => !ana.includes(b.k) && gorunur(b));
   nav.innerHTML = `
@@ -218,7 +219,7 @@ async function show(k) {
   const b = baslikOf(k); if (b) sonAlt[b.k] = k;
   const { gizli } = menuDuzeni(ROUTES);
   const sekmeler = b ? b.r.filter(r => ROUTES[r] && !gizli.has(r) && rotaIzinli(r)) : [];
-  kok.innerHTML = (k !== 'harita' && sekmeler.length > 1 ? `<nav class="alt-sekme" aria-label="${esc(b.t)}">${sekmeler.map(r => `<a href="#/${r}" class="${r === k ? 'on' : ''}" ${r === k ? 'aria-current="page"' : ''}>${esc(SEKME_AD[r] || ROUTES[r].t)}</a>`).join('')}</nav>` : '')
+  kok.innerHTML = (k !== 'harita' && sekmeler.length > 1 ? `<nav class="alt-sekme" aria-label="${esc(b.t)}">${sekmeler.map(r => `<a href="#/${r}" class="${r === k ? 'on' : ''}" ${r === k ? 'aria-current="page"' : ''}>${esc(SEKME_AD[r] || ROUTES[r].t)}${rozetHtml(rotaRozet(r))}</a>`).join('')}</nav>` : '')
     + `<button type="button" class="sayfa-ara" aria-label="Ara" title="Ara (/)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button><div class="view-ic"></div>`;
   kok.querySelector('.sayfa-ara').onclick = () => aramaAc();
   { const st = kok.querySelector('.alt-sekme'), on = st?.querySelector('a.on'); if (st) st.classList.toggle('tasar', st.scrollWidth > st.clientWidth + 2); if (on && st.scrollWidth > st.clientWidth) st.scrollLeft = Math.max(0, on.offsetLeft - (st.clientWidth - 64 - on.offsetWidth) / 2); }

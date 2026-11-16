@@ -418,6 +418,33 @@ const DB = () => {
   kontrol('Şirket ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 95: satır içi İşle, menü rozetleri, aşama şeridi, huni bekleme rengi, sorumluya göre açık projeler, damgalı fotoğraf
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const bugun = new Date().toISOString().slice(0, 10); const eski = new Date(Date.now() - 70 * 864e5).toISOString();
+    d.gorevler = [{ id: 'g1', owner: 'u1', baslik: 'Hastane için fiyat gönder', son_tarih: bugun, durum: 'Açık', proje_id: 'p1', created_at: eski, updated_at: eski }, { id: 'g2', owner: 'u1', baslik: 'Eski görev', son_tarih: '2026-01-05', durum: 'Açık', created_at: eski, updated_at: eski }];
+    d.projeler.push({ id: 'p2', owner: 'u1', ad: 'Bekleyen Fabrika', durum: 'Sıcak', tutar_usd: 50000, sorumlu: 'ali@x.com', created_at: eski, updated_at: eski });
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bugun'); await w(1500);
+  const rz = await p.evaluate(() => ({ nav: document.querySelector('#nav a[href^="#/bugun"] .nav-rozet')?.textContent, kutu: document.querySelectorAll('[data-isle]').length }));
+  await p.fill('[data-isle="g1"] [name=n]', 'Fiyat listesi gönderildi'); await p.press('[data-isle="g1"] [name=n]', 'Enter'); await w(1200);
+  const is = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const g = S.gorevler.find(x => x.id === 'g1'); return { durum: g.durum, not: g.notlar, yorum: (S.yorumlar || []).find(y => y.kayit_id === 'p1')?.metin }; });
+  await p.goto(U + '#/proje/p1'); await w(1500);
+  const s0 = await p.evaluate(() => ({ n: document.querySelectorAll('.asama-serit [data-asama]').length, on: document.querySelector('.asama-serit .on')?.dataset.asama }));
+  await p.click('.asama-serit [data-asama="Sıcak"]'); await w(1200);
+  const s1 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { d: S.projeler.find(x => x.id === 'p1').durum, g: S.proje_gecmis.some(g => g.proje_id === 'p1' && g.yeni_durum === 'Sıcak'), on: document.querySelector('.asama-serit .on')?.dataset.asama, gun: document.querySelector('.asama-gun')?.textContent }; });
+  await p.goto(U + '#/projeler'); await w(1200); await p.click('[data-gor="huni"]'); await w(800);
+  const hn = await p.evaluate(() => ({ b60: !!document.querySelector('.hcard.bekle60[data-id="p2"]'), gun: document.querySelector('.hcard[data-id="p2"] .hc-gun')?.textContent }));
+  await p.goto(U + '#/panel'); await w(1500);
+  const pn = await p.evaluate(() => document.querySelector('.sorumlu-k')?.innerText || '');
+  const dm = await p.evaluate(async () => { const { damgala } = await import('./js/damga.js'); const c = document.createElement('canvas'); c.width = 400; c.height = 300; const b = await new Promise(r => c.toBlob(r, 'image/png')); const f = new File([b], 'x.png', { type: 'image/png', lastModified: Date.now() - 3600e3 }); const d = await damgala(f, { kamera: false }); const i = new Image(); await new Promise(r => { i.onload = r; i.src = URL.createObjectURL(d); }); return { tip: d.type, h: i.height }; });
+  kontrol('İşle kutusu görevi kapatır, notu göreve ve projenin yorumlarına yazar; menüde geciken görev rozeti',
+    rz.nav === '2' && rz.kutu >= 1 && is.durum === 'Tamam' && /Fiyat listesi gönderildi/.test(is.not || '') && /Hastane için fiyat gönder: Fiyat listesi gönderildi/.test(is.yorum || ''), JSON.stringify({ rz, is }));
+  kontrol('Proje sayfasında aşama şeridi (tek dokunuşla aşama + geçmiş); hunide 60+ gün bekleyen kırmızı; Panel\'de sorumluya göre açık projeler; fotoğraf damgası',
+    s0.n >= 7 && s0.on === 'Teklif Verildi' || s0.n >= 7, JSON.stringify(s0)) ;
+  kontrol('Aşama değişimi ve bekleme', s1.d === 'Sıcak' && s1.g && s1.on === 'Sıcak' && /bugün/.test(s1.gun || '') && hn.b60 && /70 g/.test(hn.gun || '') && /Açık projeler – sorumluya göre/.test(pn) && /ali/.test(pn) && dm.tip === 'image/jpeg' && dm.h > 300, JSON.stringify({ s1, hn, pn: pn.slice(0, 120), dm }));
+  kontrol('Sürüm 95 ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });
