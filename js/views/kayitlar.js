@@ -6,6 +6,8 @@ import { renderForm, bindForm, readForm } from '../forms.js';
 import { waGonder } from '../sablon.js';
 import { gunKm } from './bugun.js';
 import { ayar, ayarYaz } from '../ayar.js';
+import { sahipMi } from '../yetki.js';
+import { onaySay } from '../onay.js';
 
 const para = v => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
 const rpill = (d, renk) => `<span class="pill" style="--c:${renk[d] || '#64748B'}">${esc(d)}</span>`;
@@ -127,7 +129,7 @@ const MASRAF_FORM = [{ title: 'Masraf', fields: [
 export function masrafForm(init = {}) {
   const m0 = init.id ? byId('masraflar', init.id) : { tarih: today(), tip: 'Yakıt', ...init, _new: true };
   const p = kayitPanel({ tablo: 'masraflar', baslik: 'Masraf', form: MASRAF_FORM, kayit: { ...m0, fis: m0.fis ? [m0.fis] : [], _ad: `${m0.tip} · ${para(m0.tutar)} TL` },
-    sonrasi: o => ({ ...o, fis: (o.fis || [])[0] || null }) });
+    sonrasi: o => ({ ...o, fis: (o.fis || [])[0] || null, ...(m0._new ? { kim: (app.db?.user?.()?.email || '').toLowerCase() || null, onay: ayar('masraf_onay') === true && !sahipMi() ? 'Bekliyor' : null } : {}) }) });
   const km = p.querySelector('[name=km]'), tar = p.querySelector('[name=tarih]');
   const oneri = () => { const t = gunKm(tar.value); const h = km.closest('.fld').querySelector('small'); h.innerHTML = t ? `Ziyaret noktalarına göre o gün yaklaşık <button type="button" class="linkbtn" data-km>${t} km</button>` : 'O gün için konumlu ziyaret yok; kilometreyi elle gir.'; h.querySelector('[data-km]')?.addEventListener('click', () => { km.value = t; }); };
   tar.addEventListener('change', oneri); oneri();
@@ -139,7 +141,10 @@ export function masraflarView(el) {
     <div class="filters"><div class="frow"><label>Ay <select data-ay>${aylar.map(a => `<option value="${a}" ${a === f.ay ? 'selected' : ''}>${new Date(a + '-01T00:00').toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}</option>`).join('')}</select></label></div></div>
     <section class="ledger" data-ledger></section>
     <details class="card arac-kart"><summary><b>Araç bilgisi</b><span class="muted" data-aracozet></span></summary><p class="hint">Günlük km'yi masrafa yazarken yakıt tutarı buna göre hesaplanır.</p><div class="grid"><div class="fld"><label for="a-l">Tüketim (litre / 100 km)</label><input id="a-l" type="number" step="0.1" inputmode="decimal" data-yakit="yakit_lt100" value="${ayar('yakit_lt100', '') || ''}" placeholder="örn. 6,5"></div><div class="fld"><label for="a-f">Yakıt litre fiyatı (TL)</label><input id="a-f" type="number" step="0.01" inputmode="decimal" data-yakit="yakit_tl" value="${ayar('yakit_tl', '') || ''}" placeholder="örn. 52,40"></div></div></details>
+    ${sahipMi() ? `<label class="chk"><input type="checkbox" data-monay ${ayar('masraf_onay') === true ? 'checked' : ''}> Ekibin girdiği masraflar onayımdan geçsin</label>` : ''}
+    <div data-onay></div>
     <div data-rows></div>`;
+  el.querySelector('[data-monay]')?.addEventListener('change', async e => { await ayarYaz('masraf_onay', e.target.checked); toast(e.target.checked ? 'Ekip masrafları artık onaya düşecek.' : 'Masraf onayı kapatıldı.'); draw(); });
   const aracOzet = () => { const l = ayar('yakit_lt100', ''), t = ayar('yakit_tl', ''); el.querySelector('[data-aracozet]').textContent = l && t ? `${num(l)} lt / 100 km · ${num(t)} TL / lt` : 'girilmemiş: km\'den yakıt tutarı hesaplanmaz'; };
   aracOzet();
   el.querySelectorAll('[data-yakit]').forEach(i => i.onchange = async () => { await ayarYaz(i.dataset.yakit, i.value ? +i.value : null); aracOzet(); toast('Kaydedildi.'); });
@@ -155,9 +160,13 @@ export function masraflarView(el) {
     el.querySelector('[data-ledger]').innerHTML = `<div><span>Toplam masraf</span><b>${para(top)} TL</b><small>${l.length} kayıt</small></div><div><span>Girilen kilometre</span><b>${num(km)} km</b><small>${tahmin ? `+ yaklaşık ${num(tahmin)} km kayıtsız gün` : 'ziyaret günleri kayıtlı'}</small></div>
       <div><span>En büyük kalem</span><b>${Object.keys(tipler).length ? esc(Object.entries(tipler).sort((a, b) => b[1] - a[1])[0][0]) : '—'}</b><small>${Object.entries(tipler).map(([k, v]) => `${esc(k)} ${para(v)}`).join(' · ')}</small></div>
       <div><span>Ziyaret günü</span><b>${gunler.size}</b><small>bu ay sahada</small></div>`;
-    el.querySelector('[data-rows]').innerHTML = l.length ? `<ul class="list big">${l.map(m => `<li><button type="button" class="linkrow" data-id="${m.id}"><b>${esc(m.tip)}${m.aciklama ? ' · ' + esc(m.aciklama) : ''}</b><span class="muted">${tarih(m.tarih)}${m.km ? ' · ' + num(m.km) + ' km' : ''}${m.fis ? ' · fiş var' : ''}</span></button><b class="num">${para(m.tutar)} TL</b></li>`).join('')}</ul>`
+    el.querySelector('[data-rows]').innerHTML = l.length ? `<ul class="list big">${l.map(m => `<li><button type="button" class="linkrow" data-id="${m.id}"><b>${esc(m.tip)}${m.aciklama ? ' · ' + esc(m.aciklama) : ''}</b><span class="muted">${tarih(m.tarih)}${m.km ? ' · ' + num(m.km) + ' km' : ''}${m.fis ? ' · fiş var' : ''}${m.onay ? ` · <em class="flag ${m.onay === 'Reddedildi' ? '' : 'soft'}">${esc(m.onay)}</em>` : ''}</span></button><b class="num">${para(m.tutar)} TL</b></li>`).join('')}</ul>`
       : '<div class="empty"><p>Bu ay masraf yok. Fişin fotoğrafını çekerek hızlıca ekleyebilirsin.</p></div>';
     el.querySelectorAll('[data-id]').forEach(b => b.onclick = () => masrafForm({ id: b.dataset.id }));
+    // Onay bekleyenler (yalnız şirket yetkilisi onaylar; ay süzgecinden bağımsız)
+    const bek = sahipMi() ? S.masraflar.filter(m => m.onay === 'Bekliyor').sort((a, b) => (a.tarih || '').localeCompare(b.tarih || '')) : [];
+    el.querySelector('[data-onay]').innerHTML = bek.length ? `<section class="card onay-k"><h2>Onay bekleyen masraflar <span class="muted">${bek.length}</span></h2><ul class="list">${bek.map(m => `<li data-mo="${m.id}"><span class="grow"><b>${esc(m.tip)}${m.aciklama ? ' · ' + esc(m.aciklama) : ''}</b><small class="muted"> ${tarih(m.tarih)} · ${esc((m.kim || '').split('@')[0] || '—')}${m.fis ? ' · fiş var' : ''}</small></span><b class="num">${para(m.tutar)} TL</b><button class="btn sm" data-moy="Onaylandı">Onayla</button><button class="btn sm ghost danger" data-moy="Reddedildi">Reddet</button></li>`).join('')}</ul></section>` : '';
+    el.querySelectorAll('[data-mo] [data-moy]').forEach(b => b.onclick = async () => { const m = S.masraflar.find(x => x.id === b.closest('[data-mo]').dataset.mo); await app.db.save('masraflar', { ...m, onay: b.dataset.moy, onaylayan: (app.db?.user?.()?.email || '').toLowerCase(), onay_tarih: today() }); onaySay(); toast(b.dataset.moy); draw(); });
   };
   el.querySelector('[data-ay]').onchange = e => { f.ay = e.target.value; saveFilters(); draw(); };
   el.querySelector('[data-new]').onclick = () => masrafForm({});

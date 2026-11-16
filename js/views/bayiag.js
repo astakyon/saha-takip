@@ -33,12 +33,14 @@ export function bayiOzeti(b, Y = +today().slice(0, 4)) {
   const proj = S.projeler.filter(p => p.bayi_id === b.firma_id);
   const tah = S.tahsilatlar.filter(t => t.firma_id === b.firma_id && kalan(t) > 0);
   const stok = b.depo ? S.urunler.filter(u => u.depo === b.depo) : [];
+  const bs = (S.bayi_stok || []).filter(s => s.firma_id === b.firma_id);
   const ziy = S.ziyaretler.filter(z => z.firma_id === b.firma_id && (z.durum || 'Yapıldı') === 'Yapıldı').sort((a, c) => (c.tarih || '').localeCompare(a.tarih || ''));
   return {
     satis, gecen, aylik, sipN: yilda(Y).length, hedef: +b.hedef_yil || 0, hedefYuzde: +b.hedef_yil ? Math.round(satis / b.hedef_yil * 100) : null,
     proj, acikProj: proj.filter(p => ACIK.includes(p.durum)), kazanilan: proj.filter(p => p.durum === 'Sipariş'), kayip: proj.filter(p => p.durum === 'Kayıp'),
     alacak: tah.reduce((a, t) => a + usdYap(kalan(t), t.para_birimi), 0), risk: firmaRiski(b.firma_id),
-    stokKalem: stok.filter(u => +u.stok > 0).length, stokDeger: stok.reduce((a, u) => a + (+u.stok || 0) * (+u.birim_fiyat_usd || 0), 0),
+    stokKalem: stok.filter(u => +u.stok > 0).length + bs.filter(s => +s.adet > 0).length,
+    stokDeger: stok.reduce((a, u) => a + (+u.stok || 0) * (+u.birim_fiyat_usd || 0), 0) + bs.reduce((a, s) => a + (+s.adet || 0) * (+s.birim_fiyat || +S.urunler.find(u => u.kod === s.kod)?.birim_fiyat_usd || 0), 0),
     sonZiyaret: ziy[0]?.tarih || null, ziy,
   };
 }
@@ -87,6 +89,23 @@ export function bayiAtamaFormu(init = {}, sonra) {
 }
 
 // ---------- Ağ ----------
+// Ağ haritası: konumu bilinen bayiler; nokta büyüklüğü yıl satışına, rengi türe göre
+const TUR_RENK = ['#2a78d6', '#15803D', '#7C3AED', '#C2410C', '#0F766E', '#B91C1C', '#64748B'];
+let agHarita = null;
+async function agHaritasi(kutu, g) {
+  if (!kutu) return;
+  if (agHarita) { try { agHarita.remove(); } catch {} agHarita = null; }
+  const nk = g.map(x => ({ ...x, f: byId('firmalar', x.b.firma_id) })).filter(x => x.f?.lat != null && x.f?.lng != null);
+  if (typeof L === 'undefined' || !nk.length) { kutu.hidden = true; return; }
+  kutu.hidden = false;
+  agHarita = L.map(kutu, { zoomControl: true, attributionControl: false, maxZoom: 18 }).setView([nk[0].f.lat, nk[0].f.lng], 8);
+  try { const { altlikKatmani } = await import('../altlik.js'); const { katman } = await altlikKatmani('osm'); katman.addTo(agHarita); } catch {}
+  const max = Math.max(1, ...nk.map(x => x.o.satis));
+  for (const x of nk) L.circleMarker([x.f.lat, x.f.lng], { radius: 6 + 12 * Math.sqrt(x.o.satis / max), color: '#fff', weight: 2, fillColor: TUR_RENK[Math.max(0, BAYI_TURLERI.indexOf(x.b.tur || 'Bayi')) % TUR_RENK.length], fillOpacity: 0.9 })
+    .addTo(agHarita).bindPopup(`<b>${esc(bayiAd(x.b))}</b><br>${esc(x.b.tur || 'Bayi')}${x.b.bolge ? ' · ' + esc(x.b.bolge) : ''}<br>${usd(Math.round(x.o.satis))}${x.o.hedefYuzde != null ? ' · hedef %' + x.o.hedefYuzde : ''}`);
+  if (nk.length > 1) agHarita.fitBounds(nk.map(x => [x.f.lat, x.f.lng]), { padding: [30, 30], maxZoom: 12 });
+  setTimeout(() => agHarita?.invalidateSize(), 200);
+}
 export function bayiagView(el) {
   const f = F('bayiag', { q: '', tur: 'Tümü', durum: 'Aktif' });
   const yaz = sahipMi() || izin('bayiag') === 'yaz';
@@ -106,12 +125,14 @@ export function bayiagView(el) {
     const iller = {}; for (const { b } of g) { const k = b.il || byId('firmalar', b.firma_id)?.il || '—'; iller[k] = (iller[k] || 0) + 1; }
     el.querySelector('[data-l]').innerHTML = !l.length ? `<div class="empty"><p>Henüz bayi ya da partner atanmadı.</p><p class="hint">Bir firmayı bayi, alt bayi, distribütör ya da çözüm ortağı olarak ata: satışları, hedefi, stoğu ve cari bakiyesi ayrı izlenir.</p></div>`
       : `<div class="chips bayi-il">${Object.entries(iller).sort((a, c) => c[1] - a[1]).map(([il, n]) => `<span class="chip">${esc(il)} · ${n}</span>`).join('')}</div>
+      <div class="ba-map" data-bmap aria-label="Bayi ağı haritası"></div>
       <div class="tbl-wrap"><table class="tbl bayi-t"><thead><tr><th>Bayi / partner</th><th>Tür</th><th>Bölge</th><th>Sorumlu</th><th class="r">${Y} satış</th><th class="r">Hedef</th><th class="r">Açık alacak</th><th class="r">Açık proje</th><th>Son ziyaret</th></tr></thead><tbody>
       ${g.map(({ b, o }) => `<tr data-bk="${b.id}" tabindex="0"><td><b>${esc(bayiAd(b))}</b> <span class="pill" style="--c:${DRENK[b.durum || 'Aktif']}">${esc(b.durum || 'Aktif')}</span>${o.risk?.seviye ? ` <em class="vr-rozet" style="--c:${SEVIYE[o.risk.seviye].c}">${SEVIYE[o.risk.seviye].ad}</em>` : ''}</td>
         <td>${esc(b.tur || 'Bayi')}</td><td>${esc([b.il, b.bolge].filter(Boolean).join(' · ') || byId('firmalar', b.firma_id)?.il || '')}</td><td>${esc(kimAd(b.sorumlu))}</td>
         <td class="r num">${usd(Math.round(o.satis))}${o.gecen ? `<small class="${o.satis >= o.gecen ? 'pos' : 'neg'}"> ${o.satis >= o.gecen ? '▲' : '▼'}${Math.abs(Math.round((o.satis - o.gecen) / o.gecen * 100))}%</small>` : ''}</td>
         <td class="r num">${o.hedefYuzde != null ? `<span class="hedef-r ${o.hedefYuzde >= 100 ? 'pos' : o.hedefYuzde < 50 ? 'neg' : ''}">%${o.hedefYuzde}</span>` : '—'}</td>
         <td class="r num ${o.risk?.gecikmis ? 'neg' : ''}">${o.alacak ? usd(Math.round(o.alacak)) : ''}</td><td class="r num">${o.acikProj.length || ''}</td><td>${o.sonZiyaret ? tarih(o.sonZiyaret) : '<span class="muted">hiç</span>'}</td></tr>`).join('')}</tbody></table></div>`;
+    agHaritasi(el.querySelector('[data-bmap]'), g);
     el.querySelectorAll('[data-bk]').forEach(r => { const ac = () => { F('bayikarne', {}).id = r.dataset.bk; saveFilters(); location.hash = '#/bayikarne'; }; r.onclick = ac; r.onkeydown = e => { if (e.key === 'Enter') ac(); }; });
   };
   el.querySelector('[data-q]').oninput = e => { f.q = e.target.value; saveFilters(); ciz(); };
@@ -140,7 +161,7 @@ export function bayikarneView(el) {
       ${kart('Hedef', o.hedef ? usd(Math.round(o.hedef)) : '—', o.hedefYuzde != null ? `%${o.hedefYuzde} gerçekleşti` : 'hedef girilmedi', o.hedefYuzde >= 100 ? 'ok' : '')}
       ${kart('Açık alacak', usd(Math.round(o.alacak)), o.risk?.metin || 'gecikme yok', o.risk?.gecikmis ? 'neg' : '')}
       ${kart('Projeler', `${o.acikProj.length} açık`, `${o.kazanilan.length} kazanılan · ${o.kayip.length} kaybedilen`)}
-      ${kart('Stok', b.depo ? usd(Math.round(o.stokDeger)) : '—', b.depo ? `${o.stokKalem} kalem · depo ${esc(b.depo)}` : 'depo adı girilmedi')}
+      ${kart('Stok', o.stokKalem ? usd(Math.round(o.stokDeger)) : '—', o.stokKalem ? `${o.stokKalem} kalem${b.depo ? ' · depo ' + esc(b.depo) : ''} · <a href="#/bayistok">Stoklar</a>` : 'stok kaydı yok · <a href="#/bayistok">Stoklar</a>')}
       ${kart('Son ziyaret', o.sonZiyaret ? tarih(o.sonZiyaret) : 'hiç', `${o.ziy.length} ziyaret`)}
     </div>
     <section class="card"><h2>${Y} aylık satış (bize alım)</h2><div class="fn-grafik bk-grafik">${o.aylik.map((v, i) => `<div class="fn-ay"><div class="fn-cub"><i class="fn-b satis" style="height:${Math.max(v ? 2 : 0, v / max * 100)}%;width:60%" title="${AYLAR[i]}: ${usd(Math.round(v))}"></i></div><small>${AYLAR[i]}</small></div>`).join('')}</div></section>

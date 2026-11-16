@@ -2069,3 +2069,27 @@ body.giris-var #view { padding-top: 64px; }
 .go-akis i { font-style: normal; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: var(--bg); }
 .go-giris i { background: #DCFCE7; color: #15803D; } .go-cikis i { background: #FEE2E2; color: #B91C1C; } .go-ziyaret i { background: #E0F2FE; color: #0369A1; } .go-teklif i { background: #EDE9FE; color: #6D28D9; } .go-gorev i { background: #FEF9C3; color: #A16207; }
 .go-ozet { margin-bottom: 12px; }
+/* Sürüm 99: bayi stok, satış, hedef */
+.bs-adet { width: 84px; text-align: right; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: var(--card); color: var(--ink); }
+.hedef-bar { display: inline-block; width: 60px; height: 6px; background: var(--line); border-radius: 3px; margin-right: 6px; vertical-align: middle; overflow: hidden; }
+.hedef-bar i { display: block; height: 100%; background: #2a78d6; } .hedef-bar i.ok { background: var(--green); } .hedef-bar i.neg { background: var(--red); }
+/* Sürüm 101: uyarı akışı, ekip sıralaması */
+.uy-turler { flex-wrap: wrap; gap: 6px; }
+.uy-akis { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.uy-akis li { background: var(--card); border: 1px solid var(--line); border-left: 3px solid #A16207; border-radius: var(--r-sm); padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.uy-akis li.onemli { border-left-color: var(--red); }
+.uy-tur { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; color: var(--muted); min-width: 120px; }
+.uy-akis .linkbtn { text-align: left; flex: 1; min-width: 180px; }
+.sira-l { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.sira-l li { display: flex; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px; }
+.sira-n { font: 700 18px var(--fc); width: 28px; text-align: center; color: var(--muted); }
+.sira-l li:first-child .sira-n { color: #A16207; }
+.sira-bar { display: block; width: 100%; margin-top: 4px; }
+/* Sürüm 102: bilgiler doğru onayı, serbest metin önizleme */
+.dg-ok { color: var(--green); font-size: 12.5px; font-weight: 600; }
+.dg-bek { color: #8A6A00; font-size: 12.5px; display: inline-flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.dg-bek .linkbtn { font-size: 12.5px; }
+.ks-onizle { background: var(--card); border: 1px dashed var(--line); border-radius: var(--r-sm); padding: 10px 12px; margin: 8px 0; }
+.ks-onizle h3 { font-size: 13px; margin: 0 0 6px; color: var(--muted); font-weight: 600; }
+.ks-onizle ul { margin: 0; padding-left: 18px; } .ks-onizle li { margin: 2px 0; }
+.ba-map { height: 320px; border-radius: var(--r-sm); border: 1px solid var(--line); margin: 8px 0 12px; }

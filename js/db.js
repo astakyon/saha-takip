@@ -1,27 +1,32 @@
 import { birlestir, cakismaMetni, alanAdi } from './cakisma.js';
 // Veri katmanı: Supabase (bulut) veya Deneme (bu cihazın tarayıcısı)
 export const TABLES = {
-  firmalar: ['id','sorumlu','ekip_id','ad','tipler','il','ilce','belde','osb','bolge_id','adres','lat','lng','konum_yaklasik','telefon','eposta','web','vergi_no','segment','sektor','key_account','notlar','fotolar','google_place_id','google_url'],
+  firmalar: ['id','sorumlu','ekip_id','ad','tipler','il','ilce','belde','osb','bolge_id','adres','lat','lng','konum_yaklasik','telefon','eposta','web','vergi_no','segment','sektor','key_account','notlar','fotolar','google_place_id','google_url','kaynak','dogrulandi','teklif_eposta','tekrar_gun','tekrar_haftagun'],
   kisiler: ['id','sorumlu','ekip_id','firma_id','ust_kisi_id','eski_firmalar','ad_soyad','ad','soyad','unvan','pozisyon','telefon','eposta','web','adres','rol','kartvizit_on','kartvizit_arka','dogum_gunu','notlar'],
-  projeler: ['id','sorumlu','ekip_id','ad','durum','durum_alt','kritik','takip_yili','hedef_listesi','baska_bolge','il','ilce','belde','bolge_id','osb','lokasyon','adres','lat','lng','konum_yaklasik','icerik','kanal','bayi_id','takipci','takipci_tel','calisildi','tutar_usd','olasilik','beklenen_tarih','teklif_no','crm_kodu','urun_gruplari','sektor','alt_sektor','yeni_refit','yatirimci_id','projeci_id','danisman_id','gemut_id','emut_id','alici_id','ilgili_kisi_id','ziyaret_edilecek','sorulacak','notlar','fotolar','siparis_tutari_usd','siparis_tarihi','bizim_teklif_usd','bizim_urun','rakip_marka','rakip_urun','rakip_birim_fiyat','rakip_miktar','rakip_toplam_usd','kayip_nedeni','kayip_aciklama','google_place_id','google_url','santiye_asamasi','alim_tarihi','referans','aday','aday_kaynak','ihale_tarihi','karar_grubu'],
+  projeler: ['id','sorumlu','ekip_id','ad','durum','durum_alt','kritik','takip_yili','hedef_listesi','baska_bolge','il','ilce','belde','bolge_id','osb','lokasyon','adres','lat','lng','konum_yaklasik','icerik','kanal','bayi_id','takipci','takipci_tel','calisildi','tutar_usd','olasilik','beklenen_tarih','teklif_no','crm_kodu','urun_gruplari','sektor','alt_sektor','yeni_refit','yatirimci_id','projeci_id','danisman_id','gemut_id','emut_id','alici_id','ilgili_kisi_id','ziyaret_edilecek','sorulacak','notlar','fotolar','siparis_tutari_usd','siparis_tarihi','bizim_teklif_usd','bizim_urun','rakip_marka','rakip_urun','rakip_birim_fiyat','rakip_miktar','rakip_toplam_usd','kayip_nedeni','kayip_aciklama','google_place_id','google_url','santiye_asamasi','alim_tarihi','referans','aday','aday_kaynak','ihale_tarihi','karar_grubu','kaynak','dogrulandi'],
   proje_gecmis: ['id','proje_id','tarih','eski_durum','yeni_durum','notlar'],
   ziyaretler: ['id','sorumlu','ekip_id','tarih','saat','durum','firma_id','kisi_id','proje_id','amac','notlar','sonuc_tipi','sonuc','lat','lng','fotolar','giris','cikis','giris_mesafe','cikis_lat','cikis_lng','planli','mazeret'],
   gorevler: ['id','sorumlu','ekip_id','baslik','son_tarih','oncelik','durum','firma_id','proje_id','kisi_id','notlar','atanan','tamamlayan','tekrar','kaynak'],
   urunler: ['id','kod','aciklama','aciklama2','aile','birim','stok','birim_fiyat_usd','stok_tarihi','depo'],
   stok_gecmis: ['id','kod','stok','birim_fiyat_usd','tarih','depo'],
   rakip_fiyatlar: ['id','aile','lumen_aralik','marka','urun_adi','fiyat_metin','birim_fiyat','para_birimi','tarih','kaynak','proje_id','notlar'],
-  siparisler: ['id','sorumlu','ekip_id','siparis_no','belge_no','belge_turu','musteri_no','musteri_adi','firma_id','tarih','teslim_tarihi','referans','net_deger','para_birimi','proje_tanimi','proje_id','drv','siparis_notu','rapor_disi','bayi_id'],
+  siparisler: ['id','kaynak','dogrulandi','sorumlu','ekip_id','siparis_no','belge_no','belge_turu','musteri_no','musteri_adi','firma_id','tarih','teslim_tarihi','referans','net_deger','para_birimi','proje_tanimi','proje_id','drv','siparis_notu','rapor_disi','bayi_id'],
   hedefler: ['id','yil','ceyrek','tutar_usd','resmi_usd','resmi_tl','kur','notlar'],
   bolgeler: ['id','ad','tip','grup','il','ilce','renk','geojson','notlar'],
   teklifler: ['id','sorumlu','ekip_id','proje_id','firma_id','kisi_id','teklif_no','tarih','gecerlilik','para_birimi','iskonto','kdv','kalemler','toplam','durum','notlar'],
   numuneler: ['id','sorumlu','ekip_id','urun_kod','urun_ad','adet','firma_id','kisi_id','proje_id','verilis','iade_tarihi','durum','notlar'],
   servis_kayitlari: ['id','sorumlu','ekip_id','tarih','tip','firma_id','kisi_id','proje_id','urun','adet','aciklama','durum','cozum','cozum_tarihi','fotolar'],
-  masraflar: ['id','tarih','tip','tutar','km','aciklama','fis'],
+  masraflar: ['id','tarih','tip','tutar','km','aciklama','fis','kim','onay','onaylayan','onay_tarih'],
+  plan_onaylari: ['id','kim','hafta','durum','adet','yanit','onaylayan','onay_tarih'],
+  konum_onaylari: ['id','eposta','metin_ozu','metin','onay','tarih'],
+  cekler: ['id','tur','yon','belge_no','firma_id','kesideci','banka','tarih','vade','tutar','para_birimi','durum','ciro','notlar'],
   urun_aileleri: ['id','aile','ad','aciklama','ozellikler','datasheet_url','fotolar'],
   ayarlar: ['id','anahtar','deger'],
   tahsilatlar: ['id','sorumlu','ekip_id','firma_id','cari','belge_no','tarih','vade','tutar','para_birimi','odenen','durum','odeme_tarihi','notlar','tur'],
   belgeler: ['id','proje_id','firma_id','ad','yol','tur','boyut','notlar','kategori'],
   yorumlar: ['id','tablo','kayit_id','metin','yazan','yazan_ad','etiketler','created_at'],
+  bayi_stok: ['id','firma_id','kod','aciklama','adet','birim_fiyat','son_hareket','notlar'],
+  bayi_satis: ['id','firma_id','tarih','kod','urun','adet','tutar','para_birimi','musteri','proje_id','il','notlar'],
   bayiler: ['id','firma_id','tur','il','bolge','sorumlu','baslangic','bitis','durum','iskonto','vade_gun','kredi_limiti','para_birimi','hedef_yil','depo','notlar'],
 };
 const ARRAYS = new Set(['tipler','fotolar','urun_gruplari','etiketler']);
@@ -56,6 +61,15 @@ export function firmaGecmisi(t, row, gecmisYok = false) {
   if (liste[0]?.firma_id === eski.firma_id && liste[0]?.bitis === bugun) return { ...row, eski_firmalar: liste };
   const f = (S.firmalar || []).find(f => f.id === eski.firma_id);
   return { ...row, eski_firmalar: [{ firma_id: eski.firma_id, firma_ad: f?.ad || null, unvan: eski.unvan || null, pozisyon: eski.pozisyon || null, bitis: bugun }, ...liste] };
+}
+// Yeni kayıt kancası (Onay kuyruğu: ekip üyesinin yeni firma / proje / siparişi işaretlenir)
+let yeniKayitKanca = null;
+export const yeniKayitKancasi = f => { yeniKayitKanca = f; };
+// Toplu içe aktarmayla gelen yeni firma ve projelere kaynak etiketi ("Bilgiler doğru" onayı için)
+function kaynakEtiketi(t, rows) {
+  if (t !== 'firmalar' && t !== 'projeler') return rows;
+  const var_ = new Set((S[t] || []).map(x => x.id));
+  return rows.map(r => r.id && var_.has(r.id) ? r : { kaynak: 'Excel\'den aktarıldı', ...r });
 }
 export function pick(table, obj) {
   if (table === 'kisiler') obj = kisiAdDuzen(obj);
@@ -122,6 +136,7 @@ class LocalAdapter {
   async save(t, obj) {
     let row = pick(t, obj); if (!row.id) row.id = uuid();
     row = firmaGecmisi(t, row, obj?._gecmisYok);
+    if (yeniKayitKanca && !(S[t] || []).some(x => x.id === row.id)) row = yeniKayitKanca(t, row);
     for (const k of this.gizliAlan?.[t] || []) if (S[t].some(x => x.id === row.id)) delete row[k];   // ekip üyesine gizlenen alanlar var olan kayıtta ezilmesin
     const i = S[t].findIndex(x => x.id === row.id);
     const full = { ...(i >= 0 ? S[t][i] : { created_at: new Date().toISOString() }), ...row, updated_at: new Date().toISOString() };
@@ -130,6 +145,7 @@ class LocalAdapter {
   }
   async del(t, id) { S[t] = S[t].filter(x => x.id !== id); await this.persist(t); }
   async bulk(t, rows, onProgress) {
+    rows = kaynakEtiketi(t, rows);
     const now = new Date().toISOString();
     const byId = new Map(S[t].map(x => [x.id, x]));
     for (const r of rows) { const p = pick(t, r); byId.set(p.id, { ...(byId.get(p.id) || { created_at: now }), ...p, updated_at: now }); }
@@ -358,6 +374,7 @@ class SupaAdapter {
     if (this.yazamaz(t, obj)) throw new Error(this.onizleme ? (this.bakilan ? 'Bu hesaba salt okunur bakıyorsun; değişiklik kaydedilmez.' : 'Önizlemedesin: değişiklik kaydedilmez.') : 'Bu bölümde düzenleme yetkin yok. Veri sahibinden yetki iste.');
     let row = pick(t, obj); if (!row.id) row.id = uuid();
     row = firmaGecmisi(t, row, obj?._gecmisYok);
+    if (yeniKayitKanca && !(S[t] || []).some(x => x.id === row.id)) row = yeniKayitKanca(t, row);
     for (const k of this.gizliAlan?.[t] || []) if (S[t].some(x => x.id === row.id)) delete row[k];   // gizli alanlar var olan kayıtta ezilmesin (sunucu da korur)
     const i = S[t].findIndex(x => x.id === row.id), onceki = i >= 0 ? S[t][i] : null;
     // Ekleme yetkisi olmayan ekip üyesi (ör. kendisine atanan görev) yalnızca var olan kaydı günceller; upsert ekleme izni de ister
@@ -413,7 +430,7 @@ class SupaAdapter {
   }
   yazamaz(t, row) {
     if (this.onizleme) return true;
-    if (this.yetki?.ben_sahip !== false || t === 'ayarlar' || t === 'yorumlar' || this.yetki.yetkiler?.[t] === 'yaz') return false;
+    if (this.yetki?.ben_sahip !== false || t === 'ayarlar' || t === 'yorumlar' || t === 'konum_onaylari' || t === 'plan_onaylari' || this.yetki.yetkiler?.[t] === 'yaz') return false;
     // kendisine atanan görevi güncelleyebilir
     if (t === 'gorevler' && row?.atanan && row.atanan.toLowerCase() === (this.user()?.email || '').toLowerCase() && S.gorevler.some(g => g.id === row.id)) return false;
     return true;
@@ -425,6 +442,7 @@ class SupaAdapter {
     if (error) { if (/fetch|network/i.test(error.message)) await this.queue({ op: 'del', t, id }); else throw error; }
   }
   async bulk(t, rows, onProgress) {
+    rows = kaynakEtiketi(t, rows);
     if (this.yazamaz(t)) throw new Error(this.onizleme ? (this.bakilan ? 'Bu hesaba salt okunur bakıyorsun; değişiklik kaydedilmez.' : 'Önizlemedesin: değişiklik kaydedilmez.') : 'Bu bölümde düzenleme yetkin yok.');
     for (let i = 0; i < rows.length; i += 400) {
       const chunk = rows.slice(i, i + 400).map(r => pick(t, r));

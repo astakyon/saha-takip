@@ -1,8 +1,9 @@
 // Şirket profili: ayarlardan bağımsız, geniş sayfa. Firma bilgileri, kayıt özeti ve ekip (ağaç + liste).
 import { S } from '../db.js';
+import { konumAyarKarti, konumAyarBagla } from './yonetici.js';
 import { app } from '../state.js';
 import { esc, toast, confirmBox, num } from '../ui.js';
-import { ayarYaz } from '../ayar.js';
+import { ayar, ayarYaz } from '../ayar.js';
 import { sahipMi } from '../yetki.js';
 
 // Sekmeler: Genel · Kullanıcılar · Roller · Ekipler · Otomasyonlar · Döviz kuru. Seçili sekme adreste: #/sirket/<sekme>
@@ -24,7 +25,9 @@ export async function sirketView(el) {
           <dt>Çalışılan iller</dt><dd>${esc((p.iller || []).join(', ') || '—')}</dd><dt>Ana bayi</dt><dd>${esc(p.bayi || '—')}</dd></dl>
         ${p.katalog === 'eae' || p.katalog === 'kendi' ? `<div class="fld"><label>Ürün kataloğu</label><div class="seg" role="group" aria-label="Ürün kataloğu"><button type="button" data-kat="eae" class="${p.katalog === 'eae' ? 'on' : ''}" ${yetkili ? '' : 'disabled'}>Hazır EAE kataloğu</button><button type="button" data-kat="kendi" class="${p.katalog === 'kendi' ? 'on' : ''}" ${yetkili ? '' : 'disabled'}>Kendi kataloğum</button></div><small class="muted">Hazır katalogda EAE ürün aileleri, ürün önerisi ve şartname karşılaştırması açıktır.</small></div>` : ''}
         ${yetkili ? `<label class="chk"><input type="checkbox" data-bayiagi ${app.bayiAgiFn?.() ? 'checked' : ''}> <span><b>Bayi ve partner ağımız var</b><small class="muted"> · menüde Bayi ve partner açılır: bayi ataması, karne, talepler</small></span></label>` : ''}
+        ${yetkili ? `<label class="chk"><input type="checkbox" data-planonay ${ayar('plan_onay') === true ? 'checked' : ''}> <span><b>Ekibin haftalık planı onayımdan geçsin</b><small class="muted"> · Hafta planında "Onaya gönder"; bekleyenler Onay kuyruğunda</small></span></label>` : ''}
         <p class="hint">Bu bilgiler ekipteki herkes için geçerlidir. Rakip markaları ve diğer seçim listeleri Ayarlar → Listeler'de.</p></section>
+      ${yetkili ? konumAyarKarti() : ''}
       <section class="card sk-ozet"><h2>Kayıtlar</h2><div class="sk-sayilar">
         ${kart('Firma', num((S.firmalar || []).length))}${kart('Kişi', num((S.kisiler || []).length))}${kart('Açık proje', num(acik), 'toplam ' + num((S.projeler || []).length))}
         ${kart('Bu ay ziyaret', num((S.ziyaretler || []).filter(z => (z.tarih || '') >= ayBasi).length))}${kart('Teklif', num((S.teklifler || []).length))}${kart('Sipariş', num((S.siparisler || []).length))}</div></section>
@@ -42,6 +45,8 @@ export async function sirketView(el) {
   </div>`;
   el.querySelector('[data-sirketsec]')?.addEventListener('click', async () => (await import('../sirketsec.js')).sirketSecAc());
   el.querySelector('[data-pduz]')?.addEventListener('click', async () => (await import('../sihirbaz.js')).sihirbazAc({ duzenle: true, sonra: () => { app.refresh?.(); } }));
+  konumAyarBagla(el);
+  el.querySelector('[data-planonay]')?.addEventListener('change', async e => { await ayarYaz('plan_onay', e.target.checked); toast(e.target.checked ? 'Haftalık planlar onaya düşecek.' : 'Plan onayı kapatıldı.'); });
   el.querySelector('[data-bayiagi]')?.addEventListener('change', async e => { await ayarYaz('bayi_agi', e.target.checked); toast(e.target.checked ? 'Bayi ve partner menüsü açıldı.' : 'Bayi ve partner menüsü kapatıldı (atanmış bayi ya da ana bayi varsa açık kalır).'); location.reload(); });
   el.querySelectorAll('[data-kat]').forEach(b => b.onclick = async () => {
     if (b.classList.contains('on')) return;

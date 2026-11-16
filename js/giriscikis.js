@@ -5,6 +5,7 @@ import { S } from './db.js';
 import { app } from './state.js';
 import { esc, toast, confirmBox, today, byId, firmaAd, myLocation } from './ui.js';
 import { km } from './geo.js';
+import { konumKurali, kvkkSor } from './konum.js';
 
 const ben = () => (app.db?.user?.()?.email || '').toLowerCase();
 const saatStr = d => new Date(d).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
@@ -16,7 +17,7 @@ export const mesafeYaz = m => m == null ? '' : m < 1000 ? `${Math.round(m)} m` :
 export const aktifZiyaret = () => (S.ziyaretler || []).filter(z => z.giris && !z.cikis && (!z.sorumlu || z.sorumlu.toLowerCase() === ben() || !ben()))
   .sort((a, b) => String(b.giris).localeCompare(String(a.giris)))[0] || null;
 
-const konumAl = async () => { try { return await myLocation(); } catch (e) { toast(e.message + ' Giriş konumsuz kaydedilir.', 'err'); return null; } };
+const konumAl = async () => { if (!(await kvkkSor())) { toast('Konum paylaşımını onaylamadın; kayıt konumsuz tutulur.'); return null; } try { return await myLocation(); } catch (e) { toast(e.message + ' Giriş konumsuz kaydedilir.', 'err'); return null; } };
 
 export async function girisYap({ firma_id, proje_id = null, kisi_id = null } = {}) {
   ozellikSay('giris');
@@ -28,7 +29,11 @@ export async function girisYap({ firma_id, proje_id = null, kisi_id = null } = {
   }
   const f = byId('firmalar', firma_id), konum = await konumAl(), simdi = new Date();
   const mesafe = konum && f?.lat != null ? Math.round(km(konum, [f.lat, f.lng]) * 1000) : null;
-  if (mesafe != null && mesafe > 1000 && !confirmBox(`Firmanın kayıtlı konumuna ${mesafeYaz(mesafe)} uzaktasın. Yine de giriş yapılsın mı?`)) return;
+  const kural = konumKurali();
+  if (kural.mod !== 'kapali' && mesafe != null && mesafe > kural.mesafe) {
+    if (kural.mod === 'engelle') return toast(`Firmanın kayıtlı konumuna ${mesafeYaz(mesafe)} uzaktasın; şirket kuralı gereği en fazla ${mesafeYaz(kural.mesafe)} uzaktan giriş yapılabilir.`, 'err');
+    if (!confirmBox(`Firmanın kayıtlı konumuna ${mesafeYaz(mesafe)} uzaktasın. Yine de giriş yapılsın mı? (Yöneticiye uyarı olarak görünür.)`)) return;
+  }
   // Bugün bu firmaya planlı ziyaret varsa onu kullan
   const plan = (S.ziyaretler || []).find(z => z.firma_id === firma_id && z.durum === 'Planlandı' && z.tarih === today() && !z.giris);
   const z = { ...(plan || { fotolar: [] }), firma_id, proje_id: plan?.proje_id || proje_id, kisi_id: plan?.kisi_id || kisi_id, tarih: today(), saat: saatStr(simdi), durum: 'Yapıldı',

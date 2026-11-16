@@ -77,8 +77,9 @@ export async function sesliNot() {
           <div class="fld"><label for="ks-g">Sonraki adım (görev)</label><input id="ks-g" data-a="gorev" maxlength="140" placeholder="yoksa boş bırak"></div>
           <div class="fld"><label for="ks-gt">Görev tarihi</label><input id="ks-gt" type="date" data-a="gorev_tarih"></div>
         </div></section>
+      <section class="ks-onizle" data-ksonizle aria-live="polite"></section>
       <p class="hint" data-ksipucu>Firma bulunursa ziyaret olarak kaydedilir; bulunmazsa not görevlerine düşer. Cümle telefonda ayrıştırılır. Mikrofonla anlatırsan sesi yazıya tarayıcının konuşma tanıması çevirir (Chrome'da Google'ın hizmeti); istersen yazarak da kullanabilirsin.</p>
-      <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`);
+      <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Onayla ve kaydet</button></div></form>`);
   mikBagla(p);
   const ta = p.querySelector('#sn-t'), el = id => p.querySelector(id), elle = new Set();
   const firmalar = [...S.firmalar].sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
@@ -98,8 +99,20 @@ export async function sesliNot() {
     if (!elle.has('gorev')) el('#ks-g').value = a.gorev?.baslik || '';
     if (!elle.has('gorev_tarih')) el('#ks-gt').value = a.gorev?.son_tarih || '';
     p.querySelector('.ks-anl').classList.toggle('dolu', !!(fid || a.sonuc_tipi || a.gorev));
+    onizle();
+  };
+  // Kaydetmeden önce ne olacağını göster
+  const onizle = () => {
+    const metin = ta.value.trim(), fid = el('#ks-f').value, pid = el('#ks-p').value, kid = el('#ks-k').value, g = el('#ks-g').value.trim(), gt = el('#ks-gt').value || gunEkle(today(), 1);
+    const pr = byId('projeler', pid), fAd = firmaAd(fid) || firmaAd(pr?.emut_id || pr?.alici_id);
+    const l = !metin ? [] : (fid || pid) ? [
+      `<b>Ziyaret</b>: ${esc(fAd || 'firma')}${kid ? ' · ' + esc(byId('kisiler', kid)?.ad_soyad || '') : ''}${pr ? ' · proje ' + esc(pr.ad) : ''} · ${tarih(el('#ks-z').value || today())}${el('#ks-s').value ? ' · ' + esc(el('#ks-s').value) : ''}`,
+      ...(g ? [`<b>Görev</b>: “${esc(g)}” · ${tarih(gt)}`] : [])
+    ] : [`<b>Not görevi</b>: “${esc(g || (metin.length > 70 ? metin.slice(0, 70) + '…' : metin))}” · ${tarih(g ? gt : today())} <small class="muted">(firma bulunamadı)</small>`];
+    p.querySelector('[data-ksonizle]').innerHTML = l.length ? `<h3>Kaydedilecek</h3><ul>${l.map(x => `<li>${x}</li>`).join('')}</ul>` : '';
   };
   p.querySelectorAll('[data-a]').forEach(x => x.addEventListener('change', () => {
+    setTimeout(onizle);
     elle.add(x.dataset.a);
     if (x.dataset.a === 'firma_id') { elle.delete('kisi_id'); elle.delete('proje_id'); doldurK(x.value, ''); doldurP(x.value, ''); }
   }));

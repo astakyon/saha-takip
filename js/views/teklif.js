@@ -50,7 +50,7 @@ export function teklifForm(init = {}, after) {
   };
   t.kalemler = t.kalemler || [];
   const panel = openDrawer(`<header class="dh"><div><p class="muted">${t._new ? 'Yeni teklif' : 'Teklif'}</p><h2 id="drawer-title">${esc(t.teklif_no || 'Teklif')}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
-    ${t._new ? '' : `<div class="dh-actions"><button class="btn sm" data-a="pdf">PDF / yazdır</button><button class="btn sm" data-a="wa">WhatsApp</button><button class="btn sm" data-a="baglanti" title="Müşteri teklifi bağlantıdan açıp onaylar">Onay bağlantısı</button><button class="btn sm" data-a="revize">Revize et</button><button class="btn sm ghost" data-a="kopya">Kopyasını oluştur</button><button class="btn sm ghost danger" data-a="sil">Sil</button></div>`}
+    ${t._new ? '' : `<div class="dh-actions"><button class="btn sm" data-a="pdf">PDF / yazdır</button><button class="btn sm" data-a="wa">WhatsApp</button><button class="btn sm" data-a="eposta" title="Firmanın teklif e-postası kendiliğinden dolar">E-posta</button><button class="btn sm" data-a="baglanti" title="Müşteri teklifi bağlantıdan açıp onaylar">Onay bağlantısı</button><button class="btn sm" data-a="revize">Revize et</button><button class="btn sm ghost" data-a="kopya">Kopyasını oluştur</button><button class="btn sm ghost danger" data-a="sil">Sil</button></div>`}
     ${(() => { if (t._new) return ''; const rv = S.teklifler.filter(x => revKok(x.teklif_no) === revKok(t.teklif_no)).sort((a, b) => revNo(a.teklif_no) - revNo(b.teklif_no)); return rv.length > 1 ? `<div class="rev-list"><b>Revizyonlar</b>${rv.map(x => `<button type="button" class="chip ${x.id === t.id ? 'on' : ''}" data-rev="${x.id}">${esc(x.teklif_no)} · ${esc(x.durum)} · ${para(x.toplam, x.para_birimi)}</button>`).join('')}</div>` : ''; })()}
     <form class="dbody form" novalidate><div data-vrisk></div>${renderForm(FORM, t)}
       <fieldset class="fs"><legend>Ürünler</legend>
@@ -121,12 +121,19 @@ export function teklifForm(init = {}, after) {
     if (a === 'wa') ozellikSay('teklif-wa');
     if (a === 'baglanti') { closeDrawer(); (await import('../onaybaglanti.js')).baglantiPenceresi(byId('teklifler', t0.id) || t0, () => app.refresh()); }
     if (a === 'wa') { const k = byId('kisiler', t0.kisi_id); window.open(waLink(k?.telefon || byId('firmalar', t0.firma_id)?.telefon || '', teklifMetni(t0)), '_blank', 'noopener'); }
+    if (a === 'eposta') { ozellikSay('teklif-eposta'); location.href = teklifEpostaLinki(t0); if ((t0.durum || 'Taslak') === 'Taslak') toast('Gönderdiysen teklifin durumunu "Gönderildi" yap.'); }
     if (a === 'revize') { const { id, created_at, updated_at, ...r } = t0; const kok = revKok(t0.teklif_no); const n = Math.max(1, ...S.teklifler.filter(x => revKok(x.teklif_no) === kok).map(x => revNo(x.teklif_no))) + 1; teklifForm({ ...r, teklif_no: `${kok}-R${n}`, tarih: today(), gecerlilik: gunEkle(today(), 15), durum: 'Taslak', kalemler: (t0.kalemler || []).map(k => ({ ...k })), notlar: [t0.notlar, `${t0.teklif_no} teklifinin revizyonu.`].filter(Boolean).join('\n') }, after); }
     if (a === 'kopya') { const { id, created_at, updated_at, ...r } = t0; teklifForm({ ...r, teklif_no: yeniTeklifNo(), tarih: today(), gecerlilik: gunEkle(today(), 15), durum: 'Taslak', kalemler: (t0.kalemler || []).map(k => ({ ...k })) }); }
     if (a === 'sil' && confirmBox(`${t0.teklif_no} silinsin mi?`)) { await app.db.del('teklifler', t0.id); toast('Teklif silindi.'); closeDrawer(); app.refresh(); }
   });
 }
 
+// Alıcı: firmanın teklif e-postası, yoksa ilgili kişinin, o da yoksa firmanın genel e-postası
+export function teklifAlicisi(t) {
+  const f = byId('firmalar', t.firma_id) || byId('firmalar', byId('projeler', t.proje_id)?.alici_id) || byId('firmalar', byId('projeler', t.proje_id)?.emut_id);
+  return f?.teklif_eposta || byId('kisiler', t.kisi_id)?.eposta || f?.eposta || '';
+}
+export const teklifEpostaLinki = t => `mailto:${encodeURIComponent(teklifAlicisi(t)).replace(/%40/g, '@').replace(/%2C/g, ',')}?subject=${encodeURIComponent(`Teklif ${t.teklif_no || ''}`.trim())}&body=${encodeURIComponent(teklifMetni(t))}`;
 export function teklifMetni(t) {
   const h = hesapla(t), pb = t.para_birimi || 'USD', k = byId('kisiler', t.kisi_id), p = byId('projeler', t.proje_id);
   return [`Merhaba${k ? ' ' + k.ad_soyad.split(' ')[0] + ' Bey/Hanım' : ''},`, `${p ? p.ad + ' için ' : ''}aydınlatma teklifimiz (${t.teklif_no}):`, '',

@@ -10,7 +10,9 @@ import { zDurum, ziyaretForm } from './ziyaret.js';
 import { haftaBasi } from './rapor.js';
 import { gidilmeyenler, zamaniGelenler, rotaSirala, rotaUrl } from './bugun.js';
 import { radarListesi } from '../radar.js';
-import { izin } from '../yetki.js';
+import { izin, sahipMi } from '../yetki.js';
+import { tekrarDoldur } from '../tekrar.js';
+import { planOnayAcik, planDurumHtml, planGonder } from '../planonay.js';
 
 const GUN_KISA = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
 const fmt = (d, o) => new Date(d + 'T00:00').toLocaleDateString('tr-TR', o);
@@ -73,7 +75,7 @@ export function haftaplanView(el) {
     ${yaz ? `<span class="hp-gunb" role="group" aria-label="Güne ekle">${gunler.filter(d => d >= t).map(d => `<button type="button" data-ekle="${d}" class="${B[d] && x.il === B[d] ? 'uygun' : ''}" title="${fmt(d, { weekday: 'long' })}${B[d] ? ' · ' + B[d] : ''}">${GUN_KISA[gunler.indexOf(d)]}</button>`).join('')}</span>` : ''}</li>`;
 
   el.innerHTML = `<header class="vh"><div><h1>Haftalık saha planı</h1><p class="sum">${fmt(bas, { day: 'numeric', month: 'long' })} – ${fmt(son, { day: 'numeric', month: 'long' })}</p></div>
-    <div class="vh-act">${yaz && !gecmisMi ? '<button class="btn primary" data-dagit title="Bölgesi seçili günlere en önemli önerileri yerleştirir">Otomatik dağıt</button>' : ''}</div></header>
+    <div class="vh-act">${planDurumHtml(bas)}${yaz && !gecmisMi && planOnayAcik() && !sahipMi() ? '<button class="btn" data-pgonder>Onaya gönder</button>' : ''}${yaz && !gecmisMi ? '<button class="btn primary" data-dagit title="Bölgesi seçili günlere en önemli önerileri yerleştirir">Otomatik dağıt</button>' : ''}</div></header>
     <section class="week-sum hp-ozet"><span class="hp-nav"><button type="button" class="btn sm ghost" data-w="-7" aria-label="Önceki hafta">‹</button><button type="button" class="btn sm ghost" data-w="0">Bu hafta</button><button type="button" class="btn sm ghost" data-w="7" aria-label="Sonraki hafta">›</button></span><span><b>${plan.length + yap.length}</b> plan</span><span><b>${yap.length}</b> yapıldı</span>${kacan.length ? `<span class="neg"><b>${kacan.length}</b> kaçtı</span>` : ''}<span class="muted">${ol.length} öneri</span>
       <label class="tg-l"><input type="checkbox" data-cmt ${f.cmt ? 'checked' : ''}> Cumartesi</label></section>
     ${kacan.length ? `<p class="hint">Kaçan ziyaretleri bir güne sürükleyerek ya da öneri listesinden yeniden planlayabilirsin.</p>` : ''}
@@ -86,6 +88,9 @@ export function haftaplanView(el) {
     </div>`;
 
   const yenile = () => haftaplanView(el);
+  el.querySelector('[data-pgonder]')?.addEventListener('click', async () => { try { await planGonder(bas); yenile(); } catch (e) { toast('Gönderilemedi: ' + e.message, 'err'); } });
+  // Tekrarlayan ziyaret kuralları: vadesi gelenler bu haftaya kendiliğinden eklenir (bir kez)
+  if (yaz && !gecmisMi && !el._tekrar?.[bas]) { el._tekrar = { ...(el._tekrar || {}), [bas]: true }; tekrarDoldur(bas, son).then(n => { if (n) { toast(`${n} tekrarlayan ziyaret plana eklendi.`); yenile(); } }); }
   const planla = async (firma_id, proje_id, gun, varolan) => {
     if (!varolan) ozellikSay('hafta-plan');
     try {

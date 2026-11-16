@@ -467,7 +467,7 @@ const DB = () => {
   await p.goto(U + '#/kur'); await w(1000);
   const ku = await p.evaluate(() => !!document.querySelector('[data-kur] *'));
   kontrol('Finans menüsü: Özet, Cari hesaplar, Yaşlandırma, Tahsilat, Masraf ve km, Kur, Muhasebeye aktar; Satış\'ta tahsilat yok; ayrı Masraf menüsü yok',
-    /Finans/.test(oz.menu) && !/Masraf ve km/.test(oz.menu) && oz.sekme === 'Özet|Cari hesaplar|Yaşlandırma|Tahsilat|Masraf ve km|Kur|Muhasebeye aktar' && /Açık alacak 2\.050 \$/.test(oz.kart) && /Gecikmiş alacak 800 \$/.test(oz.kart), JSON.stringify(oz));
+    /Finans/.test(oz.menu) && !/Masraf ve km/.test(oz.menu) && oz.sekme === 'Özet|Cari hesaplar|Yaşlandırma|Tahsilat|Çek ve senet|Nakit akışı|Banka ekstresi|Masraf ve km|Prim ve hedef|Kur|Muhasebeye aktar' && /Açık alacak 2\.050 \$/.test(oz.kart) && /Gecikmiş alacak 800 \$/.test(oz.kart), JSON.stringify(oz));
   kontrol('Cari hesap: fatura − ödenen − ayrı ödeme = bakiye; ekstrede yürüyen bakiye; Excel, PDF, WhatsApp; yaşlandırmada 90+ gün; muhasebe sayımı; kur ekranı',
     /500 \$/.test(ca || '') && ek.satir === 3 && /500,00 \$/.test(ek.son || '') && ek.btn === 'xlsx,pdf,wa' && ya.d90p === '800 $' && ya.gelmedi === '1.250 $' && mh === '(1)' && ku, JSON.stringify({ ca, ek, ya, mh, ku }));
   kontrol('Finans ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
@@ -493,8 +493,8 @@ const DB = () => {
   const ag = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { n: (S.bayiler || []).length, f: S.bayiler?.[0]?.firma_id, satir: document.querySelector('[data-bk]')?.innerText.replace(/\s+/g, ' ') }; });
   await p.click('[data-bk]'); await w(1200);
   const ka = await p.evaluate(() => ({ h: location.hash, h1: document.querySelector('main h1')?.textContent, kart: [...document.querySelectorAll('.fn-kart')].map(k => k.innerText.replace(/\s+/g, ' ')).join(' / '), proje: /Örnek Hastane/.test(document.body.innerText), kosul: /%12/.test(document.body.innerText) }));
-  kontrol('Bayi ve partner menüsü ağ yokken kapalı (adres de açılmaz); Şirket profilinde anahtarla açılır: Ağ, Bayi karnesi, Talepler',
-    !kapali.menu && yon === '#/bugun' && acik.h === '#/bayiag' && acik.menu && acik.sekme === 'Ağ|Bayi karnesi|Bayi talepleri', JSON.stringify({ kapali, yon, acik }));
+  kontrol('Bayi ve partner menüsü ağ yokken kapalı (adres de açılmaz); Şirket profilinde anahtarla açılır: Ağ, Bayi karnesi, Stoklar, Satışlar, Hedef ve prim, Analiz, Talepler',
+    !kapali.menu && yon === '#/bugun' && acik.h === '#/bayiag' && acik.menu && acik.sekme === 'Ağ|Bayi karnesi|Stoklar|Satışlar|Hedef ve prim|Analiz|Bayi talepleri', JSON.stringify({ kapali, yon, acik }));
   kontrol('Bayi ataması (firma, hedef, iskonto); ağ listesinde yıl satışı ve hedef %; bayi karnesi: satış, hedef, projeler, koşullar',
     ag.n === 1 && ag.f === 'f1' && /5\.000 \$/.test(ag.satir || '') && /%50/.test(ag.satir || '') && ka.h === '#/bayikarne' && /^Örnek Bayi/.test(ka.h1 || '') && /%50 gerçekleşti/.test(ka.kart) && ka.proje && ka.kosul, JSON.stringify({ ag, ka }));
   kontrol('Bayi ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
@@ -523,6 +523,155 @@ const DB = () => {
   kontrol('Gün özeti: ilk giriş, ziyaret, sahada süre, zaman çizelgesi; ay dökümü',
     go.menu && /İlk giriş 09:00/.test(go.ledger || '') && /Ziyaret 2/.test(go.ledger || '') && /45 dk/.test(go.ledger || '') && go.akis.length >= 3 && /^09:00/.test(go.akis[0] || '') && ay.n >= 1 && /Sahada gün/.test(ay.ledger || ''), JSON.stringify({ go, ay }));
   kontrol('Plan ve gerçekleşen ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+// Sürüm 99: bayi stokları, bayinin sattıkları (sell-out), hedef ve prim, ağ analizi
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString(); const g = n => { const x = new Date(Date.now() + n * 864e5); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', il: 'Adana', hedef_yil: 4000, created_at: ts, updated_at: ts }];
+    d.bayi_stok = [{ id: 'bs1', owner: 'u1', firma_id: 'f1', kod: 'A1', aciklama: 'Armatür', adet: 10, birim_fiyat: 100, son_hareket: g(-120), created_at: ts, updated_at: ts },
+      { id: 'bs2', owner: 'u1', firma_id: 'f1', kod: 'B2', aciklama: 'Projektör', adet: 3, birim_fiyat: 50, son_hareket: g(-2), created_at: ts, updated_at: ts }];
+    d.bayi_satis = [{ id: 'bt1', owner: 'u1', firma_id: 'f1', tarih: g(-10), kod: 'A1', urun: 'Armatür', adet: 4, tutar: 600, para_birimi: 'USD', musteri: 'Son Müşteri', created_at: ts, updated_at: ts }];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bayistok'); await w(1500);
+  const st = await p.evaluate(() => ({ h: location.hash, sum: document.querySelector('[data-sum]')?.textContent, olu: /120 gün hareketsiz/.test(document.body.innerText), az: !!document.querySelector('.flag:not(.soft)') }));
+  await p.fill('[data-adet="bs2"]', '7'); await p.dispatchEvent('[data-adet="bs2"]', 'change'); await w(800);
+  const ad = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return S.bayi_stok.find(x => x.id === 'bs2').adet; });
+  await p.goto(U + '#/bayisatis'); await w(1500);
+  const sa = await p.evaluate(() => [...document.querySelectorAll('.fn-kart')].map(k => k.innerText.replace(/\s+/g, ' ')).join(' / '));
+  await p.click('[data-sat]'); await w(600);
+  await p.fill('.drawer.open [name=musteri]', 'Yeni Müşteri'); await p.fill('.drawer.open [name=tutar]', '400');
+  await p.click('.drawer.open [type=submit]'); await w(1200);
+  const yeni = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { n: S.bayi_satis.length, f: S.bayi_satis.find(x => x.musteri === 'Yeni Müşteri')?.firma_id }; });
+  await p.goto(U + '#/bayihedef'); await w(1500);
+  const he = await p.evaluate(() => document.querySelector('main tbody tr')?.innerText.replace(/\s+/g, ' '));
+  await p.goto(U + '#/bayianaliz'); await w(1500);
+  const an = await p.evaluate(() => ({ satir: document.querySelector('main tbody tr')?.innerText.replace(/\s+/g, ' '), bosluk: document.body.innerText.includes('Bölge boşlukları') }));
+  kontrol('Bayi stokları: bayinin ayrı stoğu, değer, hareketsiz (90+ gün) ve az kalan işareti, satır içi adet düzeltme',
+    st.h === '#/bayistok' && /stok değeri ~1\.150 \$/.test(st.sum || '') && /1 hareketsiz/.test(st.sum || '') && st.olu && st.az && +ad === 7, JSON.stringify({ st, ad }));
+  kontrol('Bayi satışları: bize alım (sell-in) ve bayinin sattığı (sell-out), stok devir hızı; satış bildirimi seçili bayiye yazılır',
+    /Bize alım \(sell-in\) 5\.000 \$/.test(sa) && /Bayinin sattığı \(sell-out\) 600 \$/.test(sa) && /×\/yıl/.test(sa) && yeni.n === 2 && yeni.f === 'f1', JSON.stringify({ sa, yeni }));
+  kontrol('Bayi hedef ve prim (hedef %125 → prim) ve ağ analizi (pay, bölge boşlukları)',
+    /Örnek Bayi/.test(he || '') && /%125/.test(he || '') && /100 \$/.test(he || '') && /%100/.test(an.satir || '') && an.bosluk, JSON.stringify({ he, an }));
+  kontrol('Bayi stok/satış/hedef/analiz ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+// Sürüm 100: çek ve senet, nakit akışı, prim ve hedef, masraf onayı, banka ekstresi eşleştirme
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString(); const g = n => { const x = new Date(Date.now() + n * 864e5); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+    d.tahsilatlar = [{ id: 'th1', owner: 'u1', firma_id: 'f1', belge_no: 'FT-77', tarih: g(-20), vade: g(10), tutar: 2000, odenen: 0, para_birimi: 'USD', tur: 'Fatura', created_at: ts, updated_at: ts }];
+    d.cekler = [{ id: 'c1', owner: 'u1', yon: 'Verilen', tur: 'Çek', belge_no: '9001', vade: g(20), tutar: 500, para_birimi: 'USD', durum: 'Ödenecek', created_at: ts, updated_at: ts }];
+    d.masraflar.push({ id: 'm2', owner: 'u1', tarih: g(-1), tip: 'Yemek', tutar: 300, kim: 'saha@ornek.com', onay: 'Bekliyor', created_at: ts, updated_at: ts });
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/cekler'); await w(1500);
+  await p.click('[data-yon="Alınan"]'); await w(500);
+  await p.click('[data-yeni]'); await w(600);
+  await p.fill('.drawer.open [name=belge_no]', '1234'); await p.fill('.drawer.open [name=vade]', await p.evaluate(() => { const x = new Date(Date.now() + 15 * 864e5); return x.toISOString().slice(0, 10); }));
+  await p.fill('.drawer.open [name=tutar]', '1000'); await p.selectOption('.drawer.open [name=para_birimi]', 'USD');
+  await p.click('.drawer.open [type=submit]'); await w(1200);
+  const ck = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { n: S.cekler.length, sum: document.querySelector('[data-sum]')?.textContent }; });
+  await p.goto(U + '#/nakit'); await w(1500);
+  const nk = await p.evaluate(() => ({ kart: [...document.querySelectorAll('.fn-kart')].map(k => k.innerText.replace(/\s+/g, ' ')).join(' / '), satir: document.querySelectorAll('.nk-t tbody tr').length }));
+  await p.goto(U + '#/prim'); await w(1500);
+  const pr = await p.evaluate(() => document.querySelector('main tbody tr')?.innerText.replace(/\s+/g, ' '));
+  await p.goto(U + '#/masraflar'); await w(1500);
+  const mo1 = await p.evaluate(() => ({ kart: !!document.querySelector('[data-mo="m2"]'), rozet: /\d/.test(document.querySelector('.alt-sekme a[href="#/masraflar"] .nav-rozet')?.textContent || '') }));
+  await p.click('[data-mo="m2"] [data-moy="Onaylandı"]'); await w(1000);
+  const mo2 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const m = S.masraflar.find(x => x.id === 'm2'); return { o: m.onay, kim: m.onaylayan, kart: !!document.querySelector('[data-mo="m2"]') }; });
+  await p.goto(U + '#/banka'); await w(1200);
+  await p.evaluate(async () => { const m = await import('./js/views/finans2.js'); const rows = [['Tarih', 'Açıklama', 'Tutar'], ['05.11.2026', 'HAVALE ORNEK BAYI FT-77 ODEMESI', 1200], ['06.11.2026', 'MAAS', 900]];
+    const ekstre = m.ekstreOku(rows.map(r => r.map(x => typeof x === 'string' ? x.replace('ORNEK BAYI', 'ÖRNEK BAYİ') : x))).map(s => ({ ...s, pb: 'USD' })); m.ekstreCiz(document.querySelector('#view .view-ic') || document.querySelector('main'), ekstre); });
+  await w(400);
+  const bk1 = await p.evaluate(() => ({ satir: document.querySelectorAll('.bk-t tbody tr').length, secili: document.querySelectorAll('[data-sec]:checked').length }));
+  await p.click('[data-esle]'); await w(1200);
+  const bk2 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const t = S.tahsilatlar.find(x => x.id === 'th1'); return { od: t.odenen, tar: t.odeme_tarihi }; });
+  kontrol('Çek ve senet: alınan çek eklenir, portföy özeti; nakit akışı 13 hafta (fatura + çekler giriş, verilen çek çıkış)',
+    ck.n === 2 && /Portföyde 1 belge/.test(ck.sum || '') && nk.satir === 13 && /Beklenen giriş 3\.000 \$/.test(nk.kart) && /Beklenen çıkış/.test(nk.kart), JSON.stringify({ ck, nk }));
+  kontrol('Prim ve hedef: kişi satırı (sipariş, satış)', /Ben/.test(pr || '') && /5\.000 \$/.test(pr || ''), pr);
+  kontrol('Masraf onayı: bekleyen masraf yetkiliye görünür (rozet), onaylanınca kaydedilir', mo1.kart && mo1.rozet && mo2.o === 'Onaylandı' && mo2.kim && !mo2.kart, JSON.stringify({ mo1, mo2 }));
+  kontrol('Banka ekstresi: firma adı ve belge no ile fatura önerilir, eşleştirilen ödeme faturaya işlenir',
+    bk1.satir === 2 && bk1.secili === 1 && +bk2.od === 1200 && bk2.tar === '2026-11-05', JSON.stringify({ bk1, bk2 }));
+  kontrol('Finans 2 ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+// Sürüm 101: uyarı akışı, ekip sıralaması, konum doğrulama kuralı, KVKK konum metni onayı
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString(); const g = n => { const x = new Date(Date.now() + n * 864e5); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+    d.ziyaretler.push({ id: 'zu', owner: 'u1', firma_id: 'f1', tarih: g(-1), durum: 'Yapıldı', giris: g(-1) + 'T10:00:00', cikis: g(-1) + 'T10:30:00', giris_mesafe: 5200, created_at: ts, updated_at: ts });
+    d.ziyaretler.push({ id: 'zy', owner: 'u1', firma_id: 'f2', tarih: g(-2), durum: 'Yapılmadı', mazeret: 'Müşteri yoktu', created_at: ts, updated_at: ts });
+    localStorage.setItem('__DB', JSON.stringify(d));
+    navigator.geolocation.getCurrentPosition = ok => ok({ coords: { latitude: 37.2, longitude: 35.3 } });`) });
+  await p.goto(U + '#/uyarilar'); await w(1500);
+  const uy = await p.evaluate(() => ({ h: location.hash, l: [...document.querySelectorAll('.uy-akis li')].map(l => l.innerText.replace(/\s+/g, ' ')).join(' / '), sekme: [...document.querySelectorAll('.alt-sekme a')].map(a => a.firstChild.textContent.trim()).join('|') }));
+  await p.goto(U + '#/siralama'); await w(1200);
+  const si = await p.evaluate(() => document.querySelector('.sira-l li')?.innerText.replace(/\s+/g, ' '));
+  await p.goto(U + '#/sirket/genel'); await w(1500);
+  await p.fill('[data-kdm]', '500'); await p.selectOption('[data-kdmod]', 'engelle'); await p.click('[data-kdkaydet]'); await w(800);
+  const kural = await p.evaluate(async () => (await import('./js/konum.js')).konumKurali());
+  const gr = await p.evaluate(async () => { const { girisYap } = await import('./js/giriscikis.js'); const { S } = await import('./js/db.js'); const once = S.ziyaretler.length; await girisYap({ firma_id: 'f1' }); await new Promise(r => setTimeout(r, 600));
+    return { yeni: S.ziyaretler.length - once, onay: (S.konum_onaylari || []).map(o => o.onay), toast: document.getElementById('toast')?.textContent || '' }; });
+  kontrol('Uyarı akışı: uzaktan giriş ve yapılmayan ziyaret listelenir; Raporlar sekmelerinde Uyarılar ve Ekip sıralaması',
+    uy.h === '#/uyarilar' && /5,2 km uzaktan giriş/.test(uy.l) && /yapılmadı: Müşteri yoktu/.test(uy.l) && /Uyarılar\|Ekip sıralaması/.test(uy.sekme), JSON.stringify(uy));
+  kontrol('Ekip sıralaması: kişi satırı', /Ben/.test(si || ''), si);
+  kontrol('Konum kuralı (500 m, engelle) kaydedilir; uzaktan giriş engellenir; KVKK metni onayı kaydedilir',
+    kural.mesafe === 500 && kural.mod === 'engelle' && gr.yeni === 0 && gr.onay[0] === true && /en fazla 500 m/.test(gr.toast), JSON.stringify({ kural, gr }));
+  kontrol('Yönetici ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+// Sürüm 102: serbest metin önizleme, "Bilgiler doğru" onayı, firma teklif e-postası, ekrana özel geri bildirim
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB'));
+    d.firmalar[0].teklif_eposta = 'teklif@ornekbayi.com'; d.teklifler[0].firma_id = 'f1'; localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bugun'); await w(1500);
+  const al = await p.evaluate(async () => { const { S, uuid } = await import('./js/db.js'); const { app } = await import('./js/state.js'); await app.db.bulk('firmalar', [{ id: 'fx1', ad: 'Aktarılan Firma', tipler: [] }]);
+    const t = await import('./js/views/teklif.js'); return { kaynak: S.firmalar.find(f => f.id === 'fx1')?.kaynak, eski: S.firmalar.find(f => f.id === 'f1')?.kaynak || null, alici: t.teklifAlicisi(S.teklifler[0]), link: t.teklifEpostaLinki(S.teklifler[0]).slice(0, 60) }; });
+  await p.goto(U + '#/kontrol'); await w(1200);
+  const ko = await p.evaluate(() => /Aktarılan Firma/.test(document.body.textContent));
+  await p.goto(U + '#/firma/fx1'); await w(1500);
+  const r1 = await p.evaluate(() => document.querySelector('.dg-bek')?.innerText || '');
+  await p.click('[data-dogrula]'); await w(1000);
+  const r2 = await p.evaluate(async () => ({ d: (await import('./js/db.js')).S.firmalar.find(f => f.id === 'fx1').dogrulandi, ok: !!document.querySelector('.dg-ok') }));
+  await p.evaluate(async () => (await import('./js/hizli.js')).sesliNot()); await w(700);
+  await p.fill('#sn-t', "Örnek Bayi'de görüştüm, yarın tekrar ara"); await p.dispatchEvent('#sn-t', 'change'); await w(500);
+  const on = await p.evaluate(() => document.querySelector('[data-ksonizle]')?.innerText.replace(/\s+/g, ' '));
+  await p.evaluate(async () => { (await import('./js/ui.js')).closeDrawer(true); }); await w(300);
+  await p.goto(U + '#/siparisler'); await w(1000);
+  await p.evaluate(async () => (await import('./js/geribildirim.js')).geriBildirimAc()); await w(600);
+  const gb = await p.evaluate(() => document.querySelector('.drawer.open')?.innerText.replace(/\s+/g, ' '));
+  kontrol('Toplu aktarılan firmaya kaynak etiketi (var olana dokunulmaz); Veri kontrolü listeler; "Bilgiler doğru" ile doğrulanır',
+    /Excel/.test(al.kaynak || '') && !al.eski && ko && /doğrulanmadı/.test(r1) && /\|/.test(r2.d || '') && r2.ok, JSON.stringify({ al, ko, r1, r2 }));
+  kontrol('Teklif e-postası: alıcı firmanın teklif e-postasından dolar', al.alici === 'teklif@ornekbayi.com' && /^mailto:teklif@ornekbayi\.com\?subject=Teklif/.test(al.link), JSON.stringify(al));
+  kontrol('Konuşarak kaydet: kaydetmeden önce eklenecekler önizlenir (ziyaret + görev)', /Kaydedilecek/.test(on || '') && /Ziyaret: Örnek Bayi/.test(on || '') && /Görev/.test(on || ''), on);
+  kontrol('Geri bildirim bulunulan ekranı adıyla gösterir ve ekran görüntüsü seçeneği sunar', /Siparişler/.test(gb || '') && /görüntüsünü ekle/.test(gb || ''), gb);
+  kontrol('Veri kalitesi ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+// Sürüm 103-104: tekrarlayan ziyaret kuralı, plan onayı, onay kuyruğu (masraf, plan, ekip kayıtları)
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString(); const g = n => { const x = new Date(Date.now() + n * 864e5); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+    d.firmalar[0].tekrar_gun = 7;
+    d.ziyaretler.push({ id: 'zt', owner: 'u1', firma_id: 'f1', tarih: g(-30), durum: 'Yapıldı', created_at: ts, updated_at: ts });
+    d.ziyaretler.push({ id: 'zp', owner: 'u1', firma_id: 'f2', tarih: g(1), durum: 'Planlandı', planli: true, sorumlu: 'saha@ornek.com', created_at: ts, updated_at: ts });
+    d.plan_onaylari = [{ id: 'po1', owner: 'u1', kim: 'saha@ornek.com', hafta: g(-((new Date().getDay() + 6) % 7)), durum: 'Gönderildi', adet: 1, created_at: ts, updated_at: ts }];
+    d.projeler.push({ id: 'pe', owner: 'u1', ad: 'Ekip Projesi', durum: 'Proje', kaynak: 'Ekip kaydı · saha@ornek.com', created_at: ts, updated_at: ts });
+    d.masraflar.push({ id: 'mo', owner: 'u1', tarih: g(-1), tip: 'Yakıt', tutar: 800, kim: 'saha@ornek.com', onay: 'Bekliyor', created_at: ts, updated_at: ts });
+    d.ayarlar = [{ id: 'a9', owner: 'u1', anahtar: 'plan_onay', deger: true, created_at: ts, updated_at: ts }];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/plan'); await w(2500);
+  const tk = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const z = S.ziyaretler.filter(x => x.firma_id === 'f1' && x.durum === 'Planlandı'); return { n: z.length, not: z[0]?.notlar || '' }; });
+  await p.goto(U + '#/onay'); await w(1500);
+  const ok1 = await p.evaluate(() => ({ h: location.hash, l: [...document.querySelectorAll('.onay-l li')].map(l => l.innerText.replace(/\s+/g, ' ')).join(' / '), rozet: document.querySelector('.alt-sekme a[href="#/onay"] .nav-rozet')?.textContent }));
+  await p.click('.onay-l li:has-text("Ekip Projesi") [data-k="ok"]'); await w(900);
+  await p.click('.onay-l li:has-text("Hafta planı") [data-ac]'); await w(600);
+  await p.click('.drawer.open [data-po="Onaylandı"]'); await w(900);
+  const ok2 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { p: S.projeler.find(x => x.id === 'pe').dogrulandi, po: S.plan_onaylari.find(x => x.id === 'po1').durum, kalan: document.querySelectorAll('.onay-l li').length }; });
+  const kanca = await p.evaluate(async () => { const { app } = await import('./js/state.js'); const { ayarYaz } = await import('./js/ayar.js'); await ayarYaz('ekip_onay', true); const once = app.yetki; app.yetki = { ben_sahip: false, yetkiler: { firmalar: 'yaz' } };
+    let r; try { r = await app.db.save('firmalar', { ad: 'Ekipten Firma', tipler: [] }); } finally { app.yetki = once; } return r?.kaynak || (await import('./js/db.js')).S.firmalar.find(f => f.ad === 'Ekipten Firma')?.kaynak; });
+  kontrol('Tekrarlayan ziyaret: "her hafta" kuralı olan firmaya hafta planı açılınca ziyaret kendiliğinden planlanır', tk.n === 1 && /Tekrarlayan ziyaret \(Her hafta\)/.test(tk.not), JSON.stringify(tk));
+  kontrol('Onay kuyruğu: masraf, hafta planı ve ekip kaydı tek listede (rozetle); ekip kaydı ve plan onaylanır',
+    ok1.h === '#/onay' && /Masraf/.test(ok1.l) && /Hafta planı/.test(ok1.l) && /Ekip Projesi/.test(ok1.l) && +ok1.rozet === 3 && /\|/.test(ok2.p || '') && ok2.po === 'Onaylandı' && ok2.kalan === 1, JSON.stringify({ ok1, ok2 }));
+  kontrol('Ekip kaydı onayı açıkken ekip üyesinin yeni firması "Ekip kaydı" olarak işaretlenir', /^Ekip kaydı/.test(kanca || ''), kanca);
+  kontrol('Planlama ve onay ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"

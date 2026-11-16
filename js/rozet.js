@@ -3,6 +3,7 @@ import { S } from './db.js';
 import { app } from './state.js';
 import { today } from './ui.js';
 import { sahipMi } from './yetki.js';
+import { onaySay, onayListesi } from './onay.js';
 
 const ben = () => (app.db?.user?.()?.email || '').toLowerCase();
 const benimGorev = g => g.durum !== 'Tamam' && (g.atanan ? g.atanan.toLowerCase() === ben() : sahipMi() || !ben());
@@ -12,7 +13,8 @@ export function rotaRozet(r) {
   if (r === 'gorevler') return (S.gorevler || []).filter(g => benimGorev(g) && g.son_tarih && g.son_tarih <= t).length;
   if (r === 'talepler') return app.talepAcik || 0;
   if (r === 'tahsilat') return (S.tahsilatlar || []).filter(x => (!x.tur || x.tur === 'Fatura') && x.vade && x.vade < t && (+x.tutar || 0) - (+x.odenen || 0) > 0.005).length;
-  if (r === 'onay') return app.onayBekleyen || 0;
+  if (r === 'onay') return onaySay();
+  if (r === 'masraflar') return onayListesi().filter(x => x.tur.k === 'masraf').length;
   return 0;
 }
 // Başlık bazında: içindeki sekmelerin toplamı

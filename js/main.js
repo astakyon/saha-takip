@@ -2,6 +2,7 @@ import { S, makeAdapter, getConfig, setConfig } from './db.js';
 import { app, loadFilters, SURUM } from './state.js';
 import { profil, SEKTOR } from './profil.js';
 import { ayar } from './ayar.js';
+import './planonay.js';
 app.bayiAgiFn = () => ayar('bayi_agi') === true || (S.bayiler || []).length > 0 || !!profil().bayi;
 import { esc, toast, closeDrawer } from './ui.js';
 import { listeleriUygula } from './listeler.js';
@@ -42,6 +43,17 @@ const ROUTES = {
   muhasebe:  { t: 'Muhasebeye aktar', ico: 'doc', v: yukle('views/finans.js', 'muhasebeView'), g: 'Finans' },
   bayiag:    { t: 'Bayi ve partner ağı', ico: 'box', v: yukle('views/bayiag.js', 'bayiagView'), g: 'Satış' },
   bayikarne: { t: 'Bayi karnesi', ico: 'chart', v: yukle('views/bayiag.js', 'bayikarneView'), g: 'Satış' },
+  onay: { t: 'Onay kuyruğu', ico: 'check', v: yukle('views/onaykuyrugu.js', 'onayView'), g: 'Saha' },
+  uyarilar: { t: 'Uyarı akışı', ico: 'chart', v: yukle('views/yonetici.js', 'uyarilarView'), g: 'Rapor' },
+  siralama: { t: 'Ekip sıralaması', ico: 'chart', v: yukle('views/yonetici.js', 'siralamaView'), g: 'Rapor' },
+  cekler: { t: 'Çek ve senet', ico: 'wallet', v: yukle('views/finans2.js', 'ceklerView'), g: 'Finans' },
+  nakit: { t: 'Nakit akışı', ico: 'chart', v: yukle('views/finans2.js', 'nakitView'), g: 'Finans' },
+  prim: { t: 'Prim ve hedef', ico: 'chart', v: yukle('views/finans2.js', 'primView'), g: 'Finans' },
+  banka: { t: 'Banka ekstresi', ico: 'wallet', v: yukle('views/finans2.js', 'bankaView'), g: 'Finans' },
+  bayistok: { t: 'Bayi stokları', ico: 'box', v: yukle('views/bayiag2.js', 'bayistokView'), g: 'Satış' },
+  bayisatis: { t: 'Bayi satışları', ico: 'chart', v: yukle('views/bayiag2.js', 'bayisatisView'), g: 'Satış' },
+  bayihedef: { t: 'Bayi hedef ve prim', ico: 'chart', v: yukle('views/bayiag2.js', 'bayihedefView'), g: 'Satış' },
+  bayianaliz: { t: 'Bayi ağı analizi', ico: 'chart', v: yukle('views/bayiag2.js', 'bayianalizView'), g: 'Satış' },
   bayi:      { t: 'Bayi paneli', ico: 'box', v: yukle('views/bayi.js', 'bayiView'), g: 'Satış' },
   talepler:  { t: 'Bayi talepleri', ico: 'box', v: yukle('views/talepler.js', 'taleplerView'), g: 'Satış' },
   teklifler: { t: 'Teklifler', ico: 'doc', v: yukle('views/teklif.js', 'tekliflerView'), g: 'Satış' },

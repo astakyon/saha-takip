@@ -32,6 +32,52 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 104)
+
+- **Onay kuyruğu** (`js/views/onaykuyrugu.js`, `js/onay.js`): yalnız şirket yetkilisi; masraf (Onayla / Reddet), hafta planı (İncele), ekip kayıtları (Onayla / Düzeltilecek notu). Menü rozeti bekleyen sayısını gösterir. "Ekibin açtığı yeni firma, proje ve siparişler" açıkken ekip üyesinin yeni kaydı "Ekip kaydı" olarak işaretlenir.
+- E-postadan iş üretme (Gmail) ve muhasebe programı entegrasyonu (Logo / Mikro / Paraşüt) bu sürümde yok: ikisi de sunucu tarafında yetkili bağlantı (OAuth / API anahtarı) ister. Şimdilik Finans → Muhasebeye aktar ile Excel verilir.
+- **schema.sql 46:** `siparisler.kaynak`, `dogrulandi`.
+
+## Güncelleme notu (sürüm 103)
+
+- **Tekrarlayan ziyaret** (`js/tekrar.js`): firma formunda "Düzenli ziyaret" ve "Tercih edilen gün"; Hafta planı açılınca son ziyaretten bu yana süre dolmuş firmalar o haftaya "Rutin ziyaret" olarak eklenir (plandan çıkarılan aynı hafta yeniden eklenmez).
+- **Plan onayı** (`js/planonay.js`): Şirket profili → "Ekibin haftalık planı onayımdan geçsin"; ekip üyesi "Onaya gönder", durum Hafta planı başlığında; yetkili Onay kuyruğunda haftanın ziyaretlerini görüp Onayla / Düzeltme iste (not ile).
+- **schema.sql 45:** `firmalar.tekrar_gun`, `tekrar_haftagun`; `plan_onaylari` (üye yalnız kendi planını gönderir; onay yetkilide).
+
+## Güncelleme notu (sürüm 102)
+
+- **Kaynak ve "Bilgiler doğru"** (`js/dogrula.js`): toplu içe aktarmayla gelen yeni firma/projeye kaynak etiketi (Excel'den / haritadan aktarıldı); firma ve proje sayfasında rozet ve "Bilgiler doğru, onaylıyorum" (kim ve tarih yazılır); Veri kontrolünde iki yeni başlık.
+- **Firma teklif e-postası**: firma formunda "Teklif e-postası"; teklifte **E-posta** düğmesi (alıcı: teklif e-postası → ilgili kişi → firma e-postası; konu ve metin hazır).
+- **Serbest metin önizleme**: Konuşarak kaydet'te "Kaydedilecek" kutusu (ziyaret, görev ya da not görevi), düğme "Onayla ve kaydet".
+- **Ekrana özel geri bildirim**: ekranın adı, bu oturumdaki son hata metinleri ve isteğe bağlı ekran görüntüsü (html2canvas, yalnız işaretlenirse).
+- **schema.sql 44:** `firmalar.kaynak`, `dogrulandi`, `teklif_eposta`; `projeler.kaynak`, `dogrulandi`.
+
+## Güncelleme notu (sürüm 101)
+
+- **Raporlar → Uyarılar** (`js/views/yonetici.js`): son 7/14/30 gün; tür süzgeci; kayda tek dokunuşla gidiş; "Müdahale edildi" işareti (60 gün saklanır).
+- **Raporlar → Ekip sıralaması**: bu hafta / ay / yıl; ziyaret, farklı firma, teklif, sipariş, yeni proje, plana uyum ölçüleri; Excel.
+- **Konum doğrulama** (Şirket profili → Genel): en fazla uzaklık (m) ve kural (uyar / engelle / kapalı). Uzaktan girişler uyarı akışına düşer.
+- **KVKK konum metni** (`js/konum.js`): hazır ya da şirketin yazdığı metin; ilk girişte gösterilir, onay (kim, ne zaman, hangi metin) `konum_onaylari`na yazılır; metin değişince yeniden sorulur; onaylanmazsa giriş konumsuz kaydedilir.
+- **schema.sql 43:** `konum_onaylari` (herkes yalnız kendi adına ekler; yetkili okur).
+
+## Güncelleme notu (sürüm 100)
+
+- **Finans → Çek ve senet** (`js/views/finans2.js`): alınan / verilen, keşideci, banka, vade, tutar, durum (portföyde, bankada tahsilde, tahsil edildi, ciro edildi, karşılıksız, ödenecek, ödendi), ciro; vadesi geçen işareti, Excel. Muhasebeye aktar'da çekler de seçilebilir.
+- **Nakit akışı**: önümüzdeki 13 hafta; giriş = açık faturaların kalanı (vadesine göre) + alınan çekler; çıkış = verilen çekler + son 90 günün haftalık masraf ortalaması + isteğe bağlı sabit gider; başlangıç bakiyesiyle haftalık bakiye; satıra dokununca kalemler.
+- **Banka ekstresi**: Excel ekstre (Tarih, Açıklama, Tutar/Alacak) yüklenir; açıklamadaki firma adı, belge no ve tutara göre açık fatura önerilir; seçilenlerin ödemesi faturaya işlenir. Ekstrenin kendisi kaydedilmez.
+- **Prim ve hedef**: siparişin sorumlusuna göre kişi bazında satış, tahsilat, yıllık hedef (tablodan girilir), çeyrek seçimi, prim kuralı.
+- **Masraf onayı**: "Ekibin girdiği masraflar onayımdan geçsin" açıkken ekip masrafı "Bekliyor" olur; yetkili Onayla / Reddet.
+- **schema.sql 42:** `cekler`; `masraflar.kim`, `onay`, `onaylayan`, `onay_tarih`.
+
+## Güncelleme notu (sürüm 99)
+
+- **Bayi ve partner → Stoklar** (`js/views/bayiag2.js`): bayi başına stok (`bayi_stok`), Excel'den yükleme (Kod + Stok/Miktar/Adet, isteğe bağlı Fiyat), satır içi adet düzeltme, stok değeri, 90+ gün hareketsiz ve az kalan işareti; "Bütün bayiler" ile hangi bayide hangi ürün var araması. Atamada depo adı girilmişse Stok ve fiyat listesindeki o deponun ürünleri de görünür.
+- **Satışlar**: bize alım (sell-in, siparişler) ve bayinin sattıkları (sell-out, `bayi_satis`) aylık grafik, ürün aileleri, stok devir hızı; "Satış bildir" formu.
+- **Hedef ve prim**: çeyrek çeyrek satış, yıllık hedef, gerçekleşme %, yıl sonu tahmini, prim kuralı (hedefin %X'i ve üstünde satışın %Y'si).
+- **Analiz**: pay, büyüme, ortalama ödeme gecikmesi, kayıp oranı, açık proje, stok; çalışılan illerde bayisi olmayanlar.
+- Bayi karnesindeki stok kartı artık bayi stoklarını da sayar. Dış kullanıcı şablonu Stoklar ve Satışlar'a yazabilir.
+- **schema.sql 41:** `bayi_stok`, `bayi_satis` (RLS; dış kullanıcı yalnız kendi firmasının satırlarını görür ve ekler).
+
 ## Güncelleme notu (sürüm 98)
 
 - **Yapılmayan planlı ziyaretler** (Bugün kartı, `js/mazeret.js`): tarihi geçmiş ama "Planlandı" kalan ziyaretler; "Yapıldı" (formu açar), neden seçimi (müşteri yoktu, müşteri erteledi, ben erteledim, yetişemedim, acil iş, hava/yol, diğer) → durum **Yapılmadı** + mazeret, "Yarına ertele".

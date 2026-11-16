@@ -34,6 +34,10 @@ export function kontroller() {
     acik.filter(sipVar), p => `${pLink(p)}${pill(p.durum)}<button type="button" class="btn sm" data-sipyap="${p.id}">Sipariş yap</button>`);
   ekle('kayip', 'Projeler', 'Kayıp nedeni ya da işi alan marka eksik', 'Kayıp analizinde ve çeyrek sunumunda boş görünüyor.',
     P.filter(p => p.durum === 'Kayıp' && (!p.kayip_nedeni || !p.rakip_marka)), p => `${pLink(p)}<span class="muted">${[!p.kayip_nedeni && 'neden yok', !p.rakip_marka && 'marka yok'].filter(Boolean).join(', ')}</span>`);
+  ekle('dogrula-p', 'Projeler', 'İçe aktarılmış, bilgileri doğrulanmamış projeler', 'Excel ya da harita dosyasından geldi; proje sayfasında "Bilgiler doğru, onaylıyorum" ile işaretle.',
+    P.filter(p => p.kaynak && !p.dogrulandi), p => `${pLink(p)}<span class="muted">${esc(p.kaynak)}</span>`);
+  ekle('dogrula-f', 'Firmalar', 'İçe aktarılmış, bilgileri doğrulanmamış firmalar', 'Excel ya da harita dosyasından geldi; firma sayfasında "Bilgiler doğru, onaylıyorum" ile işaretle.',
+    (S.firmalar || []).filter(f => f.kaynak && !f.dogrulandi), f => `<a href="#/firma/${f.id}"><b>${esc(f.ad)}</b></a><span class="muted">${esc(f.kaynak)}</span>`);
   ekle('tutar', 'Projeler', 'Açık projede tutar yok', 'Potansiyel ve tahmin hesaplarına katılmıyor.', acik.filter(p => !+p.tutar_usd), p => `${pLink(p)}${pill(p.durum)}`);
   ekle('yil', 'Projeler', 'Takip yılı boş', 'Yıl listelerinde ve sunumda çıkmıyor.', P.filter(p => !p.takip_yili), p => `${pLink(p)}${pill(p.durum)}`);
   ekle('gecmis', 'Projeler', 'Beklenen sipariş tarihi 60 günden fazla geçmiş', 'Tarihi güncelle ya da durumu Beklemede / Kayıp yap.',

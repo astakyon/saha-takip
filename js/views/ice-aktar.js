@@ -222,8 +222,8 @@ export function iceAktarPaneli(sonra) {
       if (t === 'yeni') {
         const not = [n.not, n.grup ? `Google listesi: ${n.grup}` : null].filter(Boolean).join('\n') || null;
         if (id === 'bolgeler') yaz.bolgeler.push({ id: uuid(), ad: n.ad, tip: /serbest/i.test(n.ad) ? 'Serbest bölge' : /sanayi sitesi/i.test(n.ad) ? 'Sanayi sitesi' : 'OSB', grup: n.grup || k.il || null, il: k.il, ilce: k.ilce, geojson: n.geojson, notlar: n.not || null });
-        else if (id === 'firmalar') yaz.firmalar.push({ id: uuid(), ad: n.ad, tipler: [], adres: n.adres || null, notlar: not, fotolar: [], konum_yaklasik: true, ...konum, ...g });
-        else yaz.projeler.push({ id: uuid(), ad: n.ad, durum: 'Proje', takip_yili: new Date().getFullYear(), adres: n.adres || null, notlar: not, fotolar: [], urun_gruplari: [], konum_yaklasik: true, ...konum, ...g });
+        else if (id === 'firmalar') yaz.firmalar.push({ id: uuid(), kaynak: 'Haritadan aktarıldı', ad: n.ad, tipler: [], adres: n.adres || null, notlar: not, fotolar: [], konum_yaklasik: true, ...konum, ...g });
+        else yaz.projeler.push({ id: uuid(), kaynak: 'Haritadan aktarıldı', ad: n.ad, durum: 'Proje', takip_yili: new Date().getFullYear(), adres: n.adres || null, notlar: not, fotolar: [], urun_gruplari: [], konum_yaklasik: true, ...konum, ...g });
         yeni++;
       } else {
         const r = S[t].find(x => x.id === id); if (!r) continue;

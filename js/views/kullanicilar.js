@@ -73,10 +73,10 @@ const HAZIR = {
   'Proje firması': { e: { projeler: 'oku', referanslar: 'oku', katalog: 'oku', araclar: 'oku' }, g: ['tutar', 'iletisim', 'yorum', 'iliski'] },
   'Sadece görüntüleme': { e: { harita: 'oku', projeler: 'oku', firmalar: 'oku', kisiler: 'oku', takvim: 'oku', ziyaretler: 'oku' }, g: [] },
   'Tam yetki': { e: Object.fromEntries(TUM.map(k => [k, EKRANLAR[k].salt ? 'oku' : 'yaz'])), g: [] },
-  'Muhasebe': { e: { siparisler: 'yaz', tahsilat: 'yaz', teklifler: 'oku', firmalar: 'oku', panel: 'oku', masraflar: 'oku', finans: 'oku', cari: 'yaz', yaslandirma: 'oku', kur: 'oku', muhasebe: 'oku' }, g: [] },
+  'Muhasebe': { e: { siparisler: 'yaz', tahsilat: 'yaz', teklifler: 'oku', firmalar: 'oku', panel: 'oku', masraflar: 'oku', finans: 'oku', cari: 'yaz', yaslandirma: 'oku', kur: 'oku', muhasebe: 'oku', cekler: 'yaz', nakit: 'oku', banka: 'yaz' }, g: [] },
   'Satış': { e: { harita: 'oku', bolgeler: 'oku', projeler: 'yaz', firmalar: 'yaz', kisiler: 'yaz', takvim: 'yaz', ziyaretler: 'yaz', gorevler: 'yaz', teklifler: 'yaz', numuneler: 'yaz', katalog: 'oku', araclar: 'oku', referanslar: 'oku', dosyalar: 'yaz' }, g: [] },
   'Satış destek': { e: { teklifler: 'yaz', projeler: 'oku', firmalar: 'oku', kisiler: 'oku', siparisler: 'oku', urunler: 'oku', katalog: 'oku', araclar: 'oku' }, g: [] },
-  'Dış kullanıcı': { e: { projeler: 'oku', firmalar: 'oku', kisiler: 'oku', teklifler: 'oku', katalog: 'oku', araclar: 'oku', urunler: 'oku' }, g: ['iliski', 'yorum'] },
+  'Dış kullanıcı': { e: { bayistok: 'yaz', bayisatis: 'yaz', projeler: 'oku', firmalar: 'oku', kisiler: 'oku', teklifler: 'oku', katalog: 'oku', araclar: 'oku', urunler: 'oku' }, g: ['iliski', 'yorum'] },
   'Proje': { e: { projeler: 'yaz', dosyalar: 'yaz', takvim: 'yaz', ziyaretler: 'yaz', firmalar: 'oku', kisiler: 'oku', katalog: 'oku', araclar: 'oku' }, g: ['tutar'] },
 };
 for (const h of Object.values(HAZIR)) for (const k of Object.keys(h.e)) if (!EKRANLAR[k]) delete h.e[k];

@@ -159,7 +159,7 @@ export async function ornekYukle(sonra) {
   const G = [['Lojistik deposu teklifini takip et (örnek)', 3], ['Hastane için numune gönder (örnek)', 7]].map(([baslik, g]) => ({ id: id(), baslik, son_tarih: gunEkle(t, g), durum: 'Açık', oncelik: 'Normal' }));
   try {
     toast('Örnek veriler ekleniyor…');
-    for (const [tb, l] of [['firmalar', F], ['kisiler', K], ['projeler', P], ['ziyaretler', Z], ['gorevler', G]]) await app.db.bulk(tb, l);
+    for (const [tb, l] of [['firmalar', F], ['kisiler', K], ['projeler', P], ['ziyaretler', Z], ['gorevler', G]]) await app.db.bulk(tb, l.map(x => ({ kaynak: null, ...x })));
     await ayarYaz('ornek_veri', { firmalar: F.map(x => x.id), kisiler: K.map(x => x.id), projeler: P.map(x => x.id), ziyaretler: Z.map(x => x.id), gorevler: G.map(x => x.id) });
     toast('Örnek veriler eklendi: 6 firma, 6 kişi, 6 proje, 4 ziyaret, 2 görev. Kendi verine geçince Ayarlar → Veri ve yedek → Örnek verileri sil.');
     sonra?.();

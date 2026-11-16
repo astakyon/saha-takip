@@ -57,6 +57,17 @@ export const EKRANLAR = {
   dosyalar:   { t: ['belgeler'], o: [], d: 'Yüklenen dosyalar ve belgeler' },
   bayiag:     { t: ['bayiler'], o: ['firmalar', 'siparisler', 'tahsilatlar', 'projeler', 'ziyaretler'], d: 'Bayi ve partner ağı: atama, tür, bölge, koşullar, hedef' },
   bayikarne:  { t: [], o: ['bayiler', 'firmalar', 'siparisler', 'tahsilatlar', 'projeler', 'teklifler', 'ziyaretler', 'kisiler', 'urunler'], salt: true, d: 'Bayi karnesi: satış, hedef, projeler, cari, stok, ziyaretler' },
+  onay:       { t: [], o: ['masraflar', 'firmalar', 'projeler', 'siparisler'], salt: true, d: 'Onay kuyruğu: masraf, hafta planı ve ekibin yeni kayıtları (yalnız şirket yetkilisi)' },
+  uyarilar:   { t: [], o: ['ziyaretler', 'teklifler', 'projeler', 'tahsilatlar', 'firmalar'], salt: true, d: 'Uyarı akışı: uzaktan giriş, yapılmayan ziyaret, büyük teklif, kayıp, gecikme' },
+  siralama:   { t: [], o: ['ziyaretler', 'teklifler', 'siparisler', 'projeler'], salt: true, d: 'Ekip sıralaması: ziyaret, teklif, sipariş, plana uyum' },
+  cekler:     { t: ['cekler'], o: ['firmalar'], d: 'Çek ve senet: alınan ve verilen, vade, ciro, durum' },
+  nakit:      { t: [], o: ['tahsilatlar', 'cekler', 'masraflar', 'firmalar'], salt: true, d: 'Nakit akışı: 13 haftalık giriş, çıkış ve bakiye tahmini' },
+  banka:      { t: ['tahsilatlar'], o: ['firmalar'], d: 'Banka ekstresi: gelen ödemeleri açık faturalarla eşleştirme' },
+  prim:       { t: [], o: ['siparisler', 'tahsilatlar'], salt: true, d: 'Prim ve hedef: kişi bazında satış, tahsilat, hedef, prim' },
+  bayistok:   { t: ['bayi_stok'], o: ['bayiler', 'firmalar', 'urunler'], d: 'Bayi stokları: her bayinin ayrı stoğu, Excel ile yükleme, hareketsiz stok' },
+  bayisatis:  { t: ['bayi_satis'], o: ['bayiler', 'firmalar', 'siparisler', 'projeler', 'urunler'], d: 'Bayi satışları: bize alım ve bayinin sattıkları, devir hızı' },
+  bayihedef:  { t: [], o: ['bayiler', 'firmalar', 'siparisler'], salt: true, d: 'Bayi hedef ve prim: çeyreklik gerçekleşme, sıralama, prim' },
+  bayianaliz: { t: [], o: ['bayiler', 'firmalar', 'siparisler', 'tahsilatlar', 'projeler', 'ziyaretler', 'urunler', 'bayi_stok'], salt: true, d: 'Bayi ağı analizi: pay, büyüme, ödeme, kayıp oranı, bölge boşlukları' },
 };
 // Kişiye gösterilmeyen ekstra bölümler (ekran açık olsa bile)
 export const GIZLENEBILIR = [
@@ -65,7 +76,7 @@ export const GIZLENEBILIR = [
   { k: 'yorum', ad: 'Yorumlar', d: 'Proje ve firma kartındaki yorumlar bölümü hiç görünmez.' },
   { k: 'iliski', ad: 'Firma ilişki ağı', d: 'Firma kartındaki ilişki ağı ve "kimin üzerinden ulaşırım" bölümü görünmez.' },
 ];
-const SAHIBE_OZEL = ['kontrol'];
+const SAHIBE_OZEL = ['kontrol', 'onay'];
 const ILETISIM = ['telefon', 'eposta', 'kartvizit_on', 'kartvizit_arka', 'dogum_gunu'];
 const HER_ZAMAN = ['bugun', 'ayarlar', 'sirket', 'profilim'];
 export const VERI_TABLOLARI = [...new Set(MODULLER.flatMap(m => m.t))];

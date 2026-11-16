@@ -1,6 +1,7 @@
 // Proje kartı: kendi sayfası (#/proje/<id>[/<sekme>]). Firma ve kişi sayfasıyla aynı düzen; ek olarak aşama şeridi
 // ve "Projedeki firmalar" özeti. Düzenleme ve aşama değişikliğinin ek bilgisi (sipariş, kayıp) pencerede (projeFormu).
 import { S } from '../db.js';
+import { dogrulamaRozet } from '../dogrula.js';
 import { app } from '../state.js';
 import { gerekUygula, rotaYazilabilir } from '../yetki.js';
 import { esc, usd, num, pill, tarih, today, byId, firmaAd, toast, confirmBox, directionsUrl, DURUMLAR, durumRenk } from '../ui.js';
@@ -61,7 +62,7 @@ export function projeSayfa(el, id) {
       <span class="fs-logo ps-logo" aria-hidden="true">${KLASOR}</span>
       <div class="fs-kim"><p class="muted">${esc(['Proje', [p.ilce, p.il].filter(Boolean).join(', '), p.osb].filter(Boolean).join(' · '))}</p>
         <h1>${esc(p.ad)}${p.kritik ? ' <em class="flag">Kritik</em>' : ''}${p.referans ? ' <em class="flag soft">Referans</em>' : ''}</h1>
-        <div class="dh-meta">${pill(p.durum)}${p.tutar_usd ? `<b class="ps-tutar">${usd(p.tutar_usd)}</b>` : ''}${p.olasilik != null && p.olasilik !== '' ? `<span>olasılık %${num(p.olasilik)}</span>` : ''}${p.beklenen_tarih ? `<span>beklenen sipariş ${esc(ayAd(p.beklenen_tarih))}</span>` : ''}<span data-gerek="ziyaretler" class="${gun == null || gun > 60 ? 'neg' : ''}">${gun == null ? 'hiç ziyaret yok' : gun === 0 ? 'bugün ziyaret edildi' : `son ziyaret ${gun} gün önce`}</span></div></div>
+        <div class="dh-meta">${pill(p.durum)}${p.tutar_usd ? `<b class="ps-tutar">${usd(p.tutar_usd)}</b>` : ''}${p.olasilik != null && p.olasilik !== '' ? `<span>olasılık %${num(p.olasilik)}</span>` : ''}${p.beklenen_tarih ? `<span>beklenen sipariş ${esc(ayAd(p.beklenen_tarih))}</span>` : ''}<span data-gerek="ziyaretler" class="${gun == null || gun > 60 ? 'neg' : ''}">${gun == null ? 'hiç ziyaret yok' : gun === 0 ? 'bugün ziyaret edildi' : `son ziyaret ${gun} gün önce`}</span>${dogrulamaRozet('projeler', p)}</div></div>
       <nav class="asama-serit" aria-label="Aşama">${DURUMLAR.filter(d => d.k !== 'İptal' || p.durum === 'İptal').map(d => `<button type="button" data-asama="${esc(d.k)}" data-gerek="yaz:projeler" class="${d.k === p.durum ? 'on' : ''}" style="--c:${d.c}" aria-pressed="${d.k === p.durum}">${esc(d.k)}</button>`).join('')}${asamaGunMetni(p)}</nav>
       <div class="fs-arac" role="toolbar" aria-label="Proje işlemleri">
         <div class="fs-grp" data-grp="iletisim">${tel ? `<a href="tel:${esc(tel)}" data-ipucu="${ilgili?.telefon ? 'Ara: ' + esc(ilgili.ad_soyad) : 'Takip edeni ara'}" aria-label="Ara">${IK.tel}</a>` : ''}${ilgili?.telefon ? `<button type="button" data-a="wa" data-ipucu="WhatsApp: ${esc(ilgili.ad_soyad)}" aria-label="WhatsApp" class="fs-wa">${IK.wa}</button>` : ''}${p.lat != null ? `<a target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}" data-ipucu="Şantiyeye yol tarifi" aria-label="Yol tarifi" class="fs-yol">${IK.yol}</a>` : ''}</div>

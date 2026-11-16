@@ -1,4 +1,5 @@
 import { S, uuid, adBol, adBirlestir } from '../db.js';
+import { TEKRAR_SECENEK, HAFTA_GUNU } from '../tekrar.js';
 import { sahipMi } from '../yetki.js';
 import { app, F, saveFilters } from '../state.js';
 import { POZISYONLAR, pozisyonTahmin, esc, tarih, today, ILLER, ILCELER, OSBLER, FIRMA_TIPLERI, SEKTORLER, byId, firmaAd, match, toast, openDrawer, closeDrawer,
@@ -12,7 +13,7 @@ const FIRMA_FORM = [
     { k: 'ad', l: 'Firma adı', auto: true, full: true, req: true },
     { k: 'tipler', l: 'Firma tipi', t: 'tags', opts: FIRMA_TIPLERI },
     { k: 'sorumlu', l: 'Sorumlu', t: 'sel', ph: 'Ekleyen kişi', opts: () => (app.ekipTum || []).map(k => ({ v: k.eposta, l: k.ad + (k.sahip ? ' (kurucu)' : '') })), show: () => sahipMi() && (app.ekipTum || []).length > 1, help: 'Kaydı kim takip ediyor; kapsamı “Sadece kendi” olan kullanıcılar yalnızca sorumlusu oldukları kayıtları görür.' },
-    { k: 'telefon', l: 'Telefon', t: 'tel' }, { k: 'eposta', l: 'E-posta', t: 'email' },
+    { k: 'telefon', l: 'Telefon', t: 'tel' }, { k: 'eposta', l: 'E-posta', t: 'email' }, { k: 'teklif_eposta', l: 'Teklif e-postası', ph: 'teklifler bu adrese gider; birden çoksa virgülle' },
   ]},
   { title: 'Konum', ozet: 'harita, il, ilçe, adres', kapali: o => !o._new, fields: [
     { k: 'loc', l: 'Harita konumu', t: 'loc' },
@@ -28,6 +29,8 @@ const FIRMA_FORM = [
   ]},
   { title: 'Diğer bilgiler', ozet: 'segment, sektör, web, vergi no', kapali: true, fields: [
     { k: 'segment', l: 'Segment', t: 'sel', opts: ['A', 'B', 'C'] },
+    { k: 'tekrar_gun', l: 'Düzenli ziyaret', t: 'sel', ph: 'Kural yok', opts: TEKRAR_SECENEK, help: 'Seçilirse hafta planına kendiliğinden eklenir' },
+    { k: 'tekrar_haftagun', l: 'Tercih edilen gün', t: 'sel', ph: 'Fark etmez', opts: HAFTA_GUNU },
     { k: 'sektor', l: 'Sektör', t: 'combo', opts: SEKTORLER },
     { k: 'web', l: 'Web sitesi' }, { k: 'vergi_no', l: 'Vergi no' },
     { k: 'key_account', l: 'Key account', t: 'chk', cl: 'Key account (stratejik müşteri)' },

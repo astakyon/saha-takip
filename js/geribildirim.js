@@ -4,19 +4,36 @@ import { uuid, getConfig } from './db.js';
 import { app, SURUM } from './state.js';
 import { esc, toast, openDrawer, closeDrawer, pickFiles, confirmBox } from './ui.js';
 import { profil } from './profil.js';
+import { SEKME_AD } from './basliklar.js';
+
+// Son hatalar: geri bildirime "bu ekranda ne oldu" bilgisi olarak eklenir (yalnız hata metni; kayıt içeriği değil)
+const HATALAR = [];
+const hataTut = m => { HATALAR.push(`${new Date().toLocaleTimeString('tr-TR')} ${String(m).slice(0, 300)}`); if (HATALAR.length > 8) HATALAR.shift(); };
+addEventListener('error', e => hataTut(e.message)); addEventListener('unhandledrejection', e => hataTut(e.reason?.message || e.reason));
+export const sonHatalar = () => HATALAR.slice();
+const h2cYukle = () => window.html2canvas ? Promise.resolve(window.html2canvas) : new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; s.onload = () => res(window.html2canvas); s.onerror = () => rej(new Error('Ekran görüntüsü aracı indirilemedi.')); document.head.appendChild(s); });
+async function ekranGoruntusu() {
+  const h2c = await h2cYukle(), hedef = document.getElementById('view') || document.querySelector('main') || document.body;
+  const c = await h2c(hedef, { scale: Math.min(1.5, devicePixelRatio || 1), useCORS: true, logging: false, backgroundColor: getComputedStyle(document.body).backgroundColor || '#fff' });
+  return await new Promise(r => c.toBlob(r, 'image/jpeg', 0.8));
+}
 
 const TUR = [['hata', 'Bir şey çalışmadı'], ['oneri', 'Önerim var'], ['soru', 'Sorum var'], ['begendim', 'Beğendim']];
 const tarayici = () => { const u = navigator.userAgent; return (/Android/.test(u) ? 'Android' : /iPhone|iPad/.test(u) ? 'iOS' : /Windows/.test(u) ? 'Windows' : /Mac/.test(u) ? 'Mac' : 'Diğer') + ' · ' + (/SamsungBrowser/.test(u) ? 'Samsung' : /CriOS|Chrome\//.test(u) ? 'Chrome' : /Safari\//.test(u) ? 'Safari' : /Firefox/.test(u) ? 'Firefox' : '?') + (matchMedia('(display-mode: standalone)').matches ? ' · yüklü' : ''); };
 
 export function geriBildirimAc() {
   const ekran = (location.hash.replace(/^#\/?/, '').split('/')[0] || 'bugun');
+  const ekranAd = SEKME_AD[ekran] || document.querySelector('#view h1, main h1')?.textContent.trim().slice(0, 60) || ekran;
+  const hatalar = sonHatalar();
   let tur = 'hata', foto = null;
   const p = openDrawer(`<header class="dh"><div><p class="muted">Uygulamayı birlikte iyileştirelim</p><h2 id="drawer-title">Geri bildirim</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <form class="dbody form" novalidate>
       <div class="chips" role="radiogroup" aria-label="Tür">${TUR.map(([k, t]) => `<button type="button" role="radio" class="chip ${k === tur ? 'on' : ''}" aria-checked="${k === tur}" data-tur="${k}">${t}</button>`).join('')}</div>
       <div class="fld"><label for="gb-m">Ne oldu, ne istersin?</label><textarea id="gb-m" rows="6" maxlength="4000" placeholder="Örn. Proje kaydederken hata verdi. / Teklifte iskonto alanı yukarıda olsa daha kolay olur."></textarea></div>
       <div class="fld"><label>Ekran görüntüsü (isteğe bağlı)</label><div class="btnrow"><button type="button" class="btn sm" data-foto>Görüntü ekle</button><span data-fotoad class="muted"></span></div></div>
-      <p class="hint">Gönderilenle birlikte bulunduğun ekran (${esc(ekran)}), uygulama sürümü (${SURUM}) ve telefon türü eklenir. Kayıtlarının içeriği gönderilmez.</p>
+      <label class="chk"><input type="checkbox" data-ekrangor> <span>Bu ekranın (${esc(ekranAd)}) görüntüsünü ekle <small class="muted">· ekrandaki bilgiler de görüntüde yer alır</small></span></label>
+      ${hatalar.length ? `<p class="hint">Bu oturumda ${hatalar.length} hata kaydı var; geri bildirimle birlikte gönderilir.</p>` : ''}
+      <p class="hint">Gönderilenle birlikte bulunduğun ekran (${esc(ekranAd)}), uygulama sürümü (${SURUM}) ve telefon türü eklenir. Kayıtlarının içeriği gönderilmez.</p>
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Gönder</button></div></form>`);
   p.querySelectorAll('[data-tur]').forEach(b => b.onclick = () => { tur = b.dataset.tur; p.querySelectorAll('[data-tur]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-checked', x === b); }); });
   p.querySelector('[data-foto]').onclick = async () => { const [f] = await pickFiles({ accept: 'image/*', multiple: false }); if (f) { foto = f; p.querySelector('[data-fotoad]').textContent = f.name; } };
@@ -24,7 +41,8 @@ export function geriBildirimAc() {
     e.preventDefault();
     const metin = p.querySelector('#gb-m').value.trim(); if (metin.length < 3) return toast('Birkaç kelimeyle anlat.', 'err');
     const b = p.querySelector('[type=submit]'); b.disabled = true;
-    const kayit = { tur, metin, ekran, surum: SURUM, tarayici: tarayici(), firma: profil().firma || null };
+    const kayit = { tur, metin: metin + (hatalar.length ? '\n\n[Son hatalar]\n' + hatalar.join('\n') : ''), ekran: ekranAd === ekran ? ekran : `${ekran} (${ekranAd})`, surum: SURUM, tarayici: tarayici(), firma: profil().firma || null };
+    if (!foto && p.querySelector('[data-ekrangor]').checked) { const d = document.querySelector('.drawer.open'); d && (d.style.visibility = 'hidden'); try { foto = await ekranGoruntusu(); } catch (er) { toast(er.message, 'err'); } finally { d && (d.style.visibility = ''); } }
     try {
       if (app.db.mode !== 'supabase') throw new Error('Deneme modunda geri bildirim gönderilemez; bulut bağlantısı gerekir.');
       if (foto) {
