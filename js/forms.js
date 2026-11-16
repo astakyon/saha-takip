@@ -195,7 +195,7 @@ export function bindForm(root, sections, obj, { onChange } = {}) {
     if (obj._algila && !isNaN(lat)) algila([lat, lng]);
     if (!isNaN(lat) && obj.konum_yaklasik) txt.textContent += ' · yaklaşık';
     m.on('click', e => set([e.latlng.lat, e.latlng.lng]));
-    box.querySelector('[data-loc-me]').onclick = async () => { try { set(await myLocation(), true); } catch (e) { toast(e.message, 'err'); } };
+    box.querySelector('[data-loc-me]').onclick = async () => { const sessiz = box.dataset.sessiz; delete box.dataset.sessiz; try { set(await myLocation(), true); } catch (e) { if (sessiz) txt.textContent = 'Konum alınamadı · haritaya dokunarak işaretle'; else toast(e.message, 'err'); } };
     box.querySelector('[data-loc-clear]').onclick = () => set(null);
     setTimeout(() => m.invalidateSize(), 250);
   });

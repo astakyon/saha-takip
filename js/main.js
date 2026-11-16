@@ -191,6 +191,7 @@ async function sayfaGoster(k, sayfa, ciz) {
   kok.className = 'view-' + k + ' view-sayfa';
   kok.innerHTML = `<button type="button" class="sayfa-ara" aria-label="Ara" title="Ara (/)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button><div class="view-ic"></div>`;
   kok.querySelector('.sayfa-ara').onclick = () => aramaAc();
+  { const st = kok.querySelector('.alt-sekme'), on = st?.querySelector('a.on'); if (st) st.classList.toggle('tasar', st.scrollWidth > st.clientWidth + 2); if (on && st.scrollWidth > st.clientWidth) st.scrollLeft = Math.max(0, on.offsetLeft - (st.clientWidth - 64 - on.offsetWidth) / 2); }
   const el = kok.querySelector('.view-ic');
   app.sayfaSekme = null; app.sayfaYolu = y => { sonSayfa = y; };
   // Aynı sayfa yeniden çizilirken (kayıttan sonra) kaydırma yerinde kalır
@@ -220,6 +221,7 @@ async function show(k) {
   kok.innerHTML = (k !== 'harita' && sekmeler.length > 1 ? `<nav class="alt-sekme" aria-label="${esc(b.t)}">${sekmeler.map(r => `<a href="#/${r}" class="${r === k ? 'on' : ''}" ${r === k ? 'aria-current="page"' : ''}>${esc(SEKME_AD[r] || ROUTES[r].t)}</a>`).join('')}</nav>` : '')
     + `<button type="button" class="sayfa-ara" aria-label="Ara" title="Ara (/)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button><div class="view-ic"></div>`;
   kok.querySelector('.sayfa-ara').onclick = () => aramaAc();
+  { const st = kok.querySelector('.alt-sekme'), on = st?.querySelector('a.on'); if (st) st.classList.toggle('tasar', st.scrollWidth > st.clientWidth + 2); if (on && st.scrollWidth > st.clientWidth) st.scrollLeft = Math.max(0, on.offsetLeft - (st.clientWidth - 64 - on.offsetWidth) / 2); }
   const el = kok.querySelector('.view-ic');
   app.refresh = () => ROUTES[k].v(el);
   // Ekranlar arası geçişte her ekranın kaydırma konumu hatırlanır
@@ -407,7 +409,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   const ilkKontrol = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!ilkKontrol) return;
-    const guvenli = () => !document.querySelector('.drawer.open') && !document.activeElement?.matches?.('input, textarea, select');
+    const guvenli = () => !document.querySelector('.drawer.open, .sihirbaz, dialog[open], .login') && !document.activeElement?.matches?.('input, textarea, select');
     if (guvenli() && document.hidden) location.reload();
     else { toast('Uygulamanın yeni sürümü hazır. Yenilemek için dokun.'); const t = document.getElementById('toast'); if (t) { t.classList.add('tik'); t.onclick = () => location.reload(); setTimeout(() => { t.onclick = null; t.classList.remove('tik'); }, 8000); } document.addEventListener('visibilitychange', () => { if (document.hidden && guvenli()) location.reload(); }, { once: true }); }
   });

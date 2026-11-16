@@ -7,7 +7,7 @@ import { sahipMi } from '../yetki.js';
 
 // Sekmeler: Genel · Kullanıcılar · Roller · Ekipler · Otomasyonlar · Döviz kuru. Seçili sekme adreste: #/sirket/<sekme>
 export async function sirketView(el) {
-  const { profil, profilVar, SEKTOR, ESKI } = await import('../profil.js');
+  const { profil, profilVar, SEKTOR } = await import('../profil.js');
   const p = profil(), yetkili = sahipMi();
   const bugun = new Date(), ayBasi = new Date(bugun.getFullYear(), bugun.getMonth(), 1).toISOString().slice(0, 10);
   const acik = (S.projeler || []).filter(x => !['Sipariş', 'Kayıp', 'İptal'].includes(x.durum)).length;
@@ -44,7 +44,7 @@ export async function sirketView(el) {
   el.querySelectorAll('[data-kat]').forEach(b => b.onclick = async () => {
     if (b.classList.contains('on')) return;
     if (b.dataset.kat === 'kendi' && !confirmBox('Hazır EAE kataloğu, ürün önerisi ve şartname karşılaştırması kapatılsın mı? Kendi girdiğin ürün aileleri kalır.')) return;
-    await ayarYaz('firma_profil', { ...(profilVar() ? profil() : ESKI), eski: undefined, katalog: b.dataset.kat }); toast('Kaydedildi.'); sirketView(el);
+    await ayarYaz('firma_profil', { ...profil(), eski: undefined, yeni: undefined, katalog: b.dataset.kat }); toast('Kaydedildi.'); sirketView(el);
   });
   const { sekmeKur } = await import('../sayfa.js');
   sekmeKur(el, { taban: 'sirket', ilk: 'genel', sekme: location.hash.replace(/^#\/?/, '').split('/')[1], KUR: {

@@ -478,8 +478,20 @@ class SupaAdapter {
   }
 }
 
+// Şirketin bulut bağlantısı uygulamaya gömülü: yeni telefonda ilk ekran doğrudan kullanıcı adı + şifre.
+// Bu "anon" anahtar tarayıcıda kullanılmak üzere herkese açıktır; veriyi veritabanı kuralları (RLS) korur.
+// service_role anahtarı hiçbir zaman burada ya da uygulamada bulunmaz.
+export const VARSAYILAN_BAGLANTI = { mode: 'supabase', url: 'https://apolfgiaozffyxwlgemc.supabase.co', key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwb2xmZ2lhb3pmZnl4d2xnZW1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwODU1NTEsImV4cCI6MjEwNzY2MTU1MX0.X2LKrhMZxFsb4YbPYq49gVKlgkk_JhjBEMM_GvF-Axg' };
 export function getConfig() {
-  try { return JSON.parse(localStorage.getItem('saha-config') || 'null'); } catch { return null; }
+  let c = null;
+  try { c = JSON.parse(localStorage.getItem('saha-config') || 'null'); } catch { return null; }
+  if (c) return c;
+  // Hiç kullanılmamış tarayıcı: gömülü bağlantıyla başla. Daha önce bağlantısız (deneme modunda) kullanılmışsa öyle kalır.
+  try {
+    if (Object.keys(localStorage).some(k => k.startsWith('saha-'))) return null;
+    localStorage.setItem('saha-config', JSON.stringify(VARSAYILAN_BAGLANTI));
+  } catch { return null; }
+  return { ...VARSAYILAN_BAGLANTI };
 }
 export function setConfig(c) { try { localStorage.setItem('saha-config', JSON.stringify(c)); } catch {} }
 
@@ -488,3 +500,5 @@ export function makeAdapter() {
   if (c && c.mode === 'supabase' && c.url && c.key && window.supabase) return new SupaAdapter(c.url, c.key);
   return new LocalAdapter();
 }
+// İlk karar, başka bir modül localStorage'a yazmadan önce verilsin
+try { getConfig(); } catch {}

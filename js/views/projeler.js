@@ -401,6 +401,11 @@ export function projeFormu(id, init, { durum, odak } = {}) {
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div>
     </form>`, { wide: true, onClose: () => { if (sonra) sonra(); else if (p._new) backToList(); } });
   const form = panel.querySelector('form');
+  // Yeni projede hızlı kayıt: yalnızca temel alanlar açık; firmalar, konum ve ayrıntılar kapalı başlıkta (dokununca açılır)
+  if (p._new && !durum && !odak && !init?.lat) {
+    form.querySelectorAll('details.fs-d[open]').forEach(d => { d.open = false; });
+    form.querySelector('[data-ps="bilgi"]').insertAdjacentHTML('afterbegin', '<p class="hint hizli-not">Hızlı kayıt: proje adı yeter. Firmaları, konumu ve ayrıntıları aşağıdaki başlıklara dokunup şimdi ya da sonra eklersin.</p>');
+  }
   if (durum || odak) setTimeout(() => { const h = durum === 'Kayıp' ? form.querySelector('[data-show="kayip"]') : durum === 'Sipariş' ? form.querySelector('[data-show="sip"]') : form.querySelector(`[name="${odak}"]`); if (!h) return; h.closest('details')?.setAttribute('open', ''); h.scrollIntoView({ block: 'start' }); if (h.matches('input, textarea, select')) h.focus(); }, 120);
   const calc = (o, root) => {
     const box = root.querySelector('[data-calc]');

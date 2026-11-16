@@ -1,9 +1,10 @@
 // Firma profili: uygulamanın kime göre çalıştığı (firma, temsil edilen marka, sektör, bölge, ana bayi, katalog).
 // Kurulum sihirbazında doldurulur, "firma_profil" ayarında saklanır; ekip üyeleri veri sahibinin profilini kullanır.
-// Profil yoksa ilk sürümün ayarları (EAE, Çukurova bölgesi, Drv Elektrik) geçerlidir; böylece eski kurulumlar hiç değişmez.
+// Profil yoksa: sihirbazdan önce kurulmuş eski hesapta ilk sürümün ayarları geçerli kalır; yeni hesapta varsayılanlar boştur.
 import { ayar } from './ayar.js';
 import { fold, ILLER, IL_MERKEZ, ILCELER, OSBLER, BOLGE_KUTU, RAKIPLER, URUN_AILELERI } from './ui.js';
 import { TR_ILLER } from './data/tr-iller.js';
+import { S } from './db.js';
 
 export const SEKTOR = { aydinlatma: 'Aydınlatma', elektrik: 'Elektrik malzemesi ve tesisat', diger: 'Başka bir sektör' };
 export const ESKI = { firma: 'EAE Aydınlatma', marka: 'EAE', sektor: 'aydinlatma', iller: ['Adana', 'Mersin', 'Hatay', 'Osmaniye'], bayi: 'Drv Elektrik', katalog: 'eae' };
@@ -24,11 +25,18 @@ export const SEKTOR_LISTE = {
   diger: { RAKIPLER: [], URUN_AILELERI: [] },
 };
 
+// Profil kaydedilmemişse: sihirbazdan önce (13 Kasım 2026'dan önce) kurulmuş eski hesap ise eski ayarlar aynen sürer;
+// yeni hesapta başka bir şirketin adı, bayisi ya da kataloğu varsayılan olarak görünmez.
+const BOS = { firma: '', marka: '', sektor: '', bayi: '', katalog: 'kendi', iller: ESKI.iller };
+const SIHIRBAZ_TARIHI = '2026-11-13';
+let eskiKurulum = null;
+const eskiKurulumMu = () => eskiKurulum ??= ['projeler', 'firmalar', 'ziyaretler'].some(t => (S[t] || []).some(x => x.created_at && String(x.created_at).slice(0, 10) < SIHIRBAZ_TARIHI)) || null;
 let onbellek = null, imza = '';
 export function profil() {
   const p = ayar('firma_profil');
-  const k = JSON.stringify(p || null); if (onbellek && k === imza) return onbellek;
-  imza = k; onbellek = p ? { ...ESKI, katalog: 'kendi', bayi: '', marka: '', ...p, iller: (p.iller || []).filter(il => TR_ILLER[il] || ILK_MERKEZ[il]) } : { ...ESKI, eski: true };
+  const k = JSON.stringify(p || null) + (p ? '' : '|' + (S.projeler?.length || 0) + '|' + (S.firmalar?.length || 0)); if (onbellek && k === imza) return onbellek;
+  if (!p) eskiKurulum = null;
+  imza = k; onbellek = p ? { ...ESKI, katalog: 'kendi', bayi: '', marka: '', ...p, iller: (p.iller || []).filter(il => TR_ILLER[il] || ILK_MERKEZ[il]) } : eskiKurulumMu() ? { ...ESKI, eski: true } : { ...BOS, eski: true, yeni: true };
   if (!onbellek.iller.length) onbellek.iller = [...ESKI.iller];
   return onbellek;
 }
@@ -43,7 +51,7 @@ export const anaBayiKisa = () => anaBayi().split(/\s+/).slice(0, anaBayi().split
 const ilkKelime = () => anaBayi().split(/\s+/)[0] || '';
 // Sipariş carisi ana bayi mi (ilk kelimesiyle)
 export const anaBayiMi = ad => { const k = fold(ilkKelime()); return !!k && fold(String(ad || '')).trim().startsWith(k); };
-export const sektorListesi = k => profil().eski ? (k === 'RAKIPLER' ? ILK_RAKIP : k === 'URUN_AILELERI' ? ILK_AILE : null) : (SEKTOR_LISTE[profil().sektor] || SEKTOR_LISTE.diger)[k] || null;
+export const sektorListesi = k => profil().eski && !profil().yeni ? (k === 'RAKIPLER' ? ILK_RAKIP : k === 'URUN_AILELERI' ? ILK_AILE : null) : (SEKTOR_LISTE[profil().sektor] || SEKTOR_LISTE.diger)[k] || null;
 
 // Bölge: il listesi, harita merkezleri, ilçe ve OSB önerileri, bölgenin sınır kutusu
 export function profilUygula() {

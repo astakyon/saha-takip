@@ -20,6 +20,10 @@ export function sihirbazAc({ sonra, duzenle = false } = {}) {
   };
   const ilet = String(tf.iletisim || ''); d.tel = (/(\+?\d[\d\s()-]{8,})/.exec(ilet) || [''])[0].trim(); if (!d.eposta) d.eposta = (/\S+@\S+/.exec(ilet) || [''])[0];
   let adim = 0, ara = '';
+  // Yarıda kalırsa (sayfa yenilenirse) girilenler kaybolmasın
+  const TASLAK = 'saha-sihirbaz-taslak';
+  if (!duzenle) try { const t = JSON.parse(sessionStorage.getItem(TASLAK) || 'null'); if (t?.d) { Object.assign(d, t.d); adim = Math.min(+t.adim || 0, ADIM.length - 1); } } catch {}
+  const taslakYaz = () => { if (!duzenle) try { sessionStorage.setItem(TASLAK, JSON.stringify({ d, adim })); } catch {} };
   const kok = document.createElement('div'); kok.className = 'sihirbaz'; kok.setAttribute('role', 'dialog'); kok.setAttribute('aria-modal', 'true'); kok.setAttribute('aria-label', 'Kurulum');
   document.body.appendChild(kok);
   const kapat = () => { kok.remove(); document.body.classList.remove('sihirbaz-acik'); };
@@ -49,11 +53,14 @@ export function sihirbazAc({ sonra, duzenle = false } = {}) {
       <p class="muted">${duzenle ? 'Kaydedince uygulama yeni bilgilere göre ayarlanır.' : 'Başladıktan sonra ilk iş olarak firmalarını ve projelerini ekleyebilir, elindeki Excel listelerini Ayarlar → Veri bölümünden içe aktarabilirsin.'}</p>`;
   };
   const ciz = () => {
-    kok.innerHTML = `<div class="sz-kutu"><div class="sz-ust"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b><span class="sz-adim">${adim + 1} / ${ADIM.length}</span>${duzenle ? '<button type="button" class="x" data-kapat aria-label="Kapat">×</button>' : ''}</div>
+    kok.innerHTML = `<div class="sz-kutu"><div class="sz-ust"><span class="bulb" aria-hidden="true"></span><b>Saha Takip</b><span class="sz-adim">${adim + 1} / ${ADIM.length}</span>${duzenle ? '<button type="button" class="x" data-kapat aria-label="Kapat">×</button>' : '<button type="button" class="linkbtn sz-sonra" data-sonra>Sonra</button>'}</div>
       <ol class="sz-cizgi" aria-hidden="true">${ADIM.map((a, i) => `<li class="${i < adim ? 'bitti' : i === adim ? 'simdi' : ''}">${a}</li>`).join('')}</ol>
       <div class="sz-govde form">${govde()}</div>
       <div class="sz-alt">${adim ? '<button type="button" class="btn ghost" data-geri>Geri</button>' : '<span></span>'}<button type="button" class="btn primary" data-ileri>${adim === ADIM.length - 1 ? (duzenle ? 'Kaydet' : 'Başla') : 'Devam'}</button></div></div>`;
     kok.querySelector('[data-kapat]')?.addEventListener('click', kapat);
+    kok.querySelector('[data-sonra]')?.addEventListener('click', () => { oku(); taslakYaz(); kapat(); toast('Şirket bilgilerini sonra Bugün ekranından tamamlayabilirsin.'); sonra?.(); });
+    kok.querySelector('.sz-govde').oninput = () => { oku(); taslakYaz(); };
+    taslakYaz();
     kok.querySelector('[data-geri]')?.addEventListener('click', () => { oku(); adim--; ciz(); });
     kok.querySelector('[data-ileri]').onclick = ileri;
     kok.querySelectorAll('[data-sektor]').forEach(b => b.onclick = () => { if (d.sektor !== b.dataset.sektor) d.rakipler = null; d.sektor = b.dataset.sektor; oku(); ciz(); });
@@ -79,7 +86,7 @@ export function sihirbazAc({ sonra, duzenle = false } = {}) {
     if (adim === 2 && !d.iller.length) return toast('En az bir il seç.', 'err');
     if (adim < ADIM.length - 1) { adim++; ara = ''; return ciz(); }
     const b = kok.querySelector('[data-ileri]'); b.disabled = true;
-    try { await kaydet(d, duzenle); kapat(); toast(duzenle ? 'Firma profili kaydedildi.' : 'Hazırsın! Uygulama senin için ayarlandı.'); sonra?.(); }
+    try { await kaydet(d, duzenle); try { sessionStorage.removeItem(TASLAK); } catch {} kapat(); toast(duzenle ? 'Firma profili kaydedildi.' : 'Hazırsın! Uygulama senin için ayarlandı.'); sonra?.(); }
     catch (e) { b.disabled = false; toast('Kaydedilemedi: ' + e.message, 'err'); }
   }
   ciz();

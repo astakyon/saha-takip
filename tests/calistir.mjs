@@ -418,6 +418,54 @@ const DB = () => {
   kontrol('Şirket ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
+{
+  const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });
+  await c.route(/cdnjs|jsdelivr|googleapis|gstatic|openstreetmap|arcgis|nominatim|frankfurter|supabase\.co|eaeaydinlatma|unpkg/, r => { const u = r.request().url(); if (u.includes('supabase-js')) return r.fulfill({ body: sahteSupa, contentType: 'application/javascript' }); if (u.endsWith('.js')) return r.fulfill({ body: '', contentType: 'application/javascript' }); return r.abort(); });
+  await c.addInitScript(() => { if (!sessionStorage.getItem('__ilk')) { sessionStorage.setItem('__ilk', '1'); localStorage.setItem('__OTURUMYOK', '1'); } });
+  const p = await c.newPage(); const hatalar = []; p.on('pageerror', e => hatalar.push(e.message)); p.on('dialog', d => d.accept());
+  await p.goto(U); await w(1500);
+  const g = await p.evaluate(() => ({ cfg: JSON.parse(localStorage.getItem('saha-config') || 'null'), h2: document.querySelector('.login .giris-bas')?.textContent, kad: !!document.querySelector('.login #l-e'), sihirbaz: !!document.querySelector('.sihirbaz'), yeni: !!document.querySelector('[data-mod="kayit"]'), deneme: !!document.querySelector('[data-deneme]') }));
+  await p.click('[data-mod="kayit"]'); await w(200);
+  const k = await p.evaluate(() => ({ h2: document.querySelector('.login .giris-bas')?.textContent, ep: !!document.querySelector('#l-ie'), geri: !!document.querySelector('.giris-geri') }));
+  await p.click('.giris-geri'); await w(200); await p.click('[data-deneme]'); await w(2000);
+  const d = await p.evaluate(() => ({ mod: JSON.parse(localStorage.getItem('saha-config') || '{}').mode, login: !!document.querySelector('.login'), sihirbaz: !!document.querySelector('.sihirbaz') }));
+  kontrol('Yeni telefonda ilk ekran kullanıcı adı + şifre (gömülü bağlantı, anon anahtar); yeni şirket hesabı ve "Kayıt olmadan dene" ikincil',
+    g.cfg?.mode === 'supabase' && /apolfgiaozffyxwlgemc\.supabase\.co/.test(g.cfg.url) && JSON.parse(atob(g.cfg.key.split('.')[1])).role === 'anon' && g.h2 === 'Giriş yap' && g.kad && !g.sihirbaz && g.yeni && g.deneme
+    && k.h2 === 'Yeni şirket hesabı' && k.ep && k.geri && d.mod === 'local' && !d.login && d.sihirbaz, JSON.stringify({ g: { ...g, cfg: g.cfg?.url }, k, d }));
+  kontrol('Giriş ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+{
+  // Daha önce bağlantısız kullanılmış tarayıcı: giriş ekranına zorlanmaz. Sihirbaz yarıda kalırsa taslak korunur; "Sonra" → Bugün'de hatırlatma; yeni hesapta başka şirketin bilgisi yok
+  const { p, c, hatalar } = await sayfa();
+  await p.goto(U); await w(1500);
+  const e = await p.evaluate(() => ({ cfg: localStorage.getItem('saha-config'), login: !!document.querySelector('.login'), sihirbaz: !!document.querySelector('.sihirbaz') }));
+  await p.fill('#sz-firma', 'Taslak Elektrik'); await p.fill('#sz-ad', 'Deniz Kara'); await p.click('[data-ileri]'); await w(300);
+  await p.reload(); await w(1500);
+  const t = await p.evaluate(() => ({ adim: document.querySelector('.sz-adim')?.textContent }));
+  await p.click('[data-geri]'); await w(200);
+  const t2 = await p.evaluate(() => document.querySelector('#sz-firma')?.value);
+  await p.click('[data-sonra]'); await w(300);
+  await p.evaluate(async () => { const m = await import('./js/ilkyukleme.js'); await m.ornekYukle(() => {}); });
+  await p.goto(U + '#/bugun'); await p.reload(); await w(1500);
+  const pr = await p.evaluate(async () => { const x = (await import('./js/profil.js')).profil(); return { firma: x.firma, bayi: x.bayi, katalog: x.katalog, kart: !!document.querySelector('[data-profiltamam]'), bar: document.querySelector('#firma-bar')?.innerText || '' }; });
+  kontrol('Eski deneme kullanıcısı deneme modunda kalır; sihirbaz yenilemede kaldığı yerden sürer; "Sonra" sonrası Bugün\'de "Şirket bilgilerini tamamla"; yeni hesapta EAE/Drv varsayılanı yok',
+    e.cfg === null && !e.login && e.sihirbaz && t.adim === '2 / 5' && t2 === 'Taslak Elektrik' && pr.firma === '' && pr.bayi === '' && pr.katalog === 'kendi' && pr.kart && !/EAE|Drv/.test(pr.bar), JSON.stringify({ e, t, t2, pr }));
+  // Ziyaret formu: firma en üstte, saat dolu; yeni projede hızlı kayıt
+  await p.click('text=Ziyaret kaydet >> nth=0'); await w(800);
+  const z = await p.evaluate(() => ({ saat: document.querySelector('.drawer.open [name=saat]')?.value, ilk: [...document.querySelectorAll('.drawer.open [name]')][0]?.name, toast: document.querySelector('#toast.err, .toast.err')?.textContent || '' }));
+  await p.keyboard.press('Escape'); await w(500);
+  await p.goto(U + '#/projeler'); await w(1200); await p.click('text=Yeni proje'); await w(800);
+  const yp = await p.evaluate(() => ({ not: !!document.querySelector('.drawer.open .hizli-not'), acik: document.querySelectorAll('.drawer.open details.fs-d[open]').length }));
+  await p.keyboard.press('Escape'); await w(500);
+  await p.goto(U + '#/panel'); await w(1500);
+  const pn = await p.evaluate(() => [...document.querySelectorAll('main table')].every(t => t.closest('.tbl-wrap, .tablo-kap, .table-wrap')));
+  kontrol('Ziyaret formunda firma ilk alan ve saat dolu (konum izni yoksa kırmızı uyarı yok); yeni proje hızlı kayıtla açılıyor; Panel tabloları telefonda kayıyor',
+    /^\d\d:\d\d$/.test(z.saat) && z.ilk === 'firma_id' && !/Konum izni/.test(z.toast) && yp.not && yp.acik === 0 && pn, JSON.stringify({ z, yp, pn }));
+  kontrol('Sürüm 94 ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Profilim: kim olarak girildi, kişisel bilgiler (hesapta saklanır), menüde "ben", çıkış
 {
   const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: DB });

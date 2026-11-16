@@ -1985,3 +1985,24 @@ body.giris-var #view { padding-top: 64px; }
 .fld.wide { grid-column: 1 / -1; }
 @media (max-width: 600px) { .pr-av { width: 56px; height: 56px; font-size: 20px; } .pr-kim h1 { font-size: 22px; } }
 .pr-sirket { font-size: 13.5px; font-weight: 600; color: var(--ink); text-decoration: none; align-self: center; } .pr-kim .chips { align-items: center; gap: 10px; }
+
+/* Giriş ekranı (sürüm 94) */
+.login .giris-bas { margin: 4px 0 10px; font-size: 20px; }
+.login .giris-geri { display: inline-block; margin: 0 0 4px; font-size: 14px; }
+.login .giris-btn { flex: 1 1 140px; }
+.login .giris-diger { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; margin: 14px 0 0; font-size: 14px; }
+.login .giris-yeni { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); text-align: center; }
+.login .giris-yeni p { margin: 0 0 8px; font-size: 13.5px; }
+.login .giris-yeni .btnrow { justify-content: center; }
+.login .giris-baglanti { margin-top: 14px; font-size: 13px; color: var(--muted); }
+.profil-eksik { border-color: var(--lumen); background: color-mix(in srgb, var(--lumen) 8%, var(--card)); }
+.sz-sonra { margin-left: 8px; font-size: 13px; }
+/* Telefonda: sekme şeridi arama düğmesinin altına girmesin; dokunma hedefleri en az 40 piksel (sürüm 94) */
+@media (max-width: 899px) {
+  #view:has(.alt-sekme) .alt-sekme.tasar { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 72px), transparent calc(100% - 50px)); mask-image: linear-gradient(to right, #000 calc(100% - 72px), transparent calc(100% - 50px)); padding-right: 64px; }
+}
+@media (pointer: coarse) {
+  main .btn.sm, main .chip, main .seg button, main .seg3 button, main [role=tab], .drawer .btn.sm, .drawer .chip, .drawer .seg button { min-height: 40px; }
+  main .chip { padding-top: 6px; padding-bottom: 6px; }
+  .ptable select.dsel { min-height: 40px; }
+}

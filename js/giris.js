@@ -67,27 +67,31 @@ export function loginView(el, done) {
   const ciz = (mesaj = '') => {
     el.innerHTML = `<div class="login"><div class="login-card"><div class="brand"><span class="bulb big" aria-hidden="true"></span><h1>Saha Takip</h1></div>
       ${cikis ? `<p class="davet">${esc(cikis)}</p>` : ''}${mesaj}
-      ${mod === 'ilk' ? `<p class="davet"><b>Saha Takip'e davet edildin.</b> İlk girişte kendine bir şifre belirle. Sonraki girişlerde bu e-posta ve şifreyi kullanırsın.</p>` : ''}
-      <div class="seg giris-mod" role="tablist" aria-label="Giriş yöntemi">${[['sifre', 'Giriş'], ['baglanti', 'E-posta bağlantısı'], ['ilk', 'E-postayla davet']].map(([k, t]) => `<button type="button" role="tab" data-mod="${k}" class="${mod === k ? 'on' : ''}" aria-selected="${mod === k}">${t}</button>`).join('')}</div>
+      ${mod === 'ilk' && (davet || ss.al('saha-yeni')) ? `<p class="davet"><b>Saha Takip'e davet edildin.</b> İlk girişte kendine bir şifre belirle. Sonraki girişlerde bu e-posta ve şifreyi kullanırsın.</p>` : ''}
+      ${mod === 'sifre' ? '<h2 class="giris-bas">Giriş yap</h2>' : `<button type="button" class="linkbtn giris-geri" data-mod="sifre">← Kullanıcı adıyla giriş</button><h2 class="giris-bas">${{ baglanti: 'Şifresiz giriş', ilk: 'Davetle hesap oluştur', kayit: 'Yeni şirket hesabı' }[mod]}</h2>`}
       ${mod === 'sifre' ? `<form class="form" data-giris novalidate>
           <div class="fld"><label for="l-e">Kullanıcı adı</label><input id="l-e" autocomplete="username" autocapitalize="none" spellcheck="false" required value="${esc(son)}" ${son ? '' : 'autofocus'}></div>
           ${sifreKutusu('l-p', 'Şifre', 'current-password', son ? 'autofocus' : '')}
           <small class="hint giris-ipucu">Kullanıcı adını yöneticin verir. E-postayla açılmış hesaplar e-posta adresiyle de girebilir.</small>
           <label class="chk"><input type="checkbox" data-hatirla ${son || !ls.al(SON + '-yok') ? 'checked' : ''}> <span>Adımı bu cihazda hatırla</span></label>
-          <div class="btnrow"><button class="btn primary" type="submit">Giriş yap</button><button class="btn ghost" type="button" data-unuttum>Şifremi unuttum</button></div></form>`
+          <div class="btnrow"><button class="btn primary giris-btn" type="submit">Giriş yap</button><button class="btn ghost" type="button" data-unuttum>Şifremi unuttum</button></div></form>
+        <div class="giris-diger"><button type="button" class="linkbtn" data-mod="baglanti">E-postama giriş bağlantısı gönder</button><button type="button" class="linkbtn" data-mod="ilk">E-postayla davet aldım</button></div>
+        <div class="giris-yeni"><p class="muted">Şirketin henüz Saha Takip kullanmıyor mu?</p><div class="btnrow"><button type="button" class="btn sm" data-mod="kayit">Yeni şirket hesabı oluştur</button><button type="button" class="btn sm ghost" data-deneme>Kayıt olmadan dene</button></div></div>`
       : mod === 'baglanti' ? `<form class="form" data-otp novalidate>
           <p class="hint">Şifre yazmadan gir: e-postana tek kullanımlık bir giriş bağlantısı gelir. Bağlantıyı <b>bu telefonda</b> aç.</p>
           <div class="fld"><label for="l-o">E-posta ya da kullanıcı adı</label><input id="l-o" autocomplete="username" autocapitalize="none" spellcheck="false" required value="${esc(son)}"></div>
           <div class="btnrow"><button class="btn primary" type="submit">Giriş bağlantısı gönder</button></div></form>`
       : `<form class="form" data-ilk novalidate>
-          <div class="fld"><label for="l-ie">E-posta (davet edildiğin adres)</label><input id="l-ie" type="email" autocomplete="username" required value="${esc(davet || '')}"></div>
+          ${mod === 'kayit' ? '<p class="hint">Şirketin yöneticisi olarak hesap açarsın; sonra ekibini kullanıcı adı ve şifreyle eklersin. Ekip arkadaşın isen hesap açma: kullanıcı adını yöneticinden iste.</p>' : ''}
+          <div class="fld"><label for="l-ie">${mod === 'kayit' ? 'E-posta' : 'E-posta (davet edildiğin adres)'}</label><input id="l-ie" type="email" autocomplete="username" required value="${esc(davet || '')}"></div>
           ${sifreKutusu('l-ip', 'Yeni şifre (en az 8 karakter, harf ve rakam)', 'new-password')}
           ${sifreKutusu('l-ip2', 'Yeni şifre (tekrar)', 'new-password')}
           <div class="btnrow"><button class="btn primary" type="submit">Hesabımı oluştur</button></div>
           <p class="hint">Hesap oluşturunca e-postana onay bağlantısı gelebilir; ona dokunup buraya dönersin. Hesabın zaten varsa "Giriş" sekmesinden gir ya da "Şifremi unuttum"u kullan.</p></form>`}
-      <details><summary>Bağlantı ayarları</summary><p class="muted">${esc((cfg.url || '').replace('https://', ''))}</p>${connForm(cfg)}</details></div></div>`;
+      <details class="giris-baglanti"><summary>Bağlantı ayarları</summary><p class="muted">${esc((cfg.url || '').replace('https://', ''))}</p>${connForm(cfg)}</details></div></div>`;
     bindConn(el); gozBagla(el);
     el.querySelectorAll('[data-mod]').forEach(b => b.onclick = () => { mod = b.dataset.mod; cikis = ''; ciz(); });
+    el.querySelector('[data-deneme]')?.addEventListener('click', () => { setConfig({ ...(getConfig() || {}), mode: 'local' }); location.hash = '#/bugun'; location.reload(); });
     const kilit = async (form, is) => { const btn = form.querySelector('[type=submit]'); btn.disabled = true; try { await is(); } catch (e) { toast(hataMetni(e), 'err'); } finally { if (btn.isConnected) btn.disabled = false; } };
     el.querySelector('[data-giris]')?.addEventListener('submit', e => { e.preventDefault(); const f = e.target; kilit(f, async () => {
       const kim = f.querySelector('#l-e').value.trim(), p = f.querySelector('#l-p').value;

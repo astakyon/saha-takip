@@ -14,14 +14,14 @@ const weekNo = s => { const d = new Date(s + 'T00:00'); d.setDate(d.getDate() + 
 
 const ZIYARET_FORM = [
   { title: 'Ziyaret', fields: [
+    { k: 'firma_id', l: 'Firma', t: 'ref', ref: 'firmalar', ph: 'Firma adı' },
+    { k: 'kisi_id', l: 'Görüşülen kişi (firma yetkilisi)', t: 'ref', ref: 'kisiler', ph: 'Firma seçince yetkilisi gelir; yeni ise adını yaz' },
+    { k: 'notlar', l: 'Ziyaret notu / gündem', t: 'area', rows: 4, full: true },
+    { k: 'proje_id', l: 'İlgili proje', t: 'ref', ref: 'projeler', full: true },
     { k: 'durum', l: 'Durum', t: 'sel', opts: ZIYARET_DURUM.map(d => d.k), ph: 'Seç' },
     { k: 'amac', l: 'Amaç', t: 'sel', opts: ZIYARET_AMAC, ph: 'Seç' },
     { k: 'tarih', l: 'Tarih', t: 'date' },
     { k: 'saat', l: 'Saat', t: 'time' },
-    { k: 'firma_id', l: 'Firma', t: 'ref', ref: 'firmalar', ph: 'Firma adı' },
-    { k: 'kisi_id', l: 'Görüşülen kişi (firma yetkilisi)', t: 'ref', ref: 'kisiler', ph: 'Firma seçince yetkilisi gelir; yeni ise adını yaz' },
-    { k: 'proje_id', l: 'İlgili proje', t: 'ref', ref: 'projeler', full: true },
-    { k: 'notlar', l: 'Ziyaret notu / gündem', t: 'area', rows: 4, full: true },
   ]},
   { id: 'sonuc', title: 'Ziyaret sonucu', show: o => (o.durum || 'Yapıldı') === 'Yapıldı', fields: [
     { k: 'sonuc_tipi', l: 'Sonuç', t: 'sel', opts: SONUC_TIPLERI },
@@ -78,7 +78,10 @@ function yetkiliBagla(form) {
 }
 
 export function ziyaretForm(init = {}, after) {
+  const simdi = () => new Date().toTimeString().slice(0, 5);
   const z0 = init.id ? byId('ziyaretler', init.id) || init : { id: uuid(), tarih: today(), durum: 'Yapıldı', fotolar: [], ...init, _new: true };
+  // Yeni "yapıldı" ziyarette saat şimdiki saatle dolu gelir
+  if (z0._new && !z0.saat && (z0.durum || 'Yapıldı') === 'Yapıldı' && (!init.tarih || init.tarih === today())) z0.saat = simdi();
   const z = { ...z0, durum: zDurum(z0) };
   const panel = openDrawer(`<header class="dh" style="--c:${durumRenk(z.durum)}"><div><p class="muted">${z._new ? 'Yeni ziyaret' : `${tarih(z.tarih)}${z.giris ? ' · ' + esc(girisOzeti(z)) : z.saat ? ' · ' + esc(z.saat) : ''} · ${esc(z.durum)}`}</p><h2 id="drawer-title">${esc(firmaAd(z.firma_id) || 'Ziyaret kaydı')}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     ${z._new ? '' : `<div class="dh-actions">${z.durum === 'Planlandı' ? '<button class="btn sm primary" data-done>Yapıldı olarak işaretle</button>' : ''}<button class="btn sm ghost danger" data-sil>Sil</button></div>`}
@@ -89,7 +92,8 @@ export function ziyaretForm(init = {}, after) {
   bindForm(form, ZIYARET_FORM, z);
   yetkiliBagla(form);
   // Yapılan yeni ziyarette konumu otomatik al
-  const autoLoc = () => { const b = form.querySelector('[data-loc]'); if (b && !b.dataset.lat) b.querySelector('[data-loc-me]').click(); };
+  // Otomatik konum sessizdir: izin yoksa kırmızı uyarı çıkmaz, yalnızca konum alanında yazar
+  const autoLoc = () => { const b = form.querySelector('[data-loc]'); if (b && !b.dataset.lat) { b.dataset.sessiz = '1'; b.querySelector('[data-loc-me]').click(); } };
   if (z._new && z.lat == null && z.durum === 'Yapıldı' && (!z.tarih || z.tarih === today())) setTimeout(autoLoc, 300);
   panel.querySelector('[data-done]')?.addEventListener('click', () => {
     const s = form.querySelector('[name=durum]'); s.value = 'Yapıldı'; form.querySelector('[name=tarih]').value = form.querySelector('[name=tarih]').value || today();

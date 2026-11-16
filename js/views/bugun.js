@@ -247,6 +247,8 @@ export function bugunView(el) {
   // Boş hesap ya da yalnızca örnek veri: başlangıç kartı (Excel'den yükleme, örnek veriler)
   { const bos = !S.projeler.length && !S.kisiler.length;
     import('../ilkyukleme.js').then(m => { const k = el.querySelector('[data-basla]'); if (!k || !(bos || m.ornekVarMi()) || !(app.db?.yetki?.ben_sahip !== false)) return; k.innerHTML = m.baslaKarti({ baslik: bos ? 'Başlamak için' : 'Örnek verilerle çalışıyorsun' }); m.baslaBagla(k, () => app.refresh()); }); }
+  // Şirket bilgileri girilmemiş yeni hesap: sihirbaz yarıda kaldıysa ya da atlandıysa hatırlat
+  import('../profil.js').then(pm => { if (!pm.profilVar() && pm.profil().yeni && sahipMi() && !document.querySelector('.sihirbaz')) { const k = el.querySelector('[data-basla]'); if (!k || el.querySelector('[data-profiltamam]')) return; k.insertAdjacentHTML('beforebegin', `<section class="card profil-eksik" data-profiltamam><h2>Şirket bilgilerini tamamla</h2><p>Firma adın, sektörün ve çalıştığın iller henüz girilmedi. Teklif, mesaj ve haritalar bunlara göre çalışır.</p><div class="btnrow"><button type="button" class="btn primary" data-profilac>Şimdi tamamla</button></div></section>`); el.querySelector('[data-profilac]').onclick = async () => (await import('../sihirbaz.js')).sihirbazAc({ sonra: () => { app.refresh?.(); } }); } });
   { const y = el.querySelector('[data-radar-yer]'); if (y) { y.outerHTML = radarKarti(); radarBagla(el, () => bugunView(el)); } }
   { const y = el.querySelector('[data-eksik-yer]'); if (y) { y.outerHTML = eksikKarti(); eksikBagla(el, () => bugunView(el)); } }
   kartDuzeniUygula(el);

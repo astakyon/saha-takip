@@ -32,6 +32,15 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 94)
+
+- **Giriş:** şirketin Supabase adresi ve `anon` (herkese açık) anahtarı `js/db.js` içinde `VARSAYILAN_BAGLANTI` olarak gömülü. Hiç kullanılmamış bir tarayıcıda uygulama doğrudan **kullanıcı adı + şifre** ekranıyla açılır; davet bağlantısı gerekmez. Ekranın altında "Yeni şirket hesabı oluştur" ve "Kayıt olmadan dene" (deneme modu) var; e-posta bağlantısı ve e-posta daveti küçük bağlantılar olarak duruyor. Daha önce bağlantısız (deneme modunda) kullanılmış tarayıcılar olduğu gibi kalır. `service_role` anahtarı uygulamada yoktur; veriyi veritabanı kuralları (RLS) korur.
+- **Varsayılan şirket profili:** profil kaydedilmemiş yeni hesaplarda firma, bayi ve katalog boş gelir (eskiden EAE / Drv Elektrik görünüyordu). 13 Kasım 2026'dan önce kurulmuş, profili kaydedilmemiş eski hesaplar aynen çalışır. Profil eksikse Bugün'de "Şirket bilgilerini tamamla" kartı çıkar.
+- **Sihirbaz:** girilenler taslak olarak saklanır; sayfa yenilenirse kaldığı adımdan sürer. "Sonra" ile ertelenebilir. Sihirbaz, pencere ya da giriş ekranı açıkken uygulama güncellemesi sayfayı kendiliğinden yenilemez.
+- **Ziyaret formu:** firma, kişi ve not en üstte; yeni "yapıldı" ziyarette saat şimdiki saatle dolu. Otomatik konum alınamazsa kırmızı uyarı çıkmaz, konum alanında yazar.
+- **Yeni proje:** hızlı kayıt; yalnızca temel alanlar açık, firmalar / konum / ayrıntılar kapalı başlıklarda.
+- **Telefon düzeni:** üstteki sekme şeridi arama düğmesinin altına girmiyor ve açık sekme görünür kaydırılıyor; Panel'deki "En çok çalıştığın firmalar" tablosu kayıyor; dokunmatik ekranda küçük düğmeler, etiketler ve durum seçicileri en az 40 piksel.
+
 ## Güncelleme notu (sürüm 93)
 
 - **Profilim** (`#/profilim`), şirket profilinden ayrı kişisel sayfa: kişi kartı (ad, ünvan, rol, şirket, kullanıcı adı, giriş e-postası, telefon), "Kartvizitimi gönder", **Ne görebilirim?** (rolün düzenlediği / gördüğü ekranlar, kayıt kapsamı, gizli bilgiler), **Bilgilerim** (ad, ünvan, telefon, iletişim e-postası, imza), **Giriş ve şifre**, **Güvenlik**, **Çıkış**.
