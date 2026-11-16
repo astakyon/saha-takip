@@ -1,4 +1,5 @@
 // Bugün: günlük özet, günün rotası, yakınımdakiler, zamanı gelen projeler, uzun süredir gidilmeyenler, doğum günleri, uyarılar
+import { mazeretKarti, mazeretBagla } from '../mazeret.js';
 import { isleKutusu, isleBagla } from '../isle.js';
 import { BUGUN_KARTLAR } from '../basliklar.js';
 import { riskRozeti } from '../vaderisk.js';
@@ -145,7 +146,7 @@ async function kmMasrafa(gun) {
 const kisa = (satirlar, n = 5, cls = 'list') => satirlar.length <= n ? `<ul class="${cls}">${satirlar.join('')}</ul>`
   : `<ul class="${cls}">${satirlar.slice(0, n).join('')}</ul><ul class="${cls}" data-fazla hidden>${satirlar.slice(n).join('')}</ul><button type="button" class="linkbtn tumu" data-tumu>Tümünü gör (${satirlar.length})</button>`;
 const KARTLAR = BUGUN_KARTLAR;
-const kartAnahtar = h => { const t = (h || '').trim(); if (/^Bugünün planı/.test(t)) return 'plan'; if (/^Bugün özeti/.test(t)) return 'ozet'; if (/görevler$|^Görevler/i.test(t) && !/^Bugün/.test(t)) return 'gorev'; if (/^Bugün yapılanlar/.test(t)) return 'yapilan'; if (/^Zamanı gelen/.test(t)) return 'zaman'; if (/^Uzun süredir/.test(t)) return 'gidilmeyen'; if (/^Yarın/.test(t)) return 'yarin'; if (/^Doğum/.test(t)) return 'dogum'; if (/^Uyarılar/.test(t)) return 'uyari'; if (/haftanın raporu|^Haftan\b/.test(t)) return 'rapor'; if (/^Seni etiketlediler/.test(t)) return 'etiket'; if (/^Fırsat radarı/.test(t)) return 'radar'; if (/^Bugünün soruları/.test(t)) return 'eksik'; return null; };
+const kartAnahtar = h => { const t = (h || '').trim(); if (/^Bugünün planı/.test(t)) return 'plan'; if (/^Yapılmayan planlı/.test(t)) return 'mazeret'; if (/^Bugün özeti/.test(t)) return 'ozet'; if (/görevler$|^Görevler/i.test(t) && !/^Bugün/.test(t)) return 'gorev'; if (/^Bugün yapılanlar/.test(t)) return 'yapilan'; if (/^Zamanı gelen/.test(t)) return 'zaman'; if (/^Uzun süredir/.test(t)) return 'gidilmeyen'; if (/^Yarın/.test(t)) return 'yarin'; if (/^Doğum/.test(t)) return 'dogum'; if (/^Uyarılar/.test(t)) return 'uyari'; if (/haftanın raporu|^Haftan\b/.test(t)) return 'rapor'; if (/^Seni etiketlediler/.test(t)) return 'etiket'; if (/^Fırsat radarı/.test(t)) return 'radar'; if (/^Bugünün soruları/.test(t)) return 'eksik'; return null; };
 const kartAyar = () => { const k = ayar('bugun_kartlar'), rg = !sahipMi() ? app.yetki?.yetkiler?._gorunum : null; return { sira: [], gizli: k ? [] : (rg?.kartGizli || []), ...(k || {}) }; };
 function kartDuzeniUygula(el) {
   const a = kartAyar(), dash = el.querySelector('.dash'); if (!dash) return;
@@ -214,6 +215,7 @@ export function bugunView(el) {
       ${raporKarti()}
       ${etiketKarti()}
       ${ozetKarti}
+      ${mazeretKarti()}
       ${!planli.length ? '' : `<section class="card wide"><h2>Bugünün planı</h2>
         ${planli.length ? `<ol class="route">${sirali.map((x, i) => `<li><span class="rn">${i + 1}</span><span class="rt"><b>${x.z.saat ? esc(x.z.saat) + ' · ' : ''}${esc(firmaAd(x.z.firma_id) || 'Ziyaret')}</b>${riskRozeti(x.z.firma_id)}<small>${esc([byId('kisiler', x.z.kisi_id)?.ad_soyad, x.z.amac, byId('projeler', x.z.proje_id)?.ad].filter(Boolean).join(' · '))}</small></span>
           <span class="ra">${x.z.firma_id ? `<button type="button" class="btn sm ghost" data-hazirlik="${x.z.firma_id}" title="Ziyarete hazırlık">Hazırlık</button>` : ''}<a class="btn sm ghost" href="${directionsUrl(x.p[0], x.p[1])}" target="_blank" rel="noopener">Yol</a>${x.z.firma_id ? `<button type="button" class="btn sm primary" data-giris="${x.z.firma_id}" data-gerek="yaz:ziyaretler">Giriş</button>` : ''}<button type="button" class="btn sm" data-yapildi="${x.z.id}">Yapıldı</button></span></li>`).join('')}</ol>
@@ -269,6 +271,7 @@ export function bugunView(el) {
   el.querySelectorAll('[data-yapildi]').forEach(b => b.onclick = () => { ziyaretForm({ id: b.dataset.yapildi }); setTimeout(() => document.querySelector('[data-done]')?.click(), 200); });
   el.querySelectorAll('[data-gid]').forEach(b => b.onclick = () => gorevForm({ id: b.dataset.gid }));
   isleBagla(el, () => app.refresh());
+  mazeretBagla(el, () => app.refresh());
   el.querySelectorAll('[data-done]').forEach(c => c.onchange = async () => { const g = byId('gorevler', c.dataset.done); try { const y = { ...g, durum: c.checked ? 'Tamam' : 'Açık', tamamlayan: c.checked ? ben || null : null }; await app.db.save('gorevler', y); import('../push.js').then(m => m.gorevBildir(g, y)); await (await import('../otomasyon.js')).gorevSonrasi(g, y); toast(c.checked ? 'Görev tamamlandı.' : 'Görev yeniden açıldı.'); } catch (e) { c.checked = !c.checked; toast('Kaydedilemedi: ' + e.message, 'err'); } app.refresh(); });
   el.querySelectorAll('[data-planla]').forEach(b => b.onclick = () => ziyaretForm({ firma_id: b.dataset.planla, durum: 'Planlandı', tarih: yarin }));
   el.querySelectorAll('[data-dg]').forEach(b => b.onclick = () => waGonder({ kisi: byId('kisiler', b.dataset.dg), sablonAdi: 'Doğum günü' }));

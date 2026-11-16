@@ -44,6 +44,7 @@ export const EKRANLAR = {
   rakip:      { t: ['rakip_fiyatlar'], o: [], d: 'Rakip marka fiyatları' },
   araclar:    { t: [], o: [], salt: true, d: 'Aydınlatma hesap araçları' },
   panel:      { t: ['hedefler'], o: ['siparisler', 'projeler'], d: 'Hedefler, satış grafikleri ve özetler' },
+  gunozet:    { t: [], o: ['ziyaretler', 'gorevler', 'teklifler'], salt: true, d: 'Gün özeti ve aylık çalışma dökümü (giriş-çıkış, ziyaret, sahada süre, yol); kendi kapsamındaki kişiler' },
   ekiphar:    { t: [], o: ['ziyaretler', 'gorevler', 'teklifler', 'firmalar'], salt: true, d: 'Ekip haritası: gün içinde kim nerede giriş yaptı, akış ve kişi özeti (kendi kapsamındaki kayıtlar)' },
   rakipanaliz:{ t: [], o: ['projeler', 'rakip_fiyatlar'], salt: true, d: 'Kayıp ve rakip analizi: rakip, neden, il ve sektör kırılımı, fiyat farkı' },
   rapor:      { t: [], o: ['ziyaretler', 'gorevler', 'projeler', 'firmalar'], salt: true, d: 'Haftalık faaliyet raporu' },

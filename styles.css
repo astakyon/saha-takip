@@ -2058,3 +2058,14 @@ body.giris-var #view { padding-top: 64px; }
 .bk-izgara { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 14px; align-items: start; }
 .bk-izgara > .card { margin: 0; }
 .bk-grafik { height: 150px; }
+
+/* Sürüm 98: plan ve gerçekleşen, gün özeti */
+.mazeret-k { border-color: #FCA5A5; }
+.mz-l li { flex-wrap: wrap; }
+.mz-is { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; } .mz-is select { width: auto; max-width: 220px; }
+.go-akis { list-style: none; margin: 0; padding: 0; position: relative; }
+.go-akis li { display: grid; grid-template-columns: 52px 26px 1fr; gap: 6px; align-items: start; padding: 7px 0; border-bottom: 1px dashed var(--line); }
+.go-akis time { font: 600 13px var(--f); color: var(--muted); padding-top: 2px; }
+.go-akis i { font-style: normal; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: var(--bg); }
+.go-giris i { background: #DCFCE7; color: #15803D; } .go-cikis i { background: #FEE2E2; color: #B91C1C; } .go-ziyaret i { background: #E0F2FE; color: #0369A1; } .go-teklif i { background: #EDE9FE; color: #6D28D9; } .go-gorev i { background: #FEF9C3; color: #A16207; }
+.go-ozet { margin-bottom: 12px; }

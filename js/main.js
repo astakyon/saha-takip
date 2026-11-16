@@ -51,6 +51,7 @@ const ROUTES = {
   numuneler: { t: 'Numuneler', ico: 'gift', v: yukle('views/kayitlar.js', 'numunelerView'), g: 'Satış' },
   servis:    { t: 'Servis ve şikayet', ico: 'wrench', v: yukle('views/kayitlar.js', 'servisView'), g: 'Satış' },
   panel:     { t: 'Panel', ico: 'chart', v: yukle('views/panel.js', 'panelView'), g: 'Rapor' },
+  gunozet:   { t: 'Gün özeti', ico: 'cal', v: yukle('views/gunozet.js', 'gunozetView'), g: 'Rapor' },
   ekiphar:   { t: 'Ekip haritası', ico: 'map', v: yukle('views/ekiphar.js', 'ekipharView'), g: 'Rapor' },
   rakipanaliz: { t: 'Kayıp ve rakip', ico: 'chart', v: yukle('views/rakipanaliz.js', 'rakipanalizView'), g: 'Rapor' },
   rapor:     { t: 'Haftalık rapor', ico: 'report', v: yukle('views/rapor.js', 'raporView'), g: 'Rapor' },

@@ -8,7 +8,7 @@ export const BASLIKLAR = [
   { k: 'bayiler', t: 'Bayi ve partner', ico: 'box', r: ['bayiag', 'bayikarne', 'talepler'] },
   { k: 'finans', t: 'Finans', ico: 'wallet', r: ['finans', 'cari', 'yaslandirma', 'tahsilat', 'masraflar', 'kur', 'muhasebe'] },
   { k: 'urunler', t: 'Ürünler', ico: 'box', r: ['urunler', 'bayi', 'katalog', 'rakip', 'araclar'] },
-  { k: 'raporlar', t: 'Raporlar', ico: 'chart', r: ['panel', 'ekiphar', 'rakipanaliz', 'rapor', 'kontrol'] },
+  { k: 'raporlar', t: 'Raporlar', ico: 'chart', r: ['panel', 'gunozet', 'ekiphar', 'rakipanaliz', 'rapor', 'kontrol'] },
   { k: 'dosyalar', t: 'Dosyalar', ico: 'doc', r: ['dosyalar'] },
   { k: 'yonetim', t: 'Yönetim', ico: 'building', r: ['yonetim'] },
   { k: 'ayarlar', t: 'Ayarlar', ico: 'gear', r: ['ayarlar'] },
@@ -16,9 +16,9 @@ export const BASLIKLAR = [
 // Başlık içindeki sekme adları (kısa)
 export const SEKME_AD = { bugun: 'Bugün', harita: 'Harita', bolgeler: 'Sanayi bölgeleri', projeler: 'Projeler', referanslar: 'Referanslar', firmalar: 'Firmalar', kisiler: 'Kişiler',
   takvim: 'Takvim', rakipanaliz: 'Kayıp ve rakip', ekiphar: 'Ekip haritası', talepler: 'Bayi talepleri', plan: 'Hafta planı', ziyaretler: 'Ziyaretler', gorevler: 'Görevler', teklifler: 'Teklifler', siparisler: 'Siparişler', tahsilat: 'Tahsilat', numuneler: 'Numuneler', servis: 'Servis',
-  sirket: 'Şirket profili', profilim: 'Profilim', bayiag: 'Ağ', bayikarne: 'Bayi karnesi', finans: 'Özet', cari: 'Cari hesaplar', yaslandirma: 'Yaşlandırma', kur: 'Kur', muhasebe: 'Muhasebeye aktar', urunler: 'Stok ve fiyat', bayi: 'Bayi paneli', katalog: 'Katalog', rakip: 'Rakip fiyatları', araclar: 'Hesap araçları', panel: 'Panel', rapor: 'Haftalık rapor', kontrol: 'Veri kontrolü', masraflar: 'Masraf ve km', dosyalar: 'Dosyalar', yonetim: 'Yönetim' };
+  sirket: 'Şirket profili', profilim: 'Profilim', gunozet: 'Gün özeti', bayiag: 'Ağ', bayikarne: 'Bayi karnesi', finans: 'Özet', cari: 'Cari hesaplar', yaslandirma: 'Yaşlandırma', kur: 'Kur', muhasebe: 'Muhasebeye aktar', urunler: 'Stok ve fiyat', bayi: 'Bayi paneli', katalog: 'Katalog', rakip: 'Rakip fiyatları', araclar: 'Hesap araçları', panel: 'Panel', rapor: 'Haftalık rapor', kontrol: 'Veri kontrolü', masraflar: 'Masraf ve km', dosyalar: 'Dosyalar', yonetim: 'Yönetim' };
 export const baslikOf = rota => BASLIKLAR.find(b => b.r.includes(rota)) || null;
 export const VARS_ANA = ['bugun', 'harita', 'projeler', 'firmalar', 'satis'];
 
 // Bugün ekranının kartları (rol görünümü ve kart düzeni için)
-export const BUGUN_KARTLAR = [['ozet', 'Bugün özeti'], ['etiket', 'Seni etiketlediler'], ['plan', 'Bugünün planı'], ['radar', 'Fırsat radarı'], ['eksik', 'Bugünün soruları'], ['uyari', 'Uyarılar'], ['gorev', 'Görevler'], ['yapilan', 'Bugün yapılanlar'], ['zaman', 'Zamanı gelen projeler'], ['gidilmeyen', 'Uzun süredir gidilmeyenler'], ['yarin', 'Yarın'], ['dogum', 'Doğum günleri'], ['rapor', 'Pazartesi özeti']];
+export const BUGUN_KARTLAR = [['ozet', 'Bugün özeti'], ['mazeret', 'Yapılmayan planlı ziyaretler'], ['etiket', 'Seni etiketlediler'], ['plan', 'Bugünün planı'], ['radar', 'Fırsat radarı'], ['eksik', 'Bugünün soruları'], ['uyari', 'Uyarılar'], ['gorev', 'Görevler'], ['yapilan', 'Bugün yapılanlar'], ['zaman', 'Zamanı gelen projeler'], ['gidilmeyen', 'Uzun süredir gidilmeyenler'], ['yarin', 'Yarın'], ['dogum', 'Doğum günleri'], ['rapor', 'Pazartesi özeti']];

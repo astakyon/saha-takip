@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 98)
+
+- **Yapılmayan planlı ziyaretler** (Bugün kartı, `js/mazeret.js`): tarihi geçmiş ama "Planlandı" kalan ziyaretler; "Yapıldı" (formu açar), neden seçimi (müşteri yoktu, müşteri erteledi, ben erteledim, yetişemedim, acil iş, hava/yol, diğer) → durum **Yapılmadı** + mazeret, "Yarına ertele".
+- Ziyaret durumlarına **Yapılmadı** ve formda "Yapılmadıysa nedeni" eklendi. Planlanarak açılan ziyaret `planli` işaretlenir (yapıldığında da kalır).
+- **Plana uyum** (Haftalık rapor özeti, metni ve kartı): planlı ziyaretlerden yapılanların oranı; plansız ziyaret sayısı; yapılmama nedenleri.
+- **Raporlar → Gün özeti** (`js/views/gunozet.js`): kişi ve gün seçimi; ilk giriş / son çıkış, ziyaret, sahada süre, tahmini yol, teklif ve görev; saat sıralı zaman çizelgesi. **Ay dökümü**: gün gün ilk giriş, son çıkış, ziyaret, sahada süre, yol, teklif, görev; Excel.
+- **schema.sql 40:** `ziyaretler.planli`, `ziyaretler.mazeret`; eski "Planlandı" kayıtlar planlı işaretlenir.
+
 ## Güncelleme notu (sürüm 97)
 
 - Yeni menü başlığı **Bayi ve partner** (`js/views/bayiag.js`): **Ağ** (liste, il dağılımı, tür ve durum süzgeci, Excel), **Bayi karnesi**, **Bayi talepleri** (Satış'tan taşındı).

@@ -5,6 +5,7 @@ import { esc, num, usd, tarih, today, gunEkle, isoLocal, byId, firmaAd, toast, e
 import { zDurum } from './ziyaret.js';
 import { benimAdim } from '../sablon.js';
 import { gunKm } from './bugun.js';
+import { planUyumu } from '../mazeret.js';
 
 export const haftaBasi = d => { const x = new Date(d + 'T00:00'); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return isoLocal(x); };
 const ara = (d, a, b) => d && d.slice(0, 10) >= a && d.slice(0, 10) <= b;
@@ -28,7 +29,8 @@ export function haftaVerisi(bas) {
   const plan = S.ziyaretler.filter(z => zDurum(z) === 'Planlandı' && ara(z.tarih, sonrakiB, sonrakiS)).sort((a, b) => (a.tarih + (a.saat || '')).localeCompare(b.tarih + (b.saat || '')));
   const gorev = S.gorevler.filter(g => g.durum !== 'Tamam' && g.son_tarih && g.son_tarih <= sonrakiS).sort((a, b) => a.son_tarih.localeCompare(b.son_tarih));
   const kazan = gec.filter(g => g.yeni_durum === 'Sipariş'), kayb = gec.filter(g => g.yeni_durum === 'Kayıp');
-  return { bas, son, ziy, gec, yeniP, tek, sip, num: num_, srvA, srvC, tah, mas, gunler, km, plan, gorev, kazan, kayb,
+  const uyum = planUyumu(bas, son);
+  return { uyum, bas, son, ziy, gec, yeniP, tek, sip, num: num_, srvA, srvC, tah, mas, gunler, km, plan, gorev, kazan, kayb,
     sipUsd: sip.filter(s => s.para_birimi === 'USD').reduce((a, s) => a + (+s.net_deger || 0), 0), tekUsd: tek.filter(t => (t.para_birimi || 'USD') === 'USD').reduce((a, t) => a + (+t.toplam || 0), 0),
     amac: sayac(ziy, z => z.amac), sonuc: sayac(ziy.filter(z => z.sonuc_tipi), z => z.sonuc_tipi) };
 }
@@ -38,6 +40,8 @@ const pAd = id => byId('projeler', id)?.ad || '';
 export function raporMetni(d) {
   const L = [`*Haftalık rapor* ${aralik(d)}${benimAdim() ? '\n' + benimAdim() : ''}`, '',
     `Ziyaret: ${d.ziy.length} (${d.gunler.length} gün sahada${d.km ? ', ~' + num(Math.round(d.km)) + ' km' : ''})`,
+    ...(d.uyum.planToplam ? [`Plana uyum: %${d.uyum.uyum} (planlı ${d.uyum.planToplam}, yapılan ${d.uyum.planliYapilan}, yapılmayan ${d.uyum.yapilmadi + d.uyum.bekleyen}; plansız ziyaret ${d.uyum.plansiz})`] : []),
+    ...(d.uyum.nedenler.length ? ['Yapılmama nedeni: ' + d.uyum.nedenler.map(([k, v]) => `${k} ${v}`).join(', ')] : []),
     ...(d.amac.length ? ['Amaç: ' + d.amac.map(([k, v]) => `${k} ${v}`).join(', ')] : []),
     ...(d.sonuc.length ? ['Sonuç: ' + d.sonuc.map(([k, v]) => `${k} ${v}`).join(', ')] : []),
     `Teklif: ${d.tek.length}${d.tekUsd ? ' · ' + usd(d.tekUsd) : ''}`, `Sipariş: ${d.sip.length}${d.sipUsd ? ' · ' + usd(d.sipUsd) : ''}`,
@@ -86,6 +90,7 @@ export function raporView(el) {
     <section class="ledger"><div><span>Ziyaret</span><b>${d.ziy.length}</b><small>${d.gunler.length} gün sahada${d.km ? ` · ~${num(Math.round(d.km))} km` : ''}</small></div>
       <div><span>Teklif</span><b>${d.tek.length}</b><small>${d.tekUsd ? usd(d.tekUsd) : 'bu hafta teklif yok'}</small></div>
       <div><span>Sipariş</span><b>${usd(d.sipUsd)}</b><small>${d.sip.length} sipariş</small></div>
+      <div><span>Plana uyum</span><b>${d.uyum.uyum != null ? '%' + d.uyum.uyum : '—'}</b><small>${d.uyum.planToplam ? `${d.uyum.planliYapilan}/${d.uyum.planToplam} planlı · ${d.uyum.plansiz} plansız · ${d.uyum.yapilmadi} mazeretli` : 'bu hafta plan yok'}</small></div>
       <div><span>Kazanılan / kaybedilen</span><b>${d.kazan.length} / ${d.kayb.length}</b><small>${d.gec.length} durum değişikliği · ${d.yeniP.length} yeni proje</small></div></section>
     <div class="dash">
       <section class="card wide"><h2>Ziyaretler <span class="muted">${d.ziy.length}</span></h2>

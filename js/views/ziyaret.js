@@ -1,7 +1,7 @@
 import { S, uuid } from '../db.js';
 import { isleKutusu, isleBagla } from '../isle.js';
 import { app, F, saveFilters } from '../state.js';
-import { esc, fold, tarih, today, ZIYARET_AMAC, ZIYARET_DURUM, SONUC_TIPLERI, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, silGeriAl } from '../ui.js';
+import { esc, fold, tarih, today, ZIYARET_AMAC, ZIYARET_DURUM, MAZERETLER, SONUC_TIPLERI, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, silGeriAl } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { girisOzeti } from '../giriscikis.js';
 import { TEKRARLAR, tekrarAd, gorevSonrasi } from '../otomasyon.js';
@@ -21,6 +21,7 @@ const ZIYARET_FORM = [
     { k: 'proje_id', l: 'İlgili proje', t: 'ref', ref: 'projeler', full: true },
     { k: 'durum', l: 'Durum', t: 'sel', opts: ZIYARET_DURUM.map(d => d.k), ph: 'Seç' },
     { k: 'amac', l: 'Amaç', t: 'sel', opts: ZIYARET_AMAC, ph: 'Seç' },
+    { k: 'mazeret', l: 'Yapılmadıysa nedeni', t: 'sel', opts: MAZERETLER, ph: 'Seç' },
     { k: 'tarih', l: 'Tarih', t: 'date' },
     { k: 'saat', l: 'Saat', t: 'time' },
   ]},
@@ -80,7 +81,7 @@ function yetkiliBagla(form) {
 
 export function ziyaretForm(init = {}, after) {
   const simdi = () => new Date().toTimeString().slice(0, 5);
-  const z0 = init.id ? byId('ziyaretler', init.id) || init : { id: uuid(), tarih: today(), durum: 'Yapıldı', fotolar: [], ...init, _new: true };
+  const z0 = init.id ? (byId('ziyaretler', init.id) ? { ...byId('ziyaretler', init.id), ...(init.durum ? { durum: init.durum } : {}) } : init) : { id: uuid(), tarih: today(), durum: 'Yapıldı', fotolar: [], ...init, _new: true };
   // Yeni "yapıldı" ziyarette saat şimdiki saatle dolu gelir
   if (z0._new && !z0.saat && (z0.durum || 'Yapıldı') === 'Yapıldı' && (!init.tarih || init.tarih === today())) z0.saat = simdi();
   const z = { ...z0, durum: zDurum(z0) };

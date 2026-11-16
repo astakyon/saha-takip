@@ -1759,5 +1759,12 @@ begin
 end $f$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 39 $f$;
 
+-- ---------- Sürüm 40: Plan ve gerçekleşen (planlı ziyaret işareti, yapılmama nedeni) ----------
+alter table public.ziyaretler add column if not exists planli boolean;
+alter table public.ziyaretler add column if not exists mazeret text;
+-- Eski kayıtlar: hâlâ "Planlandı" olanlar planlıdır
+update public.ziyaretler set planli = true where planli is null and durum = 'Planlandı';
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 40 $f$;
+
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

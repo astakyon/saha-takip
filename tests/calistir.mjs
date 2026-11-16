@@ -500,6 +500,31 @@ const DB = () => {
   kontrol('Bayi ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 98: yapılmayan planlı ziyarette mazeret, plana uyum, gün özeti ve aylık çalışma dökümü
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString(); const g = n => { const x = new Date(Date.now() + n * 864e5); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+    d.ziyaretler = [{ id: 'z2', owner: 'u1', firma_id: 'f1', tarih: g(-1), durum: 'Planlandı', planli: true, created_at: ts, updated_at: ts },
+      { id: 'z3', owner: 'u1', firma_id: 'f2', tarih: g(0), durum: 'Yapıldı', planli: true, giris: g(0) + 'T09:00:00', cikis: g(0) + 'T09:45:00', created_at: ts, updated_at: ts },
+      { id: 'z4', owner: 'u1', firma_id: 'f1', tarih: g(0), saat: '11:30', durum: 'Yapıldı', created_at: ts, updated_at: ts }];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bugun'); await w(1500);
+  const mk = await p.evaluate(() => ({ kart: !!document.querySelector('.mazeret-k [data-mz="z2"]') }));
+  await p.selectOption('[data-mz="z2"] [data-mzneden]', 'Müşteri erteledi'); await w(1200);
+  const mz = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const z = S.ziyaretler.find(x => x.id === 'z2'); return { d: z.durum, m: z.mazeret, kart: !!document.querySelector('[data-mz="z2"]') }; });
+  const pl = await p.evaluate(async () => { const { app } = await import('./js/state.js'); const z = await app.db.save('ziyaretler', { firma_id: 'f2', tarih: '2026-12-30', durum: 'Planlandı' }); return z?.planli ?? (await import('./js/db.js')).S.ziyaretler.find(x => x.tarih === '2026-12-30')?.planli; });
+  await p.goto(U + '#/rapor'); await w(1500);
+  const rp = await p.evaluate(() => document.querySelector('.ledger')?.innerText.replace(/\s+/g, ' '));
+  await p.goto(U + '#/gunozet'); await w(1500);
+  const go = await p.evaluate(() => ({ ledger: document.querySelector('.go-ozet')?.innerText.replace(/\s+/g, ' '), akis: [...document.querySelectorAll('.go-akis li')].map(l => l.innerText.replace(/\s+/g, ' ')), menu: [...document.querySelectorAll('.alt-sekme a')].map(a => a.firstChild.textContent.trim()).includes('Gün özeti') }));
+  await p.click('[data-gor="ay"]'); await w(800);
+  const ay = await p.evaluate(() => ({ n: document.querySelectorAll('[data-gunac]').length, ledger: document.querySelector('.go-ozet')?.innerText.replace(/\s+/g, ' ') }));
+  kontrol('Bugün\'de yapılmayan planlı ziyaret sorulur; neden seçilince "Yapılmadı" + mazeret; planlanan ziyaret "planlı" işaretlenir; haftalık raporda plana uyum',
+    mk.kart && mz.d === 'Yapılmadı' && mz.m === 'Müşteri erteledi' && !mz.kart && pl === true && /Plana uyum/.test(rp || ''), JSON.stringify({ mk, mz, pl, rp }));
+  kontrol('Gün özeti: ilk giriş, ziyaret, sahada süre, zaman çizelgesi; ay dökümü',
+    go.menu && /İlk giriş 09:00/.test(go.ledger || '') && /Ziyaret 2/.test(go.ledger || '') && /45 dk/.test(go.ledger || '') && go.akis.length >= 3 && /^09:00/.test(go.akis[0] || '') && ay.n >= 1 && /Sahada gün/.test(ay.ledger || ''), JSON.stringify({ go, ay }));
+  kontrol('Plan ve gerçekleşen ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

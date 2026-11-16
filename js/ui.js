@@ -67,7 +67,8 @@ export function urunBilgi(ac) {
   const W = w ? +w[1] : null, LM = lm ? Math.round(parseFloat(lm[1] + '.' + lm[2]) * 1000) : null;
   return { w: W, lm: LM, k: k ? +k[1] * 100 : null, verim: W && LM ? Math.round(LM / W) : null };
 }
-export const ZIYARET_DURUM = [{ k: 'Planlandı', c: '#7C3AED' }, { k: 'Yapıldı', c: '#0E7490' }, { k: 'İptal', c: '#A1A1AA' }];
+export const ZIYARET_DURUM = [{ k: 'Planlandı', c: '#7C3AED' }, { k: 'Yapıldı', c: '#0E7490' }, { k: 'Yapılmadı', c: '#B91C1C' }, { k: 'İptal', c: '#A1A1AA' }];
+export const MAZERETLER = ['Müşteri yoktu / görüşemedim', 'Müşteri erteledi', 'Ben erteledim', 'Yetişemedim', 'Acil başka iş çıktı', 'Hava / yol durumu', 'Diğer'];
 export const SONUC_TIPLERI = ['Sipariş alındı', 'Pazarlık sürüyor', 'Olumlu', 'Teklif istendi', 'Takip edilecek', 'Bilgi alındı', 'Olumsuz', 'Görüşülemedi'];
 export const BOLGE_TIPLERI = ['OSB', 'Sanayi sitesi', 'Serbest bölge', 'Liman', 'Küçük sanayi', 'Diğer'];
 export const BOLGE_RENKLERI = ['#2563EB', '#EA580C', '#15803D', '#7C3AED', '#B91C1C', '#0E7490', '#A16207', '#DB2777'];
