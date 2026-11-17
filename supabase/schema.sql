@@ -1999,6 +1999,31 @@ end $$;
 create or replace function public.vergi_tekil_kurulu() returns boolean language sql stable as $f$ select exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'firmalar_vergi_tekil') $f$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 48 $f$;
 
+-- ---------- Sürüm 49: Kişilerde iletişim izni; "tutarları gizle" bayi, çek, bayi stok ve satış tutarlarına da uygulanır ----------
+alter table public.kisiler add column if not exists iletisim_izni text;     -- KVKK aydınlatma: Verildi / Verilmedi
+alter table public.kisiler add column if not exists ticari_ileti text;      -- ticari ileti (e-posta, SMS, WhatsApp tanıtım) onayı: Evet / Hayır
+alter table public.kisiler add column if not exists izin_tarihi date;
+alter table public.kisiler add column if not exists izin_kanali text;
+create or replace function public.hassas_kolonlar() returns jsonb language sql immutable as $f$
+  select '{
+    "projeler":       [{"grup": "tutar", "kol": ["tutar_usd", "siparis_tutari_usd", "bizim_teklif_usd", "rakip_birim_fiyat", "rakip_toplam_usd"]},
+                       {"grup": "harita", "kol": ["karar_grubu"]}],
+    "teklifler":      [{"grup": "tutar", "kol": ["kalemler", "toplam", "iskonto"]}],
+    "siparisler":     [{"grup": "tutar", "kol": ["net_deger"]}],
+    "urunler":        [{"grup": "tutar", "kol": ["birim_fiyat_usd"]}],
+    "stok_gecmis":    [{"grup": "tutar", "kol": ["birim_fiyat_usd"]}],
+    "hedefler":       [{"grup": "tutar", "kol": ["tutar_usd", "resmi_usd", "resmi_tl"]}],
+    "rakip_fiyatlar": [{"grup": "tutar", "kol": ["birim_fiyat", "fiyat_metin"]}],
+    "tahsilatlar":    [{"grup": "tutar", "kol": ["tutar", "odenen"]}],
+    "cekler":         [{"grup": "tutar", "kol": ["tutar"]}],
+    "bayiler":        [{"grup": "tutar", "kol": ["iskonto", "kredi_limiti", "hedef_yil"]}],
+    "bayi_stok":      [{"grup": "tutar", "kol": ["birim_fiyat"]}],
+    "bayi_satis":     [{"grup": "tutar", "kol": ["tutar"]}],
+    "kisiler":        [{"grup": "iletisim", "kol": ["telefon", "eposta", "kartvizit_on", "kartvizit_arka", "dogum_gunu"]}]
+  }'::jsonb
+$f$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 49 $f$;
+
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

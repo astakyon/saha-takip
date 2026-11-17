@@ -67,6 +67,7 @@ const ROUTES = {
   ekiphar:   { t: 'Ekip haritası', ico: 'map', v: yukle('views/ekiphar.js', 'ekipharView'), g: 'Rapor' },
   rakipanaliz: { t: 'Kayıp ve rakip', ico: 'chart', v: yukle('views/rakipanaliz.js', 'rakipanalizView'), g: 'Rapor' },
   rapor:     { t: 'Haftalık rapor', ico: 'report', v: yukle('views/rapor.js', 'raporView'), g: 'Rapor' },
+  eksikler:  { t: 'Eksik bilgiler', ico: 'check', v: yukle('views/eksikler.js', 'eksiklerView'), g: 'Rapor' },
   kontrol:   { t: 'Veri kontrolü', ico: 'check', v: yukle('views/kontrol.js', 'kontrolView'), g: 'Rapor' },
   siparisler:{ t: 'Siparişler', ico: 'receipt', v: yukle('views/panel.js', 'siparislerView'), g: 'Rapor' },
   urunler:   { t: 'Ürün ve fiyat listesi', ico: 'box', v: yukle('views/urunler.js', 'urunlerView'), g: 'Rapor' },

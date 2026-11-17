@@ -6,7 +6,19 @@ import { rotaIzinli, sahipMi } from './yetki.js';
 import { BASLIKLAR, SEKME_AD, baslikOf, VARS_ANA } from './basliklar.js';
 
 export const SABIT = ['bugun', 'ayarlar'];     // gizlenemez
-export const ANA_EN_COK = 5;                   // telefondaki alt çubuğa sığan başlık sayısı (+ “Diğer”)
+export const ANA_EN_COK = 5;
+// Rol bazlı hazır alt menüler (rolün kendi menüsü ya da kişinin seçimi yoksa)
+export const ROL_MENU = {
+  'Saha ekibi': ['bugun', 'harita', 'projeler', 'firmalar', 'satis'],
+  'Satış': ['bugun', 'harita', 'projeler', 'firmalar', 'satis'],
+  'Satış destek': ['bugun', 'satis', 'firmalar', 'projeler'],
+  'Muhasebe': ['bugun', 'finans', 'firmalar', 'satis'],
+  'Bayi': ['bugun', 'bayiler', 'urunler'],
+  'Dış kullanıcı': ['bugun', 'bayiler'],
+  'Proje': ['bugun', 'projeler', 'harita', 'dosyalar'],
+  'Proje firması': ['bugun', 'projeler'],
+  'Yönetici': ['bugun', 'raporlar', 'projeler', 'firmalar', 'finans'],
+};                   // telefondaki alt çubuğa sığan başlık sayısı (+ “Diğer”)
 
 // gizli: kapatılan ekranlar (rota). ana: alt çubuktaki başlıklar. Eski ayarlarda ana rota adlarıyla tutuluyordu; başlığa çevrilir.
 export function menuDuzeni(R = app.rotalar || {}) {
@@ -16,7 +28,9 @@ export function menuDuzeni(R = app.rotalar || {}) {
   let ana = Array.isArray(m.ana) && m.ana.length ? [...new Set(m.ana.map(k => BASLIKLAR.find(b => b.k === k) ? k : baslikOf(k)?.k).filter(Boolean))] : [...VARS_ANA];
   const rg = !sahipMi() ? app.yetki?.yetkiler?._gorunum : null;
   if (!m.ana?.length && rg?.menu?.length) ana = [...rg.menu];   // rolün belirlediği alt menü (kişi kendisi değiştirmediyse)
-  if (app.yetki?.yetkiler?._rol === 'Bayi' && !m.ana?.length && !rg?.menu?.length) ana = ['bugun', 'bayiler', ...ana.filter(k => !['bugun', 'bayiler'].includes(k))];   // bayi rolündeki üyeye ana çubukta Ürünler (Bayi paneli)
+  // Rol bazlı hazır menü: rol için menü seçilmediyse ve kişi kendisi değiştirmediyse rolün adına göre
+  const hz = ROL_MENU[app.yetki?.yetkiler?._rol] || (app.yetki?.dis ? ROL_MENU['Dış kullanıcı'] : null);
+  if (hz && !m.ana?.length && !rg?.menu?.length) ana = [...hz, ...ana.filter(k => !hz.includes(k))];
   ana = ana.filter(k => { const b = BASLIKLAR.find(x => x.k === k); return b && gorunur(b); }).slice(0, ANA_EN_COK);
   return { gizli, ana, gorunur, ozel: !!(m.gizli?.length || m.ana?.length) };
 }

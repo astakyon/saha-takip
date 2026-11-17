@@ -32,6 +32,27 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 110)
+
+- **Kısa güncelleme dosyası:** `supabase/guncelleme-37-49.sql` yalnızca şema 37'deki bir veritabanını 49'a taşır (340 satır; telefondan yapıştırmak için). Veritabanı 37'den eskiyse çalışmaz ve tam `schema.sql`'i ister.
+- **İletişim izni** (kişi formu): KVKK aydınlatma (verildi / verilmedi), tanıtım mesajı onayı (evet / hayır), tarih, kanal; kişi sayfasında uyarı; Eksik bilgiler'de "Tanıtım mesajı izni" (ek).
+- **Rol bazlı hazır menü** (`js/menu.js` `ROL_MENU`): Saha ekibi, Satış, Satış destek, Muhasebe, Bayi, Dış kullanıcı, Proje, Proje firması, Yönetici rollerinde alt çubuk hazır gelir; rolün kendi menüsü ya da kişinin seçimi önceliklidir.
+- **schema.sql 49:** `kisiler.iletisim_izni`, `ticari_ileti`, `izin_tarihi`, `izin_kanali`; `hassas_kolonlar` "tutar" grubuna `cekler.tutar`, `bayiler.iskonto / kredi_limiti / hedef_yil`, `bayi_stok.birim_fiyat`, `bayi_satis.tutar` eklendi (kayıt `kaydet_toplu` ile, okuma `hassas_degerler` ile).
+
+## Güncelleme notu (sürüm 109)
+
+- **Önem puanı**: eksik alan ağırlıkları × (1 + kaydın değerinin büyüklüğü); varsayılan sıra "en çok etki eden önce".
+- **Öneriler**: firma konumu (ziyaret giriş konumlarının ortalaması), il / ilçe (adres ya da projesi), telefon / e-posta (bağlı kişiler), proje ili (paydaş firma), kişinin firması (e-posta alan adı), sipariş / fatura / çek firması (ad benzerliği).
+- **Doluluk**: firma sayfasında % çubuğu; Eksik bilgiler'de haftalık genel doluluk grafiği (şirket ayarında saklanır), kişi bazında doluluk, değiştirilebilir hedef (varsayılan %90).
+- **Günlük eksik veri kartı**: satışı ya da açık işi olan firmaların vergi no, vergi dairesi, telefon gibi eksikleri ve öneriler soruluyor (vergi no denetlenir).
+- **Uyarı akışı**: büyük açık projede (eşik üstü) il, paydaş, tarih gibi önemli alan eksikse "Önemli kayıtta eksik".
+
+## Güncelleme notu (sürüm 108)
+
+- **Alan kuralları** (`js/alanlar.js`): her kayıt türü için alan, etiket, önem (zorunlu / önemli / ek; Zorunlu alanlar ayarından), eksiklik ölçütü, doldurma şekli ve "neden önemli" metni. Doluluk, veri kontrol merkezi, günlük kart ve uyarılar bu tanımı kullanır.
+- **Raporlar → Eksik bilgiler** (`js/views/eksikler.js`): 7 sekme (firmalar ve cari, kişiler, projeler, teklif ve sipariş, finans, bayiler, ürünler), her birinde doluluk %, eksik kayıt sayısı ve alan süzgeçleri; satırda yerinde doldurma (metin, sayı, tarih, seçim, il + ilçe, firma seç, sorumlu), "yok" işareti, seçilenlere toplu değer, seçilenler için görev, Excel'e aktar / Excel'den doldur.
+- Şema değişikliği yok ("yok" işaretleri şirket ayarında tutulur).
+
 ## Güncelleme notu (sürüm 107)
 
 - **Zorunlu alanlar** (`js/zorunlu.js`): firma konumu, vergi bilgisi (teklif / sipariş / tahsilat / çek öncesi, her kayıtta ya da kapalı) ve hangi firma tiplerinde istendiği, projenin ili, açık projede tutar ve tarih, kişinin firması ve iletişim bilgisi; her biri zorunlu / önemli / denetlenmesin. Ayar: Şirket profili → Genel → Zorunlu alanlar.

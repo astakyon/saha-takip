@@ -57,6 +57,7 @@ export const EKRANLAR = {
   bayiag:     { t: ['bayiler'], o: ['firmalar', 'siparisler', 'tahsilatlar', 'projeler', 'ziyaretler'], d: 'Bayi ve partner ağı: atama, tür, bölge, koşullar, hedef' },
   bayikarne:  { t: [], o: ['bayiler', 'firmalar', 'siparisler', 'tahsilatlar', 'projeler', 'teklifler', 'ziyaretler', 'kisiler', 'urunler'], salt: true, d: 'Bayi karnesi: satış, hedef, projeler, cari, stok, ziyaretler' },
   onay:       { t: [], o: ['masraflar', 'firmalar', 'projeler', 'siparisler'], salt: true, d: 'Onay kuyruğu: masraf, hafta planı ve ekibin yeni kayıtları (yalnız şirket yetkilisi)' },
+  eksikler:   { t: [], o: ['firmalar', 'kisiler', 'projeler', 'teklifler', 'siparisler', 'tahsilatlar', 'cekler', 'bayiler', 'bayi_stok', 'urunler', 'ziyaretler'], d: 'Eksik bilgiler: kayıt kayıt neyin eksik olduğu, listeden doldurma, öneriler (yazma, ilgili kayıt türünün yetkisiyle)' },
   uyarilar:   { t: [], o: ['ziyaretler', 'teklifler', 'projeler', 'tahsilatlar', 'firmalar'], salt: true, d: 'Uyarı akışı: uzaktan giriş, yapılmayan ziyaret, büyük teklif, kayıp, gecikme' },
   siralama:   { t: [], o: ['ziyaretler', 'teklifler', 'siparisler', 'projeler'], salt: true, d: 'Ekip sıralaması: ziyaret, teklif, sipariş, plana uyum' },
   cekler:     { t: ['cekler'], o: ['firmalar'], d: 'Çek ve senet: alınan ve verilen, vade, ciro, durum' },

@@ -1,6 +1,8 @@
 // Günlük eksik veri kartı: Bugün ekranında her gün en fazla 3 kısa soru; cevap yerinde verilir, tek dokunuşla kaydedilir.
 // Radar, kayıp analizi ve tahminler ancak bu alanlar doldukça doğru çalışır. "Atla" o soruyu 30 gün sormaz.
 import { S } from './db.js';
+import { vergiKontrol, vergiSahibi } from './cari.js';
+import { parcalar, varlik, yoklar, kayitEksik, kayitDegeri, oneri, ONEM } from './alanlar.js';
 import { app } from './state.js';
 import { esc, usd, tarih, today, gunEkle, byId, firmaAd, toast, ACIK, RAKIPLER, KAYIP_NEDENLERI } from './ui.js';
 import { ayar, ayarYaz } from './ayar.js';
@@ -33,6 +35,16 @@ export function sorular() {
   for (const f of S.firmalar.filter(f => aktif.has(f.id) && !f.segment))
     l.push({ k: 'segment:' + f.id, t: 'firmalar', id: f.id, onem: 1.8, soru: `<a href="#/firma/${f.id}"><b>${esc(f.ad)}</b></a> senin için ne kadar önemli?`,
       alan: [['A', 'A: kilit'], ['B', 'B: düzenli'], ['C', 'C: ara sıra']].map(([v, a]) => `<button type="button" class="btn sm" data-hizli='{"segment":"${v}"}'>${a}</button>`).join('') });
+  // Satışı / açık işi olan firmaların önemli eksikleri (vergi no, vergi dairesi, telefon) ve diğer verilerden öneriler
+  const FP = parcalar(varlik('firmalar'))[0], Y0 = yoklar();
+  for (const f of S.firmalar) {
+    const dg = kayitDegeri('firmalar', f); if (!dg) continue;
+    for (const e of kayitEksik(FP, f, Y0).eksik) {
+      const o = oneri('firmalar', f, e.a), fa = `<a href="#/firma/${f.id}"><b>${esc(f.ad)}</b></a>`, puan = 0.6 + ONEM[e.onem].w * 0.2 + Math.log10(1 + dg / 1000) * 0.3;   // projelerin kayıp / tutar sorularından sonra
+      if (o) l.push({ k: `alan:${f.id}:${e.a.k}`, t: 'firmalar', id: f.id, onem: puan + 0.5, soru: `${fa}: ${esc(e.a.l.toLowerCase())} için öneri var: <b>${esc(o.metin)}</b>. Kaydedilsin mi?`, alan: `<button type="button" class="btn sm primary" data-hizli='${esc(JSON.stringify(o.deger))}'>Evet, kaydet</button>` });
+      else if (e.a.t === 'text') l.push({ k: `alan:${f.id}:${e.a.k}`, t: 'firmalar', id: f.id, onem: puan, soru: `${fa} firmasının ${esc(e.a.l.toLowerCase())} nedir?`, alan: `<input data-a="${e.a.k}" placeholder="${esc(e.a.l)}" aria-label="${esc(e.a.l)}"${e.a.k === 'vergi_no' ? ' inputmode="numeric"' : ''}><button type="button" class="btn sm primary" data-kaydet>Kaydet</button>` });
+    }
+  }
   // İçerideyken: firmanın konumu yoksa buradan kaydet
   const ic = (S.ziyaretler || []).find(z => z.giris && !z.cikis && z.lat != null), fi = ic && byId('firmalar', ic.firma_id);
   if (fi && fi.lat == null) l.push({ k: 'konum:' + fi.id, t: 'firmalar', id: fi.id, onem: 9, soru: `Şu an <b>${esc(fi.ad)}</b>'dasın ve firmanın haritada yeri yok. Girişteki konum firmanın yeri olarak kaydedilsin mi?`,
@@ -59,6 +71,7 @@ export function eksikBagla(kok, yenile) {
   const bitti = async (x, alan) => {
     const r = byId(x.t, x.id); if (!r) return;
     if (x.t === 'projeler' && alan.durum) { const { durumDegistir } = await import('./views/projeler.js'); if (!await durumDegistir(r, alan.durum)) return; }
+    else if (alan.vergi_no) { const v = vergiKontrol(alan.vergi_no); if (!v.ok) return toast(v.hata, 'err'); const sh = vergiSahibi(v.temiz, r.id); if (sh) return toast(`Bu numara zaten "${sh.ad}" firmasında.`, 'err'); alan.vergi_no = v.temiz; try { await app.db.save(x.t, { ...r, ...alan }); } catch (e) { return toast('Kaydedilemedi: ' + e.message, 'err'); } }
     else try { await app.db.save(x.t, { ...r, ...alan }); } catch (e) { return toast('Kaydedilemedi: ' + e.message, 'err'); }
     const s = sayac(); s.n++; sayacYaz(s); ozellikSay('eksik-veri'); toast('Kaydedildi.'); yenile?.();
   };

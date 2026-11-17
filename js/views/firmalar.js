@@ -59,6 +59,12 @@ const KISI_FORM = [
     { k: 'web', l: 'İnternet sitesi', t: 'url', ph: 'www.firma.com' },
     { k: 'adres', l: 'Adres', t: 'area', rows: 2, full: true },
   ]},
+  { title: 'İletişim izni', ozet: 'KVKK aydınlatma, ticari ileti onayı', kapali: true, fields: [
+    { k: 'iletisim_izni', l: 'KVKK aydınlatma', t: 'sel', ph: 'Bilinmiyor', opts: ['Verildi', 'Verilmedi'] },
+    { k: 'ticari_ileti', l: 'Tanıtım mesajı (e-posta / SMS / WhatsApp) onayı', t: 'sel', ph: 'Bilinmiyor', opts: ['Evet', 'Hayır'] },
+    { k: 'izin_tarihi', l: 'İzin tarihi', t: 'date' },
+    { k: 'izin_kanali', l: 'İzin nasıl alındı', t: 'sel', ph: 'Seç', opts: ['Yüz yüze', 'E-posta', 'Telefon', 'Web formu', 'Kartvizit', 'Sözleşme'] },
+  ]},
   { title: 'Diğer bilgiler', ozet: 'rol, doğum günü, notlar', kapali: o => !o.notlar, fields: [
     { k: 'pozisyon', l: 'Pozisyon', t: 'sel', opts: POZISYONLAR, ph: 'Seç (boşsa unvandan tahmin edilir)' },
     { k: 'ust_kisi_id', l: 'Bağlı olduğu kişi (yöneticisi)', t: 'sel', ph: 'Yok', opts: k => (S.kisiler || []).filter(x => k.firma_id && x.firma_id === k.firma_id && x.id !== k.id).sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr')).map(x => ({ v: x.id, l: x.ad_soyad + (x.unvan ? ' — ' + x.unvan : '') })), help: 'Firmanın organizasyon şeması bununla çizilir. Önce firmayı seçip kaydet.' },

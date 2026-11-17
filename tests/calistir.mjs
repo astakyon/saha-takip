@@ -778,6 +778,60 @@ const DB = () => {
   kontrol('Zorunlu alan ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 108-109: Eksik bilgiler (veri kontrol merkezi) — varlık sekmeleri, yerinde ve toplu doldurma, öneri, yok işareti, görev, doluluk, günlük kart
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.firmalar.push({ id: 'f5', owner: 'u1', ad: 'Konumsuz Müşteri', tipler: ['Müşteri'], created_at: ts, updated_at: ts }, { id: 'f6', owner: 'u1', ad: 'İkinci Konumsuz', tipler: ['Rakip'], created_at: ts, updated_at: ts });
+    d.ziyaretler.push({ id: 'zk', owner: 'u1', firma_id: 'f2', tarih: '2026-11-01', durum: 'Yapıldı', lat: 36.99, lng: 35.31, created_at: ts, updated_at: ts });
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/eksikler'); await w(1800);
+  const g1 = await p.evaluate(() => ({ h1: document.querySelector('#view h1')?.textContent || '', sek: document.querySelectorAll('.ek-sekme button').length, chip: [...document.querySelectorAll('[data-alan]')].map(b => b.textContent).join('|'), oneri: [...document.querySelectorAll('[data-oneri]')].map(b => b.textContent).join('|') }));
+  // f1 (Örnek Bayi) vergi no yerinde
+  const satir = await p.evaluate(() => [...document.querySelectorAll('.ek-t tr[data-i]')].findIndex(tr => tr.textContent.includes('Örnek Bayi')));
+  await p.fill(`.ek-t tr[data-i="${satir}"] [data-k="vergi_no"] [data-ed]`, '1234567890'); await p.press(`.ek-t tr[data-i="${satir}"] [data-k="vergi_no"] [data-ed]`, 'Enter'); await w(1200);
+  const v1 = await p.evaluate(async () => (await import('./js/db.js')).S.firmalar.find(f => f.id === 'f1').vergi_no);
+  // öneri: f2 konumu ziyaret girişinden
+  await p.click('.ek-t [data-oneri]'); await w(1200);
+  const v2 = await p.evaluate(async () => { const f = (await import('./js/db.js')).S.firmalar.find(f => f.id === 'f2'); return [f.lat, f.lng].join(','); });
+  // toplu: konum alanı → seçilenlere il / ilçe
+  await p.click('[data-alan="konum"]'); await w(900);
+  await p.check('[data-hepsi]'); await w(200);
+  await p.selectOption('[data-toplued] [data-il]', 'Mersin'); await p.fill('[data-toplued] [data-ilce]', 'Tarsus'); await p.click('[data-topluuygula]'); await w(1500);
+  const v3 = await p.evaluate(async () => (await import('./js/db.js')).S.firmalar.filter(f => ['f5', 'f6'].includes(f.id)).map(f => f.il + '/' + f.ilce).join(','));
+  // yok işareti ve görev
+  await p.click('[data-alan=""]'); await w(900);
+  await p.click('.ek-t tr[data-i="0"] [data-yok]'); await w(900);
+  const yok = await p.evaluate(async () => Object.keys((await import('./js/ayar.js')).ayar('eksik_yok') || {}).length);
+  await p.check('.ek-t tr[data-i="0"] [data-sec]'); await p.click('[data-ata]'); await w(900);
+  const gorev = await p.evaluate(async () => (await import('./js/db.js')).S.gorevler.filter(g => g.kaynak === 'veri').length);
+  const ilerleme = await p.evaluate(() => !!document.querySelector('.ek-ilerleme'));
+  await p.goto(U + '#/firma/f1'); await w(1200);
+  const dol = await p.evaluate(() => document.querySelector('.fs-doluluk')?.textContent || '');
+  const kart = await p.evaluate(async () => (await import('./js/eksikveri.js')).sorular().filter(x => x.k.startsWith('alan:')).length);
+  kontrol('Eksik bilgiler: 7 varlık sekmesi, alan süzgeçleri, ziyaret konumundan öneri', /^Eksik bilgiler/.test(g1.h1) && g1.sek === 7 && /Vergi no/.test(g1.chip) && /ziyaret girişinin konumu/.test(g1.oneri), JSON.stringify(g1));
+  kontrol('Listeden yerinde doldurma (vergi no), öneriyi onaylama (konum), seçilenlere toplu il / ilçe', v1 === '1234567890' && v2 === '36.99,35.31' && v3 === 'Mersin/Tarsus,Mersin/Tarsus', JSON.stringify({ v1, v2, v3 }));
+  kontrol('"Yok" işareti kaydedilir, seçilenler için görev açılır, ilerleme bölümü, firma sayfasında doluluk, günlük kartta firma soruları',
+    yok === 1 && gorev === 1 && ilerleme && /% ?\d+ dolu|%\d+ dolu/.test(dol) && kart >= 1, JSON.stringify({ yok, gorev, ilerleme, dol, kart }));
+  kontrol('Eksik bilgiler ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+// Sürüm 110: kişide iletişim izni, rol bazlı hazır menü
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})();`) });
+  await p.goto(U + '#/bugun'); await w(1200);
+  await p.evaluate(async () => (await import('./js/views/firmalar.js')).kisiFormu('k1')); await w(700);
+  await p.evaluate(() => document.querySelectorAll('.drawer.open details').forEach(d => d.open = true));
+  await p.selectOption('.drawer.open [name=ticari_ileti]', 'Hayır'); await p.click('.drawer.open [type=submit]'); await w(1200);
+  await p.goto(U + '#/kisi/k1'); await w(1200);
+  const izin = await p.evaluate(async () => ({ v: (await import('./js/db.js')).S.kisiler.find(k => k.id === 'k1').ticari_ileti, uy: document.querySelector('.izin-uyari')?.textContent || '' }));
+  const menu = await p.evaluate(async () => { const { app } = await import('./js/state.js'); const m = await import('./js/menu.js'); const once = app.yetki;
+    app.yetki = { ben_sahip: false, yetkiler: { _rol: 'Muhasebe', _ekran: { finans: 'oku', cari: 'oku', firmalar: 'oku', siparisler: 'oku', teklifler: 'oku', harita: 'oku' } } };
+    try { return m.menuDuzeni(app.rotalar).ana.join(','); } finally { app.yetki = once; } });
+  kontrol('Kişide tanıtım mesajı izni kaydedilir; izin yoksa kişi sayfasında uyarı', izin.v === 'Hayır' && /tanıtım mesajı/.test(izin.uy), JSON.stringify(izin));
+  kontrol('Rol bazlı hazır menü: Muhasebe rolünde ana çubuk Bugün, Finans, Firmalar, Satış', /^bugun,finans,firmalar,satis/.test(menu), menu);
+  kontrol('İletişim izni ve menü ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });
