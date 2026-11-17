@@ -1,6 +1,7 @@
 // Firma kartı: kendi sayfası (#/firma/<id>[/<sekme>]). Üstte geri dönüş, başlık ve işlemler; altında sekmeler.
 // Düzenleme pencerede açılır (firmaFormu); kişi, ziyaret, teklif gibi kayıtlar da pencerede açılıp sayfayı yeniler.
 import { riskRozeti } from '../vaderisk.js';
+import { firmaRozet } from '../zorunlu.js';
 import { dogrulamaRozet } from '../dogrula.js';
 import { S } from '../db.js';
 import { app } from '../state.js';
@@ -50,7 +51,7 @@ export function firmaSayfa(el, id, sekme0) {
   const won = projeler.filter(p => p.durum === 'Sipariş').length, lost = projeler.filter(p => p.durum === 'Kayıp').length;
   const sipT = sip.filter(s => s.para_birimi === 'USD').reduce((a, s) => a + +s.net_deger, 0);
   const gun = yapilan[0] ? Math.round((new Date(today()) - new Date(yapilan[0].tarih)) / 864e5) : null;
-  const stok = (x.tipler || []).includes('Bayi') ? S.urunler.filter(u => u.depo && x.ad.toLowerCase().startsWith(u.depo.toLowerCase().split(' ')[0])) : [];
+  const stok = (S.bayi_stok || []).filter(s => s.firma_id === x.id);
   const sayi = { kisiler: kisiler.length, projeler: projeler.length, ziyaret: ziy.length + acikGor.length, satis: tek.length + sip.length + num_.length + srv.length, belgeler: belgeN, notlar: yorumN + (x.notlar ? 1 : 0) + (x.fotolar || []).length };
   const sekme = sekmeAdi(sekme0 || location.hash.split('/')[3]);
   const onceki = sayfaOncesiAd();
@@ -69,7 +70,7 @@ export function firmaSayfa(el, id, sekme0) {
       <span class="sk-logo fs-logo" aria-hidden="true">${esc((x.ad || 'F').slice(0, 1).toLocaleUpperCase('tr'))}</span>
       <div class="fs-kim"><p class="muted">${esc([(x.tipler || []).join(', ') || 'Firma', [x.ilce, x.il].filter(Boolean).join(', ')].filter(Boolean).join(' · '))}</p>
         <h1>${esc(x.ad)}${x.key_account ? ' <em class="flag soft">Key account</em>' : ''}${riskRozeti(x.id)}</h1>
-        <div class="dh-meta"><span data-gerek="projeler">${acik.length} açık proje${acikT ? ' · ' + usd(acikT) : ''}</span><span data-gerek="projeler">${won} sipariş · ${lost} kayıp</span>${sip.length ? `<span data-gerek="siparisler">${usd(sipT)} SAP sipariş</span>` : ''}<span data-gerek="ziyaretler" class="${gun == null || gun > 60 ? 'neg' : ''}">${gun == null ? 'hiç ziyaret yok' : gun === 0 ? 'bugün ziyaret edildi' : `son ziyaret ${gun} gün önce`}</span>${tah.length ? `<span class="neg" data-gerek="tahsilatlar">${tah.length} açık fatura</span>` : ''}${x.segment ? `<span>Segment ${esc(x.segment)}</span>` : ''}${dogrulamaRozet('firmalar', x)}</div></div>
+        <div class="dh-meta"><span data-gerek="projeler">${acik.length} açık proje${acikT ? ' · ' + usd(acikT) : ''}</span><span data-gerek="projeler">${won} sipariş · ${lost} kayıp</span>${sip.length ? `<span data-gerek="siparisler">${usd(sipT)} SAP sipariş</span>` : ''}<span data-gerek="ziyaretler" class="${gun == null || gun > 60 ? 'neg' : ''}">${gun == null ? 'hiç ziyaret yok' : gun === 0 ? 'bugün ziyaret edildi' : `son ziyaret ${gun} gün önce`}</span>${tah.length ? `<span class="neg" data-gerek="tahsilatlar">${tah.length} açık fatura</span>` : ''}${x.segment ? `<span>Segment ${esc(x.segment)}</span>` : ''}${dogrulamaRozet('firmalar', x)}${firmaRozet(x)}</div></div>
       <div class="fs-arac" role="toolbar" aria-label="Firma işlemleri">
         <div class="fs-grp" data-grp="iletisim">${x.telefon ? `<a href="tel:${esc(x.telefon)}" data-ipucu="Ara" aria-label="Ara: ${esc(x.telefon)}">${IK.tel}</a>` : ''}<button type="button" data-a="wa" data-ipucu="WhatsApp" aria-label="WhatsApp" class="fs-wa">${IK.wa}</button>${x.lat != null ? `<a target="_blank" rel="noopener" href="${directionsUrl(x.lat, x.lng)}" data-ipucu="Yol tarifi" aria-label="Yol tarifi" class="fs-yol">${IK.yol}</a>` : ''}</div>
         <div class="fs-grp" data-grp="ekle"><button type="button" data-a="ziyaret" data-gerek="yaz:ziyaretler" data-ipucu="Ziyaret ekle" aria-label="Ziyaret ekle">${IK.pin}</button><button type="button" data-a="kisi" data-gerek="yaz:kisiler" data-ipucu="Kişi ekle" aria-label="Kişi ekle">${IK.kisi}</button><button type="button" data-a="gorev" data-gerek="yaz:gorevler" data-ipucu="Görev ekle" aria-label="Görev ekle">${IK.gor}</button><button type="button" data-a="teklif" data-gerek="yaz:teklifler" data-ipucu="Teklif hazırla" aria-label="Teklif hazırla">${IK.tek}</button></div>
@@ -89,7 +90,7 @@ export function firmaSayfa(el, id, sekme0) {
       <section class="card"><h2>İletişim ve konum</h2>${dlk(`
         ${dd('Telefon', x.telefon ? `<a href="tel:${esc(x.telefon)}">${esc(x.telefon)}</a>` : '')}${dd('E-posta', x.eposta ? `<a href="mailto:${esc(x.eposta)}">${esc(x.eposta)}</a>` : '')}${dd('Web', web ? `<a href="${esc(web)}" target="_blank" rel="noopener">${esc(x.web)}</a>` : '')}
         ${dd('İl / ilçe', esc([x.il, x.ilce].filter(Boolean).join(' / ')))}${dd('OSB', esc(x.osb || ''))}${dd('Belde', esc(x.belde || ''))}${dd('Adres', esc(x.adres || ''))}
-        ${dd('Sektör', esc(x.sektor || ''))}${dd('Segment', esc(x.segment || ''))}${dd('Vergi no', esc(x.vergi_no || ''))}${dd('Sorumlu', esc((app.ekipTum || []).find(k => k.eposta === x.sorumlu)?.ad || x.sorumlu || ''))}
+        ${dd('Sektör', esc(x.sektor || ''))}${dd('Segment', esc(x.segment || ''))}${dd('Ticari unvan', esc(x.unvan || ''))}${dd('Vergi no', esc(x.vergi_no || ''))}${dd('Vergi dairesi', esc(x.vergi_dairesi || ''))}${dd('Cari kodu', esc(x.cari_kodu || ''))}${dd('Vade / iskonto', esc([x.vade_gun ? x.vade_gun + ' gün' : '', x.iskonto != null && x.iskonto !== '' ? '%' + x.iskonto : ''].filter(Boolean).join(' · ')))}${x.sube_ana_id ? dd('Şubesi olduğu firma', `<a href="#/firma/${x.sube_ana_id}">${esc(firmaAd(x.sube_ana_id) || '')}</a>`) : ''}${dd('Sorumlu', esc((app.ekipTum || []).find(k => k.eposta === x.sorumlu)?.ad || x.sorumlu || ''))}
 `)}${!x.telefon && !x.eposta && !x.il && !x.adres ? '<p class="hint">İletişim bilgisi girilmemiş.</p>' : ''}
         <div class="btnrow" data-gerek="yaz:firmalar"><button type="button" class="btn sm ghost" data-a="duzenle">Bilgileri düzenle</button></div></section>
       <section class="card" data-gerek="kisiler"><div class="fs-kb"><h2>Kişiler <span class="muted">${kisiler.length}</span></h2>${kisiler.length > 4 ? tumu('kisiler', kisiler.length) : ''}</div>
@@ -102,7 +103,7 @@ export function firmaSayfa(el, id, sekme0) {
         ${yapilan.length ? `<ul class="list">${yapilan.slice(0, 3).map(ziySatir).join('')}</ul>` : '<p class="hint">Ziyaret kaydı yok.</p>'}
         ${acikGor.length ? `<h3>Açık görevler <span class="muted">${acikGor.length}</span></h3><ul class="list">${acikGor.slice(0, 3).map(gorSatir).join('')}</ul>` : ''}</section>
       ${x.notlar ? `<section class="card fs-not"><div class="fs-kb"><h2>Notlar</h2><button type="button" class="linkbtn fs-tumu" data-git="notlar">Notlar →</button></div><p class="fs-notmetin">${esc(x.notlar.length > 400 ? x.notlar.slice(0, 400) + '…' : x.notlar)}</p></section>` : ''}
-      ${stok.length ? `<section class="card"><h2>Depo stoğu</h2><p class="hint">${stok.filter(u => u.stok > 0).length} kalem stokta. <a href="#/urunler">Stok ve fiyat ekranında aç</a></p></section>` : ''}
+      ${stok.length ? `<section class="card"><h2>Depo stoğu</h2><p class="hint">${stok.filter(u => +u.adet > 0).length} kalem stokta. <a href="#/bayistok" data-stokbayi="${x.id}">Bayi stoklarında aç</a></p></section>` : ''}
     </div></div>
 
     <div class="fs-ic" data-fs="kisiler" role="tabpanel" ${sekme === 'kisiler' ? '' : 'hidden'}>

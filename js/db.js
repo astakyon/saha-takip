@@ -1,14 +1,14 @@
 import { birlestir, cakismaMetni, alanAdi } from './cakisma.js';
 // Veri katmanı: Supabase (bulut) veya Deneme (bu cihazın tarayıcısı)
 export const TABLES = {
-  firmalar: ['id','sorumlu','ekip_id','ad','tipler','il','ilce','belde','osb','bolge_id','adres','lat','lng','konum_yaklasik','telefon','eposta','web','vergi_no','segment','sektor','key_account','notlar','fotolar','google_place_id','google_url','kaynak','dogrulandi','teklif_eposta','tekrar_gun','tekrar_haftagun'],
+  firmalar: ['id','sorumlu','ekip_id','ad','tipler','il','ilce','belde','osb','bolge_id','adres','lat','lng','konum_yaklasik','telefon','eposta','web','vergi_no','segment','sektor','key_account','notlar','fotolar','google_place_id','google_url','kaynak','dogrulandi','teklif_eposta','tekrar_gun','tekrar_haftagun','unvan','vergi_dairesi','fatura_adresi','cari_kodu','efatura','vade_gun','iskonto','kredi_limiti','para_birimi','sube_ana_id'],
   kisiler: ['id','sorumlu','ekip_id','firma_id','ust_kisi_id','eski_firmalar','ad_soyad','ad','soyad','unvan','pozisyon','telefon','eposta','web','adres','rol','kartvizit_on','kartvizit_arka','dogum_gunu','notlar'],
   projeler: ['id','sorumlu','ekip_id','ad','durum','durum_alt','kritik','takip_yili','hedef_listesi','baska_bolge','il','ilce','belde','bolge_id','osb','lokasyon','adres','lat','lng','konum_yaklasik','icerik','kanal','bayi_id','takipci','takipci_tel','calisildi','tutar_usd','olasilik','beklenen_tarih','teklif_no','crm_kodu','urun_gruplari','sektor','alt_sektor','yeni_refit','yatirimci_id','projeci_id','danisman_id','gemut_id','emut_id','alici_id','ilgili_kisi_id','ziyaret_edilecek','sorulacak','notlar','fotolar','siparis_tutari_usd','siparis_tarihi','bizim_teklif_usd','bizim_urun','rakip_marka','rakip_urun','rakip_birim_fiyat','rakip_miktar','rakip_toplam_usd','kayip_nedeni','kayip_aciklama','google_place_id','google_url','santiye_asamasi','alim_tarihi','referans','aday','aday_kaynak','ihale_tarihi','karar_grubu','kaynak','dogrulandi'],
   proje_gecmis: ['id','proje_id','tarih','eski_durum','yeni_durum','notlar'],
   ziyaretler: ['id','sorumlu','ekip_id','tarih','saat','durum','firma_id','kisi_id','proje_id','amac','notlar','sonuc_tipi','sonuc','lat','lng','fotolar','giris','cikis','giris_mesafe','cikis_lat','cikis_lng','planli','mazeret'],
   gorevler: ['id','sorumlu','ekip_id','baslik','son_tarih','oncelik','durum','firma_id','proje_id','kisi_id','notlar','atanan','tamamlayan','tekrar','kaynak'],
   urunler: ['id','kod','aciklama','aciklama2','aile','birim','stok','birim_fiyat_usd','stok_tarihi','depo'],
-  stok_gecmis: ['id','kod','stok','birim_fiyat_usd','tarih','depo'],
+  stok_gecmis: ['id','kod','stok','birim_fiyat_usd','tarih','depo','firma_id'],
   rakip_fiyatlar: ['id','aile','lumen_aralik','marka','urun_adi','fiyat_metin','birim_fiyat','para_birimi','tarih','kaynak','proje_id','notlar'],
   siparisler: ['id','kaynak','dogrulandi','sorumlu','ekip_id','siparis_no','belge_no','belge_turu','musteri_no','musteri_adi','firma_id','tarih','teslim_tarihi','referans','net_deger','para_birimi','proje_tanimi','proje_id','drv','siparis_notu','rapor_disi','bayi_id'],
   hedefler: ['id','yil','ceyrek','tutar_usd','resmi_usd','resmi_tl','kur','notlar'],

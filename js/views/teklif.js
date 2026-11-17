@@ -1,5 +1,6 @@
 // Hızlı teklif taslağı: ürün kalemleri, yazdırılabilir PDF, WhatsApp özeti
 import { ozellikSay } from '../saglik.js';
+import { cariIste } from '../zorunlu.js';
 import { S } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, num, tarih, today, gunEkle, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, waLink, ACIK, urunBilgi, exportXlsx } from '../ui.js';
@@ -8,6 +9,7 @@ import { ayar, ayarYaz } from '../ayar.js';
 import { benimAdim } from '../sablon.js';
 import { tl, kur } from '../kur.js';
 import { firmaAdi } from '../profil.js';
+import { stokAdet, stokMetni } from '../stok.js';
 
 export const TEKLIF_DURUM = [{ k: 'Taslak', c: '#64748B' }, { k: 'Gönderildi', c: '#7C3AED' }, { k: 'Kabul', c: '#15803D' }, { k: 'Red', c: '#B91C1C' }];
 const tpill = d => `<span class="pill" style="--c:${(TEKLIF_DURUM.find(x => x.k === d) || TEKLIF_DURUM[0]).c}">${esc(d)}</span>`;
@@ -73,7 +75,7 @@ export function teklifForm(init = {}, after) {
   const ciz = () => {
     kbox.innerHTML = t.kalemler.length ? `<table class="tk-tbl"><thead><tr><th>Ürün</th><th class="r">Adet</th><th class="r">Birim fiyat</th><th class="r">İsk. %</th><th class="r">Tutar</th><th></th></tr></thead><tbody>${t.kalemler.map((k, i) => {
       const u = k.kod && S.urunler.find(x => x.kod === k.kod);
-      return `<tr><td data-l="Ürün"><input data-k="ad" data-i="${i}" value="${esc(k.ad)}" aria-label="Ürün açıklaması"><small class="muted">${esc(k.kod || 'serbest kalem')}${u ? ` · stok ${num(u.stok)}${+k.adet > +u.stok ? ' <b class="neg">yetersiz</b>' : ''}` : ''}</small></td>
+      return `<tr><td data-l="Ürün"><input data-k="ad" data-i="${i}" value="${esc(k.ad)}" aria-label="Ürün açıklaması"><small class="muted">${esc(k.kod || 'serbest kalem')}${u ? ` · stok ${num(stokAdet(u))}${stokMetni(u) ? ` <span class="tk-stok">(${esc(stokMetni(u))})</span>` : ''}${+k.adet > stokAdet(u) ? ' <b class="neg">yetersiz</b>' : ''}` : ''}</small></td>
       <td data-l="Adet" class="r"><input data-k="adet" data-i="${i}" type="number" inputmode="decimal" value="${k.adet ?? ''}" aria-label="Adet"></td>
       <td data-l="Birim fiyat" class="r"><input data-k="birim_fiyat" data-i="${i}" type="number" inputmode="decimal" step="any" value="${k.birim_fiyat ?? ''}" aria-label="Birim fiyat"></td>
       <td data-l="İskonto %" class="r"><input data-k="iskonto" data-i="${i}" type="number" inputmode="decimal" value="${k.iskonto ?? ''}" aria-label="Kalem iskontosu"></td>
@@ -98,6 +100,8 @@ export function teklifForm(init = {}, after) {
     o.kalemler = t.kalemler.filter(k => k.ad || k.kod);
     o.toplam = Math.round(hesapla(o).net * 100) / 100;
     o.durum = o.durum || 'Taslak';
+    // Müşteri / bayi tipindeki firmaya ilk teklifte vergi no ve vergi dairesi istenir
+    if (o.firma_id && o.firma_id !== t0?.firma_id && !(await cariIste(o.firma_id, 'teklif'))) throw new Error('İPTAL');
     const s = await app.db.save('teklifler', o);
     // Proje bağlantısı: teklif gönderilince proje aşaması, tutarı ve teklif numarası güncellenir
     const p = o.proje_id && byId('projeler', o.proje_id);
@@ -113,8 +117,8 @@ export function teklifForm(init = {}, after) {
     }
     return s;
   };
-  panel.querySelector('[data-kaydet-pdf]')?.addEventListener('click', async () => { const s = await kaydet(); closeDrawer(); app.refresh(); teklifYazdir(s); });
-  form.onsubmit = async e => { e.preventDefault(); try { await kaydet(); toast('Teklif kaydedildi.'); closeDrawer(); after ? after() : app.refresh(); } catch (err) { console.error(err); toast('Kaydedilemedi: ' + err.message, 'err'); } };
+  panel.querySelector('[data-kaydet-pdf]')?.addEventListener('click', async () => { let s; try { s = await kaydet(); } catch (err) { if (err.message !== 'İPTAL') toast('Kaydedilemedi: ' + err.message, 'err'); return; } closeDrawer(); app.refresh(); teklifYazdir(s); });
+  form.onsubmit = async e => { e.preventDefault(); try { await kaydet(); toast('Teklif kaydedildi.'); closeDrawer(); after ? after() : app.refresh(); } catch (err) { if (err.message === 'İPTAL') return; console.error(err); toast('Kaydedilemedi: ' + err.message, 'err'); } };
   panel.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     const a = b.dataset.a;
     if (a === 'pdf') { ozellikSay('teklif-pdf'); teklifYazdir(t0); }

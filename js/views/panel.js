@@ -1,4 +1,5 @@
 import { S, uuid } from '../db.js';
+import { cariIste } from '../zorunlu.js';
 import { riskKarti } from '../vaderisk.js';
 // Açık projeler – sorumluya göre: kişi başına açık proje, potansiyel ve ağırlıklı tutar; 30+ gün aynı aşamada bekleyenler
 function sorumluKarti() {
@@ -170,7 +171,7 @@ export function bayiKarnesi(Y, rol = 'bayi_id') {
     const won = ps.filter(p => p.durum === 'Sipariş'), lost = ps.filter(p => p.durum === 'Kayıp');
     const ilk = fold(f.ad).split(/\s+/)[0];
     const sp = sipY.filter(s => (s.firma_id === f.id || (ilk.length > 2 && fold(s.musteri_adi || '').startsWith(ilk))));
-    const stok = rol !== 'bayi_id' ? 0 : S.urunler.filter(u => u.depo && fold(u.depo).startsWith(ilk)).reduce((a, u) => a + (+u.stok || 0) * (+u.birim_fiyat_usd || 0), 0);
+    const stok = rol !== 'bayi_id' ? 0 : (S.bayi_stok || []).filter(s => s.firma_id === f.id).reduce((a, s) => a + (+s.adet || 0) * (+s.birim_fiyat || +S.urunler.find(u => u.kod === s.kod)?.birim_fiyat_usd || 0), 0) + S.urunler.filter(u => u.depo && fold(u.depo).startsWith(ilk)).reduce((a, u) => a + (+u.stok || 0) * (+u.birim_fiyat_usd || 0), 0);
     const son = sonZ.get(f.id) || null;
     return { f, n: ps.length, acik: sum(ps.filter(p => ACIK.includes(p.durum)), p => p.tutar_usd), w: won.length, wT: sum(won, p => p.siparis_tutari_usd || p.tutar_usd), l: lost.length, lT: sum(lost, p => p.bizim_teklif_usd || p.tutar_usd),
       oran: won.length + lost.length ? Math.round(won.length / (won.length + lost.length) * 100) : null, sip: sum(sp, s => s.net_deger), sipN: sp.length, stok, rakip: Object.entries(rk).sort((a, b) => b[1] - a[1]).map(([m, n]) => `${m} (${n})`).slice(0, 2).join(', '), son, gun: son ? Math.round((new Date(t) - new Date(son)) / 864e5) : null };
@@ -290,6 +291,7 @@ export function siparisForm(init = {}) {
       const o = await readForm(form, SIPARIS_FORM, s);
       if (!o.tarih) return toast('Sipariş tarihini yaz.', 'err');
       if (o.net_deger == null) return toast('Tutarı yaz.', 'err');
+      if (o.firma_id && (s._new || o.firma_id !== s0.firma_id) && !(await cariIste(o.firma_id, 'siparis'))) return;
       if (o.firma_id && (s._new || o.firma_id !== s0.firma_id)) o.musteri_adi = firmaAd(o.firma_id);
       if (o.proje_id && !o.proje_tanimi) o.proje_tanimi = byId('projeler', o.proje_id)?.ad;
       await app.db.save('siparisler', o); toast('Sipariş kaydedildi.'); closeDrawer(); app.refresh();

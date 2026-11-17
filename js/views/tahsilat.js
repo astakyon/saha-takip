@@ -1,5 +1,6 @@
 // Tahsilat takibi: açık faturalar, vade ve gecikme, ödeme kaydı, cari bazında bakiye, Excel'den yükleme
 import { S, uuid } from '../db.js';
+import { cariIste } from '../zorunlu.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, num, tarih, today, gunEkle, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, pickFiles, fold } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
@@ -63,6 +64,7 @@ export function tahsilatForm(init = {}) {
     const o = await readForm(form, FORM, t);
     if (!o.firma_id && !o.cari) return toast('Cariyi yaz.', 'err');
     if (!(o.tutar > 0)) return toast('Tutarı yaz.', 'err');
+    if (o.firma_id && (t0._new || o.firma_id !== t0.firma_id) && !(await cariIste(o.firma_id, 'tahsilat'))) return;
     o.cari = firmaAd(o.firma_id) || o.cari; o.durum = durumu(o);
     await app.db.save('tahsilatlar', o); toast('Kaydedildi.'); closeDrawer(); app.refresh();
   };

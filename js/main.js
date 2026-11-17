@@ -54,7 +54,7 @@ const ROUTES = {
   bayisatis: { t: 'Bayi satışları', ico: 'chart', v: yukle('views/bayiag2.js', 'bayisatisView'), g: 'Satış' },
   bayihedef: { t: 'Bayi hedef ve prim', ico: 'chart', v: yukle('views/bayiag2.js', 'bayihedefView'), g: 'Satış' },
   bayianaliz: { t: 'Bayi ağı analizi', ico: 'chart', v: yukle('views/bayiag2.js', 'bayianalizView'), g: 'Satış' },
-  bayi:      { t: 'Bayi paneli', ico: 'box', v: yukle('views/bayi.js', 'bayiView'), g: 'Satış' },
+  bayi:      { t: 'Bayi stokları', ico: 'box', v: () => { location.replace('#/bayistok'); }, g: 'Satış' },   // eski "Bayi paneli" bağlantısı
   talepler:  { t: 'Bayi talepleri', ico: 'box', v: yukle('views/talepler.js', 'taleplerView'), g: 'Satış' },
   teklifler: { t: 'Teklifler', ico: 'doc', v: yukle('views/teklif.js', 'tekliflerView'), g: 'Satış' },
   araclar:   { t: 'Aydınlatma araçları', ico: 'calc', v: yukle('views/araclar.js', 'araclarView'), g: 'Satış' },
@@ -69,7 +69,7 @@ const ROUTES = {
   rapor:     { t: 'Haftalık rapor', ico: 'report', v: yukle('views/rapor.js', 'raporView'), g: 'Rapor' },
   kontrol:   { t: 'Veri kontrolü', ico: 'check', v: yukle('views/kontrol.js', 'kontrolView'), g: 'Rapor' },
   siparisler:{ t: 'Siparişler', ico: 'receipt', v: yukle('views/panel.js', 'siparislerView'), g: 'Rapor' },
-  urunler:   { t: 'Stok ve fiyat', ico: 'box', v: yukle('views/urunler.js', 'urunlerView'), g: 'Rapor' },
+  urunler:   { t: 'Ürün ve fiyat listesi', ico: 'box', v: yukle('views/urunler.js', 'urunlerView'), g: 'Rapor' },
   rakip:     { t: 'Rakip fiyatları', ico: 'tag', v: yukle('views/urunler.js', 'rakipView'), g: 'Rapor' },
   yonetim:   { t: 'Yönetim', ico: 'building', v: yukle('views/yonetim.js', 'yonetimView'), g: 'Rapor' },
   ayarlar:   { t: 'Ayarlar', ico: 'gear', v: yukle('views/ayarlar.js', 'ayarlarView'), g: 'Rapor' },

@@ -1,5 +1,6 @@
 // Aydınlatma araçları: enerji tasarrufu, hızlı aydınlatma hesabı, rakip muadil eşleştirme
 import { S } from '../db.js';
+import { stokAdet, stokMetni } from '../stok.js';
 import { F, saveFilters } from '../state.js';
 import { esc, num, usd, urunBilgi, fold, toast, RAKIPLER, waLink } from '../ui.js';
 import { ayar, ayarYaz } from '../ayar.js';
@@ -80,7 +81,7 @@ function tasarruf(box) {
       <div><dt>Yıllık para tasarrufu</dt><dd>${o.kwh ? num(Math.round(tl)) + ' TL' : '—'}</dd><small>${usdT ? usd(usdT) : o.kwh ? 'Dolar karşılığı için kuru gir' : 'Elektrik birim fiyatını gir'}</small></div>
       <div><dt>Geri dönüş süresi</dt><dd>${ay ? num(Math.round(ay * 10) / 10) + ' ay' : '—'}</dd><small>${yatirim ? 'Yatırım ' + usd(yatirim) : 'Birim fiyatı girersen hesaplanır'}</small></div>
       <div><dt>Karbon azaltımı</dt><dd>${num(Math.round(co2 * 10) / 10)} ton/yıl</dd><small>0,44 kg CO₂/kWh ile yaklaşık</small></div></dl>
-      ${u ? `<p class="hint">${esc(u.u.aciklama)}: ${num(u.lm)} lm, ${u.verim} lm/W${u.u.stok > 0 ? ', bayide ' + num(u.u.stok) + ' adet stokta' : ''}.</p>` : ''}
+      ${u ? `<p class="hint">${esc(u.u.aciklama)}: ${num(u.lm)} lm, ${u.verim} lm/W${stokAdet(u.u) > 0 ? ', stokta ' + num(stokAdet(u.u)) + ' adet (' + esc(stokMetni(u.u)) + ')' : ''}.</p>` : ''}
       <p class="ozet" data-ozet>${esc(ozet)}</p>
       <div class="btnrow"><button type="button" class="btn" data-kopya>Özeti kopyala</button><a class="btn ghost" target="_blank" rel="noopener" href="${waLink('', ozet)}">WhatsApp'ta paylaş</a><button type="button" class="btn" data-tpptx>PowerPoint sunumu</button>${u ? '<button type="button" class="btn primary" data-teklif>Bu ürünle teklif hazırla</button>' : ''}</div>`;
     r.querySelector('[data-tpptx]').onclick = async () => { try { const { tasarrufSunumu } = await import('../pptx.js'); const musteri = prompt('Sunumda görünecek müşteri / proje adı (boş bırakabilirsin):', '') || ''; const n = tasarrufSunumu({ ...o, yeniAd: u ? u.u.aciklama : "", eskiKwh, yeniKwh, tl, usd: usdT, yatirim, ay, co2, musteri }); if (n) toast(`${n} slaytlık sunum indirildi.`); } catch (e) { console.error(e); toast('Sunum oluşturulamadı: ' + e.message, 'err'); } };
@@ -141,7 +142,7 @@ export function muadilBul({ w, lm, k, aile } = {}) {
   if (!hedef) return [];
   return armaturler().filter(x => Math.abs(x.lm - hedef) / hedef <= 0.2 && (!k || !x.k || Math.abs(x.k - k) <= 1000) && (!aile || fold(x.u.aile) === fold(aile)))
     .map(x => ({ ...x, fark: (x.lm - hedef) / hedef, gucFark: w ? (x.w - w) / w : null }))
-    .sort((a, b) => (b.u.stok > 0) - (a.u.stok > 0) || Math.abs(a.fark) - Math.abs(b.fark) || b.verim - a.verim);
+    .sort((a, b) => (stokAdet(b.u) > 0) - (stokAdet(a.u) > 0) || Math.abs(a.fark) - Math.abs(b.fark) || b.verim - a.verim);
 }
 function muadil(box) {
   const v = { marka: '', model: '', w: '', lm: '', k: '', fiyat: '', aile: '', ...(ayar('muadil_son') || {}) };
@@ -165,7 +166,7 @@ function muadil(box) {
     const rp = S.rakip_fiyatlar.filter(x => o.marka && fold(x.marka) === fold(o.marka));
     r.innerHTML = `<h2>Muadil ürünlerimiz <span class="muted">${l.length}</span></h2>
       ${l.length ? `<ul class="list muadil">${l.slice(0, 12).map(x => `<li><span><b>${esc(x.u.aciklama)}</b><small class="muted">${x.w} W · ${num(x.lm)} lm · ${x.verim} lm/W${x.k ? ' · ' + x.k + ' K' : ''} · ışık ${Math.round(x.fark * 100) ? (x.fark > 0 ? '+' : '') + num(Math.round(x.fark * 100)) + '%' : 'aynı'}${x.gucFark != null ? ` · güç ${Math.round(x.gucFark * 100) ? (x.gucFark > 0 ? '+' : '') + num(Math.round(x.gucFark * 100)) + '%' : 'aynı'}` : ''}</small></span>
-        <span class="r"><b class="num">${x.u.birim_fiyat_usd ? num(x.u.birim_fiyat_usd) + ' $' : '—'}</b><small class="${x.u.stok > 0 ? 'pos' : 'muted'}">${x.u.stok > 0 ? 'stokta ' + num(x.u.stok) : 'stok yok'}</small>${rf && x.u.birim_fiyat_usd ? `<small>${x.u.birim_fiyat_usd <= rf ? 'rakipten %' + num(Math.round((rf - x.u.birim_fiyat_usd) / rf * 100)) + ' ucuz' : 'rakipten %' + num(Math.round((x.u.birim_fiyat_usd - rf) / rf * 100)) + ' pahalı'}</small>` : ''}</span>
+        <span class="r"><b class="num">${x.u.birim_fiyat_usd ? num(x.u.birim_fiyat_usd) + ' $' : '—'}</b><small class="${stokAdet(x.u) > 0 ? 'pos' : 'muted'}" title="${esc(stokMetni(x.u))}">${stokAdet(x.u) > 0 ? 'stokta ' + num(stokAdet(x.u)) : 'stok yok'}</small>${rf && x.u.birim_fiyat_usd ? `<small>${x.u.birim_fiyat_usd <= rf ? 'rakipten %' + num(Math.round((rf - x.u.birim_fiyat_usd) / rf * 100)) + ' ucuz' : 'rakipten %' + num(Math.round((x.u.birim_fiyat_usd - rf) / rf * 100)) + ' pahalı'}</small>` : ''}</span>
         <button type="button" class="btn sm" data-t="${esc(x.u.kod)}">Teklif</button></li>`).join('')}</ul>`
       : '<p class="hint">±%20 ışık akısı aralığında ürünümüz bulunamadı. Aile filtresini kaldırmayı ya da renk sıcaklığını “Fark etmez” yapmayı dene.</p>'}
       ${rp.length ? `<h3>${esc(o.marka)} için kayıtlı rakip fiyatları</h3><ul class="list">${rp.slice(0, 6).map(x => `<li><span>${esc([x.urun_adi, x.aile, x.lumen_aralik].filter(Boolean).join(' · '))}</span><b class="num">${esc(x.fiyat_metin || (x.birim_fiyat + ' ' + (x.para_birimi || '')))}</b></li>`).join('')}</ul>` : ''}

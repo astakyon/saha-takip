@@ -1,5 +1,6 @@
 // Ürün kataloğu (aileler) ve referans proje galerisi
 import { S } from '../db.js';
+import { stokAdet, stokMetni } from '../stok.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, num, byId, firmaAd, match, toast, openDrawer, closeDrawer, confirmBox, urunBilgi, fold, URUN_AILELERI, SEKTORLER, waLink, exportXlsx, today } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
@@ -44,7 +45,7 @@ function aileDetay(a, urunler) {
       ${a.aciklama ? `<p>${esc(a.aciklama)}</p>` : ''}${ozl.length ? `<ul class="ozl">${ozl.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${modeller.length ? `<h3>Modeller <span class="muted">${modeller.length}</span></h3><ul class="ozl">${modeller.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
       <h3>Ürünler <span class="muted">${urunler.length}</span></h3>
       ${urunler.length ? `<ul class="list">${urunler.map(x => `<li><span><b>${esc(x.u.aciklama)}</b><small class="muted"> ${[x.w && x.w + ' W', x.lm && num(x.lm) + ' lm', x.verim && x.verim + ' lm/W', x.k && x.k + ' K'].filter(Boolean).join(' · ')}</small></span>
-        <span class="r"><b class="num">${x.u.birim_fiyat_usd ? num(x.u.birim_fiyat_usd) + ' $' : '—'}</b><small class="${x.u.stok > 0 ? 'pos' : 'muted'}">${x.u.stok > 0 ? 'stok ' + num(x.u.stok) : 'stok yok'}</small></span><button type="button" class="btn sm ghost" data-t="${esc(x.u.kod)}">Teklif</button></li>`).join('')}</ul>` : '<p class="hint">Stok listesinde bu aileden ürün yok.</p>'}
+        <span class="r"><b class="num">${x.u.birim_fiyat_usd ? num(x.u.birim_fiyat_usd) + ' $' : '—'}</b><small class="${stokAdet(x.u) > 0 ? 'pos' : 'muted'}" title="${esc(stokMetni(x.u))}">${stokAdet(x.u) > 0 ? 'stok ' + num(stokAdet(x.u)) : 'stok yok'}</small></span><button type="button" class="btn sm ghost" data-t="${esc(x.u.kod)}">Teklif</button></li>`).join('')}</ul>` : '<p class="hint">Stok listesinde bu aileden ürün yok.</p>'}
     </div>`);
   fotolariYukle(panel);
   panel.querySelector('[data-duz]').onclick = () => aileForm(a.id ? { id: a.id } : { aile: a.aile });
@@ -73,7 +74,7 @@ export function katalogView(el) {
       .sort((a, b) => (!!b.kayit - !!a.kayit) || b.urunler.length - a.urunler.length);
     el.querySelector('[data-sum]').textContent = `${l.length} ürün ailesi · ${S.urun_aileleri.length} ailenin tanıtım bilgisi girilmiş`;
     el.querySelector('[data-rows]').innerHTML = l.map((g, i) => {
-      const ws = g.urunler.map(x => x.w).filter(Boolean), lms = g.urunler.map(x => x.lm).filter(Boolean), stok = g.urunler.reduce((s, x) => s + (+x.u.stok || 0), 0);
+      const ws = g.urunler.map(x => x.w).filter(Boolean), lms = g.urunler.map(x => x.lm).filter(Boolean), stok = g.urunler.reduce((s, x) => s + stokAdet(x.u), 0);
       return `<li><button type="button" class="card-btn kat" data-i="${i}">${g.kayit?.fotolar?.[0] ? `<img alt="" data-path="${esc(g.kayit.fotolar[0])}">` : `<span class="kat-ph" aria-hidden="true">${esc((g.aile || '?').slice(0, 3))}</span>`}
         <span class="cb-top"><b>${esc(g.kayit?.ad || g.aile)}</b><small class="muted">${esc(g.aile)}</small></span>
         <small class="muted">${g.urunler.length ? `${g.urunler.length} model${ws.length ? ` · ${Math.min(...ws)}–${Math.max(...ws)} W` : ''}${lms.length ? ` · ${num(Math.min(...lms))}–${num(Math.max(...lms))} lm` : ''}` : 'stokta modeli yok'}</small>

@@ -32,6 +32,31 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 107)
+
+- **Zorunlu alanlar** (`js/zorunlu.js`): firma konumu, vergi bilgisi (teklif / sipariş / tahsilat / çek öncesi, her kayıtta ya da kapalı) ve hangi firma tiplerinde istendiği, projenin ili, açık projede tutar ve tarih, kişinin firması ve iletişim bilgisi; her biri zorunlu / önemli / denetlenmesin. Ayar: Şirket profili → Genel → Zorunlu alanlar.
+- **Eksik bilgili firma**: firma sayfasında "Cari bilgisi eksik" rozeti ve Tamamla. Teklif, sipariş, fatura ve alınan çek girilirken eksik vergi no ve vergi dairesi ayrı bir pencerede istenir (geçersiz numara kabul edilmez); şirket yetkilisi "Şimdilik geç" diyebilir, bu uyarı akışına düşer.
+- **Veri kontrolü**: cari bilgisi eksik müşteriler (satışı olanlar önce), firması seçilmemiş kişiler, ili ve konumu olmayan projeler. Excel firma içe aktarmada konumu eksik yeni firmalar önizlemede sayılır.
+- Şema değişikliği yok.
+
+## Güncelleme notu (sürüm 106)
+
+- **Cari bilgileri** (firma formu): unvan, vergi no, vergi dairesi (girilenlerden öneri), fatura adresi, cari kodu, e-Fatura, vade, iskonto, kredi limiti, para birimi, şubesi olduğu firma. Firma sayfasında görünür.
+- **Vergi no denetimi** (`js/cari.js`): VKN (10 hane) ve TCKN (11 hane) kontrol haneleri; yazarken "bu numara zaten X firmasında" uyarısı, Birleştir ve "Bu firma onun şubesi". Geçersiz ya da başka firmadaki numara kaydedilmez; Excel içe aktarmada boş bırakılır ve önizlemede sayılır.
+- **Veri kontrolü**: aynı vergi numaralı firmalar (Karşılaştır / şube), geçersiz vergi no, firmaya bağlı olmayan faturalar (Bağla / Firma seç), siparişlerde "Firma seç". Finans → Cari hesaplar'da bağlanmamış fatura uyarısı.
+- **Cari listesi yükle**: herhangi bir Excel (unvan, vergi no, vergi dairesi, adres, il, cari kodu, telefon, e-posta); vergi no ya da unvanla eşleştirir, yalnız boş alanları doldurur, eşleşmeyenleri istenirse yeni firma ekler.
+- **Birleştirme** artık çek / senet, bayi ataması, bayi stok ve satışları, stok geçmişi, siparişte bayi ve şubeleri de taşır. Bayi kartındaki koşullar boşsa firmanın carisinden okunur.
+- **schema.sql 48:** firmalara cari sütunları ve `vergi_no_temiz`; şirket içinde tekil vergi no kuralı yalnız aynı numaralı firma yoksa kurulur (varsa uyarı verir; temizledikten sonra dosyayı yeniden çalıştır). Durum: `select public.vergi_tekil_kurulu();`
+
+## Güncelleme notu (sürüm 105)
+
+- **Ürünler → Ürün ve fiyat listesi** (`js/views/urunler.js`): bizim ürün ve fiyat listemiz; stok sütunu bütün bayi depolarının toplamını ve nerede olduğunu gösterir. "Bayi paneli" kaldırıldı; eski bağlantı Stoklar'a gider.
+- **Stok tek yerde** (`js/stok.js`): `stokAdet`, `stokNerede`, `stokUyarilariHesapla`, `bayiStokYaz` (adet değişince `stok_gecmis`e bayi ile satır). Katalog, araçlar, kod okuma, öneriler, hızlı arama ve teklif satırı bu yardımcıları kullanır.
+- **Bayi ve partner → Stoklar**: Excel'den yükleme (sütun eşleme, önizleme, listede olmayanları sıfırlama, yeni kodları ürün listesine ekleme), + / − ve Enter ile hızlı adet, stok uyarıları; Ürünler'deki eski depo stoğunu bayiye taşıma kartı (önizlemeli, geçmişiyle).
+- **Kendi depomuz**: Şirket profili → Genel'de seçenek (varsayılan kapalı); açıkken Ürünler'de kendi depo stoğu yüklenir.
+- Uyarı akışında "Stok yetersiz". "Bayi paneli" yetkisi olan kişi ve rollere "Bayi stokları" verilir.
+- **schema.sql 47:** `stok_gecmis.firma_id`; bayi kullanıcısı yalnız kendi deposunun stok geçmişini görür ve ekler.
+
 ## Güncelleme notu (sürüm 104)
 
 - **Onay kuyruğu** (`js/views/onaykuyrugu.js`, `js/onay.js`): yalnız şirket yetkilisi; masraf (Onayla / Reddet), hafta planı (İncele), ekip kayıtları (Onayla / Düzeltilecek notu). Menü rozeti bekleyen sayısını gösterir. "Ekibin açtığı yeni firma, proje ve siparişler" açıkken ekip üyesinin yeni kaydı "Ekip kaydı" olarak işaretlenir.

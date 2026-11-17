@@ -1,6 +1,7 @@
 // Yönetici görünümü: uyarı akışı (dikkat isteyen olaylar, en yeni üstte) ve ekip sıralaması.
 // Şirket profili → Genel'deki konum doğrulama kuralı ve KVKK konum metni de burada tanımlı kartla ayarlanır.
 import { S } from '../db.js';
+import { cariGecilenler } from '../zorunlu.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, num, usd, tarih, today, gunEkle, byId, firmaAd, toast, ACIK, exportXlsx } from '../ui.js';
 import { ayar, ayarYaz } from '../ayar.js';
@@ -12,6 +13,7 @@ import { planUyumu } from '../mazeret.js';
 import { sureDk, mesafeYaz } from '../giriscikis.js';
 import { konumKurali, KONUM_MODLARI, kvkkMetni, varsayilanKvkk } from '../konum.js';
 import { onayListesi } from '../onay.js';
+import { stokUyarilariHesapla } from '../stok.js';
 import { sahipMi } from '../yetki.js';
 
 const ben = () => (app.db?.user?.()?.email || '').toLowerCase();
@@ -20,7 +22,7 @@ const adOf = e => e === ben() ? 'Ben' : (app.ekip || []).find(u => (u.eposta || 
 const BUYUK = () => +ayar('uyari_buyuk_teklif', 0) || 50000;
 
 // ---------- Uyarı akışı ----------
-export const UYARI_TUR = { konum: 'Uzaktan giriş', yapilmadi: 'Yapılmayan ziyaret', buyuk: 'Büyük teklif', kayip: 'Kayıp proje', gecikme: 'Geciken tahsilat', hareketsiz: 'Hareketsiz proje', onay: 'Onay bekliyor', kisa: 'Çok kısa ziyaret', cek: 'Çek / senet vadesi', bayi: 'Bayi geride' };
+export const UYARI_TUR = { konum: 'Uzaktan giriş', yapilmadi: 'Yapılmayan ziyaret', buyuk: 'Büyük teklif', kayip: 'Kayıp proje', gecikme: 'Geciken tahsilat', hareketsiz: 'Hareketsiz proje', onay: 'Onay bekliyor', kisa: 'Çok kısa ziyaret', cek: 'Çek / senet vadesi', bayi: 'Bayi geride', stok: 'Stok yetersiz', cari: 'Cari bilgisi geçildi' };
 export function uyarilar(gun = 14) {
   const bas = gunEkle(today(), -gun), kural = konumKurali(), k = kur()?.USD, l = [];
   for (const z of S.ziyaretler || []) {
@@ -39,6 +41,8 @@ export function uyarilar(gun = 14) {
   if ((S.bayiler || []).length) { const Y = +today().slice(0, 4), oran = (Date.now() - new Date(Y, 0, 1)) / (new Date(Y + 1, 0, 1) - new Date(Y, 0, 1));
     for (const b of S.bayiler.filter(b => (b.durum || 'Aktif') === 'Aktif' && +b.hedef_yil > 0)) { const sat = (S.siparisler || []).filter(x => (x.firma_id === b.firma_id || x.bayi_id === b.firma_id) && String(x.tarih || '').startsWith(String(Y))).reduce((a, x) => a + siparisUsd(x, k), 0);
       const y = sat / (b.hedef_yil * oran) * 100; if (oran > 0.15 && y < 60) l.push({ id: b.id, tur: 'bayi', t: today(), kim: (b.sorumlu || '').toLowerCase(), m: `${firmaAd(b.firma_id)}: yılın bu noktasında hedefin %${Math.round(y)}'inde (${usd(Math.round(sat))} / ${usd(Math.round(b.hedef_yil))})`, git: { rota: 'bayihedef' }, onem: 1 }); } }
+  for (const x of stokUyarilariHesapla().yetersiz) l.push({ id: 'stok-' + x.u.kod, tur: 'stok', t: today(), kim: '', m: `${x.u.aciklama || x.u.kod}: açık tekliflerde ${num(x.ihtiyac)}, bayi depolarında toplam ${num(x.stok)}`, git: { rota: 'bayistok' }, onem: 1 });
+  for (const x of cariGecilenler()) l.push({ id: 'cari-' + x.f.id, tur: 'cari', t: x.tarih, kim: x.kim, m: `${x.f.ad}: ${x.islem === 'siparis' ? 'sipariş' : x.islem === 'cek' ? 'çek' : x.islem} vergi bilgisi olmadan girildi (şimdilik geç)`, git: { rota: 'firma/' + x.f.id }, onem: 1 });
   for (const o of onayListesi()) l.push({ tur: 'onay', t: o.tarih, kim: (o.kim || '').toLowerCase(), m: `${o.tur.ad}: ${o.baslik}${o.tutar ? ' · ' + o.tutar : ''}`, git: { rota: o.tur.rota }, onem: 1 });
   for (const u of l) u.key = u.tur + ':' + (u.id || u.git.zid || u.git.pid || '') + ':' + String(u.t || '').slice(0, 10) + ':' + (u.id || u.git.zid || u.git.pid ? '' : u.m.slice(0, 40));
   return l.sort((a, b) => String(b.t || '').localeCompare(String(a.t || '')));

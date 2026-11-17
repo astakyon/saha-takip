@@ -56,12 +56,12 @@ const FORM = () => [{ title: 'Atama', fields: [
   { k: 'baslangic', l: 'Başlangıç', t: 'date' },
   { k: 'bitis', l: 'Sözleşme bitişi', t: 'date' },
 ]}, { title: 'Ticari koşullar ve hedef', fields: [
-  { k: 'iskonto', l: 'İskonto (%)', t: 'num' },
+  { k: 'iskonto', l: 'İskonto (%)', t: 'num', help: 'Boş bırakılırsa firmanın cari bilgisindeki değer geçerli' },
   { k: 'vade_gun', l: 'Ödeme vadesi (gün)', t: 'num' },
   { k: 'kredi_limiti', l: 'Kredi limiti', t: 'num' },
-  { k: 'para_birimi', l: 'Para birimi', t: 'sel', opts: ['USD', 'EUR', 'TRY'] },
+  { k: 'para_birimi', l: 'Para birimi', t: 'sel', ph: 'Firmadaki', opts: ['USD', 'EUR', 'TRY'] },
   { k: 'hedef_yil', l: 'Yıllık satış hedefi (USD)', t: 'num' },
-  { k: 'depo', l: 'Stok deposu adı', help: 'Stok listesinde bu bayinin deposunun adı (Stok ve fiyat → depo). Bayi stoğu buradan okunur.' },
+  { k: 'depo', l: 'Stok deposu adı', help: 'Eski tek depolu stok listesinde bu bayinin deposunun adı; yalnızca eski stoğu bayiye taşırken eşleştirme için kullanılır.' },
   { k: 'notlar', l: 'Not', t: 'area', rows: 2, full: true },
 ]}];
 export function bayiAtamaFormu(init = {}, sonra) {
@@ -81,6 +81,9 @@ export function bayiAtamaFormu(init = {}, sonra) {
     if (!o.firma_id) return toast('Firmayı seç.', 'err');
     const var_ = bayiOf(o.firma_id); if (var_ && var_.id !== b0.id) return toast('Bu firma zaten atanmış; kaydını düzenle.', 'err');
     await app.db.save('bayiler', { ...b0, ...o });
+    // Ticari koşulların asıl yeri firmanın cari kaydı: firmada boşsa bayi kartında girilen değer firmaya da yazılır
+    const fr = byId('firmalar', o.firma_id || b0.firma_id), ek = {};
+    if (fr) { for (const k of KOSUL) if (o[k] != null && o[k] !== '' && (fr[k] == null || fr[k] === '')) ek[k] = o[k]; if (Object.keys(ek).length) try { await app.db.save('firmalar', { ...fr, ...ek }); } catch {} }
     const f = byId('firmalar', o.firma_id);
     if (f && !(f.tipler || []).includes('Bayi') && ['Bayi', 'Alt bayi', 'Distribütör'].includes(o.tur)) await app.db.save('firmalar', { ...f, tipler: [...(f.tipler || []), 'Bayi'] });
     if (ayar('bayi_agi') !== true && sahipMi()) await ayarYaz('bayi_agi', true);
@@ -89,6 +92,9 @@ export function bayiAtamaFormu(init = {}, sonra) {
 }
 
 // ---------- Ağ ----------
+// Ticari koşul: bayi kartında girildiyse o, yoksa firmanın cari bilgisi (tek kaynak firmadır)
+const KOSUL = ['iskonto', 'vade_gun', 'kredi_limiti', 'para_birimi'];
+export function bayiKosul(b, k) { const v = b?.[k]; if (v != null && v !== '') return v; const f = byId('firmalar', b?.firma_id)?.[k]; return f != null && f !== '' ? f : null; }
 // Ağ haritası: konumu bilinen bayiler; nokta büyüklüğü yıl satışına, rengi türe göre
 const TUR_RENK = ['#2a78d6', '#15803D', '#7C3AED', '#C2410C', '#0F766E', '#B91C1C', '#64748B'];
 let agHarita = null;
@@ -167,7 +173,7 @@ export function bayikarneView(el) {
     <section class="card"><h2>${Y} aylık satış (bize alım)</h2><div class="fn-grafik bk-grafik">${o.aylik.map((v, i) => `<div class="fn-ay"><div class="fn-cub"><i class="fn-b satis" style="height:${Math.max(v ? 2 : 0, v / max * 100)}%;width:60%" title="${AYLAR[i]}: ${usd(Math.round(v))}"></i></div><small>${AYLAR[i]}</small></div>`).join('')}</div></section>
     <div class="bk-izgara">
       <section class="card"><h2>Üzerinden giden projeler <span class="muted">${o.proj.length}</span></h2>${o.proj.length ? `<ul class="list">${o.proj.sort((a, c) => ACIK.includes(c.durum) - ACIK.includes(a.durum) || (+c.tutar_usd || 0) - (+a.tutar_usd || 0)).slice(0, 10).map(p => `<li><a href="#/proje/${p.id}" class="grow"><b>${esc(p.ad)}</b><span class="muted">${usd(p.tutar_usd)}${p.durum === 'Kayıp' && p.rakip_marka ? ' · ' + esc(p.rakip_marka) : ''}</span></a>${pill(p.durum)}</li>`).join('')}</ul>${Object.keys(kayipMarka).length ? `<p class="hint">Kaybedilen markalar: ${Object.entries(kayipMarka).map(([m, n]) => esc(m) + ' ' + n).join(' · ')}</p>` : ''}` : '<p class="hint">Bu bayiye bağlı proje yok. Projede "Bayi" alanını seçince burada görünür.</p>'}</section>
-      <section class="card"><h2>Koşullar</h2><dl class="profil-dl">${[['İskonto', b.iskonto != null && b.iskonto !== '' ? '%' + num(b.iskonto) : ''], ['Ödeme vadesi', b.vade_gun ? b.vade_gun + ' gün' : ''], ['Kredi limiti', b.kredi_limiti ? num(b.kredi_limiti) + ' ' + (b.para_birimi || 'USD') : ''], ['Başlangıç', b.baslangic ? tarih(b.baslangic) : ''], ['Sözleşme bitişi', b.bitis ? tarih(b.bitis) + (b.bitis < today() ? ' (doldu)' : '') : '']].filter(x => x[1]).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('') || '<dt>—</dt><dd>Koşul girilmedi</dd>'}</dl>${b.kredi_limiti && o.alacak > +b.kredi_limiti ? '<p class="warn">Açık alacak kredi limitini aşıyor.</p>' : ''}${b.notlar ? `<p>${esc(b.notlar)}</p>` : ''}</section>
+      <section class="card"><h2>Koşullar</h2><dl class="profil-dl">${[['İskonto', bayiKosul(b, 'iskonto') != null ? '%' + num(bayiKosul(b, 'iskonto')) : ''], ['Ödeme vadesi', bayiKosul(b, 'vade_gun') ? bayiKosul(b, 'vade_gun') + ' gün' : ''], ['Kredi limiti', bayiKosul(b, 'kredi_limiti') ? num(bayiKosul(b, 'kredi_limiti')) + ' ' + (bayiKosul(b, 'para_birimi') || 'USD') : ''], ['Başlangıç', b.baslangic ? tarih(b.baslangic) : ''], ['Sözleşme bitişi', b.bitis ? tarih(b.bitis) + (b.bitis < today() ? ' (doldu)' : '') : '']].filter(x => x[1]).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('') || '<dt>—</dt><dd>Koşul girilmedi</dd>'}</dl>${bayiKosul(b, 'kredi_limiti') && o.alacak > +bayiKosul(b, 'kredi_limiti') ? '<p class="warn">Açık alacak kredi limitini aşıyor.</p>' : ''}${b.notlar ? `<p>${esc(b.notlar)}</p>` : ''}</section>
       <section class="card"><h2>Son ziyaretler</h2>${o.ziy.length ? `<ul class="list">${o.ziy.slice(0, 5).map(z => `<li><span class="grow"><b>${tarih(z.tarih)}</b><span class="muted">${esc([z.amac, z.sonuc_tipi, (z.notlar || '').slice(0, 80)].filter(Boolean).join(' · '))}</span></span></li>`).join('')}</ul>` : '<p class="hint">Ziyaret yok.</p>'}</section>
       <section class="card"><h2>Kişiler</h2>${kisiler.length ? `<ul class="list">${kisiler.map(k => `<li><a href="#/kisi/${k.id}" class="grow"><b>${esc(k.ad_soyad)}</b><span class="muted">${esc(k.unvan || '')}</span></a>${k.telefon ? `<a class="btn sm ghost" href="tel:${esc(k.telefon)}">Ara</a>` : ''}</li>`).join('')}</ul>` : '<p class="hint">Kişi yok.</p>'}</section>
     </div>`;

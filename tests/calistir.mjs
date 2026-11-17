@@ -674,6 +674,110 @@ const DB = () => {
   kontrol('Planlama ve onay ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 105: stok tek yerde — Ürünler yalnız ürün ve fiyat; bayi stoğu Bayi ve partner → Stoklar (taşıma, hızlı adet, uyarılar)
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString(); const g = n => { const x = new Date(Date.now() + n * 864e5); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }];
+    d.urunler[0].depo = 'Örnek Bayi'; d.urunler[0].stok_tarihi = g(-100);
+    d.stok_gecmis = [{ id: 'sg1', owner: 'u1', kod: '1000001', stok: 10, birim_fiyat_usd: 42, tarih: g(-100), depo: 'Örnek Bayi', created_at: ts, updated_at: ts }];
+    d.teklifler[0].durum = 'Gönderildi'; d.teklifler[0].kalemler = [{ kod: '1000001', ad: 'ORNEK 050D 40LN00', adet: 50, birim_fiyat: 42 }];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/urunler'); await w(1500);
+  const ur = await p.evaluate(() => ({ h1: document.querySelector('#view h1')?.textContent, up: !!document.querySelector('[data-up]'), link: !!document.querySelector('a[href="#/bayistok"]'), sekme: [...document.querySelectorAll('.alt-sekme a')].map(a => a.firstChild.textContent.trim()).join('|') }));
+  await p.goto(U + '#/bayi'); await w(1500);
+  const yon = await p.evaluate(() => location.hash);
+  const tasiVar = await p.isVisible('[data-tasibtn]');
+  await p.click('[data-tasibtn]'); await w(600); await p.click('.drawer.open [data-onay]'); await w(1500);
+  const ta = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const b = S.bayi_stok.find(x => x.firma_id === 'f1' && x.kod === '1000001'); return { adet: b?.adet, u: S.urunler[0].stok, depo: S.urunler[0].depo, sg: S.stok_gecmis.find(h => h.id === 'sg1')?.firma_id, kart: !!document.querySelector('[data-tasibtn]') }; });
+  await p.click('[data-art="1"]'); await w(900);
+  const hz = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const st = await import('./js/stok.js'); return { adet: S.bayi_stok.find(x => x.firma_id === 'f1').adet, gec: S.stok_gecmis.filter(h => h.firma_id === 'f1' && +h.stok === 11).length, metin: st.stokMetni(S.urunler[0]), uyari: document.querySelector('.warnbox summary')?.textContent || '' }; });
+  await p.evaluate(async () => (await import('./js/ayar.js')).ayarYaz('kendi_depo', true));
+  await p.goto(U + '#/urunler'); await w(1200);
+  const kd = await p.evaluate(() => !!document.querySelector('[data-up]'));
+  kontrol('Ürünler yalnız ürün ve fiyat listesi: stok yükleme yok, Bayi paneli sekmesi kalktı, eski adres Bayi stoklarına gider',
+    /^Ürün ve fiyat listesi/.test(ur.h1 || '') && !ur.up && ur.link && !/Bayi paneli/.test(ur.sekme) && yon === '#/bayistok', JSON.stringify({ ur, yon }));
+  kontrol('Ürünler\'deki eski depo stoğu tek seferde bayiye taşınır (geçmişiyle); ürünün kendi stoğu boşalır',
+    tasiVar && +ta.adet === 10 && ta.u == null && !ta.depo && ta.sg === 'f1' && !ta.kart, JSON.stringify(ta));
+  kontrol('Stoklar: + ile hızlı adet, geçmişe yazılır; ürünün nerede olduğu; tekliflere yetmeyen stok uyarısı; "Kendi depomuz" açılınca Ürünler\'de yükleme',
+    +hz.adet === 11 && hz.gec === 1 && /Örnek Bayi 11/.test(hz.metin) && /tekliflere yetmiyor/.test(hz.uyari) && kd, JSON.stringify({ hz, kd }));
+  kontrol('Stok ayrımı ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+// Sürüm 106: cari ve vergi — VKN/TCKN denetimi, aynı vergi no, şube, firmaya bağlı olmayan faturalar, birleştirmede çek ve bayi kayıtları, bayi koşulu firmadan
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.firmalar[0].vergi_no = '1234567890'; d.firmalar[0].iskonto = 12; d.firmalar[1].vergi_no = '123 456 7890';
+    d.firmalar.push({ id: 'f3', owner: 'u1', ad: 'Hatalı Numara AŞ', vergi_no: '1234567891', created_at: ts, updated_at: ts }, { id: 'f4', owner: 'u1', ad: 'Örnek Bayi Şube', created_at: ts, updated_at: ts });
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }];
+    d.tahsilatlar = [{ id: 'th1', owner: 'u1', cari: 'Örnek Bayi Elk. Ltd.', belge_no: 'A1', tarih: '2026-10-01', vade: '2026-11-01', tutar: 100, odenen: 0, para_birimi: 'USD', tur: 'Fatura', created_at: ts, updated_at: ts }];
+    d.cekler = [{ id: 'c1', owner: 'u1', yon: 'Alınan', tur: 'Çek', firma_id: 'f4', vade: '2026-12-01', tutar: 50, para_birimi: 'USD', durum: 'Portföyde', created_at: ts, updated_at: ts }];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bugun'); await w(1200);
+  const no = await p.evaluate(async () => { const m = await import('./js/cari.js'); const b = await import('./js/views/bayiag.js'); const { S } = await import('./js/db.js');
+    return { v1: m.vknGecerli('1234567890'), v2: m.vknGecerli('1234567891'), t1: m.tcknGecerli('10000000146'), t2: m.tcknGecerli('10000000147'), k: m.vergiKontrol('12345').ok, cift: m.vergiCiftleri().length, kosul: b.bayiKosul(S.bayiler[0], 'iskonto') }; });
+  await p.goto(U + '#/kontrol'); await w(1500);
+  const ko = await p.evaluate(() => { const t = document.body.textContent; return { cift: /Aynı vergi numaralı firmalar/.test(t), hatali: /Hatalı Numara AŞ/.test(t), tah: !!document.querySelector('[data-gbag^="tahsilatlar|Örnek Bayi Elk. Ltd.|f1"]'), liste: !!document.querySelector('[data-carilist]') }; });
+  await p.evaluate(() => document.querySelectorAll('details.kontrol').forEach(d => d.open = true));
+  await p.click('[data-gbag^="tahsilatlar|"]'); await w(900);
+  await p.evaluate(() => document.querySelectorAll('details.kontrol').forEach(d => d.open = true));
+  await p.click('[data-sube="f2|f1"]'); await w(900);
+  const ko2 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const m = await import('./js/cari.js'); return { th: S.tahsilatlar[0].firma_id, sube: S.firmalar.find(f => f.id === 'f2').sube_ana_id, cift: m.vergiCiftleri().length }; });
+  await p.evaluate(async () => (await import('./js/views/firmalar.js')).firmaFormu(null, { ad: 'Yeni Deneme Ltd' })); await w(700);
+  await p.evaluate(() => document.querySelectorAll('.drawer.open details').forEach(d => d.open = true));
+  await p.fill('.drawer.open [name=vergi_no]', '1234567890'); await w(300);
+  const uy1 = await p.evaluate(() => document.querySelector('[data-vergiuyari]')?.textContent || '');
+  await p.click('.drawer.open [type=submit]'); await w(800);
+  const kayitYok = await p.evaluate(async () => !(await import('./js/db.js')).S.firmalar.some(f => f.ad === 'Yeni Deneme Ltd'));
+  await p.fill('.drawer.open [name=vergi_no]', '1234567891'); await w(300);
+  const uy2 = await p.evaluate(() => document.querySelector('[data-vergiuyari]')?.textContent || '');
+  await p.fill('.drawer.open [name=vergi_no]', '9876543217'); await p.fill('.drawer.open [name=vergi_dairesi]', 'Seyhan'); await p.selectOption('.drawer.open [name=il]', 'Adana'); await p.fill('.drawer.open [name=ilce]', 'Seyhan'); await p.click('.drawer.open [type=submit]'); await w(1200);
+  const yeni = await p.evaluate(async () => { const f = (await import('./js/db.js')).S.firmalar.find(f => f.ad === 'Yeni Deneme Ltd'); return f && [f.vergi_no, f.vergi_dairesi].join('|'); });
+  await p.evaluate(async () => (await import('./js/cift.js')).karsilastir('firmalar', 'f1', 'f4')); await w(700);
+  await p.click('.drawer.open [data-birlestir]'); await w(2000);
+  const bir = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { cek: S.cekler.find(x => x.id === 'c1')?.firma_id, f4: S.firmalar.some(f => f.id === 'f4'), bayi: S.bayiler[0]?.firma_id }; });
+  kontrol('Vergi no denetimi: 10 haneli VKN ve 11 haneli TCKN kontrol hanesiyle; bayi koşulu boşsa firmanın carisinden',
+    no.v1 && !no.v2 && no.t1 && !no.t2 && !no.k && no.cift === 1 && no.kosul === 12, JSON.stringify(no));
+  kontrol('Veri kontrolü: aynı vergi numaralı firmalar, geçersiz vergi no, firmaya bağlı olmayan faturalar; bağla ve şube işaretle',
+    ko.cift && ko.hatali && ko.tah && ko.liste && ko2.th === 'f1' && ko2.sube === 'f1' && ko2.cift === 0, JSON.stringify({ ko, ko2 }));
+  kontrol('Firma formu: başka firmadaki vergi no ve geçersiz numara uyarılır, kaydedilmez; geçerli numara ve vergi dairesi kaydedilir',
+    /zaten Örnek Bayi/.test(uy1) && kayitYok && /geçerli değil/.test(uy2) && yeni === '9876543217|Seyhan', JSON.stringify({ uy1, kayitYok, uy2, yeni }));
+  kontrol('Firma birleştirmede çek / senet de kalan firmaya taşınır', bir.cek === 'f1' && !bir.f4 && bir.bayi === 'f1', JSON.stringify(bir));
+  kontrol('Cari ve vergi ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+// Sürüm 107: zorunlu alanlar — firma konumu, eksik bilgili firma rozeti, tahsilat öncesi vergi bilgisi penceresi, kişide firma, ayar kartı
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/firma/f1'); await w(1500);
+  const roz = await p.evaluate(() => document.querySelector('.eksik-rozet')?.textContent || '');
+  await p.evaluate(async () => (await import('./js/views/firmalar.js')).firmaFormu(null, { ad: 'Konumsuz Ltd' })); await w(700);
+  await p.click('.drawer.open [type=submit]'); await w(700);
+  const k1 = await p.evaluate(async () => ({ yok: !(await import('./js/db.js')).S.firmalar.some(f => f.ad === 'Konumsuz Ltd'), t: document.getElementById('toast')?.textContent || '' }));
+  await p.selectOption('.drawer.open [name=il]', 'Adana'); await p.fill('.drawer.open [name=ilce]', 'Seyhan'); await p.click('.drawer.open [type=submit]'); await w(1200);
+  const k2 = await p.evaluate(async () => (await import('./js/db.js')).S.firmalar.some(f => f.ad === 'Konumsuz Ltd'));
+  await p.goto(U + '#/tahsilat'); await w(1200);
+  await p.evaluate(async () => (await import('./js/views/tahsilat.js')).tahsilatForm({ firma_id: 'f1' })); await w(700);
+  await p.fill('.drawer.open [name=tutar]', '250'); await p.click('.drawer.open [type=submit]'); await w(700);
+  const dlg = await p.evaluate(() => document.querySelector('dialog.cari-dlg')?.textContent.replace(/\s+/g, ' ') || '');
+  await p.fill('dialog.cari-dlg #ci-v', '1234567891'); await p.click('dialog.cari-dlg [data-ci-kay]'); await w(400);
+  const h1 = await p.evaluate(() => document.querySelector('[data-ci-h]')?.textContent || '');
+  await p.fill('dialog.cari-dlg #ci-v', '1234567890'); await p.fill('dialog.cari-dlg #ci-d', 'Seyhan'); await p.click('dialog.cari-dlg [data-ci-kay]'); await w(1200);
+  const son = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const f = S.firmalar.find(x => x.id === 'f1'); return { v: f.vergi_no, d: f.vergi_dairesi, tah: S.tahsilatlar.filter(t => t.firma_id === 'f1' && +t.tutar === 250).length, dlg: !!document.querySelector('dialog.cari-dlg') }; });
+  await p.evaluate(async () => (await import('./js/views/firmalar.js')).kisiFormu(null, { ad: 'Firmasız' })); await w(700);
+  await p.click('.drawer.open [type=submit]'); await w(700);
+  const ki = await p.evaluate(async () => ({ yok: !(await import('./js/db.js')).S.kisiler.some(k => k.ad === 'Firmasız'), t: document.getElementById('toast')?.textContent || '' }));
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  await p.goto(U + '#/sirket/genel'); await w(1500);
+  const kart = await p.isVisible('.zorunlu-k');
+  await p.selectOption('[data-zk="vergi"]', 'kapali'); await p.click('[data-zkaydet]'); await w(700);
+  const kapali = await p.evaluate(async () => { const z = await import('./js/zorunlu.js'); return z.kurallar().vergi === 'kapali' && !z.cariEksik({ tipler: ['Bayi'] }).length; });
+  kontrol('Eksik bilgili firma rozeti; yeni firmada konum zorunlu (il + ilçe yeter)', /Cari bilgisi eksik: vergi no, vergi dairesi/.test(roz) && k1.yok && /Konum zorunlu/.test(k1.t) && k2, JSON.stringify({ roz, k1, k2 }));
+  kontrol('Bayi firmasına fatura girmeden önce vergi no ve vergi dairesi istenir; geçersiz numara kabul edilmez; kaydedince fatura da kaydedilir',
+    /Cari bilgisi gerekli/.test(dlg) && /geçerli değil/.test(h1) && son.v === '1234567890' && son.d === 'Seyhan' && son.tah === 1 && !son.dlg, JSON.stringify({ dlg, h1, son }));
+  kontrol('Kişide firma zorunlu; Şirket profilinde zorunlu alan kuralları ayarlanır', ki.yok && /firmayı seç/.test(ki.t) && kart && kapali, JSON.stringify({ ki, kart, kapali }));
+  kontrol('Zorunlu alan ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

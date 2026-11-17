@@ -58,14 +58,16 @@ export function benzerleri(tablo, id) {
 
 // ---------- Bağlı kayıt sayıları (hangisi kalacak, ekranda gösterim) ----------
 const KISI_BAG = { ziyaretler: ['kisi_id'], gorevler: ['kisi_id'], teklifler: ['kisi_id'], numuneler: ['kisi_id'], servis_kayitlari: ['kisi_id'], projeler: ['ilgili_kisi_id'] };
-const FIRMA_BAG = { projeler: ROL, kisiler: ['firma_id'], ziyaretler: ['firma_id'], gorevler: ['firma_id'], siparisler: ['firma_id'], teklifler: ['firma_id'], numuneler: ['firma_id'], servis_kayitlari: ['firma_id'], tahsilatlar: ['firma_id'], belgeler: ['firma_id'] };
-const AD = { ziyaretler: 'ziyaret', gorevler: 'görev', teklifler: 'teklif', numuneler: 'numune', servis_kayitlari: 'servis', projeler: 'proje', kisiler: 'kişi', siparisler: 'sipariş', tahsilatlar: 'fatura', belgeler: 'belge' };
+const FIRMA_BAG = { projeler: ROL, kisiler: ['firma_id'], ziyaretler: ['firma_id'], gorevler: ['firma_id'], siparisler: ['firma_id'], teklifler: ['firma_id'], numuneler: ['firma_id'], servis_kayitlari: ['firma_id'], tahsilatlar: ['firma_id'], belgeler: ['firma_id'], cekler: ['firma_id'], bayi_satis: ['firma_id'], stok_gecmis: ['firma_id'] };
+// siparişte bayi olarak geçen firma da taşınır
+const FIRMA_BAG_EK = { siparisler: ['bayi_id'] };
+const AD = { cekler: 'çek / senet', bayi_satis: 'bayi satışı', stok_gecmis: 'stok hareketi', ziyaretler: 'ziyaret', gorevler: 'görev', teklifler: 'teklif', numuneler: 'numune', servis_kayitlari: 'servis', projeler: 'proje', kisiler: 'kişi', siparisler: 'sipariş', tahsilatlar: 'fatura', belgeler: 'belge' };
 const bagSay = (tablo, id) => Object.entries(tablo === 'kisiler' ? KISI_BAG : FIRMA_BAG).map(([t, al]) => [t, (S[t] || []).filter(r => al.some(a => r[a] === id)).length]).filter(x => x[1]);
 const bagMetni = (tablo, id) => bagSay(tablo, id).map(([t, n]) => `${n} ${AD[t]}`).join(', ') || 'bağlı kayıt yok';
 
 // ---------- Karşılaştırılan alanlar ----------
 const KISI_ALAN = [['ad', 'Ad'], ['soyad', 'Soyad'], ['firma_id', 'Firma', 'firma'], ['unvan', 'Unvan'], ['telefon', 'Telefon'], ['eposta', 'E-posta'], ['web', 'İnternet sitesi'], ['adres', 'Adres'], ['rol', 'Karar rolü'], ['dogum_gunu', 'Doğum günü']];
-const FIRMA_ALAN = [['ad', 'Firma adı'], ['il', 'İl'], ['ilce', 'İlçe'], ['adres', 'Adres'], ['telefon', 'Telefon'], ['eposta', 'E-posta'], ['web', 'İnternet sitesi'], ['vergi_no', 'Vergi no'], ['sektor', 'Sektör'], ['segment', 'Segment']];
+const FIRMA_ALAN = [['ad', 'Firma adı'], ['il', 'İl'], ['ilce', 'İlçe'], ['adres', 'Adres'], ['telefon', 'Telefon'], ['eposta', 'E-posta'], ['web', 'İnternet sitesi'], ['vergi_no', 'Vergi no'], ['unvan', 'Ticari unvan'], ['vergi_dairesi', 'Vergi dairesi'], ['fatura_adresi', 'Fatura adresi'], ['cari_kodu', 'Cari kodu'], ['vade_gun', 'Vade (gün)'], ['iskonto', 'İskonto'], ['kredi_limiti', 'Kredi limiti'], ['sektor', 'Sektör'], ['segment', 'Segment']];
 const adBol = s => { const p = String(s || '').trim().split(/\s+/).filter(Boolean); return p.length < 2 ? { ad: p[0] || '', soyad: '' } : { ad: p.slice(0, -1).join(' '), soyad: p[p.length - 1] }; };
 const deger = (tablo, r, k) => tablo === 'kisiler' && (k === 'ad' || k === 'soyad') && !r.ad && !r.soyad ? adBol(r.ad_soyad)[k] : r[k] ?? '';
 const goster = (tur, v) => tur === 'firma' ? (firmaAd(v) || '') : String(v ?? '');
@@ -89,6 +91,8 @@ export function karsilastir(tablo, idA, idB, sonra) {
   // Kalacak kayıt: bağlı kaydı çok olan (kimliği korunur; kullanıcı değiştirebilir)
   const toplam = r => bagSay(tablo, r.id).reduce((s, x) => s + x[1], 0);
   if (toplam(B) > toplam(A)) [A, B] = [B, A];
+  // Bayi kullanıcısı (dış kullanıcı) bağlı firma silinmesin: o firma kalacak kayıttır
+  if (tablo === 'firmalar' && (app.ekipTum || app.ekip || []).some(u => u.dis_firma_id === B.id)) [A, B] = [B, A];
   const ALAN = tablo === 'kisiler' ? KISI_ALAN : FIRMA_ALAN, ad = r => tablo === 'kisiler' ? r.ad_soyad : r.ad;
   const yol = r => tablo === 'kisiler' ? `#/kisi/${r.id}` : `#/firma/${r.id}`;
   const satir = ([k, l, tur]) => {
@@ -136,7 +140,20 @@ export function karsilastir(tablo, idA, idB, sonra) {
         if (B.firma_id && B.firma_id !== yeni.firma_id && !ef.some(g => g.firma_id === B.firma_id)) ef.unshift({ firma_id: B.firma_id, firma_ad: firmaAd(B.firma_id) || null, unvan: B.unvan || null, bitis: null });
         yeni.eski_firmalar = ef.length ? ef : null; yeni._gecmisYok = true; }
       else { yeni.tipler = [...new Set([...(A.tipler || []), ...(B.tipler || [])])]; yeni.fotolar = [...new Set([...(A.fotolar || []), ...(B.fotolar || [])])]; if (yeni.lat == null && B.lat != null) Object.assign(yeni, { lat: B.lat, lng: B.lng, konum_yaklasik: B.konum_yaklasik }); for (const a of ['belde', 'osb', 'google_place_id', 'google_url', 'bolge_id']) if (!yeni[a] && B[a]) yeni[a] = B[a]; }
+      // Veritabanında vergi no tekil: aynı numara 2'de duruyorsa önce 2'den kaldırılır
+      if (tablo === 'firmalar' && B.vergi_no && String(B.vergi_no).replace(/\D/g, '') === String(yeni.vergi_no || '').replace(/\D/g, '')) await app.db.save('firmalar', { ...B, vergi_no: null });
       await app.db.save(tablo, yeni);
+      if (tablo === 'firmalar') {
+        // Bayi ataması: 1'de yoksa 2'ninki taşınır; ikisinde de varsa 1'inki kalır
+        const bA = (S.bayiler || []).find(x => x.firma_id === A.id), bB = (S.bayiler || []).find(x => x.firma_id === B.id);
+        if (bB && !bA) await app.db.save('bayiler', { ...bB, firma_id: A.id }); else if (bB) await app.db.del('bayiler', bB.id);
+        // Bayi stoğu: aynı ürün iki kayıtta varsa adetler toplanır
+        for (const r of (S.bayi_stok || []).filter(x => x.firma_id === B.id)) { const e = (S.bayi_stok || []).find(x => x.firma_id === A.id && x.kod === r.kod);
+          if (e) { await app.db.save('bayi_stok', { ...e, adet: (+e.adet || 0) + (+r.adet || 0) }); await app.db.del('bayi_stok', r.id); } else await app.db.save('bayi_stok', { ...r, firma_id: A.id }); }
+        for (const [t, alan] of Object.entries(FIRMA_BAG_EK)) for (const r of (S[t] || []).filter(r => alan.some(a => r[a] === B.id))) { const o = { ...r }; for (const a of alan) if (o[a] === B.id) o[a] = A.id; await app.db.save(t, o); }
+        // Şubeleri kalan firmaya bağlanır
+        for (const r of (S.firmalar || []).filter(f => f.sube_ana_id === B.id)) await app.db.save('firmalar', { ...r, sube_ana_id: A.id });
+      }
       const BAG = tablo === 'kisiler' ? KISI_BAG : FIRMA_BAG;
       for (const [t, alan] of Object.entries(BAG)) for (const r of (S[t] || []).filter(r => alan.some(a => r[a] === B.id))) { const o = { ...r, _gecmisYok: true }; for (const a of alan) if (o[a] === B.id) o[a] = A.id; await app.db.save(t, o); }
       // Kişilerin eski firmalar listesinde silinen firma geçiyorsa kalan firmaya çevrilir

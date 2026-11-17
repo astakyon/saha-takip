@@ -1933,5 +1933,72 @@ alter table public.siparisler add column if not exists kaynak text;
 alter table public.siparisler add column if not exists dogrulandi text;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 46 $f$;
 
+-- ---------- Sürüm 47: Stok tek yerde (bayi depoları; stok geçmişi bayiye bağlı) ----------
+-- Ürünler bizim ürün ve fiyat listemizdir; bayinin deposu bayi_stok'ta tutulur. Stok geçmişi bayi (firma) ile işaretlenir.
+alter table public.stok_gecmis add column if not exists firma_id uuid references public.firmalar(id) on delete cascade;
+create index if not exists stok_gecmis_firma_idx on public.stok_gecmis (firma_id, kod);
+-- Bayi kullanıcısı yalnız kendi deposunun stok geçmişini görür ve ekler
+drop policy if exists "dis_ekle" on public.stok_gecmis;
+create policy "dis_ekle" on public.stok_gecmis as restrictive for insert to authenticated with check (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+create or replace function public.dis_uygun(sahip uuid, tablo text, kayit uuid) returns boolean language plpgsql stable security definer set search_path = public as $f$
+declare f uuid := public.dis_firmam(sahip);
+begin
+  if f is null then return true; end if;
+  case tablo
+    when 'projeler' then return public.dis_proje(kayit, f);
+    when 'firmalar' then return kayit = f;
+    when 'kisiler' then return exists (select 1 from public.kisiler k where k.id = kayit and k.firma_id = f);
+    when 'proje_gecmis' then return exists (select 1 from public.proje_gecmis g where g.id = kayit and public.dis_proje(g.proje_id, f));
+    when 'teklifler' then return exists (select 1 from public.teklifler x where x.id = kayit and (x.firma_id = f or public.dis_proje(x.proje_id, f)));
+    when 'siparisler' then return exists (select 1 from public.siparisler x where x.id = kayit and (x.firma_id = f or x.bayi_id = f or public.dis_proje(x.proje_id, f)));
+    when 'numuneler' then return exists (select 1 from public.numuneler x where x.id = kayit and (x.firma_id = f or public.dis_proje(x.proje_id, f)));
+    when 'servis_kayitlari' then return exists (select 1 from public.servis_kayitlari x where x.id = kayit and (x.firma_id = f or public.dis_proje(x.proje_id, f)));
+    when 'tahsilatlar' then return exists (select 1 from public.tahsilatlar x where x.id = kayit and x.firma_id = f);
+    when 'belgeler' then return exists (select 1 from public.belgeler x where x.id = kayit and (x.firma_id = f or public.dis_proje(x.proje_id, f)));
+    when 'urunler', 'urun_aileleri' then return true;
+    when 'stok_gecmis' then return exists (select 1 from public.stok_gecmis x where x.id = kayit and x.firma_id = f);
+    when 'bayi_stok' then return exists (select 1 from public.bayi_stok x where x.id = kayit and x.firma_id = f);
+    when 'bayi_satis' then return exists (select 1 from public.bayi_satis x where x.id = kayit and x.firma_id = f);
+    when 'bayiler' then return exists (select 1 from public.bayiler x where x.id = kayit and x.firma_id = f);
+    else return false;
+  end case;
+end $f$;
+-- "Bayi paneli" ekranı kalktı: o ekranı gören / düzenleyen kişi ve rollere "Bayi stokları" ekranı ve tablosu aynı düzeyde verilir
+do $$ declare t text; begin
+  foreach t in array array['ekip_uyeleri','roller'] loop
+    execute format($q$update public.%I set yetkiler = jsonb_set(jsonb_set(jsonb_set(yetkiler, '{_ekran,bayistok}', yetkiler->'_ekran'->'bayi'), '{bayi_stok}', coalesce(yetkiler->'bayi_stok', yetkiler->'_ekran'->'bayi')), '{stok_gecmis}', coalesce(yetkiler->'stok_gecmis', yetkiler->'_ekran'->'bayi'))
+      where jsonb_typeof(yetkiler->'_ekran') = 'object' and jsonb_typeof(yetkiler->'_ekran'->'bayi') = 'string' and not (yetkiler->'_ekran') ? 'bayistok'$q$, t);
+  end loop;
+end $$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 47 $f$;
+
+-- ---------- Sürüm 48: Cari ve vergi bilgisi (unvan, vergi dairesi, fatura adresi, koşullar, şube; şirket içinde tekil vergi no) ----------
+alter table public.firmalar add column if not exists unvan text;
+alter table public.firmalar add column if not exists vergi_dairesi text;
+alter table public.firmalar add column if not exists fatura_adresi text;
+alter table public.firmalar add column if not exists cari_kodu text;
+alter table public.firmalar add column if not exists efatura text;
+alter table public.firmalar add column if not exists vade_gun int;
+alter table public.firmalar add column if not exists iskonto numeric;
+alter table public.firmalar add column if not exists kredi_limiti numeric;
+alter table public.firmalar add column if not exists para_birimi text;
+alter table public.firmalar add column if not exists sube_ana_id uuid references public.firmalar(id) on delete set null;
+-- Vergi numarasının yalnız rakamları (boşluk, nokta, tire temizlenmiş); tekillik bunun üzerinden denetlenir
+alter table public.firmalar add column if not exists vergi_no_temiz text generated always as (nullif(regexp_replace(coalesce(vergi_no, ''), '\D', '', 'g'), '')) stored;
+-- Şirket içinde aynı vergi no iki firmada olamaz (şube olarak işaretlenenler hariç).
+-- Aynı numaralı firmalar varken kural kurulmaz: önce Raporlar → Veri kontrolü → "Aynı vergi numaralı firmalar"dan birleştir ya da şube işaretle, sonra bu dosyayı yeniden çalıştır.
+do $$ begin
+  if exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'firmalar_vergi_tekil') then null;
+  elsif exists (select 1 from public.firmalar where vergi_no_temiz is not null and sube_ana_id is null group by owner, vergi_no_temiz having count(*) > 1) then
+    raise notice 'Aynı vergi numaralı firmalar var; tekil vergi no kuralı kurulmadı. Veri kontrolünden birleştirip bu dosyayı yeniden çalıştır.';
+  else
+    create unique index firmalar_vergi_tekil on public.firmalar (owner, vergi_no_temiz) where vergi_no_temiz is not null and sube_ana_id is null;
+  end if;
+end $$;
+-- Durum sorgusu: select public.vergi_tekil_kurulu();
+create or replace function public.vergi_tekil_kurulu() returns boolean language sql stable as $f$ select exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'firmalar_vergi_tekil') $f$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 48 $f$;
+
+
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

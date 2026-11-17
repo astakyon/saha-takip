@@ -2,6 +2,7 @@
 // güncellenir); boş şablon indirilebilir. (2) Örnek verilerle deneme: kurgusal firmalar ve projeler eklenir, tek
 // düğmeyle silinir (eklenen kayıtların kimlikleri ayarlarda "ornek_veri" olarak tutulur).
 import { S, uuid, adBol, adBirlestir } from './db.js';
+import { vergiKontrol, vergiSahibi } from './cari.js';
 import { app } from './state.js';
 import { esc, toast, confirmBox, pickFiles, fold, today, gunEkle, DURUMLAR, FIRMA_TIPLERI, pozisyonTahmin } from './ui.js';
 import { ayar, ayarYaz } from './ayar.js';
@@ -98,7 +99,7 @@ export async function excelIlkYukle(tur, sonra) {
     // Firma adından kayıt: yoksa yeni firma (aynı dosyada tekrar edenler bir kez)
     const yeniFirmalar = new Map();
     const firmaId = (ad, tip) => { const a = metin(ad); if (!a) return null; const n = norm(a); const f = S.firmalar.find(x => norm(x.ad) === n); if (f) return f.id; if (!yeniFirmalar.has(n)) yeniFirmalar.set(n, { id: uuid(), ad: a, tipler: tip ? [tip] : [], fotolar: [] }); return yeniFirmalar.get(n).id; };
-    const out = []; let guncel = 0, ayni = 0, atla = 0;
+    const out = []; let guncel = 0, ayni = 0, atla = 0, hv = 0, ke = 0;
     const birlestir = (eski, yeni) => { const o = { ...eski }; let deg = false; for (const [k, x] of Object.entries(yeni)) if (x != null && x !== '' && !(Array.isArray(x) && !x.length) && (eski[k] == null || eski[k] === '' || (Array.isArray(eski[k]) && !eski[k].length))) { o[k] = x; deg = true; } return deg ? o : null; };
     for (const r of veri) {
       let kayit, eski;
@@ -106,6 +107,8 @@ export async function excelIlkYukle(tur, sonra) {
         const ad = metin(v(r, 'ad')); if (!ad) { atla++; continue; }
         kayit = { ad, tipler: tipler(v(r, 'tipler')), telefon: metin(v(r, 'telefon')), eposta: metin(v(r, 'eposta')), il: metin(v(r, 'il')), ilce: metin(v(r, 'ilce')), adres: metin(v(r, 'adres')), web: metin(v(r, 'web')), vergi_no: metin(v(r, 'vergi_no')), segment: /^[ABC]$/i.test(metin(v(r, 'segment')) || '') ? metin(v(r, 'segment')).toUpperCase() : null, notlar: metin(v(r, 'notlar')) };
         eski = S.firmalar.find(x => norm(x.ad) === norm(ad)) || out.find(x => norm(x.ad) === norm(ad));
+        if (kayit.vergi_no) { const k = vergiKontrol(kayit.vergi_no), sh = k.ok && k.temiz ? vergiSahibi(k.temiz, eski?.id) || out.find(x => x !== eski && x.vergi_no === k.temiz) : null; if (!k.ok || sh) { hv++; kayit.vergi_no = null; } else kayit.vergi_no = k.temiz; }
+        if (!eski && !kayit.il && !kayit.adres) ke++;
       } else if (tur === 'kisiler') {
         let ad = metin(v(r, 'ad')), soyad = metin(v(r, 'soyad')); const tam = metin(v(r, 'ad_soyad'));
         if (tam && !ad) ({ ad, soyad } = adBol(tam));
@@ -128,7 +131,7 @@ export async function excelIlkYukle(tur, sonra) {
       else out.push({ id: uuid(), ...kayit, ...(tur === 'firmalar' ? { fotolar: [] } : {}) });
     }
     const yeni = out.length - guncel;
-    const { ok } = await onizleOnay({ baslik: `${T.ad}: ${file.name}`, sayilar: [['yeni kayıt', yeni, 'yeni'], ['boş alanları doldurulacak', guncel, 'gun'], ['değişmeyecek', ayni], ...(yeniFirmalar.size ? [['yeni firma da eklenecek', yeniFirmalar.size, 'yeni']] : []), ...(atla ? [['adı boş, atlanacak', atla]] : [])],
+    const { ok } = await onizleOnay({ baslik: `${T.ad}: ${file.name}`, sayilar: [['yeni kayıt', yeni, 'yeni'], ...(hv ? [['hatalı ya da başka firmada kayıtlı vergi no (boş bırakılır)', hv, 'uyari']] : []), ...(ke ? [['konumu (il / adres) eksik yeni firma', ke, 'uyari']] : []), ['boş alanları doldurulacak', guncel, 'gun'], ['değişmeyecek', ayni], ...(yeniFirmalar.size ? [['yeni firma da eklenecek', yeniFirmalar.size, 'yeni']] : []), ...(atla ? [['adı boş, atlanacak', atla]] : [])],
       ornekBaslik: tur === 'kisiler' ? ['Ad soyad', 'Firma', 'Telefon'] : tur === 'firmalar' ? ['Firma', 'Tip', 'İl'] : ['Proje', 'Aşama', 'İl'],
       ornek: out.slice(0, 5).map(x => tur === 'kisiler' ? [x.ad_soyad, S.firmalar.find(f => f.id === x.firma_id)?.ad || [...yeniFirmalar.values()].find(f => f.id === x.firma_id)?.ad || '', x.telefon || ''] : tur === 'firmalar' ? [x.ad, (x.tipler || []).join(', '), x.il || ''] : [x.ad, x.durum, x.il || '']) });
     if (!ok) return;

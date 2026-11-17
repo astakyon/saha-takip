@@ -4,39 +4,22 @@ import { esc, num, usd, tarih, today, gunEkle, RAKIPLER, URUN_AILELERI, byId, ma
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { cubuklar, ikili } from '../grafik.js';
 import { yuklemeKaydet } from '../belgeler.js';
-import { anaBayi } from '../profil.js';
+import { kendiDepo, stokAdet, stokNerede, stokUyarilariHesapla } from '../stok.js';
 
 const num2 = n => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
 const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
 const aileKey = s => fold(s || '').replace(/[^a-z0-9]/g, '');
 
-// Stok uyarıları: açık tekliflerin ihtiyacı stoktan fazla olan ürünler ve 60 günü aşkın süredir stoğu hiç değişmeyen ürünler
-export function stokUyarilari(gun = 60) {
-  const ihtiyac = new Map();
-  for (const t of S.teklifler) if (['Taslak', 'Gönderildi'].includes(t.durum)) for (const k of t.kalemler || []) if (k.kod) ihtiyac.set(k.kod, (ihtiyac.get(k.kod) || 0) + (+k.adet || 0));
-  const yetersiz = [];
-  for (const [kod, adet] of ihtiyac) { const u = S.urunler.find(x => x.kod === kod); if (u && adet > (+u.stok || 0)) yetersiz.push({ u, ihtiyac: adet, eksik: adet - (+u.stok || 0) }); }
-  const sinir = gunEkle(today(), -gun), hist = new Map();
-  for (const h of S.stok_gecmis) (hist.get(h.kod) || hist.set(h.kod, []).get(h.kod)).push(h);
-  const hareketsiz = [];
-  for (const u of S.urunler) {
-    if (!(u.stok > 0)) continue;
-    const hs = (hist.get(u.kod) || []).sort((a, b) => b.tarih.localeCompare(a.tarih));
-    if (!hs.length) continue;
-    let ilk = hs[0].tarih; // stoğun bugünkü değere ulaştığı en eski tarih
-    for (const h of hs) { if (+h.stok !== +u.stok) break; ilk = h.tarih; }
-    if (ilk <= sinir) hareketsiz.push({ u, gun: Math.round((new Date(today()) - new Date(ilk)) / 864e5), deger: (+u.stok || 0) * (+u.birim_fiyat_usd || 0) });
-  }
-  hareketsiz.sort((a, b) => b.deger - a.deger);
-  return { yetersiz, hareketsiz };
-}
+// Stok uyarıları artık bayi stoğundan da hesaplanır (js/stok.js)
+export const stokUyarilari = (gun = 60) => stokUyarilariHesapla(gun);
 
 export function urunlerView(el) {
   const f = F('urunler', { q: '', aile: 'Tümü', stokta: false });
   const aileler = [...new Set(S.urunler.map(u => u.aile).filter(Boolean))].sort();
   const sonTarih = S.urunler.map(u => u.stok_tarihi).filter(Boolean).sort().pop();
-  el.innerHTML = `<header class="vh"><div><h1>Stok ve birim fiyat</h1><p class="sum">${S.urunler.length} kalem · ${S.urunler.filter(u => u.stok > 0).length} kalem stokta${sonTarih ? ` · stok tarihi ${tarih(sonTarih)}` : ''}</p></div>
-    <div class="vh-act"><button class="btn ghost" data-kodoku>Kodu oku</button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn ghost" data-fl data-gerek="yaz:urunler">Fiyat listesi</button><button class="btn primary" data-up>Stok Excel'i yükle</button></div></header>
+  const kd = kendiDepo();
+  el.innerHTML = `<header class="vh"><div><h1>Ürün ve fiyat listesi</h1><p class="sum">${S.urunler.length} kalem · ${S.urunler.filter(u => stokAdet(u) > 0).length} kalem stokta (${kd ? 'kendi depomuz + bayiler' : 'bayi depolarında'})${kd && sonTarih ? ` · depo stok tarihi ${tarih(sonTarih)}` : ''}</p></div>
+    <div class="vh-act"><button class="btn ghost" data-kodoku>Kodu oku</button><button class="btn ghost" data-exp>Excel'e aktar</button><button class="btn ghost" data-fl data-gerek="yaz:urunler">Fiyat listesi</button>${kd ? '<button class="btn primary" data-up>Kendi depo stoğunu yükle</button>' : '<a class="btn" href="#/bayistok">Bayi stokları →</a>'}</div></header>
     <div class="filters"><input type="search" data-q placeholder="Ürün kodu veya açıklama ara (örn. HBL 150)" value="${esc(f.q)}" aria-label="Ürünlerde ara">
       <div class="frow"><label>Ürün ailesi <select data-aile>${['Tümü', ...aileler].map(a => `<option ${f.aile === a ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></label><label class="chk"><input type="checkbox" data-stokta ${f.stokta ? 'checked' : ''}> <span>Sadece stokta olanlar</span></label></div></div>
     <section class="ledger stock-ledger" data-ledger></section>
@@ -45,39 +28,39 @@ export function urunlerView(el) {
     <div class="rows products" data-rows></div>`;
   const list = () => S.urunler.filter(u => (f.aile === 'Tümü' || u.aile === f.aile) && (!f.stokta || u.stok > 0) && match(f.q, u.kod, u.aciklama, u.aciklama2)).sort((a, b) => (a.aile || '').localeCompare(b.aile || '') || a.aciklama.localeCompare(b.aciklama));
   const su = stokUyarilari();
-  if (su.yetersiz.length || su.hareketsiz.length) el.querySelector('[data-uyari]').innerHTML = `<details class="card warnbox" ${su.yetersiz.length ? 'open' : ''}><summary><b>Stok uyarıları</b> <span class="muted">${su.yetersiz.length} yetersiz · ${su.hareketsiz.length} hareketsiz</span></summary>
+  if (kd && (su.yetersiz.length || su.hareketsiz.length)) el.querySelector('[data-uyari]').innerHTML = `<details class="card warnbox" ${su.yetersiz.length ? 'open' : ''}><summary><b>Stok uyarıları</b> <span class="muted">${su.yetersiz.length} yetersiz · ${su.hareketsiz.length} hareketsiz</span></summary>
     ${su.yetersiz.length ? `<h3>Açık tekliflere yetmeyen stok</h3><ul class="list">${su.yetersiz.map(x => `<li><span><b>${esc(x.u.aciklama)}</b><span class="muted"> · tekliflerde ${num(x.ihtiyac)}, stokta ${num(x.u.stok)}</span></span><b class="neg">${num(x.eksik)} eksik</b></li>`).join('')}</ul>` : ''}
     ${su.hareketsiz.length ? `<h3>${num(su.hareketsiz.length)} ürün 60 günü aşkın süredir hareketsiz</h3><p class="hint">Stok adedi hiç değişmemiş; kampanyaya ya da projeye yönlendirilebilir. Toplam ${num(Math.round(su.hareketsiz.reduce((a, x) => a + x.deger, 0)))} $.</p><ul class="list">${su.hareketsiz.slice(0, 15).map(x => `<li><span><b>${esc(x.u.aciklama)}</b><span class="muted"> · ${num(x.u.stok)} adet · ${x.gun} gün</span></span><span class="num">${x.deger ? num(Math.round(x.deger)) + ' $' : ''}</span></li>`).join('')}</ul>` : ''}
   </details>`;
   const draw = () => {
     const l = list();
-    const deger = u => (+u.stok || 0) * (+u.birim_fiyat_usd || 0);
-    const topAdet = l.reduce((a, u) => a + (+u.stok || 0), 0), topTutar = l.reduce((a, u) => a + deger(u), 0);
-    const fiyatsiz = l.filter(u => u.stok > 0 && u.birim_fiyat_usd == null).length;
+    const deger = u => stokAdet(u) * (+u.birim_fiyat_usd || 0);
+    const topAdet = l.reduce((a, u) => a + stokAdet(u), 0), topTutar = l.reduce((a, u) => a + deger(u), 0);
+    const fiyatsiz = l.filter(u => stokAdet(u) > 0 && u.birim_fiyat_usd == null).length;
     const filtreli = l.length !== S.urunler.length;
     el.querySelector('[data-ledger]').innerHTML = `<div><span>Toplam stok tutarı${filtreli ? ' (filtrelenen)' : ''}</span><b>${num2(topTutar)} $</b><small>${fiyatsiz ? `${fiyatsiz} stoklu kalemin birim fiyatı yok, tutara katılmadı` : 'stok × birim fiyat'}</small></div>
-      <div><span>Toplam ürün adedi</span><b>${num(topAdet)}</b><small>${l.filter(u => u.stok > 0).length} kalem stokta</small></div>
+      <div><span>Toplam ürün adedi</span><b>${num(topAdet)}</b><small>${l.filter(u => stokAdet(u) > 0).length} kalem stokta</small></div>
       <div><span>Kalem</span><b>${l.length}</b><small>${filtreli ? `tümü ${S.urunler.length} kalem` : 'listede'}</small></div>`;
     const kutu = el.querySelector('[data-rows]');
-    if (!l.length) kutu.innerHTML = '<div class="empty"><p>Ürün yok. Bayinin stok Excel dosyasını “Stok Excel\'i yükle” ile ekle.</p></div>';
+    if (!l.length) kutu.innerHTML = '<div class="empty"><p>Ürün yok. Fiyat listesini yükle ya da bayinin stok listesini Bayi ve partner → Stoklar\'dan yükle; yeni kodlar buraya da eklenir.</p></div>';
     else parcali(kutu, l.map(u => `<button type="button" class="row" data-id="${u.id}"><span class="nm"><b>${esc(u.aciklama)}</b><small>${esc(u.kod)}${u.aciklama2 ? ' · ' + esc(u.aciklama2) : ''}</small></span><span class="muted">${esc(u.aile || '')}</span>
-        <span class="r num ${u.stok > 0 ? '' : 'muted'}">${num(u.stok)} ${esc((u.birim || '').toLowerCase())}</span><span class="r num">${u.birim_fiyat_usd != null ? num(u.birim_fiyat_usd) + ' $' : '—'}</span><span class="r num ${deger(u) ? '' : 'muted'}">${deger(u) ? num2(deger(u)) + ' $' : '—'}</span></button>`), { sar: x => `<div class="row head" aria-hidden="true"><span>Ürün</span><span>Aile</span><span class="r">Stok adedi</span><span class="r">Birim fiyat</span><span class="r">Kalem tutarı</span></div>` + x });
+        <span class="r num ${stokAdet(u) > 0 ? '' : 'muted'}" title="${esc(stokNerede(u).map(x => x.ad + ' ' + x.adet).join(', '))}">${num(stokAdet(u))} ${esc((u.birim || '').toLowerCase())}</span><span class="r num">${u.birim_fiyat_usd != null ? num(u.birim_fiyat_usd) + ' $' : '—'}</span><span class="r num ${deger(u) ? '' : 'muted'}">${deger(u) ? num2(deger(u)) + ' $' : '—'}</span></button>`), { sar: x => `<div class="row head" aria-hidden="true"><span>Ürün</span><span>Aile</span><span class="r">Stok adedi</span><span class="r">Birim fiyat</span><span class="r">Kalem tutarı</span></div>` + x });
     kutu.onclick = e => { const b = e.target.closest('[data-id]'); if (b) urunDetay(b.dataset.id); };
     const groups = {};
     for (const u of S.urunler) (groups[u.aile] ||= []).push(u);
     el.querySelector('[data-ozet]').innerHTML = `<table class="tbl"><thead><tr><th>Aile</th><th class="r">Kalem</th><th class="r">Stok</th><th class="r">Ort. birim fiyat</th><th class="r">Rakip ort.</th></tr></thead><tbody>${
       Object.entries(groups).sort((a, b) => b[1].length - a[1].length).map(([a, us]) => {
         const rp = S.rakip_fiyatlar.filter(r => aileKey(r.aile) === aileKey(a) && r.birim_fiyat).map(r => +r.birim_fiyat);
-        return `<tr><td>${esc(a)}</td><td class="r">${us.length}</td><td class="r">${num(us.reduce((s, u) => s + (+u.stok || 0), 0))}</td><td class="r">${num(avg(us.filter(u => u.birim_fiyat_usd).map(u => +u.birim_fiyat_usd)))} $</td><td class="r">${rp.length ? num(avg(rp)) + ' $' : '—'}</td></tr>`;
+        return `<tr><td>${esc(a)}</td><td class="r">${us.length}</td><td class="r">${num(us.reduce((s, u) => s + stokAdet(u), 0))}</td><td class="r">${num(avg(us.filter(u => u.birim_fiyat_usd).map(u => +u.birim_fiyat_usd)))} $</td><td class="r">${rp.length ? num(avg(rp)) + ' $' : '—'}</td></tr>`;
       }).join('')}</tbody></table><p class="hint">Rakip ortalaması, “Rakip fiyatları” ekranında aynı aileye girilen birim fiyatlardan hesaplanır.</p>`;
   };
   let qt; el.querySelector('[data-q]').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; saveFilters(); draw(); }, 200); };
   el.querySelector('[data-aile]').onchange = e => { f.aile = e.target.value; saveFilters(); draw(); };
   el.querySelector('[data-stokta]').onchange = e => { f.stokta = e.target.checked; saveFilters(); draw(); };
-  el.querySelector('[data-up]').onclick = stokYukle;
+  el.querySelector('[data-up]')?.addEventListener('click', stokYukle);
   el.querySelector('[data-fl]')?.addEventListener('click', async () => (await import('../fiyatlistesi.js')).fiyatListesiYukle());
   el.querySelector('[data-kodoku]').onclick = async () => (await import('../barkod.js')).kodOku();
-  el.querySelector('[data-exp]').onclick = () => exportXlsx(`stok-fiyat-${today()}.xlsx`, { 'Stok': list().map(u => ({ 'Kod': u.kod, 'Açıklama': u.aciklama, 'Aile': u.aile, 'Birim': u.birim, 'Stok': u.stok, 'Birim fiyat (USD)': u.birim_fiyat_usd, 'Kalem tutarı (USD)': Math.round((+u.stok || 0) * (+u.birim_fiyat_usd || 0) * 100) / 100, 'Stok tarihi': u.stok_tarihi, 'Depo': u.depo })) });
+  el.querySelector('[data-exp]').onclick = () => exportXlsx(`stok-fiyat-${today()}.xlsx`, { 'Stok': list().map(u => ({ 'Kod': u.kod, 'Açıklama': u.aciklama, 'Aile': u.aile, 'Birim': u.birim, 'Stok (toplam)': stokAdet(u), 'Nerede': stokNerede(u).map(x => x.ad + ' ' + x.adet).join(', '), 'Birim fiyat (USD)': u.birim_fiyat_usd, 'Kalem tutarı (USD)': Math.round(stokAdet(u) * (+u.birim_fiyat_usd || 0) * 100) / 100 })) });
   draw();
 }
 
@@ -85,17 +68,19 @@ function urunDetay(id) {
   const u = byId('urunler', id);
   const hist = S.stok_gecmis.filter(h => h.kod === u.kod).sort((a, b) => b.tarih.localeCompare(a.tarih));
   const rp = S.rakip_fiyatlar.filter(r => aileKey(r.aile) === aileKey(u.aile));
-  const FORM = [{ title: 'Fiyat ve stok', fields: [{ k: 'birim_fiyat_usd', l: 'Birim fiyat (USD)', t: 'num' }, { k: 'stok', l: 'Stok', t: 'num' }, { k: 'aile', l: 'Ürün ailesi', t: 'combo', opts: URUN_AILELERI }, { k: 'depo', l: 'Depo' }] }];
+  const FORM = [{ title: 'Ürün ve fiyat', fields: [{ k: 'birim_fiyat_usd', l: 'Birim fiyat (USD)', t: 'num' }, { k: 'aile', l: 'Ürün ailesi', t: 'combo', opts: URUN_AILELERI }, { k: 'birim', l: 'Birim' }, ...(kendiDepo() ? [{ k: 'stok', l: 'Kendi depomuzdaki stok', t: 'num' }] : [])] }];
+  const nerede = stokNerede(u);
   const panel = openDrawer(`<header class="dh"><div><p class="muted">${esc(u.kod)}</p><h2 id="drawer-title">${esc(u.aciklama)}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <form class="dbody form" novalidate>${renderForm(FORM, u)}
     <section class="rel"><h3>Rakip fiyatları (${esc(u.aile)} ailesi)</h3>${rp.length ? `<ul class="list">${rp.map(r => `<li><span><b>${esc(r.marka)}</b> ${esc(r.urun_adi || '')} <span class="muted">${esc(r.lumen_aralik || '')}</span></span><b class="num">${esc(r.fiyat_metin || (r.birim_fiyat + ' USD'))}</b></li>`).join('')}</ul>` : '<p class="hint">Bu aile için rakip fiyatı girilmemiş.</p>'}
-    <h3>Stok geçmişi</h3>${hist.length ? `<ul class="list">${hist.map(h => `<li><span class="muted">${tarih(h.tarih)}</span><span>${num(h.stok)}</span><span class="num">${h.birim_fiyat_usd != null ? num(h.birim_fiyat_usd) + ' $' : ''}</span></li>`).join('')}</ul>` : '<p class="hint">Yeni stok dosyası yüklendikçe geçmiş burada birikir.</p>'}</section>
+    <h3>Nerede stokta</h3>${nerede.length ? `<ul class="list">${nerede.map(x => `<li><span>${x.firma_id ? `<a href="#/bayistok" data-bayi="${x.firma_id}">${esc(x.ad)}</a>` : esc(x.ad)}</span><b class="num">${num(x.adet)} ${esc((u.birim || 'adet').toLowerCase())}</b></li>`).join('')}</ul>` : '<p class="hint">Hiçbir bayide stokta görünmüyor.</p>'}
+    <h3>Stok geçmişi</h3>${hist.length ? `<ul class="list">${hist.slice(0, 40).map(h => `<li><span class="muted">${tarih(h.tarih)}${h.firma_id ? ' · ' + esc(byId('firmalar', h.firma_id)?.ad || '') : ''}</span><span>${num(h.stok)}</span><span class="num">${h.birim_fiyat_usd != null ? num(h.birim_fiyat_usd) + ' $' : ''}</span></li>`).join('')}</ul>` : '<p class="hint">Yeni stok dosyası yüklendikçe geçmiş burada birikir.</p>'}</section>
     <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`);
   const form = panel.querySelector('form'); bindForm(form, FORM, u);
   form.onsubmit = async e => { e.preventDefault(); const o = await readForm(form, FORM, u); await app.db.save('urunler', o); toast('Ürün güncellendi.'); closeDrawer(); app.refresh(); };
 }
 
-// Bayinin stok Excel dosyasını okur (aydınlatma depo formatı veya başlıklı genel tablo)
+// Kendi depomuzun stok Excel dosyası (Şirket profilinde "Kendi depomuz var" açıksa). Bayi stokları Bayi ve partner → Stoklar'dan yüklenir.
 async function stokYukle() {
   const [file] = await pickFiles({ accept: '.xls,.xlsx,.csv', multiple: false });
   if (!file) return;
@@ -109,7 +94,7 @@ async function stokYukle() {
     let cFiyat0 = col(/fiyat/);
     if (cFiyat0 < 0 && rows.slice(hi + 1).some(r => typeof r[9] === 'number')) cFiyat0 = 9; // depo formatı: sağdaki blokta birim fiyat
     const { sutunlariEsle } = await import('../esle.js');
-    const M = await sutunlariEsle('stok', 'Bayi stok listesi', (rows[hi] || []).map(x => String(x ?? '')), rows.slice(hi + 1, hi + 4), [
+    const M = await sutunlariEsle('stok', 'Kendi depo stok listesi', (rows[hi] || []).map(x => String(x ?? '')), rows.slice(hi + 1, hi + 4), [
       { k: 'kod', l: 'Ürün kodu', zorunlu: true }, { k: 'ac', l: 'Açıklama', zorunlu: true }, { k: 'bir', l: 'Birim' }, { k: 'stok', l: 'Stok miktarı', zorunlu: true }, { k: 'fiyat', l: 'Birim fiyat (USD)' }],
       { kod: Math.max(0, col(/uretici kod/, /^kod/, /malzeme/)), ac: Math.max(1, col(/aciklama/)), bir: col(/birim/), stok: col(/fiili stok/, /^stok/, /miktar/), fiyat: cFiyat0 });
     if (!M) return toast('Yükleme iptal edildi.');
@@ -124,20 +109,20 @@ async function stokYukle() {
     const yok = S.urunler.filter(u => !gelen.has(u.kod) && u.stok > 0);
     const { onizleOnay } = await import('../esle.js');
     const gl = [...gelen.values()], yeniU = gl.filter(g => !mevcut.has(g.kod)), degisenU = gl.filter(g => mevcut.has(g.kod) && (+mevcut.get(g.kod).stok || 0) !== g.stok);
-    const on = await onizleOnay({ baslik: 'Bayi stok listesi', sayilar: [['yeni ürün', yeniU.length, 'yeni'], ['stoğu değişen', degisenU.length, 'guncel'], ['aynı kalan', gl.length - yeniU.length - degisenU.length, ''], ['listede olmayan', yok.length, yok.length ? 'uyari' : '']], ornekBaslik: ['Kod', 'Açıklama', 'Eski stok', 'Yeni stok'], ornek: [...degisenU, ...yeniU].slice(0, 8).map(g => [g.kod, g.aciklama, mevcut.get(g.kod)?.stok ?? '—', g.stok]), secenek: yok.length ? { metin: `Yeni listede olmayan ${yok.length} ürünün stoğunu 0 yap`, varsayilan: true } : null });
+    const on = await onizleOnay({ baslik: 'Kendi depo stok listesi', sayilar: [['yeni ürün', yeniU.length, 'yeni'], ['stoğu değişen', degisenU.length, 'guncel'], ['aynı kalan', gl.length - yeniU.length - degisenU.length, ''], ['listede olmayan', yok.length, yok.length ? 'uyari' : '']], ornekBaslik: ['Kod', 'Açıklama', 'Eski stok', 'Yeni stok'], ornek: [...degisenU, ...yeniU].slice(0, 8).map(g => [g.kod, g.aciklama, mevcut.get(g.kod)?.stok ?? '—', g.stok]), secenek: yok.length ? { metin: `Yeni listede olmayan ${yok.length} ürünün stoğunu 0 yap`, varsayilan: true } : null });
     if (!on.ok) return toast('İçe aktarma iptal edildi.');
     const sifirla = yok.length && on.secim;
     const t = today(), urunRows = [], gecmis = [];
     for (const g of gelen.values()) {
       const u = mevcut.get(g.kod);
-      urunRows.push({ ...(u || { id: uuid(), aile: g.aciklama.split(/\s+/)[0].toUpperCase(), depo: anaBayi() || null }), kod: g.kod, aciklama: g.aciklama, birim: g.birim || u?.birim || 'ADET', stok: g.stok, birim_fiyat_usd: g.fiyat ?? u?.birim_fiyat_usd ?? null, stok_tarihi: t });
-      gecmis.push({ id: uuid(), kod: g.kod, stok: g.stok, birim_fiyat_usd: g.fiyat, tarih: t, depo: u?.depo || anaBayi() || null });
+      urunRows.push({ ...(u || { id: uuid(), aile: g.aciklama.split(/\s+/)[0].toUpperCase(), depo: null }), kod: g.kod, aciklama: g.aciklama, birim: g.birim || u?.birim || 'ADET', stok: g.stok, birim_fiyat_usd: g.fiyat ?? u?.birim_fiyat_usd ?? null, stok_tarihi: t });
+      gecmis.push({ id: uuid(), kod: g.kod, stok: g.stok, birim_fiyat_usd: g.fiyat, tarih: t, depo: null });
     }
     if (sifirla) for (const u of yok) { urunRows.push({ ...u, stok: 0, stok_tarihi: t }); gecmis.push({ id: uuid(), kod: u.kod, stok: 0, birim_fiyat_usd: u.birim_fiyat_usd, tarih: t, depo: u.depo }); }
     toast('Stok kaydediliyor…');
     await app.db.bulk('urunler', urunRows); await app.db.bulk('stok_gecmis', gecmis);
     toast(`Stok güncellendi: ${gelen.size} ürün${sifirla ? `, ${yok.length} ürün sıfırlandı` : ''}.`); app.refresh();
-    yuklemeKaydet(file, 'Bayi stok listesi', `${gelen.size} ürün${sifirla ? `, ${yok.length} ürün sıfırlandı` : ''}`);
+    yuklemeKaydet(file, 'Kendi depo stok listesi', `${gelen.size} ürün${sifirla ? `, ${yok.length} ürün sıfırlandı` : ''}`);
   } catch (e) { console.error(e); toast('Dosya okunamadı: ' + e.message, 'err'); }
 }
 

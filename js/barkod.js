@@ -1,6 +1,7 @@
 // Ürün kodu okuma: kamerayla barkod / QR (tarayıcı destekliyorsa canlı), olmazsa etiketin fotoğrafından yazı okuma.
 // Bulunan kod stok listesinde ve katalogda aranır: açıklama, bayi stoğu, fiyat, ürün sayfası.
 import { S } from './db.js';
+import { stokAdet, stokMetni } from './stok.js';
 import { esc, toast, openDrawer, closeDrawer, num, fold, pickFiles, urunBilgi } from './ui.js';
 import { AILELER as EAE_AILE } from './data/eae-katalog.js';
 import { eaeKatalog } from './profil.js';
@@ -46,7 +47,7 @@ export function urunAra(metin) {
 const sonucHtml = (metin, r) => {
   if (!r.urunler.length && !r.aileler.length) return `<p class="warn">Okunan: <code>${esc(String(metin).slice(0, 120))}</code><br>Stok listesinde ya da katalogda eşleşen ürün bulunamadı. Kodu aşağıya elle yazmayı dene.</p>`;
   return `${r.urunler.length ? `<h3>Stokta eşleşen ürünler <span class="muted">${r.urunler.length}</span></h3><ul class="list kod-sonuc">${r.urunler.map(u => { const b = urunBilgi(u.aciklama); return `<li><span class="grow"><b>${esc(u.aciklama)}</b><small class="muted">Kod ${esc(u.kod || '—')}${u.depo ? ' · ' + esc(u.depo) : ''}${b.w ? ` · ${b.w} W` : ''}${b.lm ? ` · ${num(b.lm)} lm` : ''}${b.k ? ` · ${b.k} K` : ''}</small></span>
-      <span class="r"><b class="${+u.stok > 0 ? 'pos' : 'neg'}">${num(+u.stok || 0)} ${esc(u.birim || 'adet')}</b>${u.birim_fiyat_usd != null ? `<small>${num(u.birim_fiyat_usd)} $</small>` : ''}</span></li>`; }).join('')}</ul>` : ''}
+      <span class="r"><b class="${stokAdet(u) > 0 ? 'pos' : 'neg'}">${num(stokAdet(u))} ${esc(u.birim || 'adet')}</b>${stokMetni(u) ? `<small>${esc(stokMetni(u))}</small>` : ''}${u.birim_fiyat_usd != null ? `<small>${num(u.birim_fiyat_usd)} $</small>` : ''}</span></li>`; }).join('')}</ul>` : ''}
     ${r.aileler.length ? `<h3>Ürün ailesi</h3><ul class="list">${r.aileler.map(a => `<li><span class="grow"><b>${esc(a.ad)}</b><small class="muted">${esc(a.kategori || '')}${a.aciklama ? ' · ' + esc(a.aciklama.slice(0, 120)) : ''}</small></span>${a.yol ? `<a class="btn sm ghost" target="_blank" rel="noopener" href="https://www.eaeaydinlatma.com/urun/${esc(a.yol)}">Ürün sayfası</a>` : ''}</li>`).join('')}</ul>` : ''}`;
 };
 

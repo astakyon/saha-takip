@@ -12,7 +12,7 @@ export const MODULLER = [
   { k: 'bolgeler', ad: 'Sanayi bölgeleri', t: ['bolgeler'], rota: ['bolgeler'] },
   { k: 'siparisler', ad: 'Siparişler, hedefler ve panel', t: ['siparisler', 'hedefler'], rota: ['siparisler', 'panel'] },
   { k: 'teklifler', ad: 'Teklifler', t: ['teklifler'], rota: ['teklifler'] },
-  { k: 'stok', ad: 'Stok, fiyat ve katalog', t: ['urunler', 'stok_gecmis', 'urun_aileleri'], rota: ['urunler', 'bayi', 'katalog', 'araclar'] },
+  { k: 'stok', ad: 'Stok, fiyat ve katalog', t: ['urunler', 'stok_gecmis', 'urun_aileleri'], rota: ['urunler', 'katalog', 'araclar'] },
   { k: 'rakip', ad: 'Rakip fiyatları', t: ['rakip_fiyatlar'], rota: ['rakip'] },
   { k: 'tahsilat', ad: 'Tahsilat', t: ['tahsilatlar'], rota: ['tahsilat'] },
   { k: 'numune', ad: 'Numune ve servis', t: ['numuneler', 'servis_kayitlari'], rota: ['numuneler', 'servis'] },
@@ -38,8 +38,7 @@ export const EKRANLAR = {
   tahsilat:   { t: ['tahsilatlar'], o: ['firmalar'], d: 'Açık faturalar ve ödemeler' },
   numuneler:  { t: ['numuneler'], o: ['firmalar', 'projeler'], d: 'Verilen numuneler' },
   servis:     { t: ['servis_kayitlari'], o: ['firmalar', 'projeler'], d: 'Servis ve şikayet kayıtları' },
-  urunler:    { t: ['urunler', 'stok_gecmis'], o: [], d: 'Stok listesi ve fiyatlar' },
-  bayi:       { t: ['urunler', 'stok_gecmis'], o: ['firmalar'], d: 'Bayinin stoğu; sipariş ve projeler yalnızca o ekranlar açıksa' },
+  urunler:    { t: ['urunler', 'stok_gecmis'], o: ['bayi_stok', 'firmalar'], d: 'Ürün ve fiyat listesi; ürünün hangi bayide kaç adet olduğu' },
   katalog:    { t: ['urun_aileleri'], o: [], d: 'Ürün kataloğu' },
   rakip:      { t: ['rakip_fiyatlar'], o: [], d: 'Rakip marka fiyatları' },
   araclar:    { t: [], o: [], salt: true, d: 'Aydınlatma hesap araçları' },
@@ -64,7 +63,7 @@ export const EKRANLAR = {
   nakit:      { t: [], o: ['tahsilatlar', 'cekler', 'masraflar', 'firmalar'], salt: true, d: 'Nakit akışı: 13 haftalık giriş, çıkış ve bakiye tahmini' },
   banka:      { t: ['tahsilatlar'], o: ['firmalar'], d: 'Banka ekstresi: gelen ödemeleri açık faturalarla eşleştirme' },
   prim:       { t: [], o: ['siparisler', 'tahsilatlar'], salt: true, d: 'Prim ve hedef: kişi bazında satış, tahsilat, hedef, prim' },
-  bayistok:   { t: ['bayi_stok'], o: ['bayiler', 'firmalar', 'urunler'], d: 'Bayi stokları: her bayinin ayrı stoğu, Excel ile yükleme, hareketsiz stok' },
+  bayistok:   { t: ['bayi_stok', 'stok_gecmis'], o: ['bayiler', 'firmalar', 'urunler', 'teklifler'], d: 'Bayi stokları: her bayinin ayrı stoğu, hızlı adet, Excel ile yükleme, stok uyarıları' },
   bayisatis:  { t: ['bayi_satis'], o: ['bayiler', 'firmalar', 'siparisler', 'projeler', 'urunler'], d: 'Bayi satışları: bize alım ve bayinin sattıkları, devir hızı' },
   bayihedef:  { t: [], o: ['bayiler', 'firmalar', 'siparisler'], salt: true, d: 'Bayi hedef ve prim: çeyreklik gerçekleşme, sıralama, prim' },
   bayianaliz: { t: [], o: ['bayiler', 'firmalar', 'siparisler', 'tahsilatlar', 'projeler', 'ziyaretler', 'urunler', 'bayi_stok'], salt: true, d: 'Bayi ağı analizi: pay, büyüme, ödeme, kayıp oranı, bölge boşlukları' },
@@ -115,6 +114,7 @@ export function rotaIzinli(k) {
   if (SAHIBE_OZEL.includes(k)) return false;
   if (k === 'talepler') return !!app.yetki?.dis || !!izin('projeler');   // bayi portalı: dış kullanıcı her zaman, iç kullanıcı projeleri görüyorsa
   const e = ekranlar();
+  if (e && k === 'bayistok' && e.bayistok === undefined && e.bayi) return true;   // eski "Bayi paneli" seçimi
   return e ? !!e[k] : !!eskiRota(k);
 }
 export const rotaYazilabilir = k => {
@@ -123,6 +123,7 @@ export const rotaYazilabilir = k => {
   if (HER_ZAMAN.includes(k)) return true;
   if (k === 'talepler') return !!app.yetki?.dis || izin('projeler') === 'yaz';
   const e = ekranlar();
+  if (e && k === 'bayistok' && e.bayistok === undefined) return e.bayi === 'yaz';
   return e ? e[k] === 'yaz' && !EKRANLAR[k]?.salt : eskiRota(k) === 'yaz';
 };
 // Kişinin ekran seçimi (eski kayıtlar ekranlara çevrilir)

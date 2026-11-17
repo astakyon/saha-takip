@@ -1,5 +1,6 @@
 // Projeye göre EAE ürün ailesi önerisi ve şartname kontrol listesi
 import { S } from './db.js';
+import { stokAdet } from './stok.js';
 import { app } from './state.js';
 import { esc, fold, num, toast, urunBilgi } from './ui.js';
 import { AILELER, EAE_LINKLER } from './data/eae-katalog.js';
@@ -22,7 +23,7 @@ export function alanTahmini(p) {
   return l.length ? l : (/endustri|osb|sanayi/.test(metin) || p.osb ? [ALANLAR[0]] : []);
 }
 const aileBul = k => AILELER.find(a => a.aile === k);
-const stokta = k => S.urunler.filter(u => fold(u.aile || '').replace(/\s/g, '') === fold(k).replace(/\s/g, '') || fold(u.aciklama || '').startsWith(fold(k) + ' ')).reduce((s, u) => s + (+u.stok || 0), 0);
+const stokta = k => S.urunler.filter(u => fold(u.aile || '').replace(/\s/g, '') === fold(k).replace(/\s/g, '') || fold(u.aciklama || '').startsWith(fold(k) + ' ')).reduce((s, u) => s + stokAdet(u), 0);
 
 export function oneriBolumu(kutu, p) {
   if (!kutu) return;

@@ -2093,3 +2093,19 @@ body.giris-var #view { padding-top: 64px; }
 .ks-onizle h3 { font-size: 13px; margin: 0 0 6px; color: var(--muted); font-weight: 600; }
 .ks-onizle ul { margin: 0; padding-left: 18px; } .ks-onizle li { margin: 2px 0; }
 .ba-map { height: 320px; border-radius: var(--r-sm); border: 1px solid var(--line); margin: 8px 0 12px; }
+/* Sürüm 105: bayi stok hızlı adet, taşıma */
+.bs-hizli { display: inline-flex; align-items: center; gap: 4px; }
+.bs-hizli .btn.sm { min-width: 32px; padding: 2px 8px; }
+.bs-tasi { border-left: 3px solid #A16207; }
+.tk-stok { color: var(--muted); font-size: 11.5px; }
+/* Sürüm 106-107: cari ve vergi, zorunlu alanlar */
+.vergi-uyari { margin-top: 4px; font-size: 12.5px; line-height: 1.5; }
+.vergi-uyari .linkbtn { font-size: 12.5px; }
+.eksik-rozet { color: #8A6A00; font-size: 12.5px; display: inline-flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.eksik-rozet .linkbtn { font-size: 12.5px; }
+.zorunlu-k .zk-satir { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.zorunlu-k .zk-satir > span { display: flex; flex-direction: column; min-width: 180px; flex: 1; }
+.zorunlu-k .zk-satir select { max-width: 100%; }
+.zorunlu-k .zk-tipler { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 6px 0 10px; }
+.cari-dlg .fld { margin-bottom: 10px; }
+.cari-dlg .btnrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }

@@ -1,6 +1,7 @@
 // Muhasebe ve finans: para ile ilgili her şey tek menüde. Özet, cari hesaplar (ekstre), alacak yaşlandırma, kur, muhasebeye aktarma.
 // Tutarlar yaklaşık USD karşılığıyla toplanır (Finans → Kur); her kaydın kendi para birimi ekstrede ayrıca görünür.
 import { S } from '../db.js';
+import { bagsizGruplar, baglaListesi, cariListesiYukle } from '../cari.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, num, usd, tarih, today, byId, firmaAd, match, toast, openDrawer, exportXlsx, waLink } from '../ui.js';
 import { usdYap, firmaRiski, SEVIYE } from '../vaderisk.js';
@@ -119,9 +120,11 @@ const bagla = el => el.querySelectorAll('[data-cari]').forEach(r => { r.onclick 
 export function cariView(el) {
   const f = F('cari', { q: '', sadece: 'borclu' });
   const l = cariListesi();
-  el.innerHTML = `<header class="vh"><div><h1>Cari hesaplar</h1><p class="sum" data-sum></p></div><div class="vh-act">${izin('tahsilat') === 'yaz' || izin('cari') === 'yaz' ? '<button class="btn primary" data-yeni data-gerek="yaz:tahsilatlar">+ Fatura / ödeme</button>' : ''}</div></header>
+  el.innerHTML = `<header class="vh"><div><h1>Cari hesaplar</h1><p class="sum" data-sum></p></div><div class="vh-act">${izin('tahsilat') === 'yaz' || izin('cari') === 'yaz' ? '<button class="btn primary" data-yeni data-gerek="yaz:tahsilatlar">+ Fatura / ödeme</button><button class="btn ghost" data-carilist data-gerek="yaz:firmalar">Cari listesi yükle</button>' : ''}</div></header>
     <div class="frow"><input type="search" data-q placeholder="Cari ara" value="${esc(f.q)}" aria-label="Cari ara"><div class="seg" role="group" aria-label="Göster">${[['borclu', 'Bakiyesi olan'], ['gecikmis', 'Gecikmiş'], ['tum', 'Tümü']].map(([k, t]) => `<button type="button" data-s="${k}" class="${f.sadece === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
-    ${kurNotu()}<div data-l></div>`;
+    ${kurNotu()}${(() => { const n = bagsizGruplar('tahsilatlar').reduce((a, g) => a + g.l.length, 0); return n ? `<p class="warn">${n} fatura bir firmaya bağlı değil (yalnız cari adıyla girilmiş). <button type="button" class="linkbtn" data-bagsiz>Firmaya bağla</button></p>` : ''; })()}<div data-l></div>`;
+  el.querySelector('[data-bagsiz]')?.addEventListener('click', () => baglaListesi('tahsilatlar', () => cariView(el)));
+  el.querySelector('[data-carilist]')?.addEventListener('click', () => cariListesiYukle(() => cariView(el)));
   const ciz = () => {
     const g = l.filter(c => match(f.q, c.ad) && (f.sadece === 'tum' || (f.sadece === 'gecikmis' ? c.gecikmis > 0 : Math.abs(c.bakiye) > 0.5))).sort((a, b) => b.gecikmis - a.gecikmis || b.bakiye - a.bakiye);
     el.querySelector('[data-sum]').textContent = `${l.length} cari · toplam bakiye ${tamUsd(l.reduce((a, c) => a + c.bakiye, 0))} · gecikmiş ${tamUsd(l.reduce((a, c) => a + c.gecikmis, 0))}`;

@@ -1,4 +1,5 @@
 import { S, uuid } from '../db.js';
+import { projeFormHatasi } from '../zorunlu.js';
 import { sahipMi } from '../yetki.js';
 import { anaBayi, anaBayiKisa, markaAdi } from '../profil.js';
 import { app, F, saveFilters } from '../state.js';
@@ -437,6 +438,7 @@ export function projeFormu(id, init, { durum, odak } = {}) {
     try {
       const o = await readForm(form, PROJE_FORM, p);
       if (!o.ad) { toast('Proje adını yaz.', 'err'); form.querySelector('[name=ad]').focus(); return; }
+      const ph = projeFormHatasi(o, !!p._new); if (ph) { const a = form.querySelector(`[name="${ph.alan}"]`); a?.closest('details')?.setAttribute('open', ''); a?.focus(); toast(ph.metin, 'err'); return; }
       o.takip_yili = o.takip_yili ? parseInt(o.takip_yili) : null;
       o.durum = o.durum || 'Proje';
       if (o.durum === 'Kayıp' && o.rakip_birim_fiyat && o.rakip_miktar && !o.rakip_toplam_usd) o.rakip_toplam_usd = o.rakip_birim_fiyat * o.rakip_miktar;

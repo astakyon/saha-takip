@@ -1,5 +1,6 @@
 // Finans (2. aşama): çek ve senet portföyü, 13 haftalık nakit akışı, satış primi ve kişi hedefleri, banka ekstresini açık faturalarla eşleştirme.
 import { S } from '../db.js';
+import { cariIste } from '../zorunlu.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, num, usd, tarih, today, gunEkle, byId, firmaAd, fold, match, toast, openDrawer, closeDrawer, confirmBox, pickFiles, exportXlsx, xlsxYukle } from '../ui.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
@@ -35,6 +36,7 @@ export function cekFormu(init = {}, sonra) {
   const form = p.querySelector('form'); bindForm(form, FM, c);
   p.querySelector('[data-sil]')?.addEventListener('click', async () => { if (!confirmBox('Silinsin mi?')) return; await app.db.del('cekler', c.id); closeDrawer(); sonra?.(); });
   form.onsubmit = async e => { e.preventDefault(); const o = await readForm(form, FM, c); if (!o.vade || !(o.tutar > 0)) return toast('Vade ve tutarı yaz.', 'err');
+    if (o.firma_id && (!c.id || o.firma_id !== c.firma_id) && (o.yon || c.yon) !== 'Verilen' && !(await cariIste(o.firma_id, 'cek'))) return;
     if (o.yon === 'Verilen' && CEK_DURUM.Alınan.includes(o.durum) && !CEK_DURUM.Verilen.includes(o.durum)) o.durum = 'Ödenecek';
     await app.db.save('cekler', { ...c, ...o }); toast('Kaydedildi.'); closeDrawer(); sonra?.(); };
 }

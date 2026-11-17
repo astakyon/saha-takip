@@ -1,4 +1,5 @@
 import { S, uuid, adBol, adBirlestir } from '../db.js';
+import { firmaFormHatasi, kisiFormHatasi } from '../zorunlu.js';
 import { TEKRAR_SECENEK, HAFTA_GUNU } from '../tekrar.js';
 import { sahipMi } from '../yetki.js';
 import { app, F, saveFilters } from '../state.js';
@@ -7,6 +8,7 @@ import { POZISYONLAR, pozisyonTahmin, esc, tarih, today, ILLER, ILCELER, OSBLER,
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { backToList } from '../main.js';
 import { projeRolleri } from './projeler.js';
+import { vergiAlaniBagla, vergiKayitHatasi, vergiTemiz } from '../cari.js';
 
 const FIRMA_FORM = [
   { title: 'Firma', fields: [
@@ -15,7 +17,7 @@ const FIRMA_FORM = [
     { k: 'sorumlu', l: 'Sorumlu', t: 'sel', ph: 'Ekleyen kişi', opts: () => (app.ekipTum || []).map(k => ({ v: k.eposta, l: k.ad + (k.sahip ? ' (kurucu)' : '') })), show: () => sahipMi() && (app.ekipTum || []).length > 1, help: 'Kaydı kim takip ediyor; kapsamı “Sadece kendi” olan kullanıcılar yalnızca sorumlusu oldukları kayıtları görür.' },
     { k: 'telefon', l: 'Telefon', t: 'tel' }, { k: 'eposta', l: 'E-posta', t: 'email' }, { k: 'teklif_eposta', l: 'Teklif e-postası', ph: 'teklifler bu adrese gider; birden çoksa virgülle' },
   ]},
-  { title: 'Konum', ozet: 'harita, il, ilçe, adres', kapali: o => !o._new, fields: [
+  { title: 'Konum', ozet: 'zorunlu: harita ya da il + ilçe', kapali: o => !o._new, fields: [
     { k: 'loc', l: 'Harita konumu', t: 'loc' },
     { k: 'il', l: 'İl', t: 'sel', opts: [...ILLER, 'Diğer'] },
     { k: 'ilce', l: 'İlçe', t: 'combo', opts: o => ILCELER[o.il] || [] },
@@ -23,16 +25,27 @@ const FIRMA_FORM = [
     { k: 'belde', l: 'Belde / mahalle' },
     { k: 'adres', l: 'Adres', full: true },
   ]},
+  { title: 'Cari bilgileri', ozet: 'unvan, vergi no, vergi dairesi, fatura adresi, vade', kapali: o => !o._cariAc, fields: [
+    { k: 'unvan', l: 'Resmi ticari unvan', full: true, ph: 'Faturadaki tam ad (boşsa firma adı kullanılır)' },
+    { k: 'vergi_no', l: 'Vergi no / T.C. kimlik no', ph: '10 hane (şirket) ya da 11 hane (şahıs)', inputmode: 'numeric' },
+    { k: 'vergi_dairesi', l: 'Vergi dairesi', t: 'combo', opts: () => [...new Set((S.firmalar || []).map(f => f.vergi_dairesi).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr')) },
+    { k: 'fatura_adresi', l: 'Fatura adresi', t: 'area', rows: 2, full: true, ph: 'Boşsa firma adresi kullanılır' },
+    { k: 'cari_kodu', l: 'Cari kodu', ph: 'Muhasebe programındaki kod (varsa)' },
+    { k: 'efatura', l: 'e-Fatura mükellefi', t: 'sel', ph: 'Bilinmiyor', opts: ['Evet', 'Hayır'] },
+    { k: 'vade_gun', l: 'Ödeme vadesi (gün)', t: 'num' }, { k: 'iskonto', l: 'İskonto (%)', t: 'num' },
+    { k: 'kredi_limiti', l: 'Kredi limiti', t: 'num' }, { k: 'para_birimi', l: 'Para birimi', t: 'sel', ph: 'USD', opts: ['USD', 'EUR', 'TRY'] },
+    { k: 'sube_ana_id', l: 'Şubesi olduğu firma', t: 'ref', ref: 'firmalar', help: 'Aynı vergi numarasını taşıyan şubeler için ana firmayı seç' },
+  ]},
   { title: 'Notlar ve fotoğraflar', kapali: false, fields: [
     { k: 'notlar', l: 'Notlar', t: 'area', rows: 3 },
     { k: 'fotolar', l: 'Fotoğraflar (ofis, şantiye, logo)', t: 'photos' },
   ]},
-  { title: 'Diğer bilgiler', ozet: 'segment, sektör, web, vergi no', kapali: true, fields: [
+  { title: 'Diğer bilgiler', ozet: 'segment, sektör, web, düzenli ziyaret', kapali: true, fields: [
     { k: 'segment', l: 'Segment', t: 'sel', opts: ['A', 'B', 'C'] },
     { k: 'tekrar_gun', l: 'Düzenli ziyaret', t: 'sel', ph: 'Kural yok', opts: TEKRAR_SECENEK, help: 'Seçilirse hafta planına kendiliğinden eklenir' },
     { k: 'tekrar_haftagun', l: 'Tercih edilen gün', t: 'sel', ph: 'Fark etmez', opts: HAFTA_GUNU },
     { k: 'sektor', l: 'Sektör', t: 'combo', opts: SEKTORLER },
-    { k: 'web', l: 'Web sitesi' }, { k: 'vergi_no', l: 'Vergi no' },
+    { k: 'web', l: 'Web sitesi' },
     { k: 'key_account', l: 'Key account', t: 'chk', cl: 'Key account (stratejik müşteri)' },
   ]},
 ];
@@ -132,12 +145,17 @@ export function firmaFormu(id, init, { odak } = {}) {
     </form>`, { wide: true, onClose: () => { if (sonra) sonra(); else if (x._new) backToList(); } });
   const form = panel.querySelector('form');
   bindForm(form, FIRMA_FORM, x);
+  vergiAlaniBagla(form, x._new ? null : x.id);
   if (odak) setTimeout(() => { const a = panel.querySelector(`[name="${odak}"]`); if (!a) return; a.closest('details')?.setAttribute('open', ''); a.focus(); a.scrollIntoView({ block: 'center' }); }, 80);
   form.onsubmit = async e => {
     e.preventDefault();
     try {
       const o = await readForm(form, FIRMA_FORM, x);
       if (!o.ad) return toast('Firma adını yaz.', 'err');
+      if (form.dataset.subeAna && !o.sube_ana_id) o.sube_ana_id = form.dataset.subeAna;
+      if (o.vergi_no) o.vergi_no = vergiTemiz(o.vergi_no);
+      const zh = firmaFormHatasi(o, !!x._new); if (zh) { const a = form.querySelector(`[name="${zh.alan}"]`); a?.closest('details')?.setAttribute('open', ''); a?.focus(); return toast(zh.metin, 'err'); }
+      const vh = vergiKayitHatasi(o, x._new ? null : x.id); if (vh) { const a = form.querySelector('[name="vergi_no"]'); a?.closest('details')?.setAttribute('open', ''); a?.focus(); return toast(vh, 'err'); }
       const dup = x._new && S.firmalar.find(f => f.ad.toLocaleLowerCase('tr') === o.ad.toLocaleLowerCase('tr'));
       if (dup && !confirmBox(`“${dup.ad}” adında bir firma zaten var. Yine de yeni kayıt açılsın mı?`)) return;
       await app.db.save('firmalar', o); toast(`${o.ad} kaydedildi.`);
@@ -287,6 +305,7 @@ export function kisiFormu(id, init, { odak } = {}) {
       const o = await readForm(form, KISI_FORM, k);
       o.ad = (o.ad || '').trim(); o.soyad = (o.soyad || '').trim(); o.ad_soyad = adBirlestir(o.ad, o.soyad);
       if (!o.ad) return toast('Ad yaz.', 'err');
+      const kh = kisiFormHatasi(o, !!k._new); if (kh) { const a = form.querySelector(`[name="${kh.alan}"]`); a?.closest('details')?.setAttribute('open', ''); a?.focus(); return toast(kh.metin, 'err'); }
       if (!o.pozisyon && o.unvan) o.pozisyon = pozisyonTahmin(o.unvan);
       panel.querySelectorAll('[data-kvs]').forEach(b => o[b.dataset.kvs] = b.dataset.val || null);
       if (!k._new) o.eski_firmalar = byId('kisiler', k.id)?.eski_firmalar ?? k.eski_firmalar ?? null;   // bu ekranda eklenen/kaldırılan eski firmalar korunur

@@ -68,7 +68,7 @@ function uyeYetkiAlanlari(k, secim) {
 const rolBagla = kok => kok.querySelectorAll('[data-rolsec]').forEach(s => s.onchange = () => { const i = s.parentElement.querySelector('[data-rolyaz]'); i.hidden = s.value !== '__baska'; if (!i.hidden) i.focus(); });
 const TUM = Object.keys(EKRANLAR);
 const HAZIR = {
-  'Bayi': { e: { urunler: 'yaz', bayi: 'yaz', katalog: 'oku', araclar: 'oku', siparisler: 'oku', projeler: 'oku', firmalar: 'oku', harita: 'oku' }, g: [] },
+  'Bayi': { e: { urunler: 'oku', bayistok: 'yaz', bayisatis: 'yaz', katalog: 'oku', araclar: 'oku', siparisler: 'oku', projeler: 'oku', firmalar: 'oku', harita: 'oku' }, g: [] },
   'Saha ekibi': { e: { harita: 'oku', bolgeler: 'oku', projeler: 'yaz', firmalar: 'yaz', kisiler: 'yaz', takvim: 'yaz', ziyaretler: 'yaz', gorevler: 'yaz', numuneler: 'yaz', servis: 'yaz', katalog: 'oku', araclar: 'oku', referanslar: 'oku', dosyalar: 'yaz' }, g: [] },
   'Proje firması': { e: { projeler: 'oku', referanslar: 'oku', katalog: 'oku', araclar: 'oku' }, g: ['tutar', 'iletisim', 'yorum', 'iliski'] },
   'Sadece görüntüleme': { e: { harita: 'oku', projeler: 'oku', firmalar: 'oku', kisiler: 'oku', takvim: 'oku', ziyaretler: 'oku' }, g: [] },

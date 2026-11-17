@@ -1,5 +1,6 @@
 // Hızlı ekle (+) düğmesi ve genel arama. Her ekranda sağ altta; bilgisayarda “/” ya da Ctrl+K ile arama açılır.
 import { ozellikSay } from './saglik.js';
+import { stokAdet } from './stok.js';
 import { S } from './db.js';
 import { app } from './state.js';
 import { esc, fold, byId, firmaAd, tarih, today, gunEkle, openDrawer, closeDrawer, usd, toast, kelimeUyar } from './ui.js';
@@ -17,7 +18,7 @@ function ogeler() {
     { ad: 'Konuşarak kaydet', alt: 'anlat: ziyaret, sonuç, sonraki adım', t: 'gorevler', r: 'bugun', f: () => sesliNot() },
     { ad: 'Görev', alt: 'yapılacak iş, hatırlatma', t: 'gorevler', r: ['gorevler', 'takvim'], f: async () => (await import('./views/ziyaret.js')).gorevForm({}) },
     { ad: 'Kartvizit', alt: 'fotoğrafla kişi ekle', t: 'kisiler', r: ['kisiler', 'firmalar'], f: async () => (await import('./views/firmalar.js')).kartvizittenKisi() },
-    { ad: 'Ürün kodu oku', alt: 'etiket, barkod → stok ve fiyat', t: 'urunler', oku: true, r: ['urunler', 'bayi'], f: async () => (await import('./barkod.js')).kodOku() },
+    { ad: 'Ürün kodu oku', alt: 'etiket, barkod → stok ve fiyat', t: 'urunler', oku: true, r: ['urunler', 'bayistok'], f: async () => (await import('./barkod.js')).kodOku() },
     { ad: 'Kişi', alt: 'elle', t: 'kisiler', r: ['kisiler', 'firmalar'], f: async () => (await import('./views/firmalar.js')).kisiDetay(null, {}) },
     { ad: 'Şantiye tabelası', alt: 'fotoğrafla yeni proje', t: 'projeler', r: 'projeler', f: async () => (await import('./tabela.js')).tabeladanProje() },
     { ad: 'Proje', alt: 'yeni proje', t: 'projeler', r: 'projeler', f: async () => (await import('./views/projeler.js')).yeniProje({}) },
@@ -152,7 +153,7 @@ const KAYNAK = [
   { t: 'teklifler', g: 'Teklifler', alan: x => [x.teklif_no, x.notlar, pAd(x.proje_id), firmaAd(x.firma_id)], baslik: x => `${x.teklif_no || 'Teklif'} · ${pAd(x.proje_id) || firmaAd(x.firma_id) || ''}`, alt: x => [tarih(x.tarih), x.durum].filter(Boolean).join(' · '), ac: async x => (await import('./views/teklif.js')).teklifForm({ id: x.id }) },
   { t: 'ziyaretler', g: 'Ziyaretler', alan: z => [z.notlar, z.sonuc, z.amac, z.sonuc_tipi, firmaAd(z.firma_id), byId('kisiler', z.kisi_id)?.ad_soyad, pAd(z.proje_id)], baslik: z => `${firmaAd(z.firma_id) || 'Ziyaret'} · ${tarih(z.tarih)}`, alt: z => [z.amac, (z.notlar || '').slice(0, 80)].filter(Boolean).join(' · '), ac: async z => (await import('./views/ziyaret.js')).ziyaretForm({ id: z.id }) },
   { t: 'gorevler', g: 'Görevler', alan: g => [g.baslik, g.notlar, firmaAd(g.firma_id), pAd(g.proje_id)], baslik: g => g.baslik, alt: g => [g.durum, g.son_tarih ? tarih(g.son_tarih) : ''].filter(Boolean).join(' · '), ac: async g => (await import('./views/ziyaret.js')).gorevForm({ id: g.id }) },
-  { t: 'urunler', g: 'Ürünler', alan: u => [u.kod, u.aciklama, u.aciklama2, u.aile], baslik: u => `${u.kod || ''} ${u.aciklama || ''}`.trim(), alt: u => [u.stok != null ? `stok ${u.stok} ${u.birim || ''}` : '', u.birim_fiyat_usd ? usd(u.birim_fiyat_usd) : ''].filter(Boolean).join(' · '), ac: () => { location.hash = '#/urunler'; } },
+  { t: 'urunler', g: 'Ürünler', alan: u => [u.kod, u.aciklama, u.aciklama2, u.aile], baslik: u => `${u.kod || ''} ${u.aciklama || ''}`.trim(), alt: u => [stokAdet(u) ? `stok ${stokAdet(u)} ${u.birim || ''}` : '', u.birim_fiyat_usd ? usd(u.birim_fiyat_usd) : ''].filter(Boolean).join(' · '), ac: () => { location.hash = '#/urunler'; } },
   { t: 'belgeler', g: 'Dosyalar', alan: b => [b.ad, b.notlar, b.kategori, pAd(b.proje_id), firmaAd(b.firma_id)], baslik: b => b.ad, alt: b => [b.kategori, pAd(b.proje_id) || firmaAd(b.firma_id)].filter(Boolean).join(' · '), ac: async b => (await import('./belgeler.js')).belgeAc(b) },
 ];
 export function ara(q, enCok = 6) {
