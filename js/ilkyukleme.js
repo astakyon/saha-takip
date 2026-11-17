@@ -185,12 +185,15 @@ export function baslaKarti({ baslik = 'Başlamak için' } = {}) {
     <div class="basla-ad"><b>1. Excel'den yükle</b><small class="muted">Sütunları tanır, sorar ve hatırlar. Aynı ada sahip kayıt varsa yalnızca boş alanları doldurur.</small>
       <div class="btnrow">${Object.entries(TURLER).map(([k, T]) => `<button type="button" class="btn sm" data-ilkyukle="${k}" data-gerek="yaz:${k}">${T.ad}</button>`).join('')}</div>
       <small class="muted">Boş şablon: ${Object.entries(TURLER).map(([k, T]) => `<button type="button" class="linkbtn" data-sablon="${k}">${T.ad.toLocaleLowerCase('tr')}</button>`).join(' · ')}</small></div>
-    <div class="basla-ad"><b>2. Örnek verilerle dene</b><small class="muted">Kurgusal 6 firma, 6 kişi, 6 proje, ziyaret ve görev eklenir; tek düğmeyle silinir.</small>
+    <div class="basla-ad"><b>2. Veri paketi yükle</b><small class="muted">Hazırlanmış toplu paket (.json): firmalar, kişiler, projeler, siparişler ve geçmiş ziyaretler tek seferde. Eşleşen kayıtta yalnızca boş alanlar dolar.</small>
+      <div class="btnrow"><button type="button" class="btn sm" data-paket data-gerek="yaz:firmalar">Paket seç</button></div></div>
+    <div class="basla-ad"><b>3. Örnek verilerle dene</b><small class="muted">Kurgusal 6 firma, 6 kişi, 6 proje, ziyaret ve görev eklenir; tek düğmeyle silinir.</small>
       <div class="btnrow">${ornekVarMi() ? '<button type="button" class="btn sm ghost danger" data-ornek="sil">Örnek verileri sil</button>' : '<button type="button" class="btn sm" data-ornek="yukle" data-gerek="yaz:projeler">Örnek verileri yükle</button>'}</div></div>
   </section>`;
 }
 export function baslaBagla(kok, sonra) {
   kok.querySelectorAll('[data-ilkyukle]').forEach(b => b.onclick = () => excelIlkYukle(b.dataset.ilkyukle, sonra));
+  kok.querySelectorAll('[data-paket]').forEach(b => b.onclick = () => import('./paket.js').then(m => m.paketYukle(sonra)));
   kok.querySelectorAll('[data-sablon]').forEach(b => b.onclick = () => sablonIndir(b.dataset.sablon));
   kok.querySelectorAll('[data-ornek]').forEach(b => b.onclick = () => b.dataset.ornek === 'sil' ? ornekSil(sonra) : ornekYukle(sonra));
 }

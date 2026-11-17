@@ -32,6 +32,11 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 111)
+
+- **Veri paketi (.json)** (`js/paket.js`): Ayarlar → Veri → "Veri paketi yükle". Paket CRM/SAP/plan dosyalarından hazırlanır; kayıtlar geçici anahtarlarla (`_k`, `firma_k`, `yatirimci_k`…) birbirine bağlıdır. Firma eşleştirme cari kodu ya da şirket türü eklerinden arınmış ada göre (kesilmiş SAP adları baştan eşleşir); eşleşen kayıtta yalnızca boş alanlar dolar, tipler birleşir, notlar eklenir. Proje aşaması yalnızca kayıt "Proje"deyse ya da paket siparişe döndüğünü söylüyorsa ilerler ve proje geçmişine yazılır. Siparişler satış belgesi + sipariş no ile tekil; geçmiş ziyaret o tarihte ya da sonrasında ziyaret varsa eklenmez; çeyrek hedefi yalnızca boşsa yazılır. Aynı paket ikinci kez yüklenirse yeni kayıt çıkmaz.
+- Proje sayfasında üstteki ikinci aşama şeridi kaldırıldı; aşama alttaki şeritten değişir.
+
 ## Güncelleme notu (sürüm 110)
 
 - **Kısa güncelleme dosyası:** `supabase/guncelleme-37-49.sql` yalnızca şema 37'deki bir veritabanını 49'a taşır (340 satır; telefondan yapıştırmak için). Veritabanı 37'den eskiyse çalışmaz ve tam `schema.sql`'i ister.

@@ -429,9 +429,9 @@ const DB = () => {
   await p.fill('[data-isle="g1"] [name=n]', 'Fiyat listesi gönderildi'); await p.press('[data-isle="g1"] [name=n]', 'Enter'); await w(1200);
   const is = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const g = S.gorevler.find(x => x.id === 'g1'); return { durum: g.durum, not: g.notlar, yorum: (S.yorumlar || []).find(y => y.kayit_id === 'p1')?.metin }; });
   await p.goto(U + '#/proje/p1'); await w(1500);
-  const s0 = await p.evaluate(() => ({ n: document.querySelectorAll('.asama-serit [data-asama]').length, on: document.querySelector('.asama-serit .on')?.dataset.asama }));
-  await p.click('.asama-serit [data-asama="Sıcak"]'); await w(1200);
-  const s1 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { d: S.projeler.find(x => x.id === 'p1').durum, g: S.proje_gecmis.some(g => g.proje_id === 'p1' && g.yeni_durum === 'Sıcak'), on: document.querySelector('.asama-serit .on')?.dataset.asama, gun: document.querySelector('.asama-gun')?.textContent }; });
+  const s0 = await p.evaluate(() => ({ n: document.querySelectorAll('[data-asama]').length, on: document.querySelector('[data-asama].on')?.dataset.asama }));
+  await p.click('[data-asama="Sıcak"]'); await w(1200);
+  const s1 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { d: S.projeler.find(x => x.id === 'p1').durum, g: S.proje_gecmis.some(g => g.proje_id === 'p1' && g.yeni_durum === 'Sıcak'), on: document.querySelector('[data-asama].on')?.dataset.asama, gun: document.querySelector('.asama-gun')?.textContent }; });
   await p.goto(U + '#/projeler'); await w(1200); await p.click('[data-gor="huni"]'); await w(800);
   const hn = await p.evaluate(() => ({ b60: !!document.querySelector('.hcard.bekle60[data-id="p2"]'), gun: document.querySelector('.hcard[data-id="p2"] .hc-gun')?.textContent }));
   await p.goto(U + '#/panel'); await w(1500);
@@ -830,6 +830,38 @@ const DB = () => {
   kontrol('Kişide tanıtım mesajı izni kaydedilir; izin yoksa kişi sayfasında uyarı', izin.v === 'Hayır' && /tanıtım mesajı/.test(izin.uy), JSON.stringify(izin));
   kontrol('Rol bazlı hazır menü: Muhasebe rolünde ana çubuk Bugün, Finans, Firmalar, Satış', /^bugun,finans,firmalar,satis/.test(menu), menu);
   kontrol('İletişim izni ve menü ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+// Sürüm 111: veri paketi (.json) içe aktarma; proje sayfasında tek aşama şeridi
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})();`) });
+  await p.goto(U + '#/bugun'); await w(1200);
+  const r = await p.evaluate(async () => {
+    const { S } = await import('./js/db.js'); const { app } = await import('./js/state.js'); const m = await import('./js/paket.js');
+    await app.db.save('firmalar', { id: 'pf1', ad: 'Yıldız Elektrik San. ve Tic. Ltd. Şti.', tipler: ['Emüt'], fotolar: [] });
+    await app.db.save('projeler', { id: 'pp1', ad: 'Liman Genişletme', durum: 'Proje', urun_gruplari: [], fotolar: [] });
+    const P = { tur: 'saha-takip-paket', surum: 1,
+      firmalar: [{ _k: 'a', ad: 'Yildiz Elektrik Sanayi Ve Ticaret Limited Şirketi', il: 'Mersin', tipler: ['Bayi'], segment: 'A', key_account: true, tekrar_gun: 30, not_ekle: ['2026 ziyaret planı: hedef 12'] }, { _k: 'b', ad: 'Deniz Gıda A.Ş.', il: 'Adana', tipler: ['Yatırımcı'] }],
+      kisiler: [{ ad_soyad: 'Ayşe Kaya', firma_k: 'a', eposta: 'ayse@ornek.com' }],
+      projeler: [{ _k: 'x', ad: 'liman genişletme', crm_kodu: 'P-1', durum: 'Sipariş', hedef_listesi: true, siparis_tutari_usd: 5000, yatirimci_k: 'b', not_ekle: ['2026 anlaşılan kapsam'] }, { _k: 'y', ad: 'Deniz Gıda Fabrika', durum: 'İhale', tutar_usd: 20000, yatirimci_k: 'b' }],
+      siparisler: [{ siparis_no: '2000001', belge_no: '11000001', musteri_adi: 'Yıldız Elektrik San', firma_k: 'a', tarih: '2026-03-01', net_deger: 1000, para_birimi: 'USD', proje_tanimi: 'Liman Genişletme' }],
+      ziyaretler: [{ firma_k: 'a', tarih: '2026-02-01', durum: 'Yapıldı', amac: 'Ziyaret' }], hedefler: [{ yil: 2031, ceyrek: 1, tutar_usd: 100 }] };
+    const h = m.paketHazirla(P); await m.paketYaz(h); const h2 = m.paketHazirla(P);
+    const f = S.firmalar.find(x => x.id === 'pf1'), pr = S.projeler.find(x => x.id === 'pp1'), sp = S.siparisler.find(x => x.siparis_no === '2000001');
+    let hata = ''; try { m.paketHazirla({ tur: 'baska' }); } catch (e) { hata = e.message; }
+    return { s: h.sayi, s2: h2.sayi, f: { il: f.il, tip: f.tipler.join(','), seg: f.segment, ka: f.key_account, not: f.notlar }, yildiz: S.firmalar.filter(x => /yıldız|yildiz/i.test(x.ad)).length,
+      pr: { d: pr.durum, h: pr.hedef_listesi, crm: pr.crm_kodu, yat: S.firmalar.find(x => x.id === pr.yatirimci_id)?.ad, gec: S.proje_gecmis.some(g => g.proje_id === 'pp1' && g.yeni_durum === 'Sipariş') },
+      sp: { f: sp?.firma_id, p: sp?.proje_id }, kisi: S.kisiler.find(k => k.eposta === 'ayse@ornek.com')?.firma_id, z: S.ziyaretler.filter(z => z.firma_id === 'pf1').length, hata,
+      anah: m.anahtarEsles(m.firmaAnahtar('Drv Elektrik Aydınlatma İnşaat Taa'), m.firmaAnahtar('DRV Elektrik Aydınlatma İnşaat Taah San.Ve Tic.Ltd.Şti')) && !m.anahtarEsles(m.firmaAnahtar('Tosyalı Demir Çelik'), m.firmaAnahtar('Tosyalı Toyo Çelik')) };
+  });
+  const btn = await p.evaluate(async () => /data-paket/.test((await import('./js/ilkyukleme.js')).baslaKarti()));
+  await p.goto(U + '#/proje/p1'); await w(1200);
+  const serit = await p.evaluate(() => ({ eski: !!document.querySelector('.asama-serit'), yeni: document.querySelectorAll('[data-asama]').length }));
+  kontrol('Veri paketi: benzer adlı firma birleşir (boş alan dolar, tip ve not eklenir), proje aşaması ilerler ve geçmişe yazılır, sipariş firmaya ve projeye bağlanır, ikinci yüklemede yeni kayıt çıkmaz',
+    r.s.firmaYeni === 1 && r.s.firmaGun === 1 && r.yildiz === 1 && r.f.il === 'Mersin' && r.f.tip === 'Emüt,Bayi' && r.f.seg === 'A' && r.f.ka && /hedef 12/.test(r.f.not || '') && r.pr.d === 'Sipariş' && r.pr.h && r.pr.crm === 'P-1' && r.pr.yat === 'Deniz Gıda A.Ş.' && r.pr.gec
+    && r.sp.f === 'pf1' && r.sp.p === 'pp1' && r.kisi === 'pf1' && r.z === 1 && r.s2.firmaYeni === 0 && r.s2.projeYeni === 0 && r.s2.sipYeni === 0 && r.s2.kisiYeni === 0 && r.s2.ziyYeni === 0 && r.s2.hedefYeni === 0 && /veri paketi değil/.test(r.hata) && r.anah, JSON.stringify(r));
+  kontrol('Ayarlar → Veri\'de "Paket seç" düğmesi; proje sayfasında yalnızca alttaki aşama şeridi', btn && !serit.eski && serit.yeni >= 7, JSON.stringify({ btn, serit }));
+  kontrol('Veri paketi ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"

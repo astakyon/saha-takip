@@ -2137,3 +2137,4 @@ body.giris-var #view { padding-top: 64px; }
 .fs-doluluk { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); text-decoration: none; }
 /* Sürüm 110: iletişim izni */
 .izin-uyari { margin: 6px 0; padding: 6px 10px; border-left: 3px solid #A16207; background: color-mix(in srgb, #A16207 8%, transparent); font-size: 13px; border-radius: 4px; }
+.ps-asamagun { margin: 2px 0 0; font-size: 12.5px; }

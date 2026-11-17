@@ -63,7 +63,7 @@ export function projeSayfa(el, id) {
       <div class="fs-kim"><p class="muted">${esc(['Proje', [p.ilce, p.il].filter(Boolean).join(', '), p.osb].filter(Boolean).join(' · '))}</p>
         <h1>${esc(p.ad)}${p.kritik ? ' <em class="flag">Kritik</em>' : ''}${p.referans ? ' <em class="flag soft">Referans</em>' : ''}</h1>
         <div class="dh-meta">${pill(p.durum)}${p.tutar_usd ? `<b class="ps-tutar">${usd(p.tutar_usd)}</b>` : ''}${p.olasilik != null && p.olasilik !== '' ? `<span>olasılık %${num(p.olasilik)}</span>` : ''}${p.beklenen_tarih ? `<span>beklenen sipariş ${esc(ayAd(p.beklenen_tarih))}</span>` : ''}<span data-gerek="ziyaretler" class="${gun == null || gun > 60 ? 'neg' : ''}">${gun == null ? 'hiç ziyaret yok' : gun === 0 ? 'bugün ziyaret edildi' : `son ziyaret ${gun} gün önce`}</span>${dogrulamaRozet('projeler', p)}</div></div>
-      <nav class="asama-serit" aria-label="Aşama">${DURUMLAR.filter(d => d.k !== 'İptal' || p.durum === 'İptal').map(d => `<button type="button" data-asama="${esc(d.k)}" data-gerek="yaz:projeler" class="${d.k === p.durum ? 'on' : ''}" style="--c:${d.c}" aria-pressed="${d.k === p.durum}">${esc(d.k)}</button>`).join('')}${asamaGunMetni(p)}</nav>
+      ${asamaGunMetni(p) ? `<p class="ps-asamagun">${asamaGunMetni(p)}</p>` : ''}
       <div class="fs-arac" role="toolbar" aria-label="Proje işlemleri">
         <div class="fs-grp" data-grp="iletisim">${tel ? `<a href="tel:${esc(tel)}" data-ipucu="${ilgili?.telefon ? 'Ara: ' + esc(ilgili.ad_soyad) : 'Takip edeni ara'}" aria-label="Ara">${IK.tel}</a>` : ''}${ilgili?.telefon ? `<button type="button" data-a="wa" data-ipucu="WhatsApp: ${esc(ilgili.ad_soyad)}" aria-label="WhatsApp" class="fs-wa">${IK.wa}</button>` : ''}${p.lat != null ? `<a target="_blank" rel="noopener" href="${directionsUrl(p.lat, p.lng)}" data-ipucu="Şantiyeye yol tarifi" aria-label="Yol tarifi" class="fs-yol">${IK.yol}</a>` : ''}</div>
         <div class="fs-grp" data-grp="ekle"><button type="button" data-a="ziyaret" data-gerek="yaz:ziyaretler" data-ipucu="Ziyaret ekle" aria-label="Ziyaret ekle">${IK.pin}</button><button type="button" data-a="gorev" data-gerek="yaz:gorevler" data-ipucu="Görev ekle" aria-label="Görev ekle">${IK.gor}</button><button type="button" data-a="teklif" data-gerek="yaz:teklifler" data-ipucu="Teklif hazırla" aria-label="Teklif hazırla">${IK.tek}</button><button type="button" data-a="numune" data-gerek="yaz:numuneler" data-ipucu="Numune ver" aria-label="Numune ver">${IK.num}</button></div>
@@ -137,7 +137,6 @@ export function projeSayfa(el, id) {
 
   gerekUygula(el);
   acilirKur(el); araciTemizle(el);
-  el.querySelectorAll('[data-asama]').forEach(b => b.onclick = async () => { if (b.classList.contains('on')) return; const { durumDegistir } = await import('./projeler.js'); if (await durumDegistir(byId('projeler', p.id) || p, b.dataset.asama)) app.refresh?.(); });
   el.querySelector('[data-geri]').onclick = () => sayfadanDon('projeler');
   sekmeKur(el, { taban: 'proje/' + p.id, KUR: {
     harita: () => haritaBolumu(el.querySelector('[data-harita]'), p, { yazar }),

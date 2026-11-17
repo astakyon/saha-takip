@@ -1,5 +1,5 @@
 // Uygulama genel durumu
-export const SURUM = '110';   // her yayında artırılır; Ayarlar → Genel'de görünür
+export const SURUM = '111';   // her yayında artırılır; Ayarlar → Genel'de görünür
 export const app = {
   db: null,
   filters: {},          // görünüm bazlı filtreler (oturum boyunca)
