@@ -2164,6 +2164,10 @@ alter table public.bayi_stok drop constraint if exists bayi_stok_owner_firma_id_
 create unique index if not exists bayi_stok_tekil on public.bayi_stok (owner, firma_id, kod, coalesce(depo, ''));
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 54 $f$;
 
+-- ---------- Sürüm 55: Stok planlama: kampanya işareti (uzun bekleyen / yavaş eriyen kalemler) ----------
+alter table public.bayi_stok add column if not exists kampanya boolean default false;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 55 $f$;
+
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

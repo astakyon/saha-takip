@@ -1160,6 +1160,37 @@ const DB = () => {
   kontrol('Depo ve transfer ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 119: planlama — sipariş önerisi (kritik seviyeye tamamlama, teklif açığı) ve teklif taslağı; stok yaşı, devir hızı, kampanya işareti
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString(); const bg = new Date(); const gun = n => new Date(bg - n * 864e5).toISOString().slice(0, 10);
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }];
+    const k = (id, kod, adet, kritik, son) => ({ id, owner: 'u1', firma_id: 'f1', kod, aciklama: 'Ürün ' + kod, adet, kritik, birim_fiyat: 10, para_birimi: 'USD', son_hareket: son, created_at: ts, updated_at: ts });
+    d.bayi_stok = [k('n1', 'N1', 2, 10, gun(5)), k('n2', 'N2', 50, null, gun(5)), k('n3', 'N3', 30, null, gun(200)), k('n4', 'N4', 10, null, gun(3))];
+    d.bayi_satis = [{ id: 'bs1', owner: 'u1', firma_id: 'f1', kod: 'N4', adet: 30, tarih: gun(20), tutar: 300, para_birimi: 'USD', created_at: ts, updated_at: ts }];
+    d.teklifler = (d.teklifler || []).concat([{ id: 'tk9', owner: 'u1', durum: 'Gönderildi', tarih: gun(2), kalemler: [{ kod: 'N2', ad: 'Ürün N2', adet: 70, birim_fiyat: 1 }], toplam: 70, created_at: ts, updated_at: ts }]);
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bayistok'); await w(1000);
+  await p.evaluate(async () => { const { F, saveFilters } = await import('./js/state.js'); Object.assign(F('bayistok', {}), { id: 'b1', grup: '', sadece: 'tum', pb: 'USD', depo: '' }); saveFilters(); });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1000);
+  if (!(await p.isVisible('[data-planlama]'))) await p.click('header.vh .vh-daha-btn');
+  await p.click('[data-planlama]'); await w(500);
+  const oneri = await p.evaluate(() => [...document.querySelectorAll('.drawer.open tbody tr')].map(r => r.querySelector('.mono').textContent + ':' + r.querySelector('[data-on]').value + ':' + r.cells[5].textContent.trim()));
+  await p.fill('[data-on="1"]', '9'); await p.click('[data-oteklif]'); await w(900);
+  const teklif = await p.evaluate(() => { const d = document.querySelector('.drawer.open'); return { baslik: d?.querySelector('#drawer-title')?.textContent, adet: [...d.querySelectorAll('[data-k="adet"]')].map(i => i.value).join(), metin: d?.innerText.includes('N1') && d?.innerText.includes('N2') }; });
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true));
+  await w(300); await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(900);
+  if (!(await p.isVisible('[data-planlama]'))) await p.click('header.vh .vh-daha-btn');
+  await p.click('[data-planlama]'); await w(400); await p.click('[data-ps="yas"]'); await w(300);
+  const yas = await p.evaluate(() => [...document.querySelectorAll('.drawer.open tbody tr')].map(r => r.querySelector('.mono').textContent + ':' + (r.classList.contains('eksik') ? 'aday' : '-') + ':' + r.cells[6].textContent.trim()));
+  await p.click('[data-kadaylar]'); await w(800);
+  const kmp = await p.evaluate(async () => (await import('./js/db.js')).S.bayi_stok.filter(x => x.kampanya).map(x => x.kod).join());
+  kontrol('Sipariş önerisi: kritik seviyenin altındaki kalem seviyeye tamamlanır, açık tekliflere yetmeyen kalemde teklif açığı önerilir; miktar değiştirilip tek tuşla teklif taslağına dönüşür',
+    oneri.join('|') === 'N2:20:tekliflere yetmiyor|N1:8:kritik seviyenin altında' && teklif.metin && teklif.adet.includes('9') && teklif.adet.includes('20'), JSON.stringify({ oneri, teklif }));
+  kontrol('Stok yaşı ve devir hızı: 90+ gün hareketsiz kalem kampanya adayı, satışı olan kalemde aylık çıkış ve erime günü; adaylar tek tuşla kampanyaya işaretlenir',
+    yas.some(x => x === 'N3:aday:satış yok') && yas.some(x => x === 'N4:-:30 gün') && !yas.some(x => /^N1:aday/.test(x)) && kmp === 'N3', JSON.stringify({ yas, kmp }));
+  kontrol('Planlama ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

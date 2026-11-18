@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 119)
+
+- **Sipariş önerisi** (`js/stokanaliz.js`): bayinin aktif kalemlerinde öneri = en büyüğü (kritik seviye − stok, açık tekliflerdeki miktar − bütün bayilerdeki stok). Miktar düzeltilir; "Teklif taslağı oluştur" bayiye teklif formunu kalemlerle açar; Excel.
+- **Stok yaşı ve devir hızı**: son 90 günün çıkışı (bayinin sell-out kaydı varsa o, yoksa stok geçmişindeki çıkış / Excel düşüşleri; sayım, silme, transfer hariç) ile aylık çıkış ve erime günü. 90+ gün hareketsiz ya da 180+ günde eriyecek kalem kampanya adayı; kalem kalem ya da topluca "kampanya" işaretlenir (`bayi_stok.kampanya`), stok listesinde rozetle görünür.
+- Şema 55: `bayi_stok.kampanya`.
+
 ## Güncelleme notu (sürüm 118)
 
 - **Depolar**: kalem anahtarı bayi + ürün kodu + depo (`bayi_stok.depo`, boş = ana depo); aynı ürün iki depoda ayrı satırdır. Bayinin depoları: ana depo + bayi kartındaki `depolar` + stokta geçen depo adları. Stok ekranında depo seçici (Bütün depolar, Ana depo, …, "+ Depo ekle"); bütün depolarda Depo sütunu ve özetin altında depo depo değer. Ürün eklerken depo seçilir; Excel yükleme ve sayım depo depo yapılır.
