@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 117)
+
+- **Stok sayımı** (`js/sayim.js`, `stok_sayimlari`): bayi (grup sekmesi açıksa yalnız o grup) için sayım başlatılır. Sayılan miktar elle girilir ya da kod okutulur: arama kutusu barkod okuyucunun yazdığı kodu (ürün kodu, firma stok kodu, üretici kodu) bulup satıra götürür; "her okutma +1" her okutmada bir sayar; tarayıcı destekliyorsa kamerayla okutma. Sayım taslak olarak kaydedilir; "Sayıma devam" ile kalınan yerden sürülür.
+- **Fark raporu**: eksik / fazla / aynı, adet ve USD tutar; "Sayılmadı" ve "Farklı" süzgeçleri; Excel'e aktarılır.
+- **Onay**: sayılan kalemlerin stoğu sayılana çekilir (isteğe bağlı: sayılmayanlar 0); farklar stok geçmişine `sayim` hareketi olarak, kim ve ne zaman sayıldı bilgisiyle yazılır. Sayım satırları ve eksik / fazla tutarı saklanır.
+- **Geçmiş sayımlar** ve **sürekli fark çıkan ürünler** (en az iki onaylı sayımda farkı olan kodlar) sayım penceresinde.
+- Şema 53: `stok_sayimlari` (bayi kullanıcısı yalnız kendi sayımlarını görür / yapar); "tutarları gizle" sayım tutarlarına da uygulanır; hassas sütun koruması bütün listelenen tablolara kurulur.
+
 ## Güncelleme notu (sürüm 116)
 
 - **Kritik seviye** (`bayi_stok.kritik`): kalem kartından girilir; miktar sınırda ya da altındaysa satırda "kritik" bayrağı, stok uyarılarında "kritik seviyenin altında" listesi. "Kritik / az" sekmesi: kritik seviyesi olanlar ona göre, olmayanlar 1–5 adet.

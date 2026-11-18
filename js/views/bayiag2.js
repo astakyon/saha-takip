@@ -13,6 +13,7 @@ import { izin, sahipMi, disKullanici } from '../yetki.js';
 import { bayiAd, bayiOzeti, bayiSiparisleri } from './bayiag.js';
 import { bayiStokYaz, bayiStokSil, bayiStokAktif, stokUyarilariHesapla, tasimaPlani, tasimaUygula, satirFiyat, satirDegerUsd, aktifMi, stokBirimleri, birimEkle, PARA_BIRIMLERI, pbNorm, kritikMi, kritikVar, azMi, teklifteAyrilan, usddenCevir, stokAdet, HAREKET_AD } from '../stok.js';
 import { anaBayi } from '../profil.js';
+import { acikSayim, sayimPenceresi } from '../sayim.js';
 import { GRUPSUZ, gorunenGruplar, sekmede, kalemGruplari, gruplaPenceresi, gruplarPenceresi, gruptanCikar } from '../stokgrup.js';
 
 const yaz = r => sahipMi() || izin(r) === 'yaz';
@@ -94,7 +95,7 @@ export function bayistokView(el) {
   const sekmeler = GR.length ? [['', 'Tümü', aktifSatir.length], ...GR.map(g => [g.id, g.ad, say(g.id), g.katman]).filter(x => x[2] || x[0] === f.grup), [GRUPSUZ, 'Grupsuz', say(GRUPSUZ)]] : [];
   const grupSecili = f.grup && f.grup !== GRUPSUZ;
   el.innerHTML = `<header class="vh"><div><h1>${hepsi ? 'Bütün bayilerin stoğu' : 'Stok · ' + esc(bayiAd(b))}</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act">${bayiSecici(f, b)}${duzenler ? '<button class="btn" data-yukle>Excel\'den yükle</button><button class="btn primary" data-ekle>+ Ürün</button>' : ''}<button class="btn ghost" data-hareket>Hareketler</button><button class="btn ghost" data-xlsx>Excel</button><button class="btn ghost" data-sablon>Boş şablon</button>${yazabilir ? '<button class="btn ghost" data-gruplar>Gruplar</button>' : ''}${duzenler ? `<button class="btn ghost danger" data-hepsinisil>${grupSecili ? 'Bu gruptaki stoğu sil' : 'Bütün stoğu sil'}</button>` : ''}</div></header>
+    <div class="vh-act">${bayiSecici(f, b)}${duzenler ? '<button class="btn" data-yukle>Excel\'den yükle</button><button class="btn primary" data-ekle>+ Ürün</button>' : ''}${duzenler ? `<button class="btn ghost" data-sayim>${acikSayim(b.firma_id, grupSecili ? f.grup : null) ? 'Sayıma devam' : 'Sayım'}</button>` : ''}<button class="btn ghost" data-hareket>Hareketler</button><button class="btn ghost" data-xlsx>Excel</button><button class="btn ghost" data-sablon>Boş şablon</button>${yazabilir ? '<button class="btn ghost" data-gruplar>Gruplar</button>' : ''}${duzenler ? `<button class="btn ghost danger" data-hepsinisil>${grupSecili ? 'Bu gruptaki stoğu sil' : 'Bütün stoğu sil'}</button>` : ''}</div></header>
     <div class="frow"><input type="search" data-q value="${esc(f.q)}" placeholder="${hepsi ? 'Ürün kodu ya da adı: hangi bayide var?' : 'Ürün, firma kodu ya da üretici kodu ara'}" aria-label="Ara">
       <div class="seg" role="group" aria-label="Göster">${[['tum', 'Tümü'], ['az', 'Kritik / az'], ['olu', 'Hareketsiz (90+ gün)'], ['pasif', 'Pasif']].map(([k, t]) => `<button type="button" data-s="${k}" class="${f.sadece === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
     ${sekmeler.length || yazabilir ? `<nav class="sg-sekmeler" aria-label="Stok grupları">${sekmeler.map(([id, ad, n, kat]) => `<button type="button" data-grup="${id}" class="${(f.grup || '') === id ? 'on' : ''}${kat === 'bayi' ? ' sg-bayi' : ''}" ${kat === 'bayi' ? 'title="Bu bayiye özel grup"' : ''}>${esc(ad)} <small>${n}</small></button>`).join('')}${yazabilir && !sekmeler.length ? '<button type="button" class="sg-ilk" data-gruplar2>+ Grup oluştur</button>' : ''}</nav>` : ''}
@@ -180,6 +181,7 @@ export function bayistokView(el) {
   el.querySelector('[data-gruplar]')?.addEventListener('click', gy); el.querySelector('[data-gruplar2]')?.addEventListener('click', gy);
   el.querySelector('[data-xlsx]').onclick = () => exportXlsx(`bayi-stok-${today()}`, { Stok: satirlar.map(s => ({ ...(hepsi ? { Bayi: bayiAd(s.bayi) } : {}), ...sablonSatiri(s), 'Değer (USD)': Math.round(s.deger) || null, 'Son hareket': s.son_hareket })) });
   el.querySelector('[data-hareket]').onclick = () => hareketlerPenceresi(hepsi ? null : b);
+  el.querySelector('[data-sayim]')?.addEventListener('click', () => sayimPenceresi({ b, firma_id: b.firma_id, grup_id: grupSecili ? f.grup : null, grupAd: grupSecili ? grupAd(f.grup) : null, bayiAdi: bayiAd(b), sonra: () => bayistokView(el) }));
   el.querySelector('[data-sablon]').onclick = () => exportXlsx('stok-sablonu', { Stok: [sablonSatiri({ kod: '117887', firma_kodu: 'ATI-0001', aciklama: 'Örnek ürün açıklaması', uretici_kodu: 'UR-123', uretici_aciklama: 'Üreticinin ürün adı', birim: 'Adet', adet: 10, birim_fiyat: 12.5, para_birimi: 'USD', aktif: true })] });
   el.querySelector('[data-ekle]')?.addEventListener('click', () => stokSatirFormu(b, () => bayistokView(el)));
   el.querySelector('[data-yukle]')?.addEventListener('click', () => grupSorVeYukle(b, grupSecili ? f.grup : null, GR, () => bayistokView(el)));

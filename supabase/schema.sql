@@ -2090,6 +2090,71 @@ create or replace function public.yetki_surum() returns int language sql stable 
 alter table public.bayi_stok add column if not exists kritik numeric;    -- miktar bu sınıra ya da altına düşünce uyarı
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 52 $f$;
 
+-- ---------- Sürüm 53: Stok sayımı (taslak sayım, fark raporu, onayla stok güncellenir, geçmiş sayımlar) ----------
+create table if not exists public.stok_sayimlari (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  firma_id uuid not null references public.firmalar(id) on delete cascade,
+  grup_id uuid references public.stok_gruplari(id) on delete set null,
+  durum text default 'Açık',                     -- Açık / Onaylandı / İptal
+  baslangic timestamptz default now(), onay_tarihi timestamptz, sayan text, onaylayan text,
+  sayilan jsonb default '{}'::jsonb,              -- taslak: kod → sayılan miktar
+  satirlar jsonb default '[]'::jsonb,             -- onayda: kod, sistem, sayılan, fark, tutar
+  eksik_tutar numeric, fazla_tutar numeric, notlar text,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create index if not exists stok_sayimlari_firma_idx on public.stok_sayimlari (owner, firma_id);
+alter table public.stok_sayimlari enable row level security;
+alter table public.stok_sayimlari alter column owner set default public.veri_sahibi();
+drop policy if exists "oku" on public.stok_sayimlari;
+drop policy if exists "ekle" on public.stok_sayimlari;
+drop policy if exists "degistir" on public.stok_sayimlari;
+drop policy if exists "sil" on public.stok_sayimlari;
+drop policy if exists "yonetici_oku" on public.stok_sayimlari;
+drop policy if exists "dis_oku" on public.stok_sayimlari;
+drop policy if exists "dis_ekle" on public.stok_sayimlari;
+drop policy if exists "dis_degistir" on public.stok_sayimlari;
+drop policy if exists "dis_sil" on public.stok_sayimlari;
+create policy "oku" on public.stok_sayimlari for select to authenticated using (public.yetki(owner, 'bayi_stok', 'oku'));
+create policy "ekle" on public.stok_sayimlari for insert to authenticated with check (public.yetki(owner, 'bayi_stok', 'yaz'));
+create policy "degistir" on public.stok_sayimlari for update to authenticated using (public.yetki(owner, 'bayi_stok', 'yaz')) with check (public.yetki(owner, 'bayi_stok', 'yaz'));
+create policy "sil" on public.stok_sayimlari for delete to authenticated using (public.yetki(owner, 'bayi_stok', 'yaz'));
+create policy "yonetici_oku" on public.stok_sayimlari for select to authenticated using (public.yonetici_mi());
+-- Bayi (dış kullanıcı) yalnız kendi deposunun sayımlarını görür ve yapar
+create policy "dis_oku" on public.stok_sayimlari as restrictive for select to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+create policy "dis_ekle" on public.stok_sayimlari as restrictive for insert to authenticated with check (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+create policy "dis_degistir" on public.stok_sayimlari as restrictive for update to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner)) with check (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+create policy "dis_sil" on public.stok_sayimlari as restrictive for delete to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+drop trigger if exists touch on public.stok_sayimlari;
+create trigger touch before update on public.stok_sayimlari for each row execute function public.touch_updated_at();
+create or replace function public.hassas_kolonlar() returns jsonb language sql immutable as $f$
+  select '{
+    "projeler":       [{"grup": "tutar", "kol": ["tutar_usd", "siparis_tutari_usd", "bizim_teklif_usd", "rakip_birim_fiyat", "rakip_toplam_usd"]},
+                       {"grup": "harita", "kol": ["karar_grubu"]}],
+    "teklifler":      [{"grup": "tutar", "kol": ["kalemler", "toplam", "iskonto"]}],
+    "siparisler":     [{"grup": "tutar", "kol": ["net_deger"]}],
+    "urunler":        [{"grup": "tutar", "kol": ["birim_fiyat_usd"]}],
+    "stok_gecmis":    [{"grup": "tutar", "kol": ["birim_fiyat_usd"]}],
+    "hedefler":       [{"grup": "tutar", "kol": ["tutar_usd", "resmi_usd", "resmi_tl"]}],
+    "rakip_fiyatlar": [{"grup": "tutar", "kol": ["birim_fiyat", "fiyat_metin"]}],
+    "tahsilatlar":    [{"grup": "tutar", "kol": ["tutar", "odenen"]}],
+    "cekler":         [{"grup": "tutar", "kol": ["tutar"]}],
+    "bayiler":        [{"grup": "tutar", "kol": ["iskonto", "kredi_limiti", "hedef_yil"]}],
+    "bayi_stok":      [{"grup": "tutar", "kol": ["birim_fiyat"]}],
+    "bayi_satis":     [{"grup": "tutar", "kol": ["tutar"]}],
+    "stok_sayimlari": [{"grup": "tutar", "kol": ["eksik_tutar", "fazla_tutar"]}],
+    "kisiler":        [{"grup": "iletisim", "kol": ["telefon", "eposta", "kartvizit_on", "kartvizit_arka", "dogum_gunu"]}]
+  }'::jsonb
+$f$;
+do $$ declare t text; begin
+  for t in select jsonb_object_keys(public.hassas_kolonlar()) loop
+    if to_regclass('public.' || t) is null then continue; end if;
+    execute format('drop trigger if exists hassas_koru on public.%I', t);
+    execute format('create trigger hassas_koru before update on public.%I for each row execute function public.hassas_koru()', t);
+  end loop;
+end $$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 53 $f$;
+
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

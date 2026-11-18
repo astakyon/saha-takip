@@ -1083,6 +1083,42 @@ const DB = () => {
   kontrol('Kritik seviye ve hareket ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 117: stok sayımı — başlat, sayılanı gir / kod okut (+1), taslak kalır, fark raporu, onayla stok güncellenir, geçmiş ve sürekli fark
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }];
+    const k = (id, kod, adet, fiyat) => ({ id, owner: 'u1', firma_id: 'f1', kod, firma_kodu: 'FK-' + kod, aciklama: 'Ürün ' + kod, adet, birim_fiyat: fiyat, para_birimi: 'USD', son_hareket: '2026-11-15', created_at: ts, updated_at: ts });
+    d.bayi_stok = [k('y1', 'P1', 10, 2), k('y2', 'P2', 5, 1), k('y3', 'P3', 7, 1)];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bayistok'); await w(1200);
+  await p.evaluate(async () => { const { F, saveFilters } = await import('./js/state.js'); Object.assign(F('bayistok', {}), { id: 'b1', grup: '', sadece: 'tum', pb: 'USD' }); saveFilters(); });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1000);
+  const ac = async () => { if (!(await p.isVisible('[data-sayim]'))) await p.click('header.vh .vh-daha-btn'); await p.click('[data-sayim]'); await w(500); };
+  await ac(); await p.click('[data-basla]'); await w(600);
+  await p.fill('[data-say="P1"]', '8'); await p.press('[data-say="P1"]', 'Tab'); await w(400);
+  await p.fill('[data-sara]', 'FK-P2'); await p.press('[data-sara]', 'Enter'); await w(300);
+  const odak = await p.evaluate(() => document.activeElement?.dataset?.say);
+  await p.keyboard.type('6'); await p.press('[data-say="P2"]', 'Tab'); await w(400);
+  await p.check('[data-arti]'); for (const _ of [1, 2]) { await p.fill('[data-sara]', 'P3'); await p.press('[data-sara]', 'Enter'); await w(400); }
+  const ozet = await p.evaluate(() => document.querySelector('[data-ozet]').innerText.replace(/\s+/g, ' '));
+  // Kapat, yeniden aç: taslak duruyor; stok henüz değişmedi
+  await p.click('.drawer.open .x[data-close]'); await w(500);
+  const devam = await p.evaluate(() => document.querySelector('[data-sayim]')?.textContent);
+  const once = await p.evaluate(async () => (await import('./js/db.js')).S.bayi_stok.map(x => x.kod + ':' + x.adet).sort().join());
+  await ac();
+  const taslak = await p.evaluate(() => ['P1', 'P2', 'P3'].map(k => document.querySelector(`[data-say="${k}"]`)?.value).join());
+  await p.click('[data-onay]'); await w(1200);
+  const son = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const say = S.stok_sayimlari[0];
+    return { stok: S.bayi_stok.map(x => x.kod + ':' + x.adet).sort().join(), gecmis: S.stok_gecmis.filter(g => g.hareket === 'sayim').map(g => g.kod + ':' + g.fark).sort().join(), durum: say.durum, eksik: say.eksik_tutar, gecmisListe: document.querySelector('.drawer.open')?.innerText.includes('Geçmiş sayımlar') }; });
+  // İkinci sayım (API): P1 yine eksik → sürekli fark
+  const sf = await p.evaluate(async () => { const m = await import('./js/sayim.js'); let s2 = await m.sayimBaslat('f1'); s2 = await m.sayimYaz(s2, 'P1', 7); await m.sayimOnayla(s2); return m.surekliFark('f1').map(e => e.kod + ':' + e.n + ':' + e.toplam).join(); });
+  kontrol('Stok sayımı: sayılan elle girilir, kod / firma kodu okutunca satır açılır, "her okutma +1" sayar; özet eksik / fazla ve tutarı gösterir; taslak kapatıp açınca durur, onaya kadar stok değişmez',
+    odak === 'P2' && /3\/3 kalem sayıldı/.test(ozet) && /2 eksik \(9 \$\)/.test(ozet) && /1 fazla \(1 \$\)/.test(ozet) && /Sayıma devam/.test(devam) && once === 'P1:10,P2:5,P3:7' && taslak === '8,6,2', JSON.stringify({ odak, ozet, devam, once, taslak }));
+  kontrol('Sayım onayı: stok sayılana çekilir, farklar hareket kaydına "sayım" olarak yazılır, geçmiş sayımlarda görünür; iki sayımda fark çıkan ürün "sürekli fark" listesinde',
+    son.stok === 'P1:8,P2:6,P3:2' && son.gecmis === 'P1:-2,P2:1,P3:-5' && son.durum === 'Onaylandı' && son.eksik === -9 && son.gecmisListe && sf === 'P1:2:-3', JSON.stringify({ son, sf }));
+  kontrol('Sayım ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });
