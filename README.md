@@ -32,6 +32,11 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 112)
+
+- **Aynı sipariş numarası** (`js/sipcift.js`): Veri kontrolü → Siparişler → "Aynı sipariş numarasıyla birden fazla kayıt". Sipariş no'ya göre gruplar ("4500001" ile "4500001.0" aynı sayılır). "İncele" kayıtları yan yana gösterir, farklı alanları vurgular; ana sipariş seçilir. "Birleştir, diğerlerini sil": ana kalır, boş alanları diğerlerinden dolar, sipariş notları ve yorumlar taşınır, ana doğrulanır, kopyalar silinir. "Diğerlerini rapor dışı yap" silmeden toplamlardan çıkarır. "Farklı siparişler" hepsini doğrular ve grubu bir daha göstermez (gruba yeni kayıt eklenirse yeniden çıkar). Tutar ve para birimi aynı, satış belgesi çelişmeyen gruplar "kesin kopya"dır; hepsi tek düğmeyle birleştirilir. Numarası farklı ama aynı gün, cari ve tutarlı siparişler ayrı başlıkta ("Doğru" ile işaretlenir).
+- Kopya önleme: SAP listesi yüklenirken aynı sipariş no'lu, satış belgesi boş ya da aynı olan kayıt güncellenir (yeni kayıt açılmaz); veri paketi böyle siparişi atlar; elle girişte aynı numara varsa uyarı çıkar.
+
 ## Güncelleme notu (sürüm 111)
 
 - **Veri paketi (.json)** (`js/paket.js`): Ayarlar → Veri → "Veri paketi yükle". Paket CRM/SAP/plan dosyalarından hazırlanır; kayıtlar geçici anahtarlarla (`_k`, `firma_k`, `yatirimci_k`…) birbirine bağlıdır. Firma eşleştirme cari kodu ya da şirket türü eklerinden arınmış ada göre (kesilmiş SAP adları baştan eşleşir); eşleşen kayıtta yalnızca boş alanlar dolar, tipler birleşir, notlar eklenir. Proje aşaması yalnızca kayıt "Proje"deyse ya da paket siparişe döndüğünü söylüyorsa ilerler ve proje geçmişine yazılır. Siparişler satış belgesi + sipariş no ile tekil; geçmiş ziyaret o tarihte ya da sonrasında ziyaret varsa eklenmez; çeyrek hedefi yalnızca boşsa yazılır. Aynı paket ikinci kez yüklenirse yeni kayıt çıkmaz.

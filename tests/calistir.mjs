@@ -864,6 +864,47 @@ const DB = () => {
   kontrol('Veri paketi ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 112: aynı sipariş numaralı kayıtlar — ana sipariş seç, birleştir/sil, farklı siparişler; yeniden kopya oluşmasın
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})();`) });
+  await p.goto(U + '#/bugun'); await w(1200);
+  await p.evaluate(async () => {
+    const { app } = await import('./js/state.js');
+    await app.db.bulk('siparisler', [
+      { id: 'sa1', siparis_no: '4500001', belge_no: '11001', tarih: '2026-03-02', net_deger: 100, para_birimi: 'USD', musteri_adi: 'Deneme Cari', proje_id: 'p1' },
+      { id: 'sa2', siparis_no: '4500001.0', belge_no: null, tarih: '2026-03-02', net_deger: 100, para_birimi: 'USD', musteri_adi: 'Deneme Cari', referans: 'SAS-77', siparis_notu: 'elle girildi' },
+      { id: 'sb1', siparis_no: '4500002', belge_no: '11002', tarih: '2026-04-01', net_deger: 300, para_birimi: 'USD', musteri_adi: 'Deneme Cari' },
+      { id: 'sb2', siparis_no: '4500002', belge_no: '11003', tarih: '2026-04-05', net_deger: 120, para_birimi: 'USD', musteri_adi: 'Deneme Cari' },
+      { id: 'sc1', siparis_no: '4500003', belge_no: '11004', tarih: '2026-05-01', net_deger: 50, para_birimi: 'USD', musteri_adi: 'X' },
+      { id: 'sc2', siparis_no: '4500003', belge_no: '11005', tarih: '2026-05-02', net_deger: 60, para_birimi: 'USD', musteri_adi: 'X' }]);
+    await app.db.save('yorumlar', { id: 'y-sa2', tablo: 'siparisler', kayit_id: 'sa2', metin: 'kopya üstündeki not' });
+  });
+  await p.goto(U + '#/kontrol'); await w(1500);
+  await p.evaluate(() => document.querySelectorAll('details.kontrol').forEach(d => d.open = true));
+  const once = await p.evaluate(() => ({ grup: document.querySelectorAll('[data-k="sip-mukerrer"] [data-sipcift]').length, kesin: document.querySelector('[data-sipkesin]')?.textContent || '' }));
+  await p.click('[data-sipkesin]'); await w(1500);
+  const r1 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const a = S.siparisler.find(s => s.id === 'sa1'); return { sa2: !!S.siparisler.find(s => s.id === 'sa2'), ref: a.referans, not: a.siparis_notu, dog: a.dogrulandi, yorum: S.yorumlar.find(y => y.id === 'y-sa2')?.kayit_id }; });
+  // Farklı tutarlı grup: incele, ana olarak sb2'yi seç, birleştir
+  await p.evaluate(() => document.querySelectorAll('details.kontrol').forEach(d => d.open = true));
+  await p.click('[data-sipcift="4500002"]'); await w(600);
+  const ekran = await p.evaluate(() => ({ uyari: /ayrı belgeler|Dikkat/.test(document.querySelector('.drawer-panel').textContent), fark: document.querySelectorAll('.sipcift td.fark').length }));
+  await p.check('input[name=ana][value="sb2"]'); await p.click('[data-birlestir]'); await w(1200);
+  const r2 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { sb1: !!S.siparisler.find(s => s.id === 'sb1'), sb2: S.siparisler.find(s => s.id === 'sb2')?.net_deger }; });
+  // Üçüncü grup: Farklı siparişler → bir daha gösterilmez, ikisi de durur
+  await p.evaluate(() => document.querySelectorAll('details.kontrol').forEach(d => d.open = true));
+  await p.click('[data-sipcift="4500003"]'); await w(600); await p.click('[data-farkli]'); await w(1200);
+  await p.goto(U + '#/bugun'); await w(400); await p.goto(U + '#/kontrol'); await w(1200);
+  const r3 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const { siparisCiftGruplari } = await import('./js/sipcift.js'); return { kalan: siparisCiftGruplari().length, ikisi: S.siparisler.filter(s => /^sc/.test(s.id)).length, dog: S.siparisler.filter(s => /^sc/.test(s.id) && s.dogrulandi).length, rozet: document.querySelector('[data-k="sip-mukerrer"] .kb')?.textContent }; });
+  // Veri paketi aynı numaralı siparişi tekrar eklemez (belge numarası boş olan kayıt varken)
+  const r4 = await p.evaluate(async () => { const { app } = await import('./js/state.js'); await app.db.save('siparisler', { id: 'sd1', siparis_no: '4500009', tarih: '2026-06-01', net_deger: 10, para_birimi: 'USD' });
+    const m = await import('./js/paket.js'); return m.paketHazirla({ tur: 'saha-takip-paket', siparisler: [{ siparis_no: '4500009', belge_no: '11999', tarih: '2026-06-01', net_deger: 10, para_birimi: 'USD' }] }).sayi; });
+  kontrol('Aynı sipariş no: gruplu listelenir (3 grup); kesin kopyalar tek dokunuşla birleşir (ana kalır, boş alanı, notu ve yorumu taşınır, doğrulanır)',
+    once.grup === 3 && /1 grup/.test(once.kesin) && !r1.sa2 && r1.ref === 'SAS-77' && /elle girildi/.test(r1.not || '') && r1.dog === true && r1.yorum === 'sa1', JSON.stringify({ once, r1 }));
+  kontrol('Farklı tutarlı grupta uyarı ve farklı alan vurgusu; seçilen ana kalır, diğeri silinir; “Farklı siparişler” ikisini de tutar ve bir daha göstermez; veri paketi kopya eklemez',
+    ekran.uyari && ekran.fark > 0 && !r2.sb1 && r2.sb2 === 120 && r3.kalan === 0 && r3.ikisi === 2 && r3.dog === 2 && r3.rozet === '✓' && r4.sipAyni === 1 && r4.sipYeni === 0, JSON.stringify({ ekran, r2, r3, r4 }));
+  kontrol('Sipariş kopya ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

@@ -2138,3 +2138,7 @@ body.giris-var #view { padding-top: 64px; }
 /* Sürüm 110: iletişim izni */
 .izin-uyari { margin: 6px 0; padding: 6px 10px; border-left: 3px solid #A16207; background: color-mix(in srgb, #A16207 8%, transparent); font-size: 13px; border-radius: 4px; }
 .ps-asamagun { margin: 2px 0 0; font-size: 12.5px; }
+/* Aynı sipariş numarası incelemesi */
+.sipcift td.fark { background: color-mix(in srgb, var(--warn, #d97706) 14%, transparent); font-weight: 600; }
+.sipcift td:first-child { width: 44px; text-align: center; }
+.sipcift input[type=radio] { width: 20px; height: 20px; }

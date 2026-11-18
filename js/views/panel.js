@@ -23,6 +23,7 @@ import { yilGercek, ceyrekGercek, hedefKaydi, siparisUsd, donemKuru, ceyrekOf } 
 import { kur } from '../kur.js';
 import { yuklemeKaydet } from '../belgeler.js';
 import { radarKarti, radarBagla } from '../radar.js';
+import { sipNo } from '../sipcift.js';
 
 const q = d => Math.floor((new Date(d).getMonth()) / 3) + 1;
 const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0);
@@ -294,6 +295,8 @@ export function siparisForm(init = {}) {
       if (o.firma_id && (s._new || o.firma_id !== s0.firma_id) && !(await cariIste(o.firma_id, 'siparis'))) return;
       if (o.firma_id && (s._new || o.firma_id !== s0.firma_id)) o.musteri_adi = firmaAd(o.firma_id);
       if (o.proje_id && !o.proje_tanimi) o.proje_tanimi = byId('projeler', o.proje_id)?.ad;
+      const ayni = sipNo(o.siparis_no) && S.siparisler.filter(x => x.id !== s.id && sipNo(x.siparis_no) === sipNo(o.siparis_no));
+      if (ayni?.length && sipNo(o.siparis_no) !== sipNo(s0.siparis_no) && !confirmBox(`Sipariş ${o.siparis_no} zaten kayıtlı:\n${ayni.map(x => `• ${tarih(x.tarih)} · ${num(x.net_deger)} ${x.para_birimi || ''} · ${x.musteri_adi || ''}`).join('\n')}\n\nAynı siparişse vazgeç ve var olanı aç. Ayrı bir satış belgesiyse kaydet.`)) return;
       await app.db.save('siparisler', o); toast('Sipariş kaydedildi.'); closeDrawer(); app.refresh();
     } catch (err) { toast('Kaydedilemedi: ' + err.message, 'err'); }
   };
@@ -374,7 +377,7 @@ async function siparisYukle() {
     const drv = anaBayi() ? S.firmalar.find(x => anaBayiMi(x.ad)) : null;
     // Daha önce bir firmaya bağlanmış cari adı: yeni siparişler de aynı firmaya bağlanır
     const cariHafiza = new Map(S.siparisler.filter(s => s.firma_id && s.musteri_adi).map(s => [normName(s.musteri_adi), s.firma_id]));
-    const out = [];
+    const out = [], eski = new Map(), kullanildi = new Set();
     for (const r of rows.slice(hi + 1)) {
       if (!r[C.belge] && !r[C.mad]) continue;
       const mad = r[C.mad] ? String(r[C.mad]).trim() : null;
@@ -382,15 +385,19 @@ async function siparisYukle() {
       const fm = mad && (isDrv ? drv : S.firmalar.find(x => normName(x.ad) === normName(mad)) || byId('firmalar', cariHafiza.get(normName(mad))));
       const pt = r[C.pt] ? String(r[C.pt]).trim() : null;
       const key = String(r[C.belge] ?? '') + '|' + String(r[C.no] ?? '');
-      const ex = byBelge.get(key);
+      // Aynı belge + sipariş no; yoksa aynı sipariş no'lu, belgesi boş ya da aynı kayıt (elle girilmiş ya da eski yüklemeden)
+      let ex = byBelge.get(key);
+      if (!ex && sipNo(r[C.no])) ex = S.siparisler.find(x => !kullanildi.has(x.id) && sipNo(x.siparis_no) === sipNo(r[C.no]) && (!x.belge_no || r[C.belge] == null || String(x.belge_no) === String(r[C.belge])));
+      if (ex) kullanildi.add(ex.id);
       out.push({ ...(ex || { id: uuid() }), siparis_no: r[C.no] != null ? String(r[C.no]) : null, belge_no: r[C.belge] != null ? String(r[C.belge]) : null, belge_turu: r[C.tur], musteri_no: r[C.mno] != null ? String(r[C.mno]) : null,
         musteri_adi: mad, firma_id: fm?.id || ex?.firma_id || null, tarih: dt(r[C.tar]) || dt(r[C.tes]), teslim_tarihi: dt(r[C.tes]), referans: r[C.ref], net_deger: +r[C.net] || 0, para_birimi: r[C.pb] || 'USD', proje_tanimi: pt,
         proje_id: ex?.proje_id || projeBul(pt)?.id || null, drv: isDrv });
+      if (ex) eski.set(out[out.length - 1].id, ex);
     }
-    const yeni = out.filter(o => !byBelge.has(o.belge_no + '|' + o.siparis_no)).length;
+    const yeni = out.filter(o => !eski.has(o.id)).length;
     const { onizleOnay } = await import('../esle.js');
-    const degisen = out.filter(o => { const ex = byBelge.get(o.belge_no + '|' + o.siparis_no); return ex && ['tarih', 'net_deger', 'referans', 'para_birimi', 'teslim_tarihi', 'musteri_adi'].some(k => String(ex[k] ?? '') !== String(o[k] ?? '')); }).length;
-    const on = await onizleOnay({ baslik: 'SAP sipariş listesi', sayilar: [['yeni sipariş', yeni, 'yeni'], ['güncellenecek', degisen, 'guncel'], ['değişmeyecek', out.length - yeni - degisen, '']], ornekBaslik: ['Sipariş no', 'Tarih', 'Cari', 'SAS notu', 'Net değer', 'PB'], ornek: out.filter(o => !byBelge.has(o.belge_no + '|' + o.siparis_no)).concat(out).slice(0, 6).map(o => [o.siparis_no, o.tarih, o.musteri_adi, o.referans, o.net_deger, o.para_birimi]) });
+    const degisen = out.filter(o => { const ex = eski.get(o.id); return ex && ['tarih', 'net_deger', 'referans', 'para_birimi', 'teslim_tarihi', 'musteri_adi'].some(k => String(ex[k] ?? '') !== String(o[k] ?? '')); }).length;
+    const on = await onizleOnay({ baslik: 'SAP sipariş listesi', sayilar: [['yeni sipariş', yeni, 'yeni'], ['güncellenecek', degisen, 'guncel'], ['değişmeyecek', out.length - yeni - degisen, '']], ornekBaslik: ['Sipariş no', 'Tarih', 'Cari', 'SAS notu', 'Net değer', 'PB'], ornek: out.filter(o => !eski.has(o.id)).concat(out).slice(0, 6).map(o => [o.siparis_no, o.tarih, o.musteri_adi, o.referans, o.net_deger, o.para_birimi]) });
     if (!on.ok) return toast('İçe aktarma iptal edildi.');
     await app.db.bulk('siparisler', out);
     toast(`${out.length} sipariş okundu, ${yeni} yeni kayıt eklendi.`); app.refresh();

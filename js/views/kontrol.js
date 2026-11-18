@@ -9,6 +9,7 @@ import { ceyrekGercek } from '../ceyrek.js';
 import { kisiCiftleri, firmaCiftleri, karsilastir } from '../cift.js';
 import { vergiCiftleri, hataliVergi, bagsizGruplar, grubuBagla, firmaSec, cariListesiYukle } from '../cari.js';
 import { sahipMi, izin } from '../yetki.js';
+import { siparisCiftGruplari, siparisCiftIncele, kesinleriBirlestir } from '../sipcift.js';
 
 const cekirdek = s => fold(s || '').replace(/\b(ltd|sti|şti|san|tic|ve|a ?s|aş|elk|elektrik|insaat|inşaat|muhendislik|mühendislik|enerji|proje|taahhut|taahhüt|limited|sirketi|şirketi|ithalat|ihracat|malz|ins)\b\.?/g, ' ').replace(/[^a-z0-9]/g, '');
 const ROL = ['yatirimci_id', 'projeci_id', 'danisman_id', 'gemut_id', 'emut_id', 'alici_id', 'bayi_id'];
@@ -29,7 +30,7 @@ export function kontroller() {
   const t = today(), Y = new Date().getFullYear();
   const P = S.projeler.filter(p => !p.aday), acik = P.filter(p => ACIK.includes(p.durum));
   const k = [];
-  const ekle = (id, grup, baslik, aciklama, kayitlar, satir) => k.push({ id, grup, baslik, aciklama, kayitlar, satir });
+  const ekle = (id, grup, baslik, aciklama, kayitlar, satir, ust = '') => k.push({ id, grup, baslik, aciklama, kayitlar, satir, ust });
   const pLink = p => `<a href="#/proje/${p.id}"><b>${esc(p.ad)}</b></a>`;
   ekle('sip-yok', 'Projeler', 'Durumu “Sipariş” ama siparişi yok', 'Sipariş listesinde bu projeye bağlı sipariş yok ve sipariş tutarı da girilmemiş. Siparişi bağla ya da durumu düzelt.',
     P.filter(p => p.durum === 'Sipariş' && !sipVar(p) && !p.siparis_tutari_usd), p => `${pLink(p)}<span class="muted">${usd(p.tutar_usd)} · ${esc(firmaAd(p.alici_id) || firmaAd(p.emut_id) || '')}</span>`);
@@ -58,10 +59,16 @@ export function kontroller() {
   ekle('sip-cari', 'Siparişler', 'Carisi firma listesinde olmayan siparişler', 'Firma kartında ve karnede görünmüyor. Önerilen firma doğruysa “Bağla” ile o carinin bütün siparişlerini bağla; değilse siparişi açıp cariyi seç.',
     [...cariGrup.entries()].map(([ad, l]) => ({ ad, l, o: cariOneri(ad) })).sort((a, b) => !!b.o - !!a.o || b.l.length - a.l.length),
     g => `<span class="grow"><b>${esc(g.ad)}</b> <span class="muted">${g.l.length} sipariş</span></span>${g.o ? `<button type="button" class="btn sm" data-caribagla="${esc(g.ad)}|${g.o.id}">Bağla: ${esc(g.o.ad)}</button>` : sLink(g.l[0])}<button type="button" class="btn sm ghost" data-gsec="siparisler|${esc(g.ad)}">Firma seç</button>`);
-  const noSay = new Map(); for (const s of S.siparisler) if (s.siparis_no) noSay.set(s.siparis_no, (noSay.get(s.siparis_no) || 0) + 1);
-  const imza = new Map(); for (const s of S.siparisler) { const i = [s.tarih, s.firma_id || s.musteri_adi, s.net_deger].join('|'); imza.set(i, (imza.get(i) || 0) + 1); }
-  ekle('sip-mukerrer', 'Siparişler', 'Mükerrer olabilecek siparişler', 'Aynı sipariş numarası ya da aynı gün, aynı cari ve aynı tutar. Gerçekten mükerrerse “Rapor dışı” yap.',
-    S.siparisler.filter(s => !s.rapor_disi && ((s.siparis_no && noSay.get(s.siparis_no) > 1) || imza.get([s.tarih, s.firma_id || s.musteri_adi, s.net_deger].join('|')) > 1)), s => `${sLink(s)}<button type="button" class="btn sm ghost" data-disi="${s.id}">Rapor dışı yap</button>`);
+  // Aynı sipariş numarası: gruplu; ana sipariş seçilip birleştirilir (kopyalar silinir) ya da “Farklı siparişler” denir
+  const SG = siparisCiftGruplari(), yaz = izin('siparisler') === 'yaz';
+  const kesinN = SG.filter(g => g.kesin).length;
+  ekle('sip-mukerrer', 'Siparişler', 'Aynı sipariş numarasıyla birden fazla kayıt', `Her grupta ana siparişi seç: “Birleştir” ana kaydı bırakır, boş alanlarını diğerlerinden doldurur ve kopyaları siler. Tutar ya da satış belgesi farklıysa SAP'de ayrı belgeler olabilir; o zaman “Farklı siparişler” de.${kesinN ? ` ${kesinN} grupta tutar ve belge aynı (kesin kopya).` : ''}`,
+    SG, g => `<span class="grow"><b class="mono">${esc(g.no)}</b> <span class="muted">${g.l.length} kayıt · ${esc(g.l[0].musteri_adi || firmaAd(g.l[0].firma_id) || '')} · ${tarih(g.l[0].tarih)}</span><br><small class="${g.kesin ? 'muted' : 'neg'}">${g.kesin ? 'kesin kopya' : 'farklı: ' + esc(g.farklar.join(', '))}</small></span>${yaz ? `<button type="button" class="btn sm" data-sipcift="${esc(g.no)}">İncele</button>` : ''}`,
+    yaz && kesinN ? `<button type="button" class="btn sm primary" data-sipkesin>Kesin kopyaların hepsini birleştir (${kesinN} grup)</button>` : '');
+  const imza = new Map(); for (const s of S.siparisler) if (!s.dogrulandi) { const i = [s.tarih, s.firma_id || s.musteri_adi, s.net_deger].join('|'); imza.set(i, (imza.get(i) || 0) + 1); }
+  const ayniNo = new Set(SG.flatMap(g => g.l.map(s => s.id)));
+  ekle('sip-benzer', 'Siparişler', 'Numarası farklı ama aynı gün, aynı cari ve aynı tutarlı siparişler', 'Elle girilmiş bir siparişin SAP kopyası olabilir. Kopyaysa siparişi açıp sil ya da “Rapor dışı” yap; değilse “Doğru” ile işaretle.',
+    S.siparisler.filter(s => !s.rapor_disi && !s.dogrulandi && !ayniNo.has(s.id) && imza.get([s.tarih, s.firma_id || s.musteri_adi, s.net_deger].join('|')) > 1), s => `${sLink(s)}<button type="button" class="btn sm ghost" data-disi="${s.id}">Rapor dışı yap</button><button type="button" class="btn sm ghost" data-sipdogru="${s.id}">Doğru</button>`);
   ekle('sip-sifir', 'Siparişler', 'Tutarı sıfır olan siparişler', 'Numune, ihraç kayıtlı ya da bedelsiz olabilir; toplamları etkilemez.', S.siparisler.filter(s => !+s.net_deger && !s.rapor_disi), sLink);
   // Çeyrekler
   const bu = Math.floor(new Date().getMonth() / 3) + 1;
@@ -126,7 +133,7 @@ export function kontrolView(el) {
   el.innerHTML = `<header class="vh"><div><h1>Veri kontrolü</h1><p class="sum">${sorun.length ? `${sorun.length} başlıkta ${sorun.reduce((a, x) => a + x.kayitlar.length, 0)} kayıt gözden geçirilmeli` : 'Sorun bulunmadı'}</p></div><div class="vh-act">${sahipMi() || izin('firmalar') === 'yaz' ? '<button class="btn ghost" data-carilist>Cari listesi yükle</button>' : ''}<button class="btn ghost" data-xls>Excel</button></div></header>
     ${['Projeler', 'Siparişler', 'Finans', 'Çeyrekler', 'Firmalar', 'Kişiler'].map(g => `<section class="kontrol-grup"><h2>${g}</h2>${K.filter(x => x.grup === g).map(x => `<details class="card kontrol" data-k="${x.id}" ${f.acik === x.id ? 'open' : ''}>
       <summary><span class="kb ${x.kayitlar.length ? 'var' : 'yok'}">${x.kayitlar.length || '✓'}</span><b>${esc(x.baslik)}</b></summary>
-      ${x.kayitlar.length ? `<p class="hint">${esc(x.aciklama)}</p><ul class="list">${x.kayitlar.slice(0, 40).map(r => `<li>${x.satir(r)}</li>`).join('')}</ul>${x.kayitlar.length > 40 ? `<p class="hint">+${x.kayitlar.length - 40} kayıt daha</p>` : ''}` : '<p class="hint">Sorun yok.</p>'}</details>`).join('')}</section>`).join('')}`;
+      ${x.kayitlar.length ? `<p class="hint">${esc(x.aciklama)}</p>${x.ust ? `<div class="btnrow">${x.ust}</div>` : ''}<ul class="list">${x.kayitlar.slice(0, 40).map(r => `<li>${x.satir(r)}</li>`).join('')}</ul>${x.kayitlar.length > 40 ? `<p class="hint">+${x.kayitlar.length - 40} kayıt daha</p>` : ''}` : '<p class="hint">Sorun yok.</p>'}</details>`).join('')}</section>`).join('')}`;
   el.querySelector('[data-xls]').onclick = () => exportXlsx(`veri-kontrolu-${today()}.xlsx`, { 'Kontrol': sorun.flatMap(x => x.kayitlar.map(r => ({ 'Grup': x.grup, 'Sorun': x.baslik, 'Kayıt': Array.isArray(r) ? r.map(f => f.ad).join(' / ') : r.ad || [r.siparis_no, r.referans || r.musteri_adi].filter(Boolean).join(' · ') || (r.c ? r.c + '. çeyrek' : ''), 'Durum / tarih': r.durum || r.tarih || r.beklenen_tarih || '', 'Tutar': r.tutar_usd || r.net_deger || '' }))) });
   el.querySelectorAll('details[data-k]').forEach(d => d.ontoggle = () => { if (d.open) { f.acik = d.dataset.k; saveFilters(); } });
   el.querySelectorAll('[data-sp]').forEach(b => b.onclick = () => siparisForm({ id: b.dataset.sp }));
@@ -134,6 +141,15 @@ export function kontrolView(el) {
   el.querySelectorAll('[data-caribagla]').forEach(b => b.onclick = async () => { const i = b.dataset.caribagla.lastIndexOf('|'), ad = b.dataset.caribagla.slice(0, i), fid = b.dataset.caribagla.slice(i + 1); const l = S.siparisler.filter(s => !s.firma_id && (s.musteri_adi || '—').trim() === ad); await app.db.bulk('siparisler', l.map(s => ({ ...s, firma_id: fid }))); toast(`${l.length} sipariş ${firmaAd(fid)} firmasına bağlandı.`); kontrolView(el); });
   el.querySelectorAll('[data-bagla]').forEach(b => b.onclick = async () => { const [sid, pid] = b.dataset.bagla.split(':'); await app.db.save('siparisler', { ...byId('siparisler', sid), proje_id: pid }); toast('Sipariş projeye bağlandı.'); kontrolView(el); });
   el.querySelectorAll('[data-disi]').forEach(b => b.onclick = async () => { await app.db.save('siparisler', { ...byId('siparisler', b.dataset.disi), rapor_disi: true }); toast('Sipariş rapor dışı bırakıldı.'); kontrolView(el); });
+  el.querySelectorAll('[data-sipcift]').forEach(b => b.onclick = () => siparisCiftIncele(b.dataset.sipcift, () => kontrolView(el)));
+  el.querySelector('[data-sipkesin]')?.addEventListener('click', async e => {
+    const G = siparisCiftGruplari().filter(g => g.kesin), n = G.reduce((a, g) => a + g.l.length - 1, 0);
+    if (!confirmBox(`${G.length} sipariş numarasında tutarı ve belgesi aynı ${n} kopya silinecek; her grupta en dolu kayıt kalır ve doğrulanır.\n\nSilinen kayıtlar geri gelmez. Devam edilsin mi?`)) return;
+    e.target.disabled = true; toast('Birleştiriliyor…');
+    try { const r = await kesinleriBirlestir(); toast(`${r.g} sipariş numarasında ${r.n} kopya silindi.`); } catch (er) { toast('Birleştirilemedi: ' + er.message, 'err'); }
+    app.refresh?.(); kontrolView(el);
+  });
+  el.querySelectorAll('[data-sipdogru]').forEach(b => b.onclick = async () => { await app.db.save('siparisler', { ...byId('siparisler', b.dataset.sipdogru), dogrulandi: true }); toast('Sipariş doğru olarak işaretlendi.'); kontrolView(el); });
   el.querySelectorAll('[data-cozet]').forEach(a => a.onclick = () => { const fs = F('siparisler', {}); fs.gor = 'ceyrek'; fs.yil = new Date().getFullYear(); saveFilters(); });
   el.querySelector('[data-carilist]')?.addEventListener('click', () => cariListesiYukle(() => kontrolView(el)));
   const ayir = v => { const i = v.indexOf('|'), j = v.lastIndexOf('|'); return [v.slice(0, i), v.slice(i + 1, j), v.slice(j + 1)]; };

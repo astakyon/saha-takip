@@ -84,8 +84,10 @@ export function paketHazirla(P) {
   }
   // --- Siparişler (SAP): satış belgesi + sipariş no ile tekil
   const varSip = new Set((S.siparisler || []).map(s => s.belge_no + '|' + s.siparis_no));
+  const no = v => String(v ?? '').trim().replace(/\.0+$/, '').replace(/^0+(?=\d)/, '');
   for (const p of P.siparisler || []) {
-    if (varSip.has(p.belge_no + '|' + p.siparis_no)) { sayi.sipAyni++; continue; }
+    // Aynı belge + no ya da aynı sipariş no'lu, belgesi boş/aynı kayıt varsa eklenmez (kopya oluşmasın)
+    if (varSip.has(p.belge_no + '|' + p.siparis_no) || (no(p.siparis_no) && (S.siparisler || []).some(s => no(s.siparis_no) === no(p.siparis_no) && (!s.belge_no || !p.belge_no || String(s.belge_no) === String(p.belge_no))))) { sayi.sipAyni++; continue; }
     const { firma_k, ...alan } = p; varSip.add(p.belge_no + '|' + p.siparis_no);
     yaz.siparisler.push({ id: uuid(), ...alan, firma_id: fId.get(firma_k) || null }); sayi.sipYeni++;
   }
