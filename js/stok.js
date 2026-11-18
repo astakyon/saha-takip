@@ -16,6 +16,15 @@ export const stokBirimleri = () => [...new Set([...BIRIM_VARSAYILAN, ...(ayar('s
 export async function birimEkle(b) { b = String(b || '').trim(); if (!b || stokBirimleri().some(x => x.toLocaleLowerCase('tr') === b.toLocaleLowerCase('tr'))) return; await ayarYaz('stok_birimleri', [...(ayar('stok_birimleri', []) || []), b]); }
 export const pbNorm = v => { const x = String(v ?? '').trim().toUpperCase(); if (!x) return null; if (/^(TL|TRY|₺|YTL)$/.test(x)) return 'TRY'; if (/^(EUR|EURO|€|AVRO)$/.test(x)) return 'EUR'; if (/^(USD|\$|DOLAR|US\$)$/.test(x)) return 'USD'; return PARA_BIRIMLERI.includes(x) ? x : null; };
 export const aktifMi = s => s?.aktif !== false;
+// Depo: bir bayinin birden fazla deposu olabilir (merkez, şube, şantiye); boş = ana depo. Kalem anahtarı bayi + ürün kodu + depo.
+export const ANA_DEPO = 'Ana depo';
+export const depoAdi = d => d || ANA_DEPO;
+export const ayniKalem = (s, firma_id, kod, depo) => s.firma_id === firma_id && s.kod === kod && (s.depo || null) === (depo || null);
+// Bayinin depoları: ana depo + bayi kartındaki depolar + stokta geçen depo adları
+export function bayiDepolari(b) {
+  const l = new Set([...(Array.isArray(b?.depolar) ? b.depolar : []), ...(S.bayi_stok || []).filter(s => s.firma_id === b?.firma_id && s.depo).map(s => s.depo)].filter(Boolean));
+  return [null, ...[...l].sort((x, y) => x.localeCompare(y, 'tr'))];
+}
 // Kritik seviye: kalemde alt sınır girilmişse miktar sınırda ya da altındaysa kritik
 export const kritikVar = s => s?.kritik != null && s.kritik !== '' && !isNaN(+s.kritik);
 export const kritikMi = s => aktifMi(s) && kritikVar(s) && (+s.adet || 0) <= +s.kritik;
@@ -92,12 +101,12 @@ export function stokUyarilariHesapla(gun = 60) {
 export async function bayiStokYaz(rows, { hareket = null, aciklama = null } = {}) {
   const t = today(), gecmis = [], kim = kimAdi();
   for (const r of rows) {
-    const eski = (r.id && (S.bayi_stok || []).find(s => s.id === r.id)) || (S.bayi_stok || []).find(s => s.firma_id === r.firma_id && s.kod === r.kod);
+    const eski = (r.id && (S.bayi_stok || []).find(s => s.id === r.id)) || (S.bayi_stok || []).find(s => ayniKalem(s, r.firma_id, r.kod, r.depo));
     const row = { ...(eski || {}), ...r };
     if (!eski || +eski.adet !== +row.adet) {
       const fark = (+row.adet || 0) - (+eski?.adet || 0);
       row.son_hareket = t;
-      gecmis.push({ id: uuid(), firma_id: row.firma_id, kod: row.kod, stok: +row.adet || 0, fark, hareket: hareket || (!eski ? 'giris' : fark > 0 ? 'giris' : 'cikis'), birim: row.birim || null,
+      gecmis.push({ id: uuid(), firma_id: row.firma_id, kod: row.kod, depo: row.depo || null, stok: +row.adet || 0, fark, hareket: hareket || (!eski ? 'giris' : fark > 0 ? 'giris' : 'cikis'), birim: row.birim || null,
         birim_fiyat_usd: row.birim_fiyat != null && (row.para_birimi || 'USD') === 'USD' ? row.birim_fiyat : null, aciklama: [aciklama, kim].filter(Boolean).join(' · ') || null, tarih: t });
     }
     await app.db.save('bayi_stok', row);
@@ -110,9 +119,23 @@ export async function bayiStokYaz(rows, { hareket = null, aciklama = null } = {}
 export async function bayiStokSil(rows, aciklama = null) {
   if (!rows.length) return 0;
   const t = today(), kim = kimAdi();
-  try { await app.db.bulk('stok_gecmis', rows.map(s => ({ id: uuid(), firma_id: s.firma_id, kod: s.kod, stok: 0, fark: -(+s.adet || 0), hareket: 'silme', birim: s.birim || null, aciklama: [aciklama, kim].filter(Boolean).join(' · ') || null, tarih: t }))); } catch {}
+  try { await app.db.bulk('stok_gecmis', rows.map(s => ({ id: uuid(), firma_id: s.firma_id, kod: s.kod, depo: s.depo || null, stok: 0, fark: -(+s.adet || 0), hareket: 'silme', birim: s.birim || null, aciklama: [aciklama, kim].filter(Boolean).join(' · ') || null, tarih: t }))); } catch {}
   for (const s of rows) await app.db.del('bayi_stok', s.id);
   return rows.length;
+}
+// Transfer: kalemler bir bayiden / depodan diğerine; kaynak azalır, hedefte satır yoksa kalem kartı bilgileriyle açılır, iki taraf da hareket kaydına "transfer" olarak yazılır
+export async function stokTransfer(kalemler, { firma_id, depo = null, kaynakAd = '', hedefAd = '' }) {
+  let n = 0;
+  for (const { s, miktar } of kalemler) {
+    const m = Math.min(+miktar || 0, +s.adet || 0); if (!(m > 0)) continue;
+    if (s.firma_id === firma_id && (s.depo || null) === (depo || null)) continue;
+    const hedef = (S.bayi_stok || []).find(x => ayniKalem(x, firma_id, s.kod, depo));
+    await bayiStokYaz([{ ...s, adet: (+s.adet || 0) - m }], { hareket: 'transfer', aciklama: `→ ${hedefAd}` });
+    const { id, created_at, updated_at, owner, gruplar, son_hareket, ...kart } = s;
+    await bayiStokYaz([hedef ? { ...hedef, adet: (+hedef.adet || 0) + m } : { ...kart, id: uuid(), firma_id, depo: depo || null, adet: m, gruplar: firma_id === s.firma_id ? gruplar || [] : [] }], { hareket: 'transfer', aciklama: `← ${kaynakAd}` });
+    n++;
+  }
+  return n;
 }
 // Pasife alma / aktif etme: kayıt ve geçmiş durur, pasif kalem listelerden ve toplamlardan çıkar
 export async function bayiStokAktif(rows, aktif) {
@@ -146,7 +169,7 @@ export async function tasimaUygula(plan) {
   let n = 0;
   for (const { b, urunler } of plan.gruplar) {
     const depo = urunler[0]?.depo || null;
-    const rows = urunler.map(u => { const eski = (S.bayi_stok || []).find(s => s.firma_id === b.firma_id && s.kod === u.kod);
+    const rows = urunler.map(u => { const eski = (S.bayi_stok || []).find(s => ayniKalem(s, b.firma_id, u.kod, null));
       return { ...(eski || {}), firma_id: b.firma_id, kod: u.kod, aciklama: u.aciklama, adet: (+eski?.adet || 0) + (+u.stok || 0), birim_fiyat: eski?.birim_fiyat ?? null, son_hareket: u.stok_tarihi || eski?.son_hareket || today() }; });
     for (const r of rows) await app.db.save('bayi_stok', r);
     // Geçmiş: bu deponun eski stok geçmişi bayiye bağlanır

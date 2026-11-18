@@ -2155,6 +2155,15 @@ do $$ declare t text; begin
 end $$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 53 $f$;
 
+-- ---------- Sürüm 54: Bir bayiye birden fazla depo (merkez, şube, şantiye) ve transfer ----------
+alter table public.bayi_stok add column if not exists depo text;               -- boş: ana depo
+alter table public.bayiler add column if not exists depolar text[] default '{}'; -- bayinin depo adları
+alter table public.stok_sayimlari add column if not exists depo text;
+-- Kalem anahtarı artık bayi + ürün kodu + depo: aynı ürün iki depoda ayrı satır olabilir
+alter table public.bayi_stok drop constraint if exists bayi_stok_owner_firma_id_kod_key;
+create unique index if not exists bayi_stok_tekil on public.bayi_stok (owner, firma_id, kod, coalesce(depo, ''));
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 54 $f$;
+
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

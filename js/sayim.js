@@ -8,10 +8,10 @@ import { bayiStokYaz, satirFiyat, usdCevir, aktifMi } from './stok.js';
 import { sekmede } from './stokgrup.js';
 
 const kimAdi = () => { try { const u = app.db?.user?.(); return u?.user_metadata?.imza || ayar('benim_adim') || u?.email || null; } catch { return null; } };
-export const acikSayim = (firma_id, grup_id = null) => (S.stok_sayimlari || []).find(x => x.firma_id === firma_id && (x.grup_id || null) === (grup_id || null) && x.durum === 'Açık');
+export const acikSayim = (firma_id, grup_id = null, depo = undefined) => (S.stok_sayimlari || []).find(x => x.firma_id === firma_id && (x.grup_id || null) === (grup_id || null) && (depo === undefined || (x.depo || null) === (depo || null)) && x.durum === 'Açık');
 export const sayimlar = firma_id => (S.stok_sayimlari || []).filter(x => !firma_id || x.firma_id === firma_id).sort((a, b) => String(b.baslangic || b.created_at || '').localeCompare(String(a.baslangic || a.created_at || '')));
 // Sayılacak kalemler: bayinin aktif stoğu (grup seçiliyse o grup)
-export const sayimKalemleri = (firma_id, grup_id) => (S.bayi_stok || []).filter(s => s.firma_id === firma_id && aktifMi(s) && (!grup_id || sekmede(s, grup_id, firma_id)))
+export const sayimKalemleri = (firma_id, grup_id, depo = undefined) => (S.bayi_stok || []).filter(s => s.firma_id === firma_id && aktifMi(s) && (depo === undefined || (s.depo || null) === (depo || null)) && (!grup_id || sekmede(s, grup_id, firma_id)))
   .sort((a, b) => String(a.kod).localeCompare(String(b.kod), 'tr', { numeric: true }));
 // Fark: sayılan girilmiş kalemler için sayılan − sistem; tutar birim fiyattan (USD)
 export function sayimFarki(say, kalemler) {
@@ -22,9 +22,9 @@ export function sayimFarki(say, kalemler) {
   return { l, sayilanN: g.length, eksik: g.filter(x => x.fark < 0), fazla: g.filter(x => x.fark > 0), esit: g.filter(x => x.fark === 0),
     eksikTutar: g.filter(x => x.fark < 0).reduce((a, x) => a + x.tutar, 0), fazlaTutar: g.filter(x => x.fark > 0).reduce((a, x) => a + x.tutar, 0) };
 }
-export async function sayimBaslat(firma_id, grup_id = null) {
-  const var_ = acikSayim(firma_id, grup_id); if (var_) return var_;
-  const o = { id: uuid(), firma_id, grup_id: grup_id || null, durum: 'Açık', baslangic: new Date().toISOString(), sayan: kimAdi(), sayilan: {}, satirlar: [] };
+export async function sayimBaslat(firma_id, grup_id = null, depo = undefined) {
+  const var_ = acikSayim(firma_id, grup_id, depo); if (var_) return var_;
+  const o = { id: uuid(), firma_id, grup_id: grup_id || null, depo: depo === undefined ? undefined : depo || null, durum: 'Açık', baslangic: new Date().toISOString(), sayan: kimAdi(), sayilan: {}, satirlar: [] };
   await app.db.save('stok_sayimlari', o); return o;
 }
 export async function sayimYaz(say, kod, deger) {
@@ -34,7 +34,7 @@ export async function sayimYaz(say, kod, deger) {
 }
 // Onay: sayılan kalemlerin stoğu sayılana çekilir (sayılmayanlar isteğe bağlı 0); fark hareket kaydına "sayim" olarak yazılır
 export async function sayimOnayla(say, { sayilmayanSifir = false } = {}) {
-  const kalemler = sayimKalemleri(say.firma_id, say.grup_id), F = sayimFarki(say, kalemler);
+  const kalemler = sayimKalemleri(say.firma_id, say.grup_id, say.depo === undefined ? undefined : say.depo), F = sayimFarki(say, kalemler);
   const yaz = F.l.filter(x => x.sayilan != null ? x.fark !== 0 : sayilmayanSifir && +x.s.adet !== 0).map(x => ({ ...x.s, adet: x.sayilan != null ? x.sayilan : 0 }));
   const etiket = `Sayım ${tarih(String(say.baslangic || '').slice(0, 10) || today())}${say.sayan ? ' · ' + say.sayan : ''}`;
   if (yaz.length) await bayiStokYaz(yaz, { hareket: 'sayim', aciklama: etiket });
@@ -50,22 +50,23 @@ export function surekliFark(firma_id) {
 }
 
 // ---------- Ekran ----------
-export function sayimPenceresi({ b, firma_id, grup_id = null, grupAd = null, bayiAdi = '', sonra }) {
-  let say = acikSayim(firma_id, grup_id);
+export function sayimPenceresi({ b, firma_id, grup_id = null, grupAd = null, depo = undefined, bayiAdi = '', sonra }) {
+  let say = acikSayim(firma_id, grup_id, depo);
+  const yer = [bayiAdi, depo !== undefined ? (depo || 'Ana depo') : null, grupAd].filter(Boolean).map(esc).join(' · ');
   const p = openDrawer('<div class="dbody"><p>Yükleniyor…</p></div>', { wide: true, onClose: () => sonra?.() });
   const ciz = () => {
     if (!say) {
       const gec = sayimlar(firma_id).filter(x => x.durum === 'Onaylandı'), sf = surekliFark(firma_id);
-      p.innerHTML = `<header class="dh"><div><p class="muted">${esc(bayiAdi)}${grupAd ? ' · ' + esc(grupAd) : ''}</p><h2 id="drawer-title">Stok sayımı</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
-        <div class="dbody"><p>${sayimKalemleri(firma_id, grup_id).length} aktif kalem sayılacak${grupAd ? ` (yalnız “${esc(grupAd)}” grubu)` : ''}. Sayım taslak olarak kaydedilir; telefonla depoda gezerken kaldığın yerden devam edersin. Onaylayana kadar stok değişmez.</p>
+      p.innerHTML = `<header class="dh"><div><p class="muted">${yer}</p><h2 id="drawer-title">Stok sayımı</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+        <div class="dbody"><p>${sayimKalemleri(firma_id, grup_id, depo).length} aktif kalem sayılacak${grupAd ? ` (yalnız “${esc(grupAd)}” grubu)` : ''}. Sayım taslak olarak kaydedilir; telefonla depoda gezerken kaldığın yerden devam edersin. Onaylayana kadar stok değişmez.</p>
         <button type="button" class="btn primary" data-basla>Sayımı başlat</button>
         ${gec.length ? `<h3>Geçmiş sayımlar</h3><ul class="list">${gec.slice(0, 20).map(x => { const fk = (x.satirlar || []).filter(r => r.fark); return `<li><span><b>${tarih(String(x.onay_tarihi || x.baslangic).slice(0, 10))}</b><span class="muted"> · ${esc(x.sayan || '')} · ${(x.satirlar || []).filter(r => r.sayilan != null).length} kalem sayıldı · ${fk.length} farklı</span></span><span class="num">${x.eksik_tutar ? `<span class="neg">−${usd(Math.abs(x.eksik_tutar))}</span> ` : ''}${x.fazla_tutar ? `<span class="pos">+${usd(x.fazla_tutar)}</span>` : ''}</span></li>`; }).join('')}</ul>` : ''}
         ${sf.length ? `<h3>Sürekli fark çıkan ürünler</h3><ul class="list">${sf.slice(0, 20).map(e => `<li><span><b class="mono">${esc(e.kod)}</b><span class="muted"> ${esc(e.aciklama || '')} · ${e.n} sayımda fark</span></span><b class="num ${e.toplam < 0 ? 'neg' : 'pos'}">${e.toplam > 0 ? '+' : ''}${num(e.toplam)}</b></li>`).join('')}</ul>` : ''}</div>`;
-      p.querySelector('[data-basla]').onclick = async () => { say = await sayimBaslat(firma_id, grup_id); ciz(); };
+      p.querySelector('[data-basla]').onclick = async () => { say = await sayimBaslat(firma_id, grup_id, depo); ciz(); };
       return;
     }
-    const kalemler = sayimKalemleri(firma_id, grup_id), F = sayimFarki(say, kalemler);
-    p.innerHTML = `<header class="dh"><div><p class="muted">${esc(bayiAdi)}${grupAd ? ' · ' + esc(grupAd) : ''} · ${tarih(String(say.baslangic).slice(0, 10))}${say.sayan ? ' · ' + esc(say.sayan) : ''}</p><h2 id="drawer-title">Sayım</h2></div><div class="dh-actions"><button type="button" class="btn sm ghost" data-sxlsx>Fark raporu (Excel)</button><button type="button" class="btn sm ghost danger" data-siptal>Sayımı iptal et</button></div><button class="x" data-close aria-label="Kapat">×</button></header>
+    const kalemler = sayimKalemleri(firma_id, grup_id, say.depo === undefined ? depo : say.depo), F = sayimFarki(say, kalemler);
+    p.innerHTML = `<header class="dh"><div><p class="muted">${yer} · ${tarih(String(say.baslangic).slice(0, 10))}${say.sayan ? ' · ' + esc(say.sayan) : ''}</p><h2 id="drawer-title">Sayım</h2></div><div class="dh-actions"><button type="button" class="btn sm ghost" data-sxlsx>Fark raporu (Excel)</button><button type="button" class="btn sm ghost danger" data-siptal>Sayımı iptal et</button></div><button class="x" data-close aria-label="Kapat">×</button></header>
       <div class="dbody">
         <div class="sy-ozet" data-ozet></div>
         <div class="frow"><input type="search" data-sara placeholder="Kodu okut ya da yaz, Enter" aria-label="Kod okut ya da ara" autocomplete="off" enterkeyhint="go">${'BarcodeDetector' in window ? '<button type="button" class="btn" data-kamera>Kamerayla okut</button>' : ''}

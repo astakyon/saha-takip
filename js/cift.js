@@ -148,7 +148,7 @@ export function karsilastir(tablo, idA, idB, sonra) {
         const bA = (S.bayiler || []).find(x => x.firma_id === A.id), bB = (S.bayiler || []).find(x => x.firma_id === B.id);
         if (bB && !bA) await app.db.save('bayiler', { ...bB, firma_id: A.id }); else if (bB) await app.db.del('bayiler', bB.id);
         // Bayi stoğu: aynı ürün iki kayıtta varsa adetler toplanır
-        for (const r of (S.bayi_stok || []).filter(x => x.firma_id === B.id)) { const e = (S.bayi_stok || []).find(x => x.firma_id === A.id && x.kod === r.kod);
+        for (const r of (S.bayi_stok || []).filter(x => x.firma_id === B.id)) { const e = (S.bayi_stok || []).find(x => x.firma_id === A.id && x.kod === r.kod && (x.depo || null) === (r.depo || null));
           if (e) { await app.db.save('bayi_stok', { ...e, adet: (+e.adet || 0) + (+r.adet || 0) }); await app.db.del('bayi_stok', r.id); } else await app.db.save('bayi_stok', { ...r, firma_id: A.id }); }
         for (const [t, alan] of Object.entries(FIRMA_BAG_EK)) for (const r of (S[t] || []).filter(r => alan.some(a => r[a] === B.id))) { const o = { ...r }; for (const a of alan) if (o[a] === B.id) o[a] = A.id; await app.db.save(t, o); }
         // Şubeleri kalan firmaya bağlanır

@@ -25,11 +25,11 @@ export const TABLES = {
   tahsilatlar: ['id','sorumlu','ekip_id','firma_id','cari','belge_no','tarih','vade','tutar','para_birimi','odenen','durum','odeme_tarihi','notlar','tur'],
   belgeler: ['id','proje_id','firma_id','ad','yol','tur','boyut','notlar','kategori'],
   yorumlar: ['id','tablo','kayit_id','metin','yazan','yazan_ad','etiketler','created_at'],
-  bayi_stok: ['id','firma_id','kod','aciklama','adet','birim_fiyat','son_hareket','notlar','firma_kodu','uretici_kodu','uretici_aciklama','birim','para_birimi','aktif','gruplar','kritik'],
+  bayi_stok: ['id','firma_id','kod','aciklama','adet','birim_fiyat','son_hareket','notlar','firma_kodu','uretici_kodu','uretici_aciklama','birim','para_birimi','aktif','gruplar','kritik','depo'],
   stok_gruplari: ['id','ad','firma_id','tum_bayiler','bayiler','sira','renk'],
-  stok_sayimlari: ['id','firma_id','grup_id','durum','baslangic','onay_tarihi','sayan','onaylayan','sayilan','satirlar','eksik_tutar','fazla_tutar','notlar'],
+  stok_sayimlari: ['id','firma_id','grup_id','depo','durum','baslangic','onay_tarihi','sayan','onaylayan','sayilan','satirlar','eksik_tutar','fazla_tutar','notlar'],
   bayi_satis: ['id','firma_id','tarih','kod','urun','adet','tutar','para_birimi','musteri','proje_id','il','notlar'],
-  bayiler: ['id','firma_id','tur','il','bolge','sorumlu','baslangic','bitis','durum','iskonto','vade_gun','kredi_limiti','para_birimi','hedef_yil','depo','notlar'],
+  bayiler: ['id','firma_id','tur','il','bolge','sorumlu','baslangic','bitis','durum','iskonto','vade_gun','kredi_limiti','para_birimi','hedef_yil','depo','notlar','depolar'],
 };
 const ARRAYS = new Set(['tipler','fotolar','urun_gruplari','etiketler']);
 // updated_at sütunu olan tablolar: bunlarda yalnızca değişen kayıtlar çekilir ve aynı anda düzenleme denetlenir

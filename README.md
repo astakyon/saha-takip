@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 118)
+
+- **Depolar**: kalem anahtarı bayi + ürün kodu + depo (`bayi_stok.depo`, boş = ana depo); aynı ürün iki depoda ayrı satırdır. Bayinin depoları: ana depo + bayi kartındaki `depolar` + stokta geçen depo adları. Stok ekranında depo seçici (Bütün depolar, Ana depo, …, "+ Depo ekle"); bütün depolarda Depo sütunu ve özetin altında depo depo değer. Ürün eklerken depo seçilir; Excel yükleme ve sayım depo depo yapılır.
+- **Transfer**: işaretli kalemler "Transfer" ile hedef bayi ve hedef depoya, kalem kalem miktarla (varsayılan hepsi). Kaynak azalır; hedefte satır yoksa kalem kartı bilgileriyle (açıklama, kodlar, birim, fiyat) açılır. İki taraf da stok geçmişine `transfer` hareketi olarak (→ hedef / ← kaynak) yazılır. Bayi kullanıcısı yalnız kendi depoları arasında aktarır.
+- Şema 54: `bayi_stok.depo`, `bayiler.depolar`, `stok_sayimlari.depo`; benzersizlik (owner, firma_id, kod, depo).
+
 ## Güncelleme notu (sürüm 117)
 
 - **Stok sayımı** (`js/sayim.js`, `stok_sayimlari`): bayi (grup sekmesi açıksa yalnız o grup) için sayım başlatılır. Sayılan miktar elle girilir ya da kod okutulur: arama kutusu barkod okuyucunun yazdığı kodu (ürün kodu, firma stok kodu, üretici kodu) bulup satıra götürür; "her okutma +1" her okutmada bir sayar; tarayıcı destekliyorsa kamerayla okutma. Sayım taslak olarak kaydedilir; "Sayıma devam" ile kalınan yerden sürülür.

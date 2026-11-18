@@ -1119,6 +1119,47 @@ const DB = () => {
   kontrol('Sayım ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 118: bayiye birden fazla depo (depo seçimi, depo depo ve toplam değer, depoya ürün), depolar ve bayiler arası transfer, depo bazında sayım
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }, { id: 'b2', owner: 'u1', firma_id: 'f2', tur: 'Partner', durum: 'Aktif', created_at: ts, updated_at: ts }];
+    const k = (id, f, kod, adet, depo) => ({ id, owner: 'u1', firma_id: f, kod, aciklama: 'Ürün ' + kod, adet, birim_fiyat: 10, para_birimi: 'USD', depo, birim: 'Adet', son_hareket: '2026-11-15', created_at: ts, updated_at: ts });
+    d.bayi_stok = [k('d1', 'f1', 'M1', 20, null), k('d2', 'f1', 'M1', 4, 'Şantiye'), k('d3', 'f1', 'M2', 6, null)];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bayistok'); await w(1200);
+  const git = async o => { await p.evaluate(async o => { const { F, saveFilters } = await import('./js/state.js'); Object.assign(F('bayistok', {}), { grup: '', sadece: 'tum', pb: 'USD', depo: '' }, o); saveFilters(); }, o); await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1000); };
+  await git({ id: 'b1' });
+  const hepsi = await p.evaluate(() => ({ sec: [...document.querySelectorAll('[data-dsec] option')].map(o => o.textContent).join('|'), satir: [...document.querySelectorAll('[data-row]')].map(r => r.dataset.row).sort().join(), depoSut: [...document.querySelectorAll('.bs-t th')].some(t => t.textContent === 'Depo'), sum: document.querySelector('[data-sum]').innerText.replace(/\s+/g, ' ') }));
+  await p.selectOption('[data-dsec]', 'Şantiye'); await w(800);
+  const sant = await p.evaluate(() => [...document.querySelectorAll('[data-row]')].map(r => r.dataset.row).join());
+  // Yeni depo ekle (prompt), sonra ana depodan şantiyeye ve başka bayiye transfer
+  await p.evaluate(() => { window.prompt = () => 'Şube'; });
+  await p.selectOption('[data-dsec]', '_yeni'); await w(900);
+  const sube = await p.evaluate(async () => ({ depolar: (await import('./js/db.js')).S.bayiler.find(b => b.id === 'b1').depolar, secili: document.querySelector('[data-dsec]').value }));
+  await git({ id: 'b1', depo: '_ana' });
+  await p.check('[data-sec="d1"]'); await p.check('[data-sec="d3"]'); await p.click('[data-stransfer]'); await w(500);
+  await p.fill('.drawer.open [name=hd]', 'Şantiye'); await p.fill('[data-tm="d1"]', '5'); await p.fill('[data-tm="d3"]', '0'); await p.click('.drawer.open [type=submit]'); await w(1200);
+  const t1 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return S.bayi_stok.filter(x => x.kod === 'M1').map(x => x.firma_id + ':' + (x.depo || 'ana') + ':' + x.adet).sort().join(); });
+  await p.check('[data-sec="d3"]'); await p.click('[data-stransfer]'); await w(500);
+  await p.selectOption('.drawer.open [name=hb]', 'f2'); await p.fill('[data-tm="d3"]', '2'); await p.click('.drawer.open [type=submit]'); await w(1200);
+  const t2 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { m2: S.bayi_stok.filter(x => x.kod === 'M2').map(x => x.firma_id + ':' + (x.depo || 'ana') + ':' + x.adet).sort().join(), yeni: S.bayi_stok.find(x => x.firma_id === 'f2' && x.kod === 'M2'), g: S.stok_gecmis.filter(h => h.hareket === 'transfer').map(h => h.firma_id + ':' + h.kod + ':' + h.fark + ':' + h.aciklama).sort() }; });
+  // Kalem kartından şube deposuna ürün; bütün depolar görünümünde sayım depo seçtirir
+  await git({ id: 'b1', depo: 'Şube' });
+  await p.click('[data-ekle]'); await w(400); await p.fill('.drawer.open [name=kod]', 'M3'); await p.fill('.drawer.open [name=adet]', '9'); await p.click('.drawer.open [type=submit]'); await w(900);
+  const m3 = await p.evaluate(async () => (await import('./js/db.js')).S.bayi_stok.find(x => x.kod === 'M3')?.depo);
+  await git({ id: 'b1', depo: '' });
+  if (!(await p.isVisible('[data-sayim]'))) await p.click('header.vh .vh-daha-btn');
+  await p.click('[data-sayim]'); await w(400);
+  const sayimUyari = await p.evaluate(() => !document.querySelector('.drawer.open [data-basla]'));
+  const tekil = await p.evaluate(async () => { const { ayniKalem, bayiDepolari } = await import('./js/stok.js'); const { S } = await import('./js/db.js'); return { a: ayniKalem({ firma_id: 'f1', kod: 'M1', depo: null }, 'f1', 'M1', undefined), d: bayiDepolari(S.bayiler[0]).map(x => x || 'ana').join() }; });
+  kontrol('Birden fazla depo: depo seçicide bütün depolar / ana depo / şantiye; bütün depolarda Depo sütunu ve depo depo değer; seçilen depoda yalnız o depo; "+ Depo ekle" bayiye depo ekler',
+    hepsi.sec === 'Bütün depolar|Ana depo|Şantiye|+ Depo ekle…' && hepsi.satir === 'd1,d2,d3' && hepsi.depoSut && /Ana depo: 260 \$ · Şantiye: 40 \$/.test(hepsi.sum) && sant === 'd2' && (sube.depolar || []).includes('Şube') && sube.secili === 'Şube', JSON.stringify({ hepsi, sant, sube }));
+  kontrol('Transfer: depolar arası (kaynak azalır, hedef depodaki satır artar) ve başka bayiye (hedefte kalem kartıyla yeni satır); iki taraf hareket kaydına "transfer" olarak yazılır',
+    t1 === 'f1:ana:15,f1:Şantiye:9' && t2.m2 === 'f1:ana:4,f2:ana:2' && t2.yeni?.aciklama === 'Ürün M2' && t2.yeni?.birim === 'Adet' && t2.g.length === 4 && t2.g.some(x => /^f2:M2:2:← /.test(x)) && t2.g.some(x => /^f1:M1:-5:→ .*Şantiye/.test(x)), JSON.stringify({ t1, t2 }));
+  kontrol('Depoya ürün eklenir; sayım ve Excel depo depo yapılır (bütün depolarda önce depo seçtirir)', m3 === 'Şube' && sayimUyari && tekil.d === 'ana,Şantiye,Şube', JSON.stringify({ m3, sayimUyari, tekil }));
+  kontrol('Depo ve transfer ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });
