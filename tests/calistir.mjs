@@ -924,12 +924,13 @@ const DB = () => {
     const a = m.kodSutunuDenetle(['No', 'Ürün Kodu', 'Adet'], veri, { kod: 0, ac: 1, bir: -1, stok: 2, fiyat: -1 });
     const b = m.kodSutunuDenetle(['Sıra', 'Malzeme', 'Miktar'], veri2, { kod: 0, ac: 1, bir: -1, stok: 2, fiyat: -1 });   // kodlar ürün listesinde yok
     const c = m.kodSutunuDenetle(['Kod', 'Açıklama', 'Adet'], [['117887', 'LED PANEL', 3], ['117220', 'PROJEKTÖR', 4]], { kod: 0, ac: 1, bir: -1, stok: 2, fiyat: -1 });   // doğru dosya değişmez
-    return { a: [a.M.kod, a.M.ac, a.degisti], b: [b.M.kod, b.M.ac], c: [c.M.kod, c.M.ac, c.degisti], sira: m.siraSutunu(['1', '2', '3']) && !m.siraSutunu(['117887', '117220']) };
+    const d = m.kodSutunuDenetle(['#', 'Ürün Kodu', 'Ürün Tanımı', 'Miktar'], [[1, '117887', 'PLSPR RIA MED S CS 100W FLOODLIGHT', 100], [2, '117220', 'PLSETJ FONTANA 33W SURF. MOUNT.', 200], [3, '115747', 'LECTO G2 50W FLOODLIGHT', 60], [null, null, null, null]], { kod: 0, ac: 1, bir: -1, stok: 3, fiyat: -1 });   // Ati stok dosyası düzeni
+    return { d: [d.M.kod, d.M.ac], a: [a.M.kod, a.M.ac, a.degisti], b: [b.M.kod, b.M.ac], c: [c.M.kod, c.M.ac, c.degisti], sira: m.siraSutunu(['1', '2', '3']) && !m.siraSutunu(['117887', '117220']) };
   });
   kontrol('Bayi stok: sıra no kod olarak kaydedilmiş eski satırlar uyarılır ve düzelir (kod açıklamadan alınır, tanım ürün listesinden gelir, sahte ürün silinir)',
     /2 satırda ürün kodu yanlış/.test(kart) && duz.st.join('|') === '115747:LED BANT ARMATÜR 120cm:60|115748::60' && !duz.sahte && !duz.kart && duz.tablo, JSON.stringify({ kart, duz }));
   kontrol('Bayi stok Excel\'i: "No" sütunu kod sanılmaz (hatalı kayıtlı eşleme olsa bile, kodlar ürün listesinde olmasa bile); doğru düzenli dosyaya dokunulmaz',
-    son.a.join() === '1,-1,true' && son.b.join() === '1,-1' && son.c.join() === '0,1,false' && son.sira, JSON.stringify(son));
+    son.d.join() === '1,2' && son.a.join() === '1,-1,true' && son.b.join() === '1,-1' && son.c.join() === '0,1,false' && son.sira, JSON.stringify(son));
   kontrol('Bayi stok kod düzeltmesinde hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
