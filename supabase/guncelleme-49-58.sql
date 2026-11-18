@@ -427,3 +427,6 @@ create or replace function public.yetki_surum() returns int language sql stable 
 
 -- sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();
+
+-- API'nin yeni tabloları hemen görmesi için şema önbelleğini yenile
+notify pgrst, 'reload schema';
