@@ -989,6 +989,63 @@ const DB = () => {
   kontrol('Stok kalem kartı ve silme ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 115: stok grupları — işaretle + Grupla (şirket / bayiye özel), sekmeler, gruptan çıkar, gruptaki stoğu sil, kapsam (seçili bayiler), ad değiştir, grup sil
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }, { id: 'b2', owner: 'u1', firma_id: 'f2', tur: 'Alt bayi', durum: 'Aktif', created_at: ts, updated_at: ts }];
+    const k = (id, f, kod, a) => ({ id, owner: 'u1', firma_id: f, kod, aciklama: a, adet: 5, son_hareket: '2026-11-10', created_at: ts, updated_at: ts });
+    d.bayi_stok = [k('g1', 'f1', 'L1', 'Panel'), k('g2', 'f1', 'L2', 'Projektör'), k('g3', 'f1', 'K1', 'Kablo kanalı 40x60'), k('g4', 'f2', 'L9', 'Armatür')];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bayistok'); await w(1500);
+  await p.evaluate(async () => { const { F, saveFilters } = await import('./js/state.js'); F('bayistok', {}).id = 'b1'; F('bayistok', {}).grup = ''; saveFilters(); });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  const ilk = await p.evaluate(() => !!document.querySelector('[data-gruplar2]'));
+  const sekmeler = () => p.evaluate(() => [...document.querySelectorAll('[data-grup]')].map(b => b.textContent.replace(/\s+/g, ' ').trim()));
+  // Şirket grubu: Aydınlatma
+  await p.check('[data-sec="g1"]'); await p.check('[data-sec="g2"]'); await p.click('[data-sgrupla]'); await w(400);
+  await p.fill('.drawer.open [name=yeni]', 'Aydınlatma'); await p.check('.drawer.open [name=kapsam][value=sirket]'); await p.click('.drawer.open [type=submit]'); await w(900);
+  // Bayiye özel grup: Kablo
+  await p.check('[data-sec="g3"]'); await p.click('[data-sgrupla]'); await w(400);
+  await p.fill('.drawer.open [name=yeni]', 'Kablo'); await p.click('.drawer.open [type=submit]'); await w(900);
+  const s1 = await sekmeler();
+  const gr = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return S.stok_gruplari.map(g => g.ad + ':' + (g.firma_id || 'sirket')).sort().join(','); });
+  const ay = await p.evaluate(async () => (await import('./js/db.js')).S.stok_gruplari.find(g => g.ad === 'Aydınlatma').id);
+  await p.click(`[data-grup="${ay}"]`); await w(500);
+  const satirAy = await p.evaluate(() => [...document.querySelectorAll('[data-row]')].map(r => r.dataset.row).sort().join());
+  // Gruptan çıkar
+  await p.check('[data-sec="g2"]'); await p.click('[data-scikar]'); await w(900);
+  const cikar = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { g2: S.bayi_stok.find(x => x.id === 'g2').gruplar.length, g2var: !!S.bayi_stok.find(x => x.id === 'g2'), satir: [...document.querySelectorAll('[data-row]')].map(r => r.dataset.row).join() }; });
+  // Gruptaki stoğu sil (grup adı yazılarak): yalnız L1 silinir
+  if (!(await p.isVisible('[data-hepsinisil]'))) await p.click('header.vh .vh-daha-btn');
+  const silEtiket = await p.evaluate(() => document.querySelector('[data-hepsinisil]').textContent);
+  await p.click('[data-hepsinisil]'); await w(400); await p.fill('[data-onayad]', 'aydınlatma'); await p.click('[data-komple]'); await w(1200);
+  const gsil = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return S.bayi_stok.filter(x => x.firma_id === 'f1').map(x => x.kod).sort().join(); });
+  // Başka bayi: şirket grubu sekmesi ürünü yoksa gizli, diğer bayinin grubu hiç yok
+  await p.evaluate(async () => { const { F, saveFilters } = await import('./js/state.js'); F('bayistok', {}).id = 'b2'; F('bayistok', {}).grup = ''; saveFilters(); });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1000);
+  const s2 = await sekmeler();
+  // Gruplar penceresi: bayi grubunu yeniden adlandır ve sil; şirket grubunu seçili bayilere daralt
+  await p.evaluate(async () => { const { F, saveFilters } = await import('./js/state.js'); F('bayistok', {}).id = 'b1'; saveFilters(); });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1000);
+  if (!(await p.isVisible('[data-gruplar]'))) await p.click('header.vh .vh-daha-btn');
+  await p.click('[data-gruplar]'); await w(500);
+  const kb = await p.evaluate(async () => (await import('./js/db.js')).S.stok_gruplari.find(g => g.ad === 'Kablo').id);
+  await p.fill(`[data-ad="${kb}"]`, 'Kablo kanalı'); await p.press(`[data-ad="${kb}"]`, 'Tab'); await w(700);
+  const yeniAd = await p.evaluate(async id => (await import('./js/db.js')).S.stok_gruplari.find(g => g.id === id).ad, kb);
+  await p.click(`[data-kapsam="${ay}"]`); await w(200); await p.uncheck('.sg-kapsam [data-tum]'); await p.check('.sg-kapsam input[value="f2"]'); await p.click('[data-kkaydet]'); await w(700);
+  await p.click(`[data-gsil="${kb}"]`); await w(900);
+  const son = await p.evaluate(async ([ay, kb]) => { const { S } = await import('./js/db.js'); const m = await import('./js/stokgrup.js'); const g = S.stok_gruplari.find(x => x.id === ay);
+    return { kapsam: [g.tum_bayiler, (g.bayiler || []).join()], kbYok: !S.stok_gruplari.some(x => x.id === kb), k1: S.bayi_stok.find(x => x.kod === 'K1').gruplar.length, f1gor: m.gorunenGruplar('f1').map(x => x.ad).join(), f2gor: m.gorunenGruplar('f2').map(x => x.ad).join(),
+      ayni: await m.grupKaydet({ ad: 'aydınlatma' }).then(() => 'kaydetti', e => e.message) }; }, [ay, kb]);
+  kontrol('Stok grupları: işaretlenen kalemler "Grupla" ile yeni şirket grubuna ve bayiye özel gruba atanır; üstte sekmeler (Tümü, gruplar, Grupsuz) sayılarıyla çıkar, sekme yalnız o grubu gösterir',
+    ilk && gr === 'Aydınlatma:sirket,Kablo:f1' && s1.join('|') === 'Tümü 3|Aydınlatma 2|Kablo 1|Grupsuz 0' && satirAy === 'g1,g2', JSON.stringify({ ilk, gr, s1, satirAy }));
+  kontrol('Gruptan çıkar kalemi silmez; "Bu gruptaki stoğu sil" grup adı yazılınca yalnız o gruptaki kalemleri siler; ürünü olmayan grubun sekmesi başka bayide görünmez, bayiye özel grup diğer bayide yok',
+    cikar.g2 === 0 && cikar.g2var && cikar.satir === 'g1' && /Bu gruptaki stoğu sil/.test(silEtiket) && gsil === 'K1,L2' && s2.join('|') === 'Tümü 1|Grupsuz 1', JSON.stringify({ cikar, silEtiket, gsil, s2 }));
+  kontrol('Gruplar penceresi: ad değiştirme, şirket grubunu seçili bayilere daraltma (o bayide görünmez olur), grup silme (kalemler grupsuz kalır), aynı adlı ikinci grup açılmaz',
+    yeniAd === 'Kablo kanalı' && son.kapsam[0] === false && son.kapsam[1] === 'f2' && son.kbYok && son.k1 === 0 && son.f1gor === '' && son.f2gor === 'Aydınlatma' && /zaten var/.test(son.ayni), JSON.stringify({ yeniAd, son }));
+  kontrol('Stok grupları ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

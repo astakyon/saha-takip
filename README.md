@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 115)
+
+- **Stok grupları** (`js/stokgrup.js`, "favori kanal" mantığı): iki katman. Şirket grupları (`stok_gruplari.firma_id` boş) bütün bayilerde ya da seçili bayilerde (`tum_bayiler`, `bayiler`) görünür; yeni bayiye "tüm bayiler" grupları kendiliğinden gelir. Bayinin kendi grupları (`firma_id` dolu) yalnız o bayide görünür. Bir kalem birden fazla grupta olabilir (`bayi_stok.gruplar`).
+- Stok ekranının üstünde sekmeler: Tümü, şirket grupları, bayinin grupları (kesik çizgili), Grupsuz; ürünü olmayan grubun sekmesi gizlenir. Kalemler işaretlenip "Grupla" (var olan gruba ya da yeni gruba) ve "Gruptan çıkar". "Gruplar" penceresinde ad değiştirme, ↑↓ ile sıralama, şirket grubunun bayileri, silme (kalemler grupsuz kalır).
+- Excel yüklemede hedef grup sorulur (grup sekmesi açıksa o grup): yüklenen ürünler gruba eklenir, listede olmayanları sıfırlama yalnız o grubun içinde yapılır. Grup sekmesindeyken "Bu gruptaki stoğu sil" grubun adı yazılarak onaylanır. "Bütün bayiler" görünümünde (hangi bayide var araması) şirket grupları süzgeç olarak kullanılır.
+- Gizlilik: bayi kullanıcısı yalnız kendi gruplarını ve kendisine açık şirket gruplarını görür; yalnız kendi gruplarını açar, değiştirir, siler (veritabanı kuralı).
+- Şema 51: `stok_gruplari` tablosu, `bayi_stok.gruplar`; stok birimleri, "farklı sipariş" işaretleri, kendi depo ve zorunlu alan ayarları ekiple paylaşılır.
+
 ## Güncelleme notu (sürüm 114)
 
 - **Stok kalem kartı** (Bayi → Stoklar, koda dokun): ürün kodu (ana anahtar), firma stok kodu (bayinin kendi kodu), açıklama, üretici kodu ve açıklaması, birim (şirket listesi + yeni birim; `stok_birimleri` ayarı), miktar, birim fiyat ve para birimi (USD/EUR/TRY), aktif. Değer güncel kurla USD'ye çevrilir.

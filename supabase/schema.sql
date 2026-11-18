@@ -2039,6 +2039,53 @@ alter table public.stok_gecmis add column if not exists birim text;
 create index if not exists stok_gecmis_tarih_idx on public.stok_gecmis (firma_id, tarih);
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 50 $f$;
 
+-- ---------- Sürüm 51: Stok grupları (şirket grupları + bayinin kendi grupları; kalem birden fazla grupta olabilir) ----------
+create table if not exists public.stok_gruplari (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  ad text not null,
+  firma_id uuid references public.firmalar(id) on delete cascade,   -- boş: şirket grubu; dolu: yalnız o bayinin grubu
+  tum_bayiler boolean default true,                                  -- şirket grubu bütün bayilerde mi
+  bayiler uuid[] default '{}',                                       -- tum_bayiler değilse görüneceği bayiler (firma id)
+  sira int default 0, renk text,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create index if not exists stok_gruplari_owner_idx on public.stok_gruplari (owner);
+alter table public.bayi_stok add column if not exists gruplar uuid[] default '{}';
+alter table public.stok_gruplari enable row level security;
+alter table public.stok_gruplari alter column owner set default public.veri_sahibi();
+drop policy if exists "oku" on public.stok_gruplari;
+drop policy if exists "ekle" on public.stok_gruplari;
+drop policy if exists "degistir" on public.stok_gruplari;
+drop policy if exists "sil" on public.stok_gruplari;
+drop policy if exists "yonetici_oku" on public.stok_gruplari;
+drop policy if exists "dis_oku" on public.stok_gruplari;
+drop policy if exists "dis_ekle" on public.stok_gruplari;
+drop policy if exists "dis_degistir" on public.stok_gruplari;
+drop policy if exists "dis_sil" on public.stok_gruplari;
+-- Yetki bayi stoğununkiyle aynı: stoğu gören grupları görür, stoğa yazan grup açar
+create policy "oku" on public.stok_gruplari for select to authenticated using (public.yetki(owner, 'bayi_stok', 'oku'));
+create policy "ekle" on public.stok_gruplari for insert to authenticated with check (public.yetki(owner, 'bayi_stok', 'yaz'));
+create policy "degistir" on public.stok_gruplari for update to authenticated using (public.yetki(owner, 'bayi_stok', 'yaz')) with check (public.yetki(owner, 'bayi_stok', 'yaz'));
+create policy "sil" on public.stok_gruplari for delete to authenticated using (public.yetki(owner, 'bayi_stok', 'yaz'));
+create policy "yonetici_oku" on public.stok_gruplari for select to authenticated using (public.yonetici_mi());
+-- Bayi (dış kullanıcı): kendi gruplarını ve kendisine açılmış şirket gruplarını görür; yalnız kendi gruplarını açar, değiştirir, siler
+create policy "dis_oku" on public.stok_gruplari as restrictive for select to authenticated using (
+  public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner) or (firma_id is null and (tum_bayiler or public.dis_firmam(owner) = any(bayiler))));
+create policy "dis_ekle" on public.stok_gruplari as restrictive for insert to authenticated with check (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+create policy "dis_degistir" on public.stok_gruplari as restrictive for update to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner)) with check (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+create policy "dis_sil" on public.stok_gruplari as restrictive for delete to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+drop trigger if exists touch on public.stok_gruplari;
+create trigger touch before update on public.stok_gruplari for each row execute function public.touch_updated_at();
+-- Şirket ayarları ekiple paylaşılır: stok birimleri, "farklı sipariş" işaretleri, kendi depo seçeneği, zorunlu alanlar
+create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) returns boolean language sql stable security definer set search_path = public as $f$
+  select public.sirket_yetkilisi(sahip) or (public.ekipte(sahip::text) and (
+    anahtar in ('google_key', 'wa_sablonlar', 'teklif_firma', 'listeler', 'kataloglar_ek', 'ziyaret_siklik', 'usd_kur', 'kur_elle', 'elektrik_tl_kwh', 'firma_profil', 'cift_farkli', 'otomasyon', 'oto_silinen',
+                'stok_birimleri', 'sip_farkli', 'kendi_depo', 'zorunlu_alanlar')
+    or (anahtar like 'sartname:%' and public.yetki(sahip, 'projeler', 'oku'))))
+$f$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 51 $f$;
+
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

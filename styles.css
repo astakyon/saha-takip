@@ -2151,3 +2151,18 @@ body.giris-var #view { padding-top: 64px; }
 .bs-birim { display: block; }
 [data-komple].btn.danger, .bs-secim .btn.danger { background: var(--red); color: #fff; }
 .btn.danger:disabled { opacity: .5; }
+/* Stok grupları: sekmeler (favori kanal) */
+.sg-sekmeler { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 8px; margin: 4px 0; scrollbar-width: thin; }
+.sg-sekmeler button { flex: none; border: 1px solid var(--line, #ddd); background: var(--card, #fff); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13.5px; cursor: pointer; white-space: nowrap; }
+.sg-sekmeler button small { opacity: .65; margin-left: 2px; }
+.sg-sekmeler button.on { background: var(--ink, #1f2937); color: #fff; border-color: transparent; }
+.sg-sekmeler button.sg-bayi { border-style: dashed; }
+.sg-sekmeler .sg-ilk { color: var(--blue); border-style: dashed; }
+.sg-rozet { font-style: normal; font-size: 11.5px; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--blue, #2563eb) 12%, transparent); color: var(--blue, #2563eb); margin-left: 4px; white-space: nowrap; }
+.sg-liste { list-style: none; padding: 0; margin: 6px 0 10px; display: grid; gap: 6px; }
+.sg-satir { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sg-satir input[data-ad] { flex: 1 1 140px; min-width: 0; }
+.sg-sira { display: inline-flex; gap: 2px; }
+.sg-kapsam { list-style: none; padding: 8px 10px; border: 1px dashed var(--line, #ddd); border-radius: 8px; display: grid; gap: 6px; }
+.sg-bayiler { display: grid; gap: 4px; max-height: 220px; overflow: auto; }
+.sg-sec, .sg-yeni { border: 0; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
