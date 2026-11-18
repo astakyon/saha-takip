@@ -934,6 +934,61 @@ const DB = () => {
   kontrol('Bayi stok kod düzeltmesinde hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 114: bayi stok kalem kartı (firma kodu, üretici, birim, para birimi, aktif/pasif), seçerek pasife alma / silme, bütün stoğu silme, şablon sütunları
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', il: 'Adana', created_at: ts, updated_at: ts }];
+    d.bayi_stok = [{ id: 'k1', owner: 'u1', firma_id: 'f1', kod: 'A100', aciklama: 'Panel', adet: 10, birim_fiyat: 2, son_hareket: '2026-11-01', created_at: ts, updated_at: ts },
+      { id: 'k2', owner: 'u1', firma_id: 'f1', kod: 'A200', aciklama: 'Kablo kanalı', adet: 50, birim_fiyat: 3, para_birimi: 'USD', son_hareket: '2026-11-01', created_at: ts, updated_at: ts },
+      { id: 'k3', owner: 'u1', firma_id: 'f1', kod: 'A300', aciklama: 'Busbar', adet: 0, son_hareket: '2026-11-01', created_at: ts, updated_at: ts }];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bayistok'); await w(1500);
+  // Kalem kartı
+  await p.click('[data-kart="k1"]'); await w(500);
+  await p.fill('.drawer.open [name=firma_kodu]', 'ATI-0001'); await p.fill('.drawer.open [name=uretici_kodu]', 'UR-55'); await p.fill('.drawer.open [name=uretici_aciklama]', 'Üretici panel 60x60');
+  await p.fill('.drawer.open [name=birim]', 'Koli12'); await p.selectOption('.drawer.open [name=para_birimi]', 'EUR'); await p.fill('.drawer.open [name=adet]', '12');
+  await p.click('.drawer.open [type=submit]'); await w(900);
+  const kart = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const { ayar } = await import('./js/ayar.js'); const k = S.bayi_stok.find(x => x.id === 'k1');
+    return { fk: k.firma_kodu, uk: k.uretici_kodu, ua: k.uretici_aciklama, birim: k.birim, pb: k.para_birimi, adet: k.adet, birimler: (ayar('stok_birimleri', []) || []).includes('Koli12'), gecmis: S.stok_gecmis.filter(g => g.kod === 'A100').map(g => g.hareket + ':' + g.fark).join(','), satir: document.querySelector('[data-row="k1"]')?.innerText.replace(/\s+/g, ' ') }; });
+  // Seçerek pasife alma
+  await p.check('[data-sec="k2"]'); await w(200);
+  const bar = await p.evaluate(() => document.querySelector('[data-secim]')?.innerText.replace(/\s+/g, ' '));
+  await p.click('[data-spasif]'); await w(900);
+  const pasif = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const { stokAdet } = await import('./js/stok.js');
+    return { aktif: S.bayi_stok.find(x => x.id === 'k2').aktif, gorunur: !!document.querySelector('[data-row="k2"]'), toplam: stokAdet({ kod: 'A200' }) }; });
+  await p.click('[data-s="pasif"]'); await w(300);
+  const pasifSekme = await p.evaluate(() => [...document.querySelectorAll('[data-row]')].map(r => r.dataset.row));
+  await p.click('[data-s="tum"]'); await w(300);
+  // Seçerek silme (sıfır adetli kalem; geçmiş kalır)
+  await p.check('[data-sec="k3"]'); await w(200); await p.click('[data-ssil]'); await w(900);
+  const sil = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { k3: !!S.bayi_stok.find(x => x.id === 'k3'), gecmis: S.stok_gecmis.some(g => g.kod === 'A300' && g.hareket === 'silme') }; });
+  // Bütün stoğu sil: bayi adı yazılmadan düğme kapalı
+  if (!(await p.isVisible('[data-hepsinisil]'))) await p.click('header.vh .vh-daha-btn');
+  await p.click('[data-hepsinisil]'); await w(500);
+  const kapali1 = await p.evaluate(() => document.querySelector('[data-komple]').disabled);
+  await p.fill('[data-onayad]', 'yanlış ad'); const kapali2 = await p.evaluate(() => document.querySelector('[data-komple]').disabled);
+  const ad = await p.evaluate(async () => (await import('./js/views/bayiag.js')).bayiAd((await import('./js/db.js')).S.bayiler[0]));
+  await p.fill('[data-onayad]', ad.toLocaleUpperCase('tr')); const acik = await p.evaluate(() => !document.querySelector('[data-komple]').disabled);
+  await p.click('[data-komple]'); await w(1200);
+  const komple = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { kalan: S.bayi_stok.filter(x => x.firma_id === 'f1').length, silme: S.stok_gecmis.filter(g => g.hareket === 'silme').length, bos: !!document.querySelector('.empty') }; });
+  // Şablon sütunları ve okuma
+  const sab = await p.evaluate(async () => { const m = await import('./js/views/bayiag2.js');
+    const h = m.SABLON_SUTUN, M = m.stokVarsayilanEsleme(h), g = m.stokSatirlariOku([['117887', 'ATI-1', 'LED PANEL', 'UR-9', 'Üretici açıklaması', 'Metre', '1.250,5', '12,5', '€', 'Hayır']], M).get('117887');
+    const dep = m.stokVarsayilanEsleme(['#', 'Ürün Kodu', 'Ürün Tanımı', 'Miktar']), eski = m.stokVarsayilanEsleme(['Üretici Kodu', 'Açıklama', 'Birim', 'Fiili Stok', 'Birim Fiyat']);
+    return { M, g, dep: [dep.kod, dep.ac, dep.stok], eski: [eski.kod, eski.uk, eski.bir, eski.stok, eski.fiyat], sayi: [m.stokSayi('12.5'), m.stokSayi('1.250'), m.stokSayi('1.250,75'), m.stokSayi('3,2')] }; });
+  kontrol('Bayi stok kalem kartı: firma stok kodu, üretici kodu/açıklaması, yeni birim (listeye eklenir), para birimi ve miktar kaydedilir; hareket geçmişe "duzeltme" olarak yazılır',
+    kart.fk === 'ATI-0001' && kart.uk === 'UR-55' && kart.ua === 'Üretici panel 60x60' && kart.birim === 'Koli12' && kart.pb === 'EUR' && kart.adet === 12 && kart.birimler && /duzeltme:2/.test(kart.gecmis) && /ATI-0001/.test(kart.satir) && /UR-55/.test(kart.satir), JSON.stringify(kart));
+  kontrol('Seçerek pasife alma: kalem listeden ve toplamdan çıkar, "Pasif" sekmesinde görünür; seçerek silme geçmişi bırakır',
+    /1 kalem seçili/.test(bar) && pasif.aktif === false && !pasif.gorunur && pasif.toplam === 0 && pasifSekme.join() === 'k2' && !sil.k3 && sil.gecmis, JSON.stringify({ bar, pasif, pasifSekme, sil }));
+  kontrol('Bütün stoğu sil: bayi adı yazılmadan düğme kapalı; yazılınca (büyük/küçük harf fark etmez) bütün kalemler silinir, her biri geçmişe "silme" olarak yazılır',
+    kapali1 && kapali2 && acik && komple.kalan === 0 && komple.silme >= 3 && komple.bos, JSON.stringify({ kapali1, kapali2, acik, komple }));
+  kontrol('Stok şablonu: bütün sütunlar başlıktan tanınır (firma kodu, üretici, birim, para birimi €→EUR, aktif=Hayır, TR sayı biçimi); depo ve eski formatlar bozulmaz',
+    sab.M.kod === 0 && sab.M.fk === 1 && sab.M.ac === 2 && sab.M.uk === 3 && sab.M.ua === 4 && sab.M.bir === 5 && sab.M.stok === 6 && sab.M.fiyat === 7 && sab.M.pb === 8 && sab.M.aktif === 9
+    && sab.g.firma_kodu === 'ATI-1' && sab.g.adet === 1250.5 && sab.g.fiyat === 12.5 && sab.g.pb === 'EUR' && sab.g.aktif === false && sab.g.birim === 'Metre'
+    && sab.dep.join() === '1,2,3' && sab.eski.join() === '0,-1,2,3,4' && sab.sayi.join() === '12.5,1250,1250.75,3.2', JSON.stringify(sab));
+  kontrol('Stok kalem kartı ve silme ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

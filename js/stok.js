@@ -3,9 +3,28 @@
 import { S, uuid } from './db.js';
 import { app, F, saveFilters } from './state.js';
 import { today, gunEkle, firmaAd } from './ui.js';
-import { ayar } from './ayar.js';
+import { ayar, ayarYaz } from './ayar.js';
+import { kur } from './kur.js';
 
 export const kendiDepo = () => ayar('kendi_depo') === true;
+
+// ---------- Kalem kartı: birim, para birimi, değer ----------
+export const PARA_BIRIMLERI = ['USD', 'EUR', 'TRY'];
+const BIRIM_VARSAYILAN = ['Adet', 'Metre', 'Kg', 'Rulo', 'Paket', 'Takım', 'Koli', 'Litre', 'm²', 'Set'];
+// Şirketin birim listesi: varsayılanlar + Ayarlar'da / kalem kartında eklenenler (her şirket kendi birimini ekler)
+export const stokBirimleri = () => [...new Set([...BIRIM_VARSAYILAN, ...(ayar('stok_birimleri', []) || [])])];
+export async function birimEkle(b) { b = String(b || '').trim(); if (!b || stokBirimleri().some(x => x.toLocaleLowerCase('tr') === b.toLocaleLowerCase('tr'))) return; await ayarYaz('stok_birimleri', [...(ayar('stok_birimleri', []) || []), b]); }
+export const pbNorm = v => { const x = String(v ?? '').trim().toUpperCase(); if (!x) return null; if (/^(TL|TRY|₺|YTL)$/.test(x)) return 'TRY'; if (/^(EUR|EURO|€|AVRO)$/.test(x)) return 'EUR'; if (/^(USD|\$|DOLAR|US\$)$/.test(x)) return 'USD'; return PARA_BIRIMLERI.includes(x) ? x : null; };
+export const aktifMi = s => s?.aktif !== false;
+// Satırın birim fiyatı ve para birimi: bayinin kendi fiyatı, yoksa ürün listesindeki USD fiyat
+export function satirFiyat(s) {
+  if (s?.birim_fiyat != null && s.birim_fiyat !== '' && +s.birim_fiyat) return { fiyat: +s.birim_fiyat, pb: s.para_birimi || 'USD' };
+  const u = (S.urunler || []).find(x => x.kod === s?.kod); return { fiyat: +u?.birim_fiyat_usd || 0, pb: 'USD' };
+}
+// Satırın değeri USD olarak (EUR ve TL güncel kurla çevrilir; kur yoksa null)
+export function usdCevir(v, pb = 'USD') { v = +v || 0; if (!v) return 0; pb = pb === 'TL' ? 'TRY' : (pb || 'USD'); if (pb === 'USD') return v; const k = kur(); if (!k?.USD) return 0; return pb === 'TRY' ? v / k.USD : k[pb] ? v * k[pb] / k.USD : 0; }
+export const satirDegerUsd = s => { const { fiyat, pb } = satirFiyat(s); return fiyat ? usdCevir((+s.adet || 0) * fiyat, pb) : 0; };
+const kimAdi = () => { try { const u = app.db?.user?.(); return u?.user_metadata?.imza || ayar('benim_adim') || u?.email || null; } catch { return null; } };
 
 // kod → [{ firma_id, adet, son_hareket }] (kısa önbellek; liste ekranlarında ürün başına çağrılır)
 let _ref = null, _len = -1, _t = 0, _m = new Map();
@@ -13,7 +32,7 @@ function harita() {
   const a = S.bayi_stok || [];
   if (a !== _ref || a.length !== _len || Date.now() - _t > 400) {
     _m = new Map();
-    for (const s of a) { if (!s.kod) continue; (_m.get(s.kod) || _m.set(s.kod, []).get(s.kod)).push({ firma_id: s.firma_id, adet: +s.adet || 0, son_hareket: s.son_hareket }); }
+    for (const s of a) { if (!s.kod || s.aktif === false) continue; (_m.get(s.kod) || _m.set(s.kod, []).get(s.kod)).push({ firma_id: s.firma_id, adet: +s.adet || 0, son_hareket: s.son_hareket }); }
     _ref = a; _len = a.length; _t = Date.now();
   }
   return _m;
@@ -37,10 +56,9 @@ export function stokUyarilariHesapla(gun = 60) {
   for (const [kod, adet] of ihtiyac) { const u = (S.urunler || []).find(x => x.kod === kod); if (!u) continue; const st = stokAdet(u); if (adet > st) yetersiz.push({ u, ihtiyac: adet, stok: st, eksik: adet - st }); }
   const sinir = gunEkle(today(), -gun), hareketsiz = [];
   for (const s of S.bayi_stok || []) {
-    if (!(+s.adet > 0) || !s.son_hareket || s.son_hareket > sinir) continue;
+    if (!(+s.adet > 0) || !s.son_hareket || s.son_hareket > sinir || s.aktif === false) continue;
     const u = (S.urunler || []).find(x => x.kod === s.kod) || { kod: s.kod, aciklama: s.aciklama || s.kod };
-    const fiyat = +s.birim_fiyat || +u.birim_fiyat_usd || 0;
-    hareketsiz.push({ u, bayi: firmaAd(s.firma_id), firma_id: s.firma_id, gun: Math.round((new Date(today()) - new Date(s.son_hareket)) / 864e5), deger: (+s.adet || 0) * fiyat });
+    hareketsiz.push({ u, bayi: firmaAd(s.firma_id), firma_id: s.firma_id, gun: Math.round((new Date(today()) - new Date(s.son_hareket)) / 864e5), deger: satirDegerUsd(s) });
   }
   // Kendi depomuz (ya da henüz taşınmamış eski depo): stok geçmişinden
   const hist = new Map();
@@ -55,17 +73,38 @@ export function stokUyarilariHesapla(gun = 60) {
   return { yetersiz, hareketsiz };
 }
 
-// Bayi stok satırlarını yazar; adedi değişenler için stok geçmişine (firma_id ile) satır ekler
-export async function bayiStokYaz(rows) {
-  const t = today(), gecmis = [];
+// Bayi stok satırlarını yazar; adedi değişenler için stok geçmişine (firma_id ile) hareket satırı ekler
+// hareket: 'giris' / 'cikis' (adet arttı / azaldı), 'excel', 'duzeltme', 'sayim', 'silme' … — kim ve ne zaman ile
+export async function bayiStokYaz(rows, { hareket = null, aciklama = null } = {}) {
+  const t = today(), gecmis = [], kim = kimAdi();
   for (const r of rows) {
-    const eski = (S.bayi_stok || []).find(s => s.firma_id === r.firma_id && s.kod === r.kod);
+    const eski = (r.id && (S.bayi_stok || []).find(s => s.id === r.id)) || (S.bayi_stok || []).find(s => s.firma_id === r.firma_id && s.kod === r.kod);
     const row = { ...(eski || {}), ...r };
-    if (!eski || +eski.adet !== +row.adet) { row.son_hareket = t; gecmis.push({ id: uuid(), firma_id: row.firma_id, kod: row.kod, stok: +row.adet || 0, birim_fiyat_usd: row.birim_fiyat ?? null, tarih: t }); }
+    if (!eski || +eski.adet !== +row.adet) {
+      const fark = (+row.adet || 0) - (+eski?.adet || 0);
+      row.son_hareket = t;
+      gecmis.push({ id: uuid(), firma_id: row.firma_id, kod: row.kod, stok: +row.adet || 0, fark, hareket: hareket || (!eski ? 'giris' : fark > 0 ? 'giris' : 'cikis'), birim: row.birim || null,
+        birim_fiyat_usd: row.birim_fiyat != null && (row.para_birimi || 'USD') === 'USD' ? row.birim_fiyat : null, aciklama: [aciklama, kim].filter(Boolean).join(' · ') || null, tarih: t });
+    }
     await app.db.save('bayi_stok', row);
   }
   if (gecmis.length) { try { await app.db.bulk('stok_gecmis', gecmis); } catch {} }
   return gecmis.length;
+}
+
+// Stok satırlarını siler. Geçmiş kalır: her satır için stok geçmişine "silme" hareketi (adet 0) yazılır, raporlar eski hareketleri görmeye devam eder.
+export async function bayiStokSil(rows, aciklama = null) {
+  if (!rows.length) return 0;
+  const t = today(), kim = kimAdi();
+  try { await app.db.bulk('stok_gecmis', rows.map(s => ({ id: uuid(), firma_id: s.firma_id, kod: s.kod, stok: 0, fark: -(+s.adet || 0), hareket: 'silme', birim: s.birim || null, aciklama: [aciklama, kim].filter(Boolean).join(' · ') || null, tarih: t }))); } catch {}
+  for (const s of rows) await app.db.del('bayi_stok', s.id);
+  return rows.length;
+}
+// Pasife alma / aktif etme: kayıt ve geçmiş durur, pasif kalem listelerden ve toplamlardan çıkar
+export async function bayiStokAktif(rows, aktif) {
+  await app.db.bulk('bayi_stok', rows.map(s => ({ ...s, aktif })));
+  try { await app.db.bulk('stok_gecmis', rows.map(s => ({ id: uuid(), firma_id: s.firma_id, kod: s.kod, stok: +s.adet || 0, fark: 0, hareket: aktif ? 'aktif' : 'pasif', tarih: today(), aciklama: kimAdi() }))); } catch {}
+  return rows.length;
 }
 
 // ---------- Eski depo stoğunu bayilere taşıma (tek seferlik) ----------

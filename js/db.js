@@ -8,7 +8,7 @@ export const TABLES = {
   ziyaretler: ['id','sorumlu','ekip_id','tarih','saat','durum','firma_id','kisi_id','proje_id','amac','notlar','sonuc_tipi','sonuc','lat','lng','fotolar','giris','cikis','giris_mesafe','cikis_lat','cikis_lng','planli','mazeret'],
   gorevler: ['id','sorumlu','ekip_id','baslik','son_tarih','oncelik','durum','firma_id','proje_id','kisi_id','notlar','atanan','tamamlayan','tekrar','kaynak'],
   urunler: ['id','kod','aciklama','aciklama2','aile','birim','stok','birim_fiyat_usd','stok_tarihi','depo'],
-  stok_gecmis: ['id','kod','stok','birim_fiyat_usd','tarih','depo','firma_id'],
+  stok_gecmis: ['id','kod','stok','birim_fiyat_usd','tarih','depo','firma_id','hareket','fark','kullanici','aciklama','birim'],
   rakip_fiyatlar: ['id','aile','lumen_aralik','marka','urun_adi','fiyat_metin','birim_fiyat','para_birimi','tarih','kaynak','proje_id','notlar'],
   siparisler: ['id','kaynak','dogrulandi','sorumlu','ekip_id','siparis_no','belge_no','belge_turu','musteri_no','musteri_adi','firma_id','tarih','teslim_tarihi','referans','net_deger','para_birimi','proje_tanimi','proje_id','drv','siparis_notu','rapor_disi','bayi_id'],
   hedefler: ['id','yil','ceyrek','tutar_usd','resmi_usd','resmi_tl','kur','notlar'],
@@ -25,7 +25,7 @@ export const TABLES = {
   tahsilatlar: ['id','sorumlu','ekip_id','firma_id','cari','belge_no','tarih','vade','tutar','para_birimi','odenen','durum','odeme_tarihi','notlar','tur'],
   belgeler: ['id','proje_id','firma_id','ad','yol','tur','boyut','notlar','kategori'],
   yorumlar: ['id','tablo','kayit_id','metin','yazan','yazan_ad','etiketler','created_at'],
-  bayi_stok: ['id','firma_id','kod','aciklama','adet','birim_fiyat','son_hareket','notlar'],
+  bayi_stok: ['id','firma_id','kod','aciklama','adet','birim_fiyat','son_hareket','notlar','firma_kodu','uretici_kodu','uretici_aciklama','birim','para_birimi','aktif'],
   bayi_satis: ['id','firma_id','tarih','kod','urun','adet','tutar','para_birimi','musteri','proje_id','il','notlar'],
   bayiler: ['id','firma_id','tur','il','bolge','sorumlu','baslangic','bitis','durum','iskonto','vade_gun','kredi_limiti','para_birimi','hedef_yil','depo','notlar'],
 };

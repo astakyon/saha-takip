@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 114)
+
+- **Stok kalem kartı** (Bayi → Stoklar, koda dokun): ürün kodu (ana anahtar), firma stok kodu (bayinin kendi kodu), açıklama, üretici kodu ve açıklaması, birim (şirket listesi + yeni birim; `stok_birimleri` ayarı), miktar, birim fiyat ve para birimi (USD/EUR/TRY), aktif. Değer güncel kurla USD'ye çevrilir.
+- **Silme ve pasife alma**: satırlar işaretlenir; seçim çubuğundan "Pasife al", "Aktif yap", "Sil". "Bütün stoğu sil" bayinin adı yazılınca açılır. Pasif kalem listeden, toplamlardan ve "hangi bayide var"dan çıkar; "Pasif" sekmesinde görünür. Silmede ve pasife almada stok geçmişine hareket yazılır, geçmiş raporlarda kalır. Sıfıra düşen kalemler silinmez.
+- **Stok hareket kaydı**: `stok_gecmis`e hareket türü (giris, cikis, excel, duzeltme, silme, pasif, aktif), fark, birim, kim ve açıklama yazılır.
+- **Excel**: "Boş şablon" ve "Excel" aynı sütunları kullanır (Ürün kodu, Firma stok kodu, Açıklama, Üretici kodu, Üretici açıklaması, Birim, Miktar, Birim fiyat, Para birimi, Aktif); dışa aktarılan dosya düzenlenip geri yüklenebilir. Sütunlar başlıktan tanınır; "1.250,50" gibi TR sayıları okunur; € / TL / $ para birimine çevrilir. Listede olmayan kalemlerin miktarı sıfırlanır, kayıtları silinmez.
+- Şema 50: `bayi_stok` firma_kodu, uretici_kodu, uretici_aciklama, birim, para_birimi, aktif; `stok_gecmis` hareket, fark, kullanici, aciklama, birim.
+
 ## Güncelleme notu (sürüm 113)
 
 - **Bayi stok Excel'i kod denetimi**: sütun eşlemesi (kayıtlı olsa bile) içerikle doğrulanır. Kod sütunu 1, 2, 3… diye artan sıra numarasıysa ya da başka bir sütun ürün listesindeki kodlarla daha çok eşleşiyorsa kod o sütundan alınır; açıklama sütunu kodlardan oluşuyorsa açıklama boş bırakılır ve tanım ürün listesinden gelir. Düzeltilen eşleme kaydedilir. Açıklaması kod gibi olan satırlar ürün listesine eklenmez.

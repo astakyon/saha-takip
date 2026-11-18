@@ -2142,3 +2142,12 @@ body.giris-var #view { padding-top: 64px; }
 .sipcift td.fark { background: color-mix(in srgb, var(--warn, #d97706) 14%, transparent); font-weight: 600; }
 .sipcift td:first-child { width: 44px; text-align: center; }
 .sipcift input[type=radio] { width: 20px; height: 20px; }
+/* Bayi stok: seçim çubuğu, pasif satır, birim */
+.bs-secim { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; margin: 8px 0; background: var(--card, #fff); border: 1px solid var(--line, #ddd); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.bs-secim .grow { flex: 1; }
+.bs-t td.bs-c, .bs-t th.bs-c { width: 34px; text-align: center; }
+.bs-t input[type=checkbox] { width: 18px; height: 18px; }
+.bs-t tr.pasif td { opacity: .6; }
+.bs-birim { display: block; }
+[data-komple].btn.danger, .bs-secim .btn.danger { background: var(--red); color: #fff; }
+.btn.danger:disabled { opacity: .5; }

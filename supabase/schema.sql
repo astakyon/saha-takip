@@ -2024,6 +2024,21 @@ create or replace function public.hassas_kolonlar() returns jsonb language sql i
 $f$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 49 $f$;
 
+-- ---------- Sürüm 50: Bayi stok kalem kartı (firma stok kodu, üretici kodu/açıklaması, birim, para birimi, aktif/pasif) ve stok hareket kaydı ----------
+alter table public.bayi_stok add column if not exists firma_kodu text;          -- bayinin kendi stok kodu (ürün kodu ana anahtar kalır)
+alter table public.bayi_stok add column if not exists uretici_kodu text;
+alter table public.bayi_stok add column if not exists uretici_aciklama text;
+alter table public.bayi_stok add column if not exists birim text;               -- Adet, Metre, Kg, Rulo… (şirket kendi birimini ekler)
+alter table public.bayi_stok add column if not exists para_birimi text default 'USD';
+alter table public.bayi_stok add column if not exists aktif boolean default true;  -- pasif kalem listeden ve toplamlardan çıkar, geçmişi durur
+alter table public.stok_gecmis add column if not exists hareket text;           -- giris / cikis / excel / duzeltme / sayim / silme / pasif / aktif
+alter table public.stok_gecmis add column if not exists fark numeric;
+alter table public.stok_gecmis add column if not exists kullanici uuid default auth.uid();
+alter table public.stok_gecmis add column if not exists aciklama text;
+alter table public.stok_gecmis add column if not exists birim text;
+create index if not exists stok_gecmis_tarih_idx on public.stok_gecmis (firma_id, tarih);
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 50 $f$;
+
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

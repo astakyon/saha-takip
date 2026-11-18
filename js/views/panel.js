@@ -24,6 +24,7 @@ import { kur } from '../kur.js';
 import { yuklemeKaydet } from '../belgeler.js';
 import { radarKarti, radarBagla } from '../radar.js';
 import { sipNo } from '../sipcift.js';
+import { satirDegerUsd } from '../stok.js';
 
 const q = d => Math.floor((new Date(d).getMonth()) / 3) + 1;
 const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0);
@@ -172,7 +173,7 @@ export function bayiKarnesi(Y, rol = 'bayi_id') {
     const won = ps.filter(p => p.durum === 'Sipariş'), lost = ps.filter(p => p.durum === 'Kayıp');
     const ilk = fold(f.ad).split(/\s+/)[0];
     const sp = sipY.filter(s => (s.firma_id === f.id || (ilk.length > 2 && fold(s.musteri_adi || '').startsWith(ilk))));
-    const stok = rol !== 'bayi_id' ? 0 : (S.bayi_stok || []).filter(s => s.firma_id === f.id).reduce((a, s) => a + (+s.adet || 0) * (+s.birim_fiyat || +S.urunler.find(u => u.kod === s.kod)?.birim_fiyat_usd || 0), 0) + S.urunler.filter(u => u.depo && fold(u.depo).startsWith(ilk)).reduce((a, u) => a + (+u.stok || 0) * (+u.birim_fiyat_usd || 0), 0);
+    const stok = rol !== 'bayi_id' ? 0 : (S.bayi_stok || []).filter(s => s.firma_id === f.id && s.aktif !== false).reduce((a, s) => a + satirDegerUsd(s), 0) + S.urunler.filter(u => u.depo && fold(u.depo).startsWith(ilk)).reduce((a, u) => a + (+u.stok || 0) * (+u.birim_fiyat_usd || 0), 0);
     const son = sonZ.get(f.id) || null;
     return { f, n: ps.length, acik: sum(ps.filter(p => ACIK.includes(p.durum)), p => p.tutar_usd), w: won.length, wT: sum(won, p => p.siparis_tutari_usd || p.tutar_usd), l: lost.length, lT: sum(lost, p => p.bizim_teklif_usd || p.tutar_usd),
       oran: won.length + lost.length ? Math.round(won.length / (won.length + lost.length) * 100) : null, sip: sum(sp, s => s.net_deger), sipN: sp.length, stok, rakip: Object.entries(rk).sort((a, b) => b[1] - a[1]).map(([m, n]) => `${m} (${n})`).slice(0, 2).join(', '), son, gun: son ? Math.round((new Date(t) - new Date(son)) / 864e5) : null };

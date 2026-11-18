@@ -12,6 +12,7 @@ import { firmaRiski, SEVIYE, usdYap } from '../vaderisk.js';
 import { kalan } from './tahsilat.js';
 import { anaBayi, anaBayiMi } from '../profil.js';
 import { izin, sahipMi } from '../yetki.js';
+import { satirDegerUsd } from '../stok.js';
 
 export const BAYI_TURLERI = ['Bayi', 'Alt bayi', 'Distribütör', 'Çözüm ortağı', 'Proje ortağı'];
 const DURUM = ['Aktif', 'Askıda', 'Ayrıldı'], DRENK = { Aktif: '#15803D', Askıda: '#C2410C', Ayrıldı: '#64748B' };
@@ -33,14 +34,14 @@ export function bayiOzeti(b, Y = +today().slice(0, 4)) {
   const proj = S.projeler.filter(p => p.bayi_id === b.firma_id);
   const tah = S.tahsilatlar.filter(t => t.firma_id === b.firma_id && kalan(t) > 0);
   const stok = b.depo ? S.urunler.filter(u => u.depo === b.depo) : [];
-  const bs = (S.bayi_stok || []).filter(s => s.firma_id === b.firma_id);
+  const bs = (S.bayi_stok || []).filter(s => s.firma_id === b.firma_id && s.aktif !== false);
   const ziy = S.ziyaretler.filter(z => z.firma_id === b.firma_id && (z.durum || 'Yapıldı') === 'Yapıldı').sort((a, c) => (c.tarih || '').localeCompare(a.tarih || ''));
   return {
     satis, gecen, aylik, sipN: yilda(Y).length, hedef: +b.hedef_yil || 0, hedefYuzde: +b.hedef_yil ? Math.round(satis / b.hedef_yil * 100) : null,
     proj, acikProj: proj.filter(p => ACIK.includes(p.durum)), kazanilan: proj.filter(p => p.durum === 'Sipariş'), kayip: proj.filter(p => p.durum === 'Kayıp'),
     alacak: tah.reduce((a, t) => a + usdYap(kalan(t), t.para_birimi), 0), risk: firmaRiski(b.firma_id),
     stokKalem: stok.filter(u => +u.stok > 0).length + bs.filter(s => +s.adet > 0).length,
-    stokDeger: stok.reduce((a, u) => a + (+u.stok || 0) * (+u.birim_fiyat_usd || 0), 0) + bs.reduce((a, s) => a + (+s.adet || 0) * (+s.birim_fiyat || +S.urunler.find(u => u.kod === s.kod)?.birim_fiyat_usd || 0), 0),
+    stokDeger: stok.reduce((a, u) => a + (+u.stok || 0) * (+u.birim_fiyat_usd || 0), 0) + bs.reduce((a, s) => a + satirDegerUsd(s), 0),
     sonZiyaret: ziy[0]?.tarih || null, ziy,
   };
 }
