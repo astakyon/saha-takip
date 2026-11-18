@@ -641,6 +641,15 @@ code { background: var(--line-2); border-radius: 4px; padding: 1px 5px; font-siz
 .tk-tbl td input { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r-sm); font: inherit; }
 .tk-tbl td.r input { text-align: right; max-width: 110px; }
 .tk-tbl td small { display: block; margin-top: 2px; }
+.tk-ek { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; } .tk-ek input, .tk-ek select { flex: 1 1 90px; min-width: 0; padding: 4px 6px; font-size: 12.5px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--card); }
+.tk-ek small { flex-basis: 100%; }
+.tk-secim { margin-bottom: 8px; } .tk-secim select { max-width: 140px; }
+.tk-mb { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 12px; }
+.tk-onizle { border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; margin-bottom: 12px; } .tk-onizle iframe { width: 100%; height: 70vh; border: 0; background: #fff; }
+.sb-sutun { list-style: none; margin: 0; padding: 0; } .sb-sutun li { display: flex; align-items: center; gap: 6px; padding: 2px 0; } .sb-sutun li .chk { flex: 1; }
+.sb-logo { display: block; max-height: 48px; margin-top: 6px; }
+.rv-yeni td { background: color-mix(in srgb, #15803D 10%, transparent); } .rv-cikti td { background: color-mix(in srgb, #B91C1C 10%, transparent); text-decoration: line-through; }
+.uyari-k { margin: 8px 16px 0; padding: 8px 12px; border-radius: var(--r-sm); background: var(--line-2); font-size: 13.5px; }
 .tk-tbl .r { text-align: right; }
 .tk-top dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; margin: 12px 0 0 auto; max-width: 360px; font-variant-numeric: tabular-nums; }
 .tk-top dt { color: var(--muted); } .tk-top dd { margin: 0; text-align: right; }

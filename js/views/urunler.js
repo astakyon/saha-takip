@@ -68,7 +68,8 @@ function urunDetay(id) {
   const u = byId('urunler', id);
   const hist = S.stok_gecmis.filter(h => h.kod === u.kod).sort((a, b) => b.tarih.localeCompare(a.tarih));
   const rp = S.rakip_fiyatlar.filter(r => aileKey(r.aile) === aileKey(u.aile));
-  const FORM = [{ title: 'Ürün ve fiyat', fields: [{ k: 'birim_fiyat_usd', l: 'Birim fiyat (USD)', t: 'num' }, { k: 'aile', l: 'Ürün ailesi', t: 'combo', opts: URUN_AILELERI }, { k: 'birim', l: 'Birim' }, ...(kendiDepo() ? [{ k: 'stok', l: 'Kendi depomuzdaki stok', t: 'num' }] : [])] }];
+  const FORM = [{ title: 'Ürün ve fiyat', fields: [{ k: 'birim_fiyat_usd', l: 'Birim fiyat (USD)', t: 'num' }, { k: 'aile', l: 'Ürün ailesi', t: 'combo', opts: URUN_AILELERI }, { k: 'birim', l: 'Birim' }, ...(kendiDepo() ? [{ k: 'stok', l: 'Kendi depomuzdaki stok', t: 'num' }] : [])] },
+    { title: 'Kâr ve teknik ekler', fields: [{ k: 'maliyet_usd', l: 'Maliyet (USD, yalnız içeride)', t: 'num' }, { k: 'gorsel', l: 'Görsel bağlantısı (teklifte “Görsel” sütunu)', full: true }, { k: 'foy_url', l: 'Ürün föyü bağlantısı', full: true }, { k: 'sertifika_url', l: 'Sertifika bağlantısı', full: true }, { k: 'fotometri_url', l: 'Fotometrik dosya (LDT/IES) bağlantısı', full: true }] }];
   const nerede = stokNerede(u);
   const panel = openDrawer(`<header class="dh"><div><p class="muted">${esc(u.kod)}</p><h2 id="drawer-title">${esc(u.aciklama)}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <form class="dbody form" novalidate>${renderForm(FORM, u)}

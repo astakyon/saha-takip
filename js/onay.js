@@ -11,6 +11,12 @@ export function onayTuru(t) { if (!ONAY_TURLERI.some(x => x.k === t.k)) ONAY_TUR
 onayTuru({ k: 'masraf', ad: 'Masraf', rota: 'masraflar', tablo: 'masraflar',
   liste: () => (S.masraflar || []).filter(m => m.onay === 'Bekliyor').map(m => ({ id: m.id, baslik: [m.tip, m.aciklama].filter(Boolean).join(' · '), kim: m.kim, tarih: m.tarih, tutar: (+m.tutar || 0).toLocaleString('tr-TR') + ' TL', kayit: m })) });
 
+// Teklif iskontosu: ekip üyesi şirketin iskonto sınırını aşınca teklif "Bekliyor" olur; onaylanınca müşteriye gönderilebilir
+onayTuru({ k: 'teklif-iskonto', ad: 'Teklif iskontosu', rota: 'teklifler', tablo: 'teklifler',
+  liste: () => (S.teklifler || []).filter(t => t.onay === 'Bekliyor').map(t => ({ id: t.id, baslik: [t.teklif_no, byIdAd(t.firma_id)].filter(Boolean).join(' · '), kim: t.olusturan || t.sorumlu || '', tarih: t.tarih, tutar: new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(+t.toplam || 0) + ' ' + (t.para_birimi || 'USD') + (t.iskonto ? ` · genel isk. %${t.iskonto}` : ''), kayit: t, git: '#/teklifler' })),
+  karar: async (x, ok) => { const { app: a } = await import('./state.js'); await a.db.save('teklifler', { ...x.kayit, onay: ok ? 'Onaylandı' : 'Reddedildi', onaylayan: ben() }); } });
+const byIdAd = id => (S.firmalar || []).find(f => f.id === id)?.ad || '';
+
 // Ekip kayıtları: "Ekibin yeni kayıtları onayımdan geçsin" açıksa ekip üyesinin yeni firma, proje ve siparişi "Ekip kaydı" olarak işaretlenir
 export const EKIP_TABLOLARI = { firmalar: ['Yeni firma', f => f.ad, f => '#/firma/' + f.id], projeler: ['Yeni proje', p => p.ad, p => '#/proje/' + p.id], siparisler: ['Yeni sipariş', s => [s.siparis_no || s.belge_no, s.musteri_adi].filter(Boolean).join(' · ') || 'Sipariş', () => '#/siparisler'] };
 export const ekipKaydiOnayi = () => ayar('ekip_onay') === true;

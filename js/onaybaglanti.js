@@ -39,7 +39,7 @@ export async function baglantiOlustur(t) {
   const { hesapla, teklifHtml } = await import('./views/teklif.js');
   const h = hesapla(t), bilgi = ayar('teklif_firma') || {}, p = byId('projeler', t.proje_id), k = byId('kisiler', t.kisi_id);
   const icerik = { gonderen: bilgi.ad || firmaAdi(), hazirlayan: benimAdim(), musteri: firmaAd(t.firma_id) || '', kisi: k?.ad_soyad || '', proje: p?.ad || '',
-    teklif_no: t.teklif_no || '', tarih: t.tarih, gecerlilik: t.gecerlilik || null, para_birimi: t.para_birimi || 'USD', net: h.net, genel: h.genel, html: teklifHtml(t) };
+    teklif_no: t.teklif_no || '', tarih: t.tarih, gecerlilik: t.gecerlilik || null, para_birimi: t.para_birimi || 'USD', net: h.net, genel: h.genel, html: teklifHtml(t), ...(await (async () => { const m = await import('./teklif2.js'), ss = m.secenekler(t); return ss.length > 1 ? { secenekler: ss.map(x => ({ ad: x, net: m.hesapla2(t, x).net, genel: m.hesapla2(t, x).genel })), secim: m.secim(t) } : {}; })()) };
   const kayit = { teklif_id: t.id, anahtar: rastgeleAnahtar(), son_tarih: t.gecerlilik && t.gecerlilik >= today() ? t.gecerlilik : gunEkle(today(), 30), icerik };
   ozellikSay('onay-baglanti');
   const { data, error } = await tablo().insert(kayit).select().single();

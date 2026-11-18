@@ -32,6 +32,27 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 122)
+
+- **Şablonlar** (`js/teklif2.js`, ayar `teklif_sablonlari`): logo (küçültülüp saklanır), firma adı ve iletişim (antet), ana ve vurgu rengi, banka bilgileri, standart koşullar, alt bilgi, imza, sütunlar (sıra no, kod, üretici kodu, ürün, görsel, birim, miktar, birim fiyat, iskonto, KDV, tutar; sıralanabilir) ve belge dili (Türkçe / English). Kapsam: şirket (herkes), kişisel (yalnız oluşturan) ya da bayi (bayinin kendi müşterisine). Teklifte şablon ve dil seçilir.
+- **Numara düzeni** (ayar `teklif_no_duzen`): önek, yıl, sayaç hanesi, her kullanıcıya ayrı seri (baş harfler); revizyonlar `-R2`, `-R3`. Varsayılan T-YYYY-NNN.
+- **Proje teklifi**: kaleme mahal / kat yazılır, belgede gruplanır ve ara toplam alır. Kalem "Seçenek A / B / C"ye bağlanırsa alternatifli teklif olur; toplama yalnız seçili seçenek girer, belgede her seçeneğin genel toplamı ayrı yazar. Onay bağlantısında müşteri seçeneğini seçerek onaylar (`teklif_yanitla` p_secim).
+- **Şartlar ve ekler**: teslim süresi, yeri, şekli (EXW, DAP… ya da şantiye teslim), teklif kuru, kur tarihi ve "kur farkı alıcıya aittir" maddesi; hazır metin blokları (ödeme, teslim, garanti, geçerlilik; düzenlenebilir); ek bağlantılar ve ürün kartındaki föy, sertifika, fotometrik dosya kendiliğinden eklenir. Formda anında önizleme.
+- **Fiyat ve kâr**: ürün kartında maliyet (USD, "tutarları gizle"ye dahil); teklifte kalem maliyeti ve kâr marjı yalnız içeride görünür, en düşük marjın altı kırmızı. Bayi firmaya ürün eklenince bayi iskontosu uygulanır; bu firmaya son verilen fiyat tek tuşla uygulanır. Kalem altına rakip fiyatı yazılır, fark yüzdesi görünür.
+- **İskonto onayı**: şirketin iskonto sınırını aşan ekip üyesinin teklifi "onay bekliyor" olur, Gönderildi yapılamaz, PDF / WhatsApp / bağlantı kapalı kalır; Onay kuyruğunda onaylanır ya da reddedilir.
+- **Takip ve kapanış**: Red'de kayıp nedeni zorunlu (fiyat, teslim, teknik, rakip marka…), kazanan rakip ve fiyatı; gönderim ve yanıt tarihleri kendiliğinden yazılır. Müşteri bağlantıyı ilk açınca "Teklif görüntülendi · müşteriyi ara" görevi düşer. Otomasyon: gönderilen teklife 7 gün içinde yanıt gelmezse "Teklifin sonucunu sor" görevi. "Sipariş oldu" teklifi Kabul, projeyi Sipariş yapar ve sipariş kaydını açar; "Sevk belgesi" kalemlerle sevk oluşturur. "Karşılaştır" önceki revizyonla farkı gösterir.
+- **Teklif raporu**: kazanma oranı, ortalama iskonto ve yanıt süresi; firma, ürün grubu, proje türü ve kullanıcı bazında (her teklifin son revizyonu sayılır).
+- Şema 58: `teklifler` yeni sütunlar (şablon, dil, seçim, teslim, kur, ekler, onay, kayıp, gönderim / yanıt tarihi, oluşturan), `urunler` maliyet ve teknik ek bağlantıları, `teklif_baglantilari.yanit_secim`; `teklif_yanitla` ve `teklif_goster` güncellendi.
+
+## Güncelleme notu (sürüm 121)
+
+- **Sevk ve irsaliye** (`js/views/sevk.js`, `sevkler`): sevk belgesi ve iade belgesi; numara düzeni şirketçe ayarlanır (önek, yıl, sayaç; ör. SVK-2026-0001, IAD-2026-0001). Çıkış bayi ve deposu, alıcı, proje, teslim yeri, kalemler. Tekliften (Kabul / Gönderildi) ya da siparişten oluşturulur; kısmi sevkte önceki sevkler düşülüp kalan gelir, teklif "Kısmen sevk edildi" görünür.
+- **Stok**: belge "Yolda" ya da "Teslim edildi" olunca kalemler çıkış stoğundan bir kez düşer (iade belgesi ekler), "İptal" geri alır; hareket kaydına belge numarasıyla `sevk` / `iade`. Stok yetmezse uyarır.
+- **Taşıma**: gönderim şekli (kargo, ambar, kendi aracımız, müşteri teslim aldı), kargo / ambar firması (liste kendiliğinden büyür), taşıma ücreti ve para birimi, ödeyen, palet, koli, ağırlık, desi, plaka, şoför, takip no.
+- **Gönderme ve teslim**: PDF (irsaliye taslağı, fiyatsız), WhatsApp, e-posta, "Yola çıktı" mesajı (belgeyi Yolda yapar); "Teslim alındı": teslim alan, parmakla imza, fotoğraf, konum.
+- **Takvim ve rapor**: güne göre planlı sevkler ve Google Haritalar'da rota; ay, bayi, proje ve taşıyıcı bazında sevk ve taşıma maliyeti; bekleyen ve geciken teslimler. "Muhasebe için Excel" belge ve kalem sayfalarıyla.
+- Resmî e-İrsaliye entegratör ya da muhasebe programı üzerinden kesilir; belge bunu belirtir. Şema 57: `sevkler` (bayi kullanıcısı kendi stoğundan çıkan ve kendisine gelen belgeleri görür); taşıma ücreti "tutarları gizle"ye dahil.
+
 ## Güncelleme notu (sürüm 120)
 
 - **Seri / parti** (`js/izlenebilir.js`, `stok_seri`): kalem kartında parti (miktarlı) ya da seri (tekil) numarası, garanti süresi (ay), durum (Stokta, Satıldı, Serviste, İade); aynı ürüne aynı numara iki kez girilmez. "Servis kaydı" seri no ve ürünle dolu servis formu açar; servis kaydında `seri_no` alanı (bilinen numaralar önerilir). Stok aramasında seri / parti no ile kalem bulunur.

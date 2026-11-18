@@ -65,6 +65,7 @@ export const EKRANLAR = {
   banka:      { t: ['tahsilatlar'], o: ['firmalar'], d: 'Banka ekstresi: gelen ödemeleri açık faturalarla eşleştirme' },
   prim:       { t: [], o: ['siparisler', 'tahsilatlar'], salt: true, d: 'Prim ve hedef: kişi bazında satış, tahsilat, hedef, prim' },
   bayistok:   { t: ['bayi_stok', 'stok_gecmis', 'stok_gruplari', 'stok_sayimlari', 'stok_seri', 'stok_paylasimlari'], o: ['bayiler', 'firmalar', 'urunler', 'teklifler'], d: 'Bayi stokları: her bayinin ayrı stoğu, hızlı adet, Excel ile yükleme, stok uyarıları' },
+  sevk:       { t: ['sevkler'], o: ['firmalar', 'kisiler', 'projeler', 'teklifler', 'siparisler', 'bayiler', 'bayi_stok', 'urunler'], d: 'Sevk ve irsaliye: sevk ve iade belgesi, taşıma, teslim imzası, sevk takvimi ve raporu' },
   bayisatis:  { t: ['bayi_satis'], o: ['bayiler', 'firmalar', 'siparisler', 'projeler', 'urunler'], d: 'Bayi satışları: bize alım ve bayinin sattıkları, devir hızı' },
   bayihedef:  { t: [], o: ['bayiler', 'firmalar', 'siparisler'], salt: true, d: 'Bayi hedef ve prim: çeyreklik gerçekleşme, sıralama, prim' },
   bayianaliz: { t: [], o: ['bayiler', 'firmalar', 'siparisler', 'tahsilatlar', 'projeler', 'ziyaretler', 'urunler', 'bayi_stok'], salt: true, d: 'Bayi ağı analizi: pay, büyüme, ödeme, kayıp oranı, bölge boşlukları' },
@@ -106,7 +107,7 @@ function eskiRota(k) {
   return m ? modulIzni(m) : null;
 }
 // Bayi ve partner ekranları yalnızca bayi/partner ağı olan şirkette (Şirket profili anahtarı, atanmış bayi ya da ana bayi)
-export const BAYI_ROTALARI = ['bayiag', 'bayikarne', 'bayistok', 'bayisatis', 'bayihedef', 'bayianaliz', 'talepler'];
+export const BAYI_ROTALARI = ['bayiag', 'bayikarne', 'bayistok', 'sevk', 'bayisatis', 'bayihedef', 'bayianaliz', 'talepler'];
 export const bayiAgiAcik = () => !!app.bayiAgiFn?.();
 export function rotaIzinli(k) {
   if (BAYI_ROTALARI.includes(k) && !app.yetki?.dis && !bayiAgiAcik()) return false;

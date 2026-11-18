@@ -34,6 +34,8 @@
   .hint { color: var(--muted); font-size: 13px; }
   [hidden] { display: none !important; }
   @media print { .bar, .kart:not(.belge), .btns, .durum { display: none !important; } main { padding: 0; } .belge { border: 0; padding: 0; } }
+  .secenek { border: 1px solid var(--line, #DCE2E6); border-radius: 12px; padding: 8px 12px; margin: 0 0 12px; } .secenek legend { font-weight: 600; padding: 0 4px; }
+  .secenek .sec { display: flex; gap: 10px; align-items: center; padding: 8px 0; font-weight: 400; } .secenek input { width: auto; }
 </style>
 </head>
 <body>
@@ -54,6 +56,7 @@
       <button type="button" id="bRevize">Revize istiyorum</button>
       <button type="button" id="bPdf">PDF indir / yazdır</button>
     </div>
+    <fieldset id="secenekKutu" class="secenek" hidden><legend>Hangi seçeneği onaylıyorsunuz?</legend><div id="secenekler"></div></fieldset>
     <form id="form" hidden>
       <label for="ad">Adınız soyadınız</label><input id="ad" autocomplete="name" maxlength="120">
       <label for="not" id="notEtiket">Notunuz (isteğe bağlı)</label><textarea id="not" maxlength="2000"></textarea>
@@ -76,6 +79,8 @@
   const rpc = (ad, govde) => fetch(`https://${ref}.supabase.co/rest/v1/rpc/${ad}`, { method: 'POST', headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' }, body: JSON.stringify(govde) })
     .then(async r => { const j = await r.json().catch(() => null); if (!r.ok) throw new Error(j?.message || 'Sunucuya ulaşılamadı.'); return j; });
   let d = null, tur = null;
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const secilen = () => document.querySelector('input[name=secim]:checked')?.value || null;
   const ciz = () => {
     document.title = `Teklif ${d.teklif_no || ''}`.trim();
     $('gonderen').textContent = d.gonderen || 'Teklif';
@@ -83,9 +88,15 @@
     $('no').textContent = d.teklif_no || '—'; $('proje').textContent = d.proje || '—';
     $('gec').textContent = tarih(d.gecerlilik || d.son_tarih); $('toplam').textContent = para(d.genel, d.para_birimi);
     $('ozetKart').hidden = false;
+    if (Array.isArray(d.secenekler) && d.secenekler.length > 1) {
+      $('secenekler').innerHTML = d.secenekler.map(x => `<label class="sec"><input type="radio" name="secim" value="${esc(x.ad)}" ${x.ad === (d.yanit_secim || d.secim) ? 'checked' : ''} ${d.yanit ? 'disabled' : ''}> <span><b>Seçenek ${esc(x.ad)}</b> · ${para(x.genel, d.para_birimi)} <small>(KDV dahil)</small></span></label>`).join('');
+      $('secenekKutu').hidden = false;
+      const guncelle = () => { const s = d.secenekler.find(x => x.ad === secilen()); if (s) $('toplam').textContent = para(s.genel, d.para_birimi); };
+      $('secenekler').onchange = guncelle; guncelle();
+    }
     if (d.html) { $('belge').srcdoc = d.html; $('belgeKart').hidden = false; $('belge').onload = () => { try { $('belge').style.height = Math.max(600, $('belge').contentDocument.documentElement.scrollHeight + 20) + 'px'; } catch {} }; }
     if (d.yanit) {
-      mesaj(d.yanit === 'Onay' ? `Teklif ${tarih(String(d.yanit_zaman).slice(0, 10))} tarihinde onaylandı${d.yanit_ad ? ' (' + d.yanit_ad + ')' : ''}. Teşekkür ederiz.` : `Revize isteğiniz ${tarih(String(d.yanit_zaman).slice(0, 10))} tarihinde iletildi. Yeni teklif size ayrıca gönderilecek.`, d.yanit === 'Onay' ? 'yesil' : 'sari');
+      mesaj(d.yanit === 'Onay' ? `Teklif ${tarih(String(d.yanit_zaman).slice(0, 10))} tarihinde onaylandı${d.yanit_secim ? ' (Seçenek ' + d.yanit_secim + ')' : ''}${d.yanit_ad ? ' (' + d.yanit_ad + ')' : ''}. Teşekkür ederiz.` : `Revize isteğiniz ${tarih(String(d.yanit_zaman).slice(0, 10))} tarihinde iletildi. Yeni teklif size ayrıca gönderilecek.`, d.yanit === 'Onay' ? 'yesil' : 'sari');
       $('yanitKart').hidden = false; $('bOnay').hidden = $('bRevize').hidden = true;
     } else $('yanitKart').hidden = false;
   };
@@ -106,9 +117,11 @@
     if (tur === 'Revize' && !$('not').value.trim()) return $('not').focus();
     $('gonder').disabled = true;
     try {
-      const j = await rpc('teklif_yanitla', { p_anahtar: anahtar, p_yanit: tur, p_not: $('not').value, p_ad: $('ad').value });
+      const govde = { p_anahtar: anahtar, p_yanit: tur, p_not: $('not').value, p_ad: $('ad').value };
+      if (tur === 'Onay' && d.secenekler?.length > 1) govde.p_secim = secilen();
+      const j = await rpc('teklif_yanitla', govde).catch(e => { if (!govde.p_secim) throw e; delete govde.p_secim; govde.p_not = ['Seçilen: Seçenek ' + secilen(), govde.p_not].filter(Boolean).join('\n'); return rpc('teklif_yanitla', govde); });
       if (!j || j.hata) throw new Error(j?.hata === 'yanitlandi' ? 'Bu teklif daha önce yanıtlanmış.' : j?.hata === 'sure' ? 'Teklifin geçerlilik süresi dolmuş.' : 'Yanıt kaydedilemedi.');
-      d = { ...d, yanit: tur, yanit_zaman: new Date().toISOString(), yanit_ad: $('ad').value.trim() || null };
+      d = { ...d, yanit: tur, yanit_zaman: new Date().toISOString(), yanit_ad: $('ad').value.trim() || null, yanit_secim: j.secim || null };
       $('form').hidden = true; ciz();
     } catch (err) { mesaj(err.message, 'kirmizi'); $('gonder').disabled = false; }
   };

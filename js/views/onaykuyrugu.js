@@ -30,7 +30,8 @@ export function onayView(el) {
     li.querySelectorAll('[data-k]').forEach(b => b.onclick = async () => {
       const ok = b.dataset.k === 'ok', t = x.tur.tablo;
       try {
-        if (x.tur.k === 'masraf') await app.db.save(t, { ...x.kayit, onay: ok ? 'Onaylandı' : 'Reddedildi', onaylayan: ben(), onay_tarih: today() });
+        if (x.tur.karar) await x.tur.karar(x, ok);
+        else if (x.tur.k === 'masraf') await app.db.save(t, { ...x.kayit, onay: ok ? 'Onaylandı' : 'Reddedildi', onaylayan: ben(), onay_tarih: today() });
         else if (ok) await app.db.save(t, { ...x.kayit, dogrulandi: `${ben()}|${today()}` });
         else { const not = prompt('Ne düzeltilmeli? (kaydın notuna eklenir)'); if (!not) return; await app.db.save(t, { ...x.kayit, notlar: [x.kayit.notlar, `Düzeltilecek (${tarih(today())}): ${not}`].filter(Boolean).join('\n') }); toast('Not eklendi; kayıt kuyrukta kalır.'); onayView(el); return; }
         toast(ok ? 'Onaylandı.' : 'Reddedildi.'); onaySay(); onayView(el);

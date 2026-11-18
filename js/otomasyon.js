@@ -42,6 +42,7 @@ export const KURALLAR = [
   { k: 'sicak_ziyaret', ad: 'Sıcak projede ziyaret görevi', ac: 'Proje "Sıcak" olunca karar vericiyi görmek için görev açılır.', gun: 2, metin: p => `Karar vericiyle görüş: ${p.ad}` },
   { k: 'siparis_sonrasi', ad: 'Siparişten sonra teslimat takibi', ac: 'Proje "Sipariş" olunca teslimat ve montajı takip etme görevi açılır.', gun: 14, metin: p => `Teslimat ve montajı takip et: ${p.ad}` },
   { k: 'teklif_sure', ad: 'Teklif süresi dolmadan hatırlat', ac: 'Gönderilmiş teklifin geçerliliği bitmeden seçilen gün kala görev açılır.', gun: 2, tarama: true },
+  { k: 'teklif_yanit', ad: 'Yanıtsız teklifi takip et', ac: 'Gönderilen teklife seçilen gün içinde yanıt (kabul ya da red) gelmezse "Teklifin sonucunu sor" görevi açılır.', gun: 7, tarama: true },
   { k: 'numune_iade', ad: 'Numune iade günü', ac: 'Müşterideki numunenin iade tarihi gelince "Numuneyi geri al" görevi açılır.', gun: 0, tarama: true },
   { k: 'tahsilat_vade', ad: 'Vadesi geçen fatura', ac: 'Açık faturanın vadesi seçilen gün geçince tahsilat görevi açılır.', gun: 1, tarama: true },
 ];
@@ -88,6 +89,11 @@ export async function otomasyonTara({ zorla = false } = {}) {
       if (!x.gecerlilik || x.durum !== 'Gönderildi') continue;
       if (gunEkle(x.gecerlilik, -R.teklif_sure.gun) <= t && x.gecerlilik >= gunEkle(t, -1))
         n += await ac(`oto:teklif_sure:${x.id}`, { baslik: `Teklif süresi doluyor: ${x.teklif_no || 'teklif'}${x.firma_id ? ' (' + firmaAd(x.firma_id) + ')' : ''}`, son_tarih: x.gecerlilik, firma_id: x.firma_id || null, proje_id: x.proje_id || null, kisi_id: x.kisi_id || null, oncelik: 'Yüksek' }) ? 1 : 0;
+    }
+    if (R.teklif_yanit.acik) for (const x of S.teklifler || []) {
+      if (x.durum !== 'Gönderildi') continue;
+      const g = x.gonderim_tarihi || x.tarih; if (!g || gunEkle(g, R.teklif_yanit.gun) > t || g < gunEkle(t, -60)) continue;   // eski gönderilmiş tekliflere toplu görev açılmasın
+      n += await ac(`oto:teklif_yanit:${x.id}`, { baslik: `Teklifin sonucunu sor: ${x.teklif_no || 'teklif'}${x.firma_id ? ' (' + firmaAd(x.firma_id) + ')' : ''}`, son_tarih: t, firma_id: x.firma_id || null, proje_id: x.proje_id || null, kisi_id: x.kisi_id || null }) ? 1 : 0;
     }
     if (R.numune_iade.acik) for (const x of S.numuneler || []) {
       if (!x.iade_tarihi || (x.durum && x.durum !== 'Müşteride')) continue;

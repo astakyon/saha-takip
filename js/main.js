@@ -51,6 +51,7 @@ const ROUTES = {
   prim: { t: 'Prim ve hedef', ico: 'chart', v: yukle('views/finans2.js', 'primView'), g: 'Finans' },
   banka: { t: 'Banka ekstresi', ico: 'wallet', v: yukle('views/finans2.js', 'bankaView'), g: 'Finans' },
   bayistok: { t: 'Bayi stokları', ico: 'box', v: yukle('views/bayiag2.js', 'bayistokView'), g: 'Satış' },
+  sevk: { t: 'Sevk ve irsaliye', ico: 'box', v: yukle('views/sevk.js', 'sevkView'), g: 'Satış' },
   bayisatis: { t: 'Bayi satışları', ico: 'chart', v: yukle('views/bayiag2.js', 'bayisatisView'), g: 'Satış' },
   bayihedef: { t: 'Bayi hedef ve prim', ico: 'chart', v: yukle('views/bayiag2.js', 'bayihedefView'), g: 'Satış' },
   bayianaliz: { t: 'Bayi ağı analizi', ico: 'chart', v: yukle('views/bayiag2.js', 'bayianalizView'), g: 'Satış' },

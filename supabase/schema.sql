@@ -2248,6 +2248,198 @@ revoke all on function public.stok_paylasim_goster(text) from public;
 grant execute on function public.stok_paylasim_goster(text) to anon, authenticated;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 56 $f$;
 
+-- ---------- Sürüm 57: Sevk ve irsaliye (sevk belgesi, iade, taşıma bilgileri, teslim imzası, kısmi sevk) ----------
+create table if not exists public.sevkler (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  belge_no text, tur text default 'Sevk',                    -- Sevk / İade
+  durum text default 'Taslak',                               -- Taslak / Hazırlanıyor / Yolda / Teslim edildi / İptal
+  plan_tarih date, tarih date,
+  firma_id uuid references public.firmalar(id) on delete set null,   -- çıkış: bayi stoğu
+  depo text,
+  alici_id uuid references public.firmalar(id) on delete set null,
+  proje_id uuid references public.projeler(id) on delete set null,
+  teklif_id uuid references public.teklifler(id) on delete set null,
+  siparis_id uuid references public.siparisler(id) on delete set null,
+  teslim_yeri text, kalemler jsonb default '[]'::jsonb,       -- kod, aciklama, birim, adet, siparis_adet
+  gonderim text, tasiyici text, takip_no text, tasima_ucreti numeric, tasima_pb text default 'TRY', odeyen text,
+  palet int, koli int, agirlik numeric, desi numeric, plaka text, sofor text, sofor_tel text,
+  teslim_alan text, teslim_imza text, teslim_foto jsonb default '[]'::jsonb, teslim_konum text, teslim_zaman timestamptz,
+  stok_dustu boolean default false, notlar text,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create index if not exists sevkler_owner_idx on public.sevkler (owner);
+create index if not exists sevkler_tarih_idx on public.sevkler (owner, plan_tarih);
+create unique index if not exists sevkler_belge_tekil on public.sevkler (owner, belge_no) where belge_no is not null;
+alter table public.sevkler enable row level security;
+alter table public.sevkler alter column owner set default public.veri_sahibi();
+drop policy if exists "oku" on public.sevkler;
+drop policy if exists "ekle" on public.sevkler;
+drop policy if exists "degistir" on public.sevkler;
+drop policy if exists "sil" on public.sevkler;
+drop policy if exists "yonetici_oku" on public.sevkler;
+drop policy if exists "dis_oku" on public.sevkler;
+drop policy if exists "dis_ekle" on public.sevkler;
+drop policy if exists "dis_degistir" on public.sevkler;
+drop policy if exists "dis_sil" on public.sevkler;
+create policy "oku" on public.sevkler for select to authenticated using (public.yetki(owner, 'sevkler', 'oku'));
+create policy "ekle" on public.sevkler for insert to authenticated with check (public.yetki(owner, 'sevkler', 'yaz'));
+create policy "degistir" on public.sevkler for update to authenticated using (public.yetki(owner, 'sevkler', 'yaz')) with check (public.yetki(owner, 'sevkler', 'yaz'));
+create policy "sil" on public.sevkler for delete to authenticated using (public.yetki(owner, 'sevkler', 'yaz'));
+create policy "yonetici_oku" on public.sevkler for select to authenticated using (public.yonetici_mi());
+-- Bayi (dış kullanıcı): kendi stoğundan çıkan ya da kendisine gelen belgeleri görür; yalnız kendi stoğundan çıkan belgeyi açar / değiştirir
+create policy "dis_oku" on public.sevkler as restrictive for select to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner) or alici_id = public.dis_firmam(owner));
+create policy "dis_ekle" on public.sevkler as restrictive for insert to authenticated with check (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+create policy "dis_degistir" on public.sevkler as restrictive for update to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner)) with check (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+create policy "dis_sil" on public.sevkler as restrictive for delete to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+drop trigger if exists touch on public.sevkler;
+create trigger touch before update on public.sevkler for each row execute function public.touch_updated_at();
+revoke all on public.sevkler from anon;
+create or replace function public.hassas_kolonlar() returns jsonb language sql immutable as $f$
+  select '{
+    "projeler":       [{"grup": "tutar", "kol": ["tutar_usd", "siparis_tutari_usd", "bizim_teklif_usd", "rakip_birim_fiyat", "rakip_toplam_usd"]},
+                       {"grup": "harita", "kol": ["karar_grubu"]}],
+    "teklifler":      [{"grup": "tutar", "kol": ["kalemler", "toplam", "iskonto"]}],
+    "siparisler":     [{"grup": "tutar", "kol": ["net_deger"]}],
+    "urunler":        [{"grup": "tutar", "kol": ["birim_fiyat_usd"]}],
+    "stok_gecmis":    [{"grup": "tutar", "kol": ["birim_fiyat_usd"]}],
+    "hedefler":       [{"grup": "tutar", "kol": ["tutar_usd", "resmi_usd", "resmi_tl"]}],
+    "rakip_fiyatlar": [{"grup": "tutar", "kol": ["birim_fiyat", "fiyat_metin"]}],
+    "tahsilatlar":    [{"grup": "tutar", "kol": ["tutar", "odenen"]}],
+    "cekler":         [{"grup": "tutar", "kol": ["tutar"]}],
+    "bayiler":        [{"grup": "tutar", "kol": ["iskonto", "kredi_limiti", "hedef_yil"]}],
+    "bayi_stok":      [{"grup": "tutar", "kol": ["birim_fiyat"]}],
+    "bayi_satis":     [{"grup": "tutar", "kol": ["tutar"]}],
+    "stok_sayimlari": [{"grup": "tutar", "kol": ["eksik_tutar", "fazla_tutar"]}],
+    "sevkler":        [{"grup": "tutar", "kol": ["tasima_ucreti"]}],
+    "kisiler":        [{"grup": "iletisim", "kol": ["telefon", "eposta", "kartvizit_on", "kartvizit_arka", "dogum_gunu"]}]
+  }'::jsonb
+$f$;
+do $$ declare t text; begin
+  for t in select jsonb_object_keys(public.hassas_kolonlar()) loop
+    if to_regclass('public.' || t) is null then continue; end if;
+    execute format('drop trigger if exists hassas_koru on public.%I', t);
+    execute format('create trigger hassas_koru before update on public.%I for each row execute function public.hassas_koru()', t);
+  end loop;
+end $$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 57 $f$;
+-- ---------- Sürüm 58: Teklif şablonları, mahal ve alternatifli kalemler, teslim ve kur şartları, kayıp nedeni, iskonto onayı ----------
+alter table public.teklifler add column if not exists sablon_id text;
+alter table public.teklifler add column if not exists dil text default 'tr';
+alter table public.teklifler add column if not exists secim text;                 -- alternatifli teklifte seçili seçenek (A, B…)
+alter table public.teklifler add column if not exists teslim_suresi text;
+alter table public.teklifler add column if not exists teslim_yeri text;
+alter table public.teklifler add column if not exists teslim_sekli text;          -- EXW, DAP, şantiye teslim…
+alter table public.teklifler add column if not exists kur numeric;                -- teklif kuru (1 USD/EUR = ? TL)
+alter table public.teklifler add column if not exists kur_tarihi date;
+alter table public.teklifler add column if not exists kur_maddesi boolean default false;
+alter table public.teklifler add column if not exists ekler jsonb default '[]'::jsonb;   -- [{ad, url}]
+alter table public.teklifler add column if not exists onay text;                  -- iskonto sınırı aşılınca: Bekliyor / Onaylandı / Reddedildi
+alter table public.teklifler add column if not exists onaylayan text;
+alter table public.teklifler add column if not exists kayip_neden text;
+alter table public.teklifler add column if not exists kayip_rakip text;
+alter table public.teklifler add column if not exists kayip_fiyat numeric;
+alter table public.teklifler add column if not exists gonderim_tarihi date;
+alter table public.teklifler add column if not exists yanit_tarihi date;
+alter table public.teklifler add column if not exists olusturan text default public.benim_epostam();
+alter table public.urunler add column if not exists maliyet_usd numeric;
+alter table public.urunler add column if not exists foy_url text;
+alter table public.urunler add column if not exists sertifika_url text;
+alter table public.urunler add column if not exists fotometri_url text;
+alter table public.urunler add column if not exists gorsel text;
+alter table public.teklif_baglantilari add column if not exists yanit_secim text;
+
+-- Şablonlar, numara düzeni ve hazır metinler ekipçe paylaşılır
+create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) returns boolean language sql stable security definer set search_path = public as $f$
+  select public.sirket_yetkilisi(sahip) or (public.ekipte(sahip::text) and (
+    anahtar in ('google_key', 'wa_sablonlar', 'teklif_firma', 'listeler', 'kataloglar_ek', 'ziyaret_siklik', 'usd_kur', 'kur_elle', 'elektrik_tl_kwh', 'firma_profil', 'cift_farkli', 'otomasyon', 'oto_silinen',
+                'stok_birimleri', 'sip_farkli', 'kendi_depo', 'zorunlu_alanlar', 'teklif_sablonlari', 'teklif_no_duzen', 'teklif_metinleri', 'teklif_iskonto_siniri')
+    or (anahtar like 'sartname:%' and public.yetki(sahip, 'projeler', 'oku'))))
+$f$;
+
+-- Müşteri bağlantıdan yanıtlar; alternatifli teklifte seçtiği seçenek (p_secim) teklife yazılır.
+-- İlk açılışta teklifi gönderene "teklif görüntülendi" görevi düşer (bir kez).
+drop function if exists public.teklif_yanitla(text, text, text, text);
+create or replace function public.teklif_yanitla(p_anahtar text, p_yanit text, p_not text default null, p_ad text default null, p_secim text default null) returns jsonb language plpgsql security definer set search_path = public as $f$
+declare b public.teklif_baglantilari; t public.teklifler; v_baslik text; v_secim text := left(nullif(trim(p_secim), ''), 8);
+begin
+  if p_yanit not in ('Onay', 'Revize') then return jsonb_build_object('hata', 'gecersiz'); end if;
+  select * into b from public.teklif_baglantilari where anahtar = p_anahtar and length(p_anahtar) >= 32 for update;
+  if not found or b.iptal then return jsonb_build_object('hata', 'gecersiz'); end if;
+  if b.son_tarih is not null and b.son_tarih < current_date then return jsonb_build_object('hata', 'sure'); end if;
+  if b.yanit is not null then return jsonb_build_object('hata', 'yanitlandi', 'yanit', b.yanit); end if;
+  if v_secim is not null and not coalesce(b.icerik -> 'secenekler', '[]'::jsonb) @> jsonb_build_array(jsonb_build_object('ad', v_secim)) then v_secim := null; end if;
+  update public.teklif_baglantilari set yanit = p_yanit, yanit_not = left(nullif(trim(p_not), ''), 2000), yanit_ad = left(nullif(trim(p_ad), ''), 120), yanit_zaman = now(), yanit_secim = v_secim where id = b.id;
+  select * into t from public.teklifler where id = b.teklif_id;
+  if found then
+    if p_yanit = 'Onay' then
+      update public.teklifler set durum = 'Kabul', yanit_tarihi = current_date, secim = coalesce(v_secim, secim) where id = t.id;
+      v_baslik := 'Teklif onaylandı: ' || coalesce(t.teklif_no, '') || coalesce(' · Seçenek ' || v_secim, '') || ' · siparişi takip et';
+    else
+      v_baslik := 'Revize istendi: ' || coalesce(t.teklif_no, '');
+    end if;
+    insert into public.gorevler (owner, baslik, son_tarih, oncelik, durum, firma_id, proje_id, kisi_id, notlar, atanan, sorumlu, ekip_id, kaynak)
+    values (b.owner, v_baslik, current_date, 'Yüksek', 'Açık', t.firma_id, t.proje_id, t.kisi_id,
+      nullif(concat_ws(E'\n', case when p_ad is not null and trim(p_ad) <> '' then 'Yanıtlayan: ' || left(trim(p_ad), 120) end, left(nullif(trim(p_not), ''), 2000)), ''),
+      b.olusturan, t.sorumlu, t.ekip_id, 'baglanti:' || b.id);
+    insert into public.degisiklikler (owner, tablo, kayit_id, islem, kim, ozet)
+    values (b.owner, 'teklifler', t.id, 'UPDATE', 'Müşteri (onay bağlantısı)', case when p_yanit = 'Onay' then 'Teklif bağlantıdan onaylandı' || coalesce(' (Seçenek ' || v_secim || ')', '') else 'Bağlantıdan revize istendi' end);
+  end if;
+  return jsonb_build_object('tamam', true, 'yanit', p_yanit, 'secim', v_secim);
+end $f$;
+revoke all on function public.teklif_yanitla(text, text, text, text, text) from public;
+grant execute on function public.teklif_yanitla(text, text, text, text, text) to anon, authenticated;
+
+create or replace function public.teklif_goster(p_anahtar text) returns jsonb language plpgsql security definer set search_path = public as $f$
+declare b public.teklif_baglantilari; t public.teklifler;
+begin
+  if p_anahtar is null or length(p_anahtar) < 32 then return jsonb_build_object('hata', 'gecersiz'); end if;
+  select * into b from public.teklif_baglantilari where anahtar = p_anahtar;
+  if not found then return jsonb_build_object('hata', 'gecersiz'); end if;
+  if b.iptal then return jsonb_build_object('hata', 'iptal'); end if;
+  if b.son_tarih is not null and b.son_tarih < current_date and b.yanit is null then return jsonb_build_object('hata', 'sure', 'son_tarih', b.son_tarih, 'gonderen', b.icerik -> 'gonderen'); end if;
+  update public.teklif_baglantilari set acilma = acilma + 1, ilk_acilma = coalesce(ilk_acilma, now()), son_acilma = now() where id = b.id;
+  if b.ilk_acilma is null and b.yanit is null then
+    select * into t from public.teklifler where id = b.teklif_id;
+    if found then
+      insert into public.gorevler (owner, baslik, son_tarih, oncelik, durum, firma_id, proje_id, kisi_id, atanan, sorumlu, ekip_id, kaynak)
+      values (b.owner, 'Teklif görüntülendi: ' || coalesce(t.teklif_no, '') || ' · müşteriyi ara', current_date, 'Normal', 'Açık', t.firma_id, t.proje_id, t.kisi_id, b.olusturan, t.sorumlu, t.ekip_id, 'goruntulendi:' || b.id);
+    end if;
+  end if;
+  return b.icerik || jsonb_build_object('son_tarih', b.son_tarih, 'yanit', b.yanit, 'yanit_zaman', b.yanit_zaman, 'yanit_ad', b.yanit_ad, 'yanit_secim', b.yanit_secim);
+end $f$;
+revoke all on function public.teklif_goster(text) from public;
+grant execute on function public.teklif_goster(text) to anon, authenticated;
+
+create or replace function public.hassas_kolonlar() returns jsonb language sql immutable as $f$
+  select '{
+    "projeler":       [{"grup": "tutar", "kol": ["tutar_usd", "siparis_tutari_usd", "bizim_teklif_usd", "rakip_birim_fiyat", "rakip_toplam_usd"]},
+                       {"grup": "harita", "kol": ["karar_grubu"]}],
+    "teklifler":      [{"grup": "tutar", "kol": ["kalemler", "toplam", "iskonto", "kayip_fiyat", "kur"]}],
+    "siparisler":     [{"grup": "tutar", "kol": ["net_deger"]}],
+    "urunler":        [{"grup": "tutar", "kol": ["birim_fiyat_usd", "maliyet_usd"]}],
+    "stok_gecmis":    [{"grup": "tutar", "kol": ["birim_fiyat_usd"]}],
+    "hedefler":       [{"grup": "tutar", "kol": ["tutar_usd", "resmi_usd", "resmi_tl"]}],
+    "rakip_fiyatlar": [{"grup": "tutar", "kol": ["birim_fiyat", "fiyat_metin"]}],
+    "tahsilatlar":    [{"grup": "tutar", "kol": ["tutar", "odenen"]}],
+    "cekler":         [{"grup": "tutar", "kol": ["tutar"]}],
+    "bayiler":        [{"grup": "tutar", "kol": ["iskonto", "kredi_limiti", "hedef_yil"]}],
+    "bayi_stok":      [{"grup": "tutar", "kol": ["birim_fiyat"]}],
+    "bayi_satis":     [{"grup": "tutar", "kol": ["tutar"]}],
+    "stok_sayimlari": [{"grup": "tutar", "kol": ["eksik_tutar", "fazla_tutar"]}],
+    "sevkler":        [{"grup": "tutar", "kol": ["tasima_ucreti"]}],
+    "kisiler":        [{"grup": "iletisim", "kol": ["telefon", "eposta", "kartvizit_on", "kartvizit_arka", "dogum_gunu"]}]
+  }'::jsonb
+$f$;
+do $$ declare t text; begin
+  for t in select jsonb_object_keys(public.hassas_kolonlar()) loop
+    if to_regclass('public.' || t) is null then continue; end if;
+    execute format('drop trigger if exists hassas_koru on public.%I', t);
+    execute format('create trigger hassas_koru before update on public.%I for each row execute function public.hassas_koru()', t);
+  end loop;
+end $$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 58 $f$;
+
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();
