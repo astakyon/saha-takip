@@ -905,6 +905,34 @@ const DB = () => {
   kontrol('Sipariş kopya ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 113: bayi stok Excel'inde sıra no sütunu kod sanılmasın; eski hatalı satırlar tek dokunuşla düzelsin
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', il: 'Adana', created_at: ts, updated_at: ts }];
+    d.urunler = (d.urunler || []).concat([{ id: 'u117887', kod: '117887', aciklama: 'LED PANEL 60x60 40W', birim: 'ADET', owner: 'u1', created_at: ts, updated_at: ts }, { id: 'u117220', kod: '117220', aciklama: 'LED PROJEKTÖR 100W', birim: 'ADET', owner: 'u1', created_at: ts, updated_at: ts },
+      { id: 'u115747', kod: '115747', aciklama: 'LED BANT ARMATÜR 120cm', birim: 'ADET', owner: 'u1', created_at: ts, updated_at: ts }, { id: 'usahte', kod: '4', aciklama: '115748', birim: 'ADET', owner: 'u1', created_at: ts, updated_at: ts }]);
+    d.bayi_stok = [{ id: 'yk1', owner: 'u1', firma_id: 'f1', kod: '3', aciklama: '115747', adet: 60, son_hareket: '2026-11-18', created_at: ts, updated_at: ts }, { id: 'yk2', owner: 'u1', firma_id: 'f1', kod: '4', aciklama: '115748', adet: 60, son_hareket: '2026-11-18', created_at: ts, updated_at: ts }];
+    d.ayarlar = (d.ayarlar || []).concat([{ id: 'ae1', owner: 'u1', anahtar: 'excel_esle', deger: { stok: { kod: 'No', ac: 'Ürün Kodu', bir: null, stok: 'Adet', fiyat: null } }, created_at: ts, updated_at: ts }]);
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bayistok'); await w(1500);
+  const kart = await p.evaluate(() => document.querySelector('[data-kodduz]')?.innerText.replace(/\s+/g, ' ') || '');
+  await p.click('[data-kodduzelt]'); await w(1500);
+  const duz = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { st: S.bayi_stok.filter(s => s.firma_id === 'f1').map(s => s.kod + ':' + (s.aciklama || '') + ':' + s.adet).sort(), sahte: !!S.urunler.find(u => u.id === 'usahte'), kart: !!document.querySelector('[data-kodduzelt]'), tablo: document.querySelector('[data-l]')?.innerText.includes('LED BANT ARMATÜR 120cm') }; });
+  // Kullanıcının dosya düzeni: No | Ürün Kodu | Adet — kayıtlı eşleme hatalı (kod: No, açıklama: Ürün Kodu)
+  const son = await p.evaluate(async () => {
+    const m = await import('./js/views/bayiag2.js'), veri = [[1, '117887', 100], [2, '117220', 200], [3, '115747', 75]], veri2 = [[1, 'ZX-9001', 5], [2, 'ZX-9002', 6], [3, 'ZX-9003', 7]];
+    const a = m.kodSutunuDenetle(['No', 'Ürün Kodu', 'Adet'], veri, { kod: 0, ac: 1, bir: -1, stok: 2, fiyat: -1 });
+    const b = m.kodSutunuDenetle(['Sıra', 'Malzeme', 'Miktar'], veri2, { kod: 0, ac: 1, bir: -1, stok: 2, fiyat: -1 });   // kodlar ürün listesinde yok
+    const c = m.kodSutunuDenetle(['Kod', 'Açıklama', 'Adet'], [['117887', 'LED PANEL', 3], ['117220', 'PROJEKTÖR', 4]], { kod: 0, ac: 1, bir: -1, stok: 2, fiyat: -1 });   // doğru dosya değişmez
+    return { a: [a.M.kod, a.M.ac, a.degisti], b: [b.M.kod, b.M.ac], c: [c.M.kod, c.M.ac, c.degisti], sira: m.siraSutunu(['1', '2', '3']) && !m.siraSutunu(['117887', '117220']) };
+  });
+  kontrol('Bayi stok: sıra no kod olarak kaydedilmiş eski satırlar uyarılır ve düzelir (kod açıklamadan alınır, tanım ürün listesinden gelir, sahte ürün silinir)',
+    /2 satırda ürün kodu yanlış/.test(kart) && duz.st.join('|') === '115747:LED BANT ARMATÜR 120cm:60|115748::60' && !duz.sahte && !duz.kart && duz.tablo, JSON.stringify({ kart, duz }));
+  kontrol('Bayi stok Excel\'i: "No" sütunu kod sanılmaz (hatalı kayıtlı eşleme olsa bile, kodlar ürün listesinde olmasa bile); doğru düzenli dosyaya dokunulmaz',
+    son.a.join() === '1,-1,true' && son.b.join() === '1,-1' && son.c.join() === '0,1,false' && son.sira, JSON.stringify(son));
+  kontrol('Bayi stok kod düzeltmesinde hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

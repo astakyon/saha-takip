@@ -32,6 +32,11 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 113)
+
+- **Bayi stok Excel'i kod denetimi**: sütun eşlemesi (kayıtlı olsa bile) içerikle doğrulanır. Kod sütunu 1, 2, 3… diye artan sıra numarasıysa ya da başka bir sütun ürün listesindeki kodlarla daha çok eşleşiyorsa kod o sütundan alınır; açıklama sütunu kodlardan oluşuyorsa açıklama boş bırakılır ve tanım ürün listesinden gelir. Düzeltilen eşleme kaydedilir. Açıklaması kod gibi olan satırlar ürün listesine eklenmez.
+- **Kodları düzelt**: kodu sıra no, açıklaması ürün kodu olan eski bayi stok satırları stok ekranında uyarılır; tek dokunuşla kod açıklamadan alınır (aynı kod varsa yeni adet geçerli olur), tanım ürün listesinden gelir, o yüklemenin açtığı "1, 2, 3…" kodlu sahte ürünler silinir. Tanımı ürün listesinde olmayan kodlar tabloda "ürün listesinde tanımı yok" diye görünür.
+
 ## Güncelleme notu (sürüm 112)
 
 - **Aynı sipariş numarası** (`js/sipcift.js`): Veri kontrolü → Siparişler → "Aynı sipariş numarasıyla birden fazla kayıt". Sipariş no'ya göre gruplar ("4500001" ile "4500001.0" aynı sayılır). "İncele" kayıtları yan yana gösterir, farklı alanları vurgular; ana sipariş seçilir. "Birleştir, diğerlerini sil": ana kalır, boş alanları diğerlerinden dolar, sipariş notları ve yorumlar taşınır, ana doğrulanır, kopyalar silinir. "Diğerlerini rapor dışı yap" silmeden toplamlardan çıkarır. "Farklı siparişler" hepsini doğrular ve grubu bir daha göstermez (gruba yeni kayıt eklenirse yeniden çıkar). Tutar ve para birimi aynı, satış belgesi çelişmeyen gruplar "kesin kopya"dır; hepsi tek düğmeyle birleştirilir. Numarası farklı ama aynı gün, cari ve tutarlı siparişler ayrı başlıkta ("Doğru" ile işaretlenir).

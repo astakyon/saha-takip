@@ -25,10 +25,52 @@ function seciliBayi(f) {
 const bayiSecici = (f, b) => dis() ? '' : `<select data-bsec aria-label="Bayi seç"><option value="*" ${f.id === '*' ? 'selected' : ''}>Bütün bayiler</option>${bayiler().map(x => `<option value="${x.id}" ${x.id === b?.id && f.id !== '*' ? 'selected' : ''}>${esc(bayiAd(x))}</option>`).join('')}</select>`;
 const gunFark = d => d ? Math.round((new Date(today() + 'T00:00') - new Date(String(d).slice(0, 10) + 'T00:00')) / 864e5) : null;
 
+// ---------- Kod sütunu denetimi ----------
+const urunKodlari = () => new Set((S.urunler || []).filter(u => !(/^\d{1,3}$/.test(String(u.kod ?? '').trim()) && /^[A-Za-z0-9.\-\/_]{4,}$/.test(String(u.aciklama ?? '').trim()))).map(u => String(u.kod ?? '').trim()));
+const urunAd = kod => (S.urunler || []).find(u => String(u.kod) === String(kod))?.aciklama || null;
+const kodGibi = v => /^[A-Za-z0-9][A-Za-z0-9.\-\/_]{3,}$/.test(String(v ?? '').trim());
+// Sıra numarası sütunu: 1, 2, 3… diye artan küçük tam sayılar
+export const siraSutunu = deg => { const v = deg.map(x => String(x ?? '').trim()).filter(Boolean); if (v.length < 2) return false; let n = 0; v.forEach((x, i) => { if (/^\d{1,4}$/.test(x) && +x === +v[0] + i) n++; }); return n / v.length >= 0.8; };
+// Excel'den gelen eşlemeyi içerikle doğrular: kod sütunu sıra no ise ya da başka sütun ürün listesindeki kodlarla daha çok eşleşiyorsa düzeltir
+export function kodSutunuDenetle(h, veri, M) {
+  const kodlar = urunKodlari(), sut = i => i < 0 ? [] : veri.map(r => r[i]).filter(v => v != null && String(v).trim() !== '').map(v => String(v).trim());
+  const esl = i => sut(i).filter(x => kodlar.has(x)).length, hf = h.map(x => fold(x || '')), M2 = { ...M }, yasak = new Set([M.stok, M.fiyat].filter(i => i >= 0));
+  const adaylar = h.map((_, i) => i).filter(i => !yasak.has(i));
+  const enIyi = adaylar.reduce((a, i) => esl(i) > esl(a) ? i : a, M.kod);
+  if (enIyi !== M.kod && esl(enIyi) > esl(M.kod)) M2.kod = enIyi;
+  else if (siraSutunu(sut(M.kod))) {
+    const alt = adaylar.find(i => i !== M.kod && /kod|code|sku|malzeme no/.test(hf[i]) && !siraSutunu(sut(i))) ?? adaylar.find(i => i !== M.kod && !siraSutunu(sut(i)) && sut(i).length && sut(i).every(kodGibi));
+    if (alt != null) M2.kod = alt;
+  }
+  if (M2.ac === M2.kod || (M2.ac >= 0 && sut(M2.ac).length && sut(M2.ac).every(x => kodlar.has(x) || (kodGibi(x) && !/[a-zçğıöşü]{3}/i.test(x))))) {
+    M2.ac = adaylar.find(i => i !== M2.kod && /aciklama|tanim|urun ad|malzeme ad|^ad$|^urun$/.test(hf[i]) && !sut(i).every(kodGibi)) ?? -1;
+  }
+  return { M: M2, degisti: M2.kod !== M.kod || M2.ac !== M.ac };
+}
+// Önceki hatalı yüklemeden kalan satırlar: kod alanında sıra no (1, 2…), açıklamada gerçek ürün kodu
+const sahteUrunMu = u => /^\d{1,3}$/.test(String(u.kod ?? '').trim()) && kodGibi(u.aciklama) && !/\s/.test(String(u.aciklama).trim());
+export function yanlisKodluSatirlar(firma_id) {
+  const kodlar = new Set((S.urunler || []).filter(u => !sahteUrunMu(u)).map(u => String(u.kod ?? '').trim()));
+  return (S.bayi_stok || []).filter(s => (!firma_id || s.firma_id === firma_id) && /^\d{1,3}$/.test(String(s.kod ?? '').trim()) && !kodlar.has(String(s.kod).trim()) && kodGibi(s.aciklama) && !/\s/.test(String(s.aciklama).trim()));
+}
+export async function yanlisKodlariDuzelt(firma_id) {
+  const l = yanlisKodluSatirlar(firma_id); let duz = 0, bir = 0;
+  for (const s of l) {
+    const kod = String(s.aciklama).trim(), var_ = (S.bayi_stok || []).find(x => x.id !== s.id && x.firma_id === s.firma_id && x.kod === kod);
+    if (var_) { if ((s.son_hareket || '') >= (var_.son_hareket || '')) await app.db.save('bayi_stok', { ...var_, adet: s.adet, son_hareket: s.son_hareket || var_.son_hareket }); await app.db.del('bayi_stok', s.id); bir++; }
+    else { await app.db.save('bayi_stok', { ...s, kod, aciklama: urunAd(kod) }); duz++; }
+  }
+  // Aynı yüklemenin ürün listesine eklediği sahte ürünler (kod: sıra no, açıklama: ürün kodu)
+  const kodSet = new Set(l.map(s => String(s.aciklama).trim()));
+  const sahte = (S.urunler || []).filter(u => sahteUrunMu(u) && kodSet.has(String(u.aciklama ?? '').trim()));
+  let sil = 0; if (sahte.length && (sahipMi() || izin('urunler') === 'yaz')) for (const u of sahte) { try { await app.db.del('urunler', u.id); sil++; } catch {} }
+  return { duz, bir, sil };
+}
+
 // ---------- Stoklar ----------
 // Bayinin stok satırları: bayi_stok tablosu + (henüz taşınmadıysa) eski depo listesindeki o deponun ürünleri
 export function bayiStoklari(b) {
-  const l = (S.bayi_stok || []).filter(s => s.firma_id === b.firma_id).map(s => ({ ...s, kaynak: 'bayi', fiyat: +s.birim_fiyat || +S.urunler.find(u => u.kod === s.kod)?.birim_fiyat_usd || 0 }));
+  const l = (S.bayi_stok || []).filter(s => s.firma_id === b.firma_id).map(s => ({ ...s, aciklama: s.aciklama || urunAd(s.kod), kaynak: 'bayi', fiyat: +s.birim_fiyat || +S.urunler.find(u => u.kod === s.kod)?.birim_fiyat_usd || 0 }));
   if (b.depo) for (const u of S.urunler.filter(u => u.depo === b.depo && !l.some(x => x.kod === u.kod))) l.push({ id: u.id, kod: u.kod, aciklama: u.aciklama, adet: +u.stok || 0, fiyat: +u.birim_fiyat_usd || 0, son_hareket: u.stok_tarihi || String(u.updated_at || '').slice(0, 10), kaynak: 'depo' });
   return l;
 }
@@ -43,8 +85,20 @@ export function bayistokView(el) {
     <div class="vh-act">${bayiSecici(f, b)}${yazabilir && !hepsi ? '<button class="btn" data-yukle>Excel\'den yükle</button><button class="btn primary" data-ekle>+ Ürün</button>' : ''}<button class="btn ghost" data-xlsx>Excel</button></div></header>
     <div class="frow"><input type="search" data-q value="${esc(f.q)}" placeholder="${hepsi ? 'Ürün kodu ya da adı: hangi bayide var?' : 'Ürün ara'}" aria-label="Ara">
       <div class="seg" role="group" aria-label="Göster">${[['tum', 'Tümü'], ['az', 'Az kalan'], ['olu', 'Hareketsiz (90+ gün)']].map(([k, t]) => `<button type="button" data-s="${k}" class="${f.sadece === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
-    <div data-tasi></div><div data-uyari></div>
+    <div data-tasi></div><div data-kodduz></div><div data-uyari></div>
     <div data-l></div>`;
+  // Hatalı yüklemeden kalan satırlar (kod yerine sıra no) için tek dokunuşla düzeltme
+  const yk = yazabilir ? yanlisKodluSatirlar(hepsi ? null : b.firma_id) : [];
+  if (yk.length) {
+    const kb = el.querySelector('[data-kodduz]');
+    kb.innerHTML = `<section class="card bs-tasi"><h2>${yk.length} satırda ürün kodu yanlış sütundan gelmiş</h2><p> Kod yerine sıra numarası (${esc(yk.slice(0, 3).map(s => s.kod).join(', '))}…) yazılmış, gerçek kod (${esc(yk.slice(0, 3).map(s => s.aciklama).join(', '))}…) açıklamada duruyor. Bu yüzden ürün tanımı çıkmıyor.</p><div class="btnrow"><button type="button" class="btn sm primary" data-kodduzelt>Kodları düzelt</button></div></section>`;
+    kb.querySelector('[data-kodduzelt]').onclick = async e => {
+      if (!confirmBox(`${yk.length} stok satırında açıklamadaki kod, ürün kodu olarak yazılacak ve ürün tanımı ürün listesinden alınacak. Aynı kod zaten varsa adetler birleşir. O yüklemenin ürün listesine eklediği "1, 2, 3…" kodlu sahte ürünler silinecek. Devam edilsin mi?`)) return;
+      e.target.disabled = true;
+      try { const r = await yanlisKodlariDuzelt(hepsi ? null : b.firma_id); toast(`${r.duz + r.bir} satır düzeltildi${r.bir ? ` (${r.bir} tanesi var olan satırla birleşti)` : ''}${r.sil ? `, ${r.sil} sahte ürün silindi` : ''}.`); } catch (er) { toast('Düzeltilemedi: ' + er.message, 'err'); }
+      bayistokView(el);
+    };
+  }
   // Eski "Stok ve fiyat" deposundaki stok henüz bayiye taşınmadıysa tek seferlik taşıma
   const plan = !dis() && (sahipMi() || yaz('urunler')) ? tasimaPlani(anaBayi()) : { gruplar: [], eslesmeyen: [] };
   if (plan.gruplar.length) {
@@ -69,7 +123,7 @@ export function bayistokView(el) {
     const deger = g.reduce((a, s) => a + s.adet * s.fiyat, 0);
     el.querySelector('[data-sum]').textContent = `${g.filter(s => s.adet > 0).length} kalem · stok değeri ~${usd(Math.round(deger))} · ${g.filter(s => gunFark(s.son_hareket) >= 90 && s.adet > 0).length} hareketsiz`;
     el.querySelector('[data-l]').innerHTML = g.length ? `<div class="tbl-wrap"><table class="tbl bs-t"><thead><tr>${hepsi ? '<th>Bayi</th>' : ''}<th>Kod</th><th>Ürün</th><th class="r">Adet</th><th class="r">Değer</th><th>Son hareket</th></tr></thead><tbody>
-      ${g.slice(0, 400).map(s => { const gun = gunFark(s.son_hareket); return `<tr>${hepsi ? `<td>${esc(bayiAd(s.bayi))}</td>` : ''}<td class="mono">${esc(s.kod)}</td><td>${esc(s.aciklama || '')}</td>
+      ${g.slice(0, 400).map(s => { const gun = gunFark(s.son_hareket); return `<tr>${hepsi ? `<td>${esc(bayiAd(s.bayi))}</td>` : ''}<td class="mono">${esc(s.kod)}</td><td>${s.aciklama ? esc(s.aciklama) : '<span class="muted">ürün listesinde tanımı yok</span>'}</td>
         <td class="r num">${yazabilir && !hepsi && s.kaynak === 'bayi' ? `<span class="bs-hizli"><button type="button" class="btn sm ghost" data-art="-1" data-sid="${s.id}" aria-label="${esc(s.kod)} bir azalt">−</button><input type="number" inputmode="decimal" class="bs-adet" data-adet="${s.id}" value="${s.adet}" aria-label="${esc(s.kod)} adet"><button type="button" class="btn sm ghost" data-art="1" data-sid="${s.id}" aria-label="${esc(s.kod)} bir artır">+</button></span>` : num(s.adet)}</td>
         <td class="r num">${s.fiyat ? usd(Math.round(s.adet * s.fiyat)) : ''}</td><td>${s.son_hareket ? tarih(s.son_hareket) : ''}${gun >= 90 && s.adet > 0 ? ` <em class="flag soft">${gun} gün hareketsiz</em>` : ''}${s.adet > 0 && s.adet <= 5 ? ' <em class="flag">az</em>' : ''}</td></tr>`; }).join('')}</tbody></table></div>`
       : `<div class="empty"><p>${satirlar.length ? 'Süzgece uyan ürün yok.' : 'Bu bayinin stok kaydı yok.'}</p>${!satirlar.length && yazabilir && !hepsi ? '<p class="hint">Bayinin stok listesini Excel\'den yükle ya da ürün ekle. Excel\'de ürün kodu ve stok sütunu olması yeter; yeni ürün kodları Ürün ve fiyat listesine de eklenir.</p>' : ''}</div>`;
@@ -106,8 +160,14 @@ async function stokExcel(b, sonra) {
     const { sutunlariEsle, onizleOnay } = await import('../esle.js');
     const M = await sutunlariEsle('stok', `${bayiAd(b)} stok listesi`, rows[hi].map(x => String(x ?? '')), rows.slice(hi + 1, hi + 4), [
       { k: 'kod', l: 'Ürün kodu', zorunlu: true }, { k: 'ac', l: 'Açıklama' }, { k: 'bir', l: 'Birim' }, { k: 'stok', l: 'Stok miktarı', zorunlu: true }, { k: 'fiyat', l: 'Birim fiyat (USD)' }],
-      { kod: Math.max(0, col(/uretici kod/, /^kod/, /malzeme/)), ac: col(/aciklama/, /urun/), bir: col(/birim/), stok: col(/fiili stok/, /^stok/, /miktar/, /adet/), fiyat: cF0 });
+      { kod: Math.max(0, col(/uretici kod/, /^kod/, /urun kod/, /malzeme kod/, /kod/, /malzeme/)), ac: col(/aciklama/, /tanim/, /urun ad/, /malzeme ad/, /^urun$/), bir: col(/birim/), stok: col(/fiili stok/, /^stok/, /miktar/, /adet/), fiyat: cF0 });
     if (!M) return toast('Yükleme iptal edildi.');
+    const den = kodSutunuDenetle(rows[hi].map(x => String(x ?? '')), rows.slice(hi + 1), M);
+    if (den.degisti) {
+      Object.assign(M, den.M); const ad = i => i >= 0 ? String(rows[hi][i] ?? `Sütun ${i + 1}`) : 'yok';
+      toast(`Kod sütunu düzeltildi: “${ad(M.kod)}” ürün kodu, açıklama “${ad(M.ac)}”.`);
+      const k = ayar('excel_esle', {}) || {}; if (k.stok) { k.stok = { ...k.stok, kod: M.kod >= 0 ? String(rows[hi][M.kod] ?? '') : null, ac: M.ac >= 0 ? String(rows[hi][M.ac] ?? '') : null }; await ayarYaz('excel_esle', k); }
+    }
     const sayi = v => typeof v === 'number' ? v : +String(v ?? '').replace(/\./g, '').replace(',', '.') || 0;
     const gelen = new Map();
     for (const r of rows.slice(hi + 1)) { const kod = r[M.kod] != null ? String(r[M.kod]).trim() : ''; if (!kod) continue;
@@ -125,7 +185,7 @@ async function stokExcel(b, sonra) {
     toast('Stok kaydediliyor…');
     await bayiStokYaz(kayit);
     // Ürün listesinde olmayan kodlar ürün ve fiyat listesine eklenir (stoksuz)
-    if (sahipMi() || izin('urunler') === 'yaz') { const { uuid } = await import('../db.js'); const yeniU = gl.filter(g => !S.urunler.some(u => u.kod === g.kod) && g.aciklama);
+    if (sahipMi() || izin('urunler') === 'yaz') { const { uuid } = await import('../db.js'); const yeniU = gl.filter(g => !S.urunler.some(u => u.kod === g.kod) && g.aciklama && !siraSutunu([g.kod]) && /\s|[a-zçğıöşü]{3}/i.test(g.aciklama));
       if (yeniU.length) try { await app.db.bulk('urunler', yeniU.map(g => ({ id: uuid(), kod: g.kod, aciklama: g.aciklama, birim: g.birim || 'ADET', aile: g.aciklama.split(/\s+/)[0].toUpperCase(), birim_fiyat_usd: g.fiyat }))); } catch {} }
     try { (await import('../belgeler.js')).yuklemeKaydet(file, `${bayiAd(b)} stok listesi`, `${gelen.size} ürün`); } catch {}
     toast(`${bayiAd(b)}: ${gelen.size} ürün güncellendi.`); sonra?.();
