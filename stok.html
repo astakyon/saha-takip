@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Stok listesi</title>
+<style>
+  :root { --ink: #1D2B36; --muted: #5E6E7A; --line: #DCE2E6; --paper: #F3F5F6; --green: #15803D; --amber: #A16207; --red: #B91C1C; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  .bar { background: var(--ink); color: #fff; padding: 14px 16px; }
+  .bar b { font-size: 17px; display: block; }
+  .bar small { opacity: .75; }
+  main { max-width: 860px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .kart { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  input { width: 100%; font: inherit; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+  td.r, th.r { text-align: right; white-space: nowrap; }
+  .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  .var { color: var(--green); font-weight: 700; } .az { color: var(--amber); font-weight: 700; }
+  .durum { border-radius: 12px; padding: 14px 16px; font-weight: 600; background: #FDECEC; color: var(--red); }
+  .hint { color: var(--muted); font-size: 13px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="bar"><b id="gonderen">Stok listesi</b><small id="alt">Yükleniyor…</small></div>
+<main>
+  <div id="mesaj" class="durum" hidden></div>
+  <section class="kart" id="liste" hidden>
+    <input type="search" id="ara" placeholder="Ürün kodu ya da adı ara" aria-label="Ürün ara" autocomplete="off">
+    <p class="hint" id="ozet"></p>
+    <table><thead><tr><th>Kod</th><th>Ürün</th><th class="r" id="mBaslik">Miktar</th></tr></thead><tbody id="tb"></tbody></table>
+  </section>
+  <p class="hint">Bu sayfa yalnızca stok durumunu gösterir; fiyat içermez. Sipariş ve fiyat için listeyi gönderen kişiyle görüşün.</p>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const h = new URLSearchParams(location.hash.slice(1));
+  const anahtar = h.get('a'), ref = h.get('p'), key = h.get('k');
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const tarih = d => d ? new Date(String(d).length === 10 ? d + 'T00:00' : d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const sayi = v => new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(+v || 0);
+  const fold = s => String(s || '').toLocaleLowerCase('tr').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ı/g, 'i');
+  const mesaj = m => { const e = $('mesaj'); e.textContent = m; e.hidden = false; $('alt').textContent = ''; };
+  if (!anahtar || !/^[a-z0-9]{1,40}$/i.test(ref || '') || !key) return mesaj('Bağlantı eksik ya da hatalı. Listeyi gönderen kişiden bağlantıyı yeniden isteyin.');
+  fetch(`https://${ref}.supabase.co/rest/v1/rpc/stok_paylasim_goster`, { method: 'POST', headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_anahtar: anahtar }) })
+    .then(async r => { const j = await r.json().catch(() => null); if (!r.ok) throw new Error(j?.message || 'Sunucuya ulaşılamadı.'); return j; })
+    .then(d => {
+      if (!d || d.hata) return mesaj(d?.hata === 'iptal' ? 'Bu stok bağlantısı iptal edilmiş.' : d?.hata === 'sure' ? `Bu bağlantının süresi ${tarih(d.son_tarih)} tarihinde doldu. ${d.gonderen || 'Gönderen firma'} ile görüşün.` : 'Bağlantı geçersiz. Listeyi gönderen kişiden yeniden isteyin.');
+      document.title = d.baslik || 'Stok listesi';
+      $('gonderen').textContent = d.baslik || 'Stok listesi';
+      $('alt').textContent = [d.gonderen, 'Güncel: ' + tarih(d.tarih)].filter(Boolean).join(' · ');
+      const tam = d.miktar === 'tam'; $('mBaslik').textContent = tam ? 'Miktar' : 'Durum';
+      const k = d.kalemler || [];
+      const ciz = () => { const q = fold($('ara').value.trim()); const l = k.filter(x => !q || fold([x.kod, x.aciklama].join(' ')).includes(q));
+        $('ozet').textContent = `${l.length} ürün stokta`;
+        $('tb').innerHTML = l.map(x => `<tr><td class="mono">${esc(x.kod)}</td><td>${esc(x.aciklama || '')}${x.depo ? ` <small class="hint">· ${esc(x.depo)}</small>` : ''}</td><td class="r">${tam ? `${sayi(x.adet)} ${esc(x.birim || '')}` : `<span class="${x.durum === 'Var' ? 'var' : 'az'}">${esc(x.durum)}</span>`}</td></tr>`).join('') || '<tr><td colspan="3" class="hint">Aramaya uyan ürün yok.</td></tr>'; };
+      $('ara').oninput = ciz; ciz(); $('liste').hidden = false;
+    }).catch(e => mesaj('Liste yüklenemedi: ' + e.message + ' İnternet bağlantınızı kontrol edip sayfayı yenileyin.'));
+})();
+</script>
+</body>
+</html>

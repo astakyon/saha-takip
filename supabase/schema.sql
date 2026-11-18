@@ -2168,6 +2168,86 @@ create or replace function public.yetki_surum() returns int language sql stable 
 alter table public.bayi_stok add column if not exists kampanya boolean default false;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 55 $f$;
 
+-- ---------- Sürüm 56: Seri / parti takibi (servis kaydına bağlı) ve fiyatsız stok paylaşım bağlantısı ----------
+create table if not exists public.stok_seri (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  firma_id uuid not null references public.firmalar(id) on delete cascade,
+  kod text not null, depo text,
+  tur text default 'Parti',                 -- Parti / Seri
+  no text not null, adet numeric, tarih date default current_date,
+  durum text default 'Stokta',              -- Stokta / Satıldı / Serviste / İade
+  musteri_id uuid references public.firmalar(id) on delete set null,
+  proje_id uuid references public.projeler(id) on delete set null,
+  garanti_ay int, notlar text,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create index if not exists stok_seri_no_idx on public.stok_seri (owner, no);
+create index if not exists stok_seri_kod_idx on public.stok_seri (owner, firma_id, kod);
+alter table public.servis_kayitlari add column if not exists seri_no text;   -- seri / parti numarası: stok_seri ile eşleşir (garanti)
+
+create table if not exists public.stok_paylasimlari (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  anahtar text not null unique,
+  firma_id uuid not null references public.firmalar(id) on delete cascade,
+  depo text, tum_depolar boolean default true, grup_id uuid references public.stok_gruplari(id) on delete set null,
+  miktar text default 'tam',                -- tam: miktar görünür; var: yalnız var / az
+  son_tarih date, baslik text, gonderen text, iptal boolean default false,
+  acilma int default 0, ilk_acilma timestamptz, son_acilma timestamptz,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+do $$ declare t text; begin
+  foreach t in array array['stok_seri','stok_paylasimlari'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('alter table public.%I alter column owner set default public.veri_sahibi()', t);
+    execute format('create index if not exists %I on public.%I (owner)', t || '_owner_idx', t);
+    execute format('drop policy if exists "oku" on public.%I', t);
+    execute format('drop policy if exists "ekle" on public.%I', t);
+    execute format('drop policy if exists "degistir" on public.%I', t);
+    execute format('drop policy if exists "sil" on public.%I', t);
+    execute format('drop policy if exists "yonetici_oku" on public.%I', t);
+    execute format('drop policy if exists "dis_oku" on public.%I', t);
+    execute format('drop policy if exists "dis_ekle" on public.%I', t);
+    execute format('drop policy if exists "dis_degistir" on public.%I', t);
+    execute format('drop policy if exists "dis_sil" on public.%I', t);
+    execute format('create policy "oku" on public.%I for select to authenticated using (public.yetki(owner, ''bayi_stok'', ''oku''))', t);
+    execute format('create policy "ekle" on public.%I for insert to authenticated with check (public.yetki(owner, ''bayi_stok'', ''yaz''))', t);
+    execute format('create policy "degistir" on public.%I for update to authenticated using (public.yetki(owner, ''bayi_stok'', ''yaz'')) with check (public.yetki(owner, ''bayi_stok'', ''yaz''))', t);
+    execute format('create policy "sil" on public.%I for delete to authenticated using (public.yetki(owner, ''bayi_stok'', ''yaz''))', t);
+    execute format('create policy "yonetici_oku" on public.%I for select to authenticated using (public.yonetici_mi())', t);
+    execute format('create policy "dis_oku" on public.%I as restrictive for select to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner))', t);
+    execute format('create policy "dis_ekle" on public.%I as restrictive for insert to authenticated with check (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner))', t);
+    execute format('create policy "dis_degistir" on public.%I as restrictive for update to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner)) with check (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner))', t);
+    execute format('create policy "dis_sil" on public.%I as restrictive for delete to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner))', t);
+    execute format('drop trigger if exists touch on public.%I', t);
+    execute format('create trigger touch before update on public.%I for each row execute function public.touch_updated_at()', t);
+    execute format('revoke all on public.%I from anon', t);
+  end loop;
+end $$;
+-- Bağlantıyı açan (giriş yapmamış) kişi: geçerli bağlantıysa güncel stok listesi, fiyatsız
+create or replace function public.stok_paylasim_goster(p_anahtar text) returns jsonb language plpgsql security definer set search_path = public as $f$
+declare b public.stok_paylasimlari; k jsonb;
+begin
+  if p_anahtar is null or length(p_anahtar) < 32 then return jsonb_build_object('hata', 'gecersiz'); end if;
+  select * into b from public.stok_paylasimlari where anahtar = p_anahtar;
+  if not found then return jsonb_build_object('hata', 'gecersiz'); end if;
+  if b.iptal then return jsonb_build_object('hata', 'iptal', 'gonderen', b.gonderen); end if;
+  if b.son_tarih is not null and b.son_tarih < current_date then return jsonb_build_object('hata', 'sure', 'son_tarih', b.son_tarih, 'gonderen', b.gonderen); end if;
+  update public.stok_paylasimlari set acilma = acilma + 1, ilk_acilma = coalesce(ilk_acilma, now()), son_acilma = now() where id = b.id;
+  select coalesce(jsonb_agg(jsonb_build_object('kod', s.kod, 'aciklama', s.aciklama, 'birim', s.birim, 'depo', s.depo,
+           'adet', case when b.miktar = 'tam' then s.adet else null end,
+           'durum', case when s.adet > coalesce(s.kritik, 5) then 'Var' else 'Az' end) order by s.kod), '[]'::jsonb) into k
+    from public.bayi_stok s
+   where s.owner = b.owner and s.firma_id = b.firma_id and s.aktif is not false and coalesce(s.adet, 0) > 0
+     and (b.tum_depolar or coalesce(s.depo, '') = coalesce(b.depo, ''))
+     and (b.grup_id is null or b.grup_id = any(s.gruplar));
+  return jsonb_build_object('baslik', b.baslik, 'gonderen', b.gonderen, 'tarih', now(), 'son_tarih', b.son_tarih, 'miktar', b.miktar, 'kalemler', k);
+end $f$;
+revoke all on function public.stok_paylasim_goster(text) from public;
+grant execute on function public.stok_paylasim_goster(text) to anon, authenticated;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 56 $f$;
+
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

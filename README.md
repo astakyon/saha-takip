@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 120)
+
+- **Seri / parti** (`js/izlenebilir.js`, `stok_seri`): kalem kartında parti (miktarlı) ya da seri (tekil) numarası, garanti süresi (ay), durum (Stokta, Satıldı, Serviste, İade); aynı ürüne aynı numara iki kez girilmez. "Servis kaydı" seri no ve ürünle dolu servis formu açar; servis kaydında `seri_no` alanı (bilinen numaralar önerilir). Stok aramasında seri / parti no ile kalem bulunur.
+- **Stok paylaşım bağlantısı** (`stok.html`, `stok_paylasimlari`, `stok_paylasim_goster`): seçili bayi / depo / grup için fiyatsız, salt okunur liste; miktar ya da yalnız "Var / Az" gösterimi; geçerlilik günü; WhatsApp ile gönderme; açılma sayısı ve iptal. Sayfa her açılışta güncel stoğu gösterir; fiyat, maliyet ve iç notlar gitmez; sıfır ve pasif kalemler görünmez. Bağlantı tablosu girişsiz kullanıcıya kapalıdır, liste yalnız 48 karakterlik anahtarla açılır.
+- Şema 56: `stok_seri`, `servis_kayitlari.seri_no`, `stok_paylasimlari`, `stok_paylasim_goster()`.
+
 ## Güncelleme notu (sürüm 119)
 
 - **Sipariş önerisi** (`js/stokanaliz.js`): bayinin aktif kalemlerinde öneri = en büyüğü (kritik seviye − stok, açık tekliflerdeki miktar − bütün bayilerdeki stok). Miktar düzeltilir; "Teklif taslağı oluştur" bayiye teklif formunu kalemlerle açar; Excel.

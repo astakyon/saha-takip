@@ -1191,6 +1191,47 @@ const DB = () => {
   kontrol('Planlama ekranında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 120: seri / parti takibi (kalem kartında, servis kaydına bağlı, aramada) ve fiyatsız stok paylaşım bağlantısı + stok.html
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }];
+    d.bayi_stok = [{ id: 's1', owner: 'u1', firma_id: 'f1', kod: 'SR1', aciklama: 'LED sürücü 40W', adet: 12, birim: 'Adet', son_hareket: '2026-11-15', created_at: ts, updated_at: ts },
+      { id: 's2', owner: 'u1', firma_id: 'f1', kod: 'SR2', aciklama: 'Armatür', adet: 5, son_hareket: '2026-11-15', created_at: ts, updated_at: ts }];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bayistok'); await w(1000);
+  await p.evaluate(async () => { const { F, saveFilters } = await import('./js/state.js'); Object.assign(F('bayistok', {}), { id: 'b1', grup: '', sadece: 'tum', pb: 'USD', depo: '', q: '' }); saveFilters(); });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1000);
+  await p.click('[data-kart="s1"]'); await w(500);
+  await p.selectOption('[data-srtur]', 'Seri'); await p.fill('[data-srno]', 'DRV-2026-0042'); await p.fill('[data-srgar]', '24'); await p.click('[data-srekle]'); await w(800);
+  await p.fill('[data-srno]', 'drv-2026-0042'); await p.click('[data-srekle]'); await w(500);
+  const seri = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const x = S.stok_seri; return { n: x.length, tur: x[0]?.tur, adet: x[0]?.adet, gar: x[0]?.garanti_ay, liste: document.querySelector('[data-sr]')?.innerText.replace(/\s+/g, ' ') }; });
+  await p.selectOption('[data-srdurum]', 'Satıldı'); await w(500);
+  await p.click('[data-srservis]'); await w(800);
+  const servis = await p.evaluate(() => ({ baslik: document.querySelector('.drawer.open #drawer-title')?.textContent, seri: document.querySelector('.drawer.open [name=seri_no]')?.value, urun: document.querySelector('.drawer.open [name=urun]')?.value }));
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(900);
+  await p.fill('[data-q]', '0042'); await w(400);
+  const ara = await p.evaluate(() => [...document.querySelectorAll('[data-row]')].map(r => r.dataset.row).join());
+  await p.fill('[data-q]', ''); await w(200);
+  // Paylaşım bağlantısı
+  if (!(await p.isVisible('[data-paylas]'))) await p.click('header.vh .vh-daha-btn');
+  await p.click('[data-paylas]'); await w(400); await p.check('.drawer.open [name=miktar][value=var]'); await p.click('.drawer.open [type=submit]'); await w(900);
+  const pay = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const x = S.stok_paylasimlari[0]; return { adres: document.querySelector('.drawer.open [data-sonuc] input')?.value, miktar: x?.miktar, anahtar: (x?.anahtar || '').length, wa: !!document.querySelector('.drawer.open [data-sonuc] a[href*="wa.me"], .drawer.open [data-sonuc] a[href*="whatsapp"]') }; });
+  // stok.html: RPC yanıtı taklit edilir; fiyat yok, arama çalışır
+  const sp = await c.newPage(); const sh = [];
+  sp.on('pageerror', e => sh.push(e.message));
+  await sp.route(/rpc\/stok_paylasim_goster/, r => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ baslik: 'Örnek Bayi stok listesi', gonderen: 'Firma', tarih: new Date().toISOString(), miktar: 'var', kalemler: [{ kod: 'SR1', aciklama: 'LED sürücü 40W', durum: 'Var' }, { kod: 'SR2', aciklama: 'Armatür', durum: 'Az' }] }) }));
+  await sp.goto(U.replace('index.html', 'stok.html') + '#a=' + 'a'.repeat(48) + '&p=x&k=k'); await w(800);
+  const sayfa1 = await sp.evaluate(() => ({ baslik: document.getElementById('gonderen').textContent, satir: document.querySelectorAll('#tb tr').length, metin: document.body.innerText }));
+  await sp.fill('#ara', 'armat'); await w(200); const sayfa2 = await sp.evaluate(() => document.querySelectorAll('#tb tr').length);
+  await sp.close();
+  kontrol('Seri / parti: kalem kartında seri no eklenir (garanti ayıyla), aynı no ikinci kez eklenmez, durum değişir; stok aramasında seri no ile bulunur; "Servis kaydı" seri no ve ürünle dolu açılır',
+    seri.n === 1 && seri.tur === 'Seri' && seri.adet === 1 && seri.gar === 24 && /DRV-2026-0042/.test(seri.liste) && /garanti/.test(seri.liste) && servis.seri === 'DRV-2026-0042' && /SR1/.test(servis.urun || '') && ara === 's1', JSON.stringify({ seri, servis, ara }));
+  kontrol('Stok paylaşım bağlantısı: "yalnız var / az" seçilerek oluşturulur (48 karakterlik anahtar, WhatsApp); stok.html listeyi fiyatsız gösterir ve aranır',
+    /stok\.html#a=[0-9a-f]{48}&p=x&k=k/.test(pay.adres || '') && pay.miktar === 'var' && pay.anahtar === 48 && pay.wa && sayfa1.baslik === 'Örnek Bayi stok listesi' && sayfa1.satir === 2 && /Var/.test(sayfa1.metin) && !/\$|USD|fiyat:/i.test(sayfa1.metin.replace('fiyat içermez', '')) && sayfa2 === 1 && !sh.length, JSON.stringify({ pay, sayfa1: { ...sayfa1, metin: sayfa1.metin.slice(0, 200) }, sayfa2, sh }));
+  kontrol('Seri ve paylaşım ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

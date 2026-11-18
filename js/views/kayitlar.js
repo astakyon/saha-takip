@@ -84,6 +84,7 @@ const SERVIS_FORM = [{ title: 'Servis / şikayet', fields: [
   { k: 'proje_id', l: 'Proje', t: 'ref', ref: 'projeler' },
   { k: 'urun', l: 'Ürün', t: 'combo', opts: urunListesi, full: true },
   { k: 'adet', l: 'Etkilenen adet', t: 'num' },
+  { k: 'seri_no', l: 'Seri / parti no', t: 'combo', opts: () => [...new Set((S.stok_seri || []).map(x => x.no))].slice(0, 500), ph: 'Garanti ve stok takibi için' },
   { k: 'aciklama', l: 'Sorun', t: 'area', rows: 3 },
   { k: 'cozum', l: 'Çözüm / yapılan', t: 'area', rows: 2 },
   { k: 'cozum_tarihi', l: 'Çözüm tarihi', t: 'date', show: o => o.durum === 'Çözüldü' },
