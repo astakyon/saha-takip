@@ -1046,6 +1046,43 @@ const DB = () => {
   kontrol('Stok grupları ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 116: kritik stok seviyesi, teklif rezervi (teklifte / serbest), stok hareketleri, toplam değer EUR / TL
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }];
+    const k = (id, kod, adet, kritik, fiyat) => ({ id, owner: 'u1', firma_id: 'f1', kod, aciklama: 'Ürün ' + kod, adet, kritik, birim_fiyat: fiyat, para_birimi: 'USD', son_hareket: '2026-11-15', created_at: ts, updated_at: ts });
+    d.bayi_stok = [k('r1', 'KA', 8, 10, 10), k('r2', 'KB', 3, null, null), k('r3', 'KC', 50, 5, null)];
+    d.stok_gecmis = [{ id: 'h1', owner: 'u1', firma_id: 'f1', kod: 'KC', stok: 50, fark: 50, hareket: 'excel', aciklama: 'ati.xlsx · Burak', tarih: '2026-11-15' }];
+    d.teklifler = (d.teklifler || []).concat([{ id: 'tk1', owner: 'u1', durum: 'Gönderildi', tarih: '2026-11-16', kalemler: [{ kod: 'KC', ad: 'Ürün KC', adet: 60, birim_fiyat: 1 }], toplam: 60, created_at: ts, updated_at: ts }]);
+    d.ayarlar = (d.ayarlar || []).concat([{ id: 'kr1', owner: 'u1', anahtar: 'kur_elle', deger: { USD: 40, EUR: 46, tarih: '2026-11-18' }, created_at: ts, updated_at: ts }]);
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bayistok'); await w(1500);
+  await p.evaluate(async () => { const { F, saveFilters } = await import('./js/state.js'); Object.assign(F('bayistok', {}), { id: 'b1', grup: '', sadece: 'tum', pb: 'USD' }); saveFilters(); });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  const ilk = await p.evaluate(() => ({ uyari: document.querySelector('[data-uyari]')?.innerText.replace(/\s+/g, ' '), ka: document.querySelector('[data-row="r1"]')?.innerText.replace(/\s+/g, ' '), kc: document.querySelector('[data-row="r3"]')?.innerText.replace(/\s+/g, ' '), sum: document.querySelector('[data-sum]').innerText }));
+  await p.click('[data-s="az"]'); await w(300);
+  const az = await p.evaluate(() => [...document.querySelectorAll('[data-row]')].map(r => r.dataset.row).sort().join());
+  await p.click('[data-s="tum"]'); await w(300);
+  await p.click('[data-pbdeg]'); await w(200); const eur = await p.evaluate(() => document.querySelector('[data-pbdeg]').textContent);
+  await p.click('[data-pbdeg]'); await w(200); const tl = await p.evaluate(() => document.querySelector('[data-pbdeg]').textContent);
+  await p.click('[data-pbdeg]'); await w(200);
+  // Kalem kartı: kritik seviye ve kalemin hareketleri
+  await p.click('[data-kart="r3"]'); await w(500);
+  const kartH = await p.evaluate(() => document.querySelector('.drawer.open')?.innerText.includes('Excel yükleme'));
+  await p.fill('.drawer.open [name=kritik]', '55'); await p.click('.drawer.open [type=submit]'); await w(900);
+  const kr = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { kritik: S.bayi_stok.find(x => x.id === 'r3').kritik, flag: document.querySelector('[data-row="r3"]')?.innerText.includes('kritik') }; });
+  if (!(await p.isVisible('[data-hareket]'))) await p.click('header.vh .vh-daha-btn');
+  await p.click('[data-hareket]'); await w(500);
+  const har = await p.evaluate(() => document.querySelector('.drawer.open')?.innerText.replace(/\s+/g, ' '));
+  kontrol('Kritik seviye: altına düşen kalem uyarıda ve "Kritik / az" sekmesinde (kritiği olmayan 1–5 adetlik de az sayılır); kalem kartından kritik seviye girilir',
+    /1 kalem kritik seviyede/.test(ilk.uyari) && /kritik \(≤10\)/.test(ilk.ka) && az === 'r1,r2' && kr.kritik === 55 && kr.flag, JSON.stringify({ ilk, az, kr }));
+  kontrol('Teklif rezervi: açık teklifteki miktar "teklifte", bütün bayilerdeki stoktan kalan "serbest" olarak görünür (eksi ise uyarı)',
+    /teklifte 60 · serbest -10/.test(ilk.kc), ilk.kc);
+  kontrol('Toplam değer tek para biriminde: dokununca USD → EUR → TL (güncel kurla); stok hareketleri kim, ne zaman, ne kadar ile listelenir',
+    /80 \$/.test(ilk.sum) && /70 €/.test(eur) && /3\.200 ₺/.test(tl) && kartH && /Excel yükleme/.test(har) && /\+50/.test(har) && /Burak/.test(har), JSON.stringify({ sum: ilk.sum, eur, tl, kartH, har: (har || '').slice(0, 300) }));
+  kontrol('Kritik seviye ve hareket ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

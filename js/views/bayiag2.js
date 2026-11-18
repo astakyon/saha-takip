@@ -11,7 +11,7 @@ import { usdYap, firmaRiski } from '../vaderisk.js';
 import { profil } from '../profil.js';
 import { izin, sahipMi, disKullanici } from '../yetki.js';
 import { bayiAd, bayiOzeti, bayiSiparisleri } from './bayiag.js';
-import { bayiStokYaz, bayiStokSil, bayiStokAktif, stokUyarilariHesapla, tasimaPlani, tasimaUygula, satirFiyat, satirDegerUsd, aktifMi, stokBirimleri, birimEkle, PARA_BIRIMLERI, pbNorm } from '../stok.js';
+import { bayiStokYaz, bayiStokSil, bayiStokAktif, stokUyarilariHesapla, tasimaPlani, tasimaUygula, satirFiyat, satirDegerUsd, aktifMi, stokBirimleri, birimEkle, PARA_BIRIMLERI, pbNorm, kritikMi, kritikVar, azMi, teklifteAyrilan, usddenCevir, stokAdet, HAREKET_AD } from '../stok.js';
 import { anaBayi } from '../profil.js';
 import { GRUPSUZ, gorunenGruplar, sekmede, kalemGruplari, gruplaPenceresi, gruplarPenceresi, gruptanCikar } from '../stokgrup.js';
 
@@ -77,7 +77,7 @@ export function bayiStoklari(b) {
 }
 const birimKisa = b => b ? ' ' + String(b).toLocaleLowerCase('tr') : '';
 export function bayistokView(el) {
-  const f = F('bayistok', { id: '', q: '', sadece: 'tum', grup: '' });
+  const f = F('bayistok', { id: '', q: '', sadece: 'tum', grup: '', pb: 'USD' });
   const b = seciliBayi(f);
   if (!b) { el.innerHTML = `<header class="vh"><div><h1>Bayi stokları</h1></div></header><div class="empty"><p>Önce Ağ'dan bir bayi ata.</p></div>`; return; }
   const hepsi = f.id === '*' && !dis();
@@ -94,9 +94,9 @@ export function bayistokView(el) {
   const sekmeler = GR.length ? [['', 'Tümü', aktifSatir.length], ...GR.map(g => [g.id, g.ad, say(g.id), g.katman]).filter(x => x[2] || x[0] === f.grup), [GRUPSUZ, 'Grupsuz', say(GRUPSUZ)]] : [];
   const grupSecili = f.grup && f.grup !== GRUPSUZ;
   el.innerHTML = `<header class="vh"><div><h1>${hepsi ? 'Bütün bayilerin stoğu' : 'Stok · ' + esc(bayiAd(b))}</h1><p class="sum" data-sum></p></div>
-    <div class="vh-act">${bayiSecici(f, b)}${duzenler ? '<button class="btn" data-yukle>Excel\'den yükle</button><button class="btn primary" data-ekle>+ Ürün</button>' : ''}<button class="btn ghost" data-xlsx>Excel</button><button class="btn ghost" data-sablon>Boş şablon</button>${yazabilir ? '<button class="btn ghost" data-gruplar>Gruplar</button>' : ''}${duzenler ? `<button class="btn ghost danger" data-hepsinisil>${grupSecili ? 'Bu gruptaki stoğu sil' : 'Bütün stoğu sil'}</button>` : ''}</div></header>
+    <div class="vh-act">${bayiSecici(f, b)}${duzenler ? '<button class="btn" data-yukle>Excel\'den yükle</button><button class="btn primary" data-ekle>+ Ürün</button>' : ''}<button class="btn ghost" data-hareket>Hareketler</button><button class="btn ghost" data-xlsx>Excel</button><button class="btn ghost" data-sablon>Boş şablon</button>${yazabilir ? '<button class="btn ghost" data-gruplar>Gruplar</button>' : ''}${duzenler ? `<button class="btn ghost danger" data-hepsinisil>${grupSecili ? 'Bu gruptaki stoğu sil' : 'Bütün stoğu sil'}</button>` : ''}</div></header>
     <div class="frow"><input type="search" data-q value="${esc(f.q)}" placeholder="${hepsi ? 'Ürün kodu ya da adı: hangi bayide var?' : 'Ürün, firma kodu ya da üretici kodu ara'}" aria-label="Ara">
-      <div class="seg" role="group" aria-label="Göster">${[['tum', 'Tümü'], ['az', 'Az kalan'], ['olu', 'Hareketsiz (90+ gün)'], ['pasif', 'Pasif']].map(([k, t]) => `<button type="button" data-s="${k}" class="${f.sadece === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
+      <div class="seg" role="group" aria-label="Göster">${[['tum', 'Tümü'], ['az', 'Kritik / az'], ['olu', 'Hareketsiz (90+ gün)'], ['pasif', 'Pasif']].map(([k, t]) => `<button type="button" data-s="${k}" class="${f.sadece === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
     ${sekmeler.length || yazabilir ? `<nav class="sg-sekmeler" aria-label="Stok grupları">${sekmeler.map(([id, ad, n, kat]) => `<button type="button" data-grup="${id}" class="${(f.grup || '') === id ? 'on' : ''}${kat === 'bayi' ? ' sg-bayi' : ''}" ${kat === 'bayi' ? 'title="Bu bayiye özel grup"' : ''}>${esc(ad)} <small>${n}</small></button>`).join('')}${yazabilir && !sekmeler.length ? '<button type="button" class="sg-ilk" data-gruplar2>+ Grup oluştur</button>' : ''}</nav>` : ''}
     <div data-tasi></div><div data-kodduz></div><div data-uyari></div>
     <div class="bs-secim" data-secim hidden></div>
@@ -126,13 +126,14 @@ export function bayistokView(el) {
     };
   }
   if (!dis()) {
-    const su = stokUyarilariHesapla(), hb = su.hareketsiz.filter(x => hepsi || x.firma_id === b.firma_id);
-    if (su.yetersiz.length || hb.length) el.querySelector('[data-uyari]').innerHTML = `<details class="card warnbox" ${su.yetersiz.length ? 'open' : ''}><summary><b>Stok uyarıları</b> <span class="muted">${su.yetersiz.length ? su.yetersiz.length + ' ürün tekliflere yetmiyor' : ''}${su.yetersiz.length && hb.length ? ' · ' : ''}${hb.length ? hb.length + ' kalem 60+ gün hareketsiz' : ''}</span></summary>
+    const su = stokUyarilariHesapla(), hb = su.hareketsiz.filter(x => hepsi || x.firma_id === b.firma_id), kr = su.kritik.filter(x => hepsi || x.firma_id === b.firma_id);
+    if (su.yetersiz.length || hb.length || kr.length) el.querySelector('[data-uyari]').innerHTML = `<details class="card warnbox" ${su.yetersiz.length || kr.length ? 'open' : ''}><summary><b>Stok uyarıları</b> <span class="muted">${[kr.length ? kr.length + ' kalem kritik seviyede' : '', su.yetersiz.length ? su.yetersiz.length + ' ürün tekliflere yetmiyor' : '', hb.length ? hb.length + ' kalem 60+ gün hareketsiz' : ''].filter(Boolean).join(' · ')}</span></summary>
+      ${kr.length ? `<h3>Kritik seviyenin altında</h3><ul class="list">${kr.slice(0, 40).map(x => `<li><span><b>${esc(x.s.aciklama || x.s.kod)}</b><span class="muted"> · ${hepsi ? esc(x.bayi || '') + ' · ' : ''}kritik ${num(x.s.kritik)}</span></span><b class="num neg">${num(x.s.adet)}${birimKisa(x.s.birim)}</b></li>`).join('')}</ul>` : ''}
       ${su.yetersiz.length ? `<h3>Açık tekliflere yetmeyen stok (bütün bayiler)</h3><ul class="list">${su.yetersiz.map(x => `<li><span><b>${esc(x.u.aciklama || x.u.kod)}</b><span class="muted"> · tekliflerde ${num(x.ihtiyac)}, bayilerde toplam ${num(x.stok)}</span></span><b class="num neg">−${num(x.eksik)}</b></li>`).join('')}</ul>` : ''}
       ${hb.length ? `<h3>60 günü aşkın hareketsiz stok</h3><ul class="list">${hb.slice(0, 30).map(x => `<li><span><b>${esc(x.u.aciklama || x.u.kod)}</b><span class="muted"> · ${esc(x.bayi || '')} · ${x.gun} gün</span></span><b class="num">${x.deger ? usd(Math.round(x.deger)) : ''}</b></li>`).join('')}</ul>` : ''}</details>`;
   }
   const gorunen = () => satirlar.filter(s => match(f.q, s.kod, s.aciklama, s.firma_kodu, s.uretici_kodu, s.uretici_aciklama, hepsi ? bayiAd(s.bayi) : '')
-    && sekmede(s, f.grup, hepsi ? null : b.firma_id) && (f.sadece === 'pasif' ? !aktifMi(s) : aktifMi(s) && (f.sadece === 'tum' || (f.sadece === 'az' ? s.adet > 0 && s.adet <= 5 : gunFark(s.son_hareket) >= 90 && s.adet > 0))))
+    && sekmede(s, f.grup, hepsi ? null : b.firma_id) && (f.sadece === 'pasif' ? !aktifMi(s) : aktifMi(s) && (f.sadece === 'tum' || (f.sadece === 'az' ? azMi(s) : gunFark(s.son_hareket) >= 90 && s.adet > 0))))
     .sort((a, c) => c.deger - a.deger || String(a.kod).localeCompare(String(c.kod), 'tr'));
   const secimCiz = () => {
     const sb = el.querySelector('[data-secim]'); sb.hidden = !secili.size; if (!secili.size) return;
@@ -148,17 +149,20 @@ export function bayistokView(el) {
       const n = await bayiStokSil(l, 'Seçerek silindi'); toast(`${n} kalem silindi; geçmişi raporlarda duruyor.`); bayistokView(el);
     };
   };
+  const rez = teklifteAyrilan();
   const ciz = () => {
     const g = gorunen();
     const deger = g.reduce((a, s) => a + s.deger, 0), pasifN = satirlar.filter(s => !aktifMi(s)).length;
-    el.querySelector('[data-sum]').textContent = `${g.filter(s => s.adet > 0).length} kalem · stok değeri ~${usd(Math.round(deger))} · ${g.filter(s => gunFark(s.son_hareket) >= 90 && s.adet > 0).length} hareketsiz${pasifN && f.sadece !== 'pasif' ? ` · ${pasifN} pasif` : ''}`;
+    const dg = usddenCevir(deger, f.pb), dgYazi = f.pb === 'USD' || dg == null ? usd(Math.round(deger)) : new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(dg) + (f.pb === 'EUR' ? ' €' : ' ₺');
+    el.querySelector('[data-sum]').innerHTML = esc(`${g.filter(s => s.adet > 0).length} kalem · stok değeri ~`) + `<button type="button" class="linkbtn" data-pbdeg title="Para birimini değiştir">${esc(dgYazi)}</button>` + esc(` · ${g.filter(s => gunFark(s.son_hareket) >= 90 && s.adet > 0).length} hareketsiz${pasifN && f.sadece !== 'pasif' ? ` · ${pasifN} pasif` : ''}`) + (f.pb !== 'USD' && dg == null ? ' <small class="muted">(kur yok, USD gösteriliyor)</small>' : '');
+    el.querySelector('[data-pbdeg]').onclick = () => { f.pb = { USD: 'EUR', EUR: 'TRY', TRY: 'USD' }[f.pb] || 'USD'; saveFilters(); ciz(); };
     const sec = duzenler, tum = g.length && g.every(s => secili.has(s.id));
     el.querySelector('[data-l]').innerHTML = g.length ? `<div class="tbl-wrap"><table class="tbl bs-t"><thead><tr>${sec ? `<th class="bs-c"><input type="checkbox" data-tumu ${tum ? 'checked' : ''} aria-label="Görünen hepsini seç"></th>` : ''}${hepsi ? '<th>Bayi</th>' : ''}<th>Kod</th><th>Ürün</th><th class="r">Miktar</th><th class="r">Değer</th><th>Son hareket</th></tr></thead><tbody>
       ${g.slice(0, 400).map(s => { const gun = gunFark(s.son_hareket); return `<tr class="${aktifMi(s) ? '' : 'pasif'}" data-row="${s.id}">${sec ? `<td class="bs-c">${s.kaynak === 'bayi' ? `<input type="checkbox" data-sec="${s.id}" ${secili.has(s.id) ? 'checked' : ''} aria-label="${esc(s.kod)} seç">` : ''}</td>` : ''}${hepsi ? `<td>${esc(bayiAd(s.bayi))}</td>` : ''}
         <td class="mono">${sec && s.kaynak === 'bayi' ? `<button type="button" class="linkbtn mono" data-kart="${s.id}">${esc(s.kod)}</button>` : esc(s.kod)}${s.firma_kodu ? `<br><small class="muted" title="Firma stok kodu">${esc(s.firma_kodu)}</small>` : ''}</td>
         <td>${s.aciklama ? esc(s.aciklama) : '<span class="muted">ürün listesinde tanımı yok</span>'}${s.uretici_kodu || s.uretici_aciklama ? `<br><small class="muted">Üretici: ${esc([s.uretici_kodu, s.uretici_aciklama].filter(Boolean).join(' · '))}</small>` : ''}${aktifMi(s) ? '' : ' <em class="flag soft">pasif</em>'}${kalemGruplari(s).map(grupAd).filter(Boolean).map(a => ` <em class="sg-rozet">${esc(a)}</em>`).join('')}</td>
         <td class="r num">${duzenler && s.kaynak === 'bayi' ? `<span class="bs-hizli"><button type="button" class="btn sm ghost" data-art="-1" data-sid="${s.id}" aria-label="${esc(s.kod)} bir azalt">−</button><input type="number" inputmode="decimal" class="bs-adet" data-adet="${s.id}" value="${s.adet}" aria-label="${esc(s.kod)} miktar"><button type="button" class="btn sm ghost" data-art="1" data-sid="${s.id}" aria-label="${esc(s.kod)} bir artır">+</button></span>${s.birim ? `<small class="muted bs-birim">${esc(s.birim)}</small>` : ''}` : num(s.adet) + birimKisa(s.birim)}</td>
-        <td class="r num">${s.deger ? usd(Math.round(s.deger)) : ''}${s.fiyat && s.pb !== 'USD' ? `<br><small class="muted">${num(s.fiyat)} ${s.pb === 'TRY' ? '₺' : '€'}/${esc(s.birim || 'birim')}</small>` : ''}</td><td>${s.son_hareket ? tarih(s.son_hareket) : ''}${gun >= 90 && s.adet > 0 ? ` <em class="flag soft">${gun} gün hareketsiz</em>` : ''}${s.adet > 0 && s.adet <= 5 ? ' <em class="flag">az</em>' : ''}${s.adet === 0 || +s.adet === 0 ? ' <em class="flag soft">sıfır</em>' : ''}</td></tr>`; }).join('')}</tbody></table></div>`
+        <td class="r num">${s.deger ? usd(Math.round(s.deger)) : ''}${s.fiyat && s.pb !== 'USD' ? `<br><small class="muted">${num(s.fiyat)} ${s.pb === 'TRY' ? '₺' : '€'}/${esc(s.birim || 'birim')}</small>` : ''}</td><td>${s.son_hareket ? tarih(s.son_hareket) : ''}${gun >= 90 && s.adet > 0 ? ` <em class="flag soft">${gun} gün hareketsiz</em>` : ''}${kritikMi(s) ? ` <em class="flag">kritik (≤${num(s.kritik)})</em>` : !kritikVar(s) && s.adet > 0 && s.adet <= 5 ? ' <em class="flag">az</em>' : ''}${rez.get(s.kod) ? (x => ` <em class="flag soft ${x < 0 ? 'neg' : ''}" title="Açık tekliflerde ayrılmış ${num(rez.get(s.kod))}; bütün bayilerdeki stoktan kalan serbest ${num(x)}">teklifte ${num(rez.get(s.kod))} · serbest ${num(x)}</em>`)(stokAdet({ kod: s.kod }) - rez.get(s.kod)) : ''}${s.adet === 0 || +s.adet === 0 ? ' <em class="flag soft">sıfır</em>' : ''}</td></tr>`; }).join('')}</tbody></table></div>`
       : `<div class="empty"><p>${satirlar.length ? (f.sadece === 'pasif' ? 'Pasif kalem yok.' : 'Süzgece uyan ürün yok.') : 'Bu bayinin stok kaydı yok.'}</p>${!satirlar.length && duzenler ? '<p class="hint">Bayinin stok listesini Excel\'den yükle ya da ürün ekle. "Boş şablon" bütün sütunları içeren Excel\'i indirir; ürün kodu ve miktar sütunu olması yeter.</p>' : ''}</div>`;
     const adetYaz = async (id, v) => { const s = S.bayi_stok.find(x => x.id === id); if (!s || v === +s.adet || v < 0) return; await bayiStokYaz([{ ...s, adet: v }]); toast(`${s.kod}: ${num(v)}${birimKisa(s.birim)}`); };
     el.querySelectorAll('[data-adet]').forEach(i => { i.onchange = () => adetYaz(i.dataset.adet, +i.value || 0); i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); i.blur(); } }; });
@@ -175,11 +179,24 @@ export function bayistokView(el) {
   const gy = () => gruplarPenceresi({ firma_id: hepsi ? null : b.firma_id, bayiListesi: bayiler().map(x => ({ firma_id: x.firma_id, ad: bayiAd(x) })), sirketYazar, sonra: () => bayistokView(el) });
   el.querySelector('[data-gruplar]')?.addEventListener('click', gy); el.querySelector('[data-gruplar2]')?.addEventListener('click', gy);
   el.querySelector('[data-xlsx]').onclick = () => exportXlsx(`bayi-stok-${today()}`, { Stok: satirlar.map(s => ({ ...(hepsi ? { Bayi: bayiAd(s.bayi) } : {}), ...sablonSatiri(s), 'Değer (USD)': Math.round(s.deger) || null, 'Son hareket': s.son_hareket })) });
+  el.querySelector('[data-hareket]').onclick = () => hareketlerPenceresi(hepsi ? null : b);
   el.querySelector('[data-sablon]').onclick = () => exportXlsx('stok-sablonu', { Stok: [sablonSatiri({ kod: '117887', firma_kodu: 'ATI-0001', aciklama: 'Örnek ürün açıklaması', uretici_kodu: 'UR-123', uretici_aciklama: 'Üreticinin ürün adı', birim: 'Adet', adet: 10, birim_fiyat: 12.5, para_birimi: 'USD', aktif: true })] });
   el.querySelector('[data-ekle]')?.addEventListener('click', () => stokSatirFormu(b, () => bayistokView(el)));
   el.querySelector('[data-yukle]')?.addEventListener('click', () => grupSorVeYukle(b, grupSecili ? f.grup : null, GR, () => bayistokView(el)));
   el.querySelector('[data-hepsinisil]')?.addEventListener('click', () => komplesil(b, satirlar.filter(s => s.kaynak === 'bayi' && (!grupSecili || kalemGruplari(s).includes(f.grup))), () => bayistokView(el), grupSecili ? grupAd(f.grup) : null));
   ciz();
+}
+// Stok hareketleri: kim, ne zaman, ne kadar (stok geçmişinden; silinen kalemlerin geçmişi de durur)
+function hareketListesi(l, n = 300, bayiSutun = true) {
+  l = [...l].sort((a, c) => String(c.tarih || '').localeCompare(String(a.tarih || '')) || String(c.created_at || c.id).localeCompare(String(a.created_at || a.id))).slice(0, n);
+  if (!l.length) return '<p class="muted">Hareket kaydı yok.</p>';
+  return `<h3>Hareketler</h3><div class="tbl-wrap"><table class="tbl bs-h"><thead><tr><th>Tarih</th>${bayiSutun ? '<th>Bayi</th>' : ''}<th>Kod</th><th>Hareket</th><th class="r">Fark</th><th class="r">Kalan</th><th>Açıklama</th></tr></thead><tbody>${l.map(h => `<tr><td>${tarih(h.tarih)}</td>${bayiSutun ? `<td>${esc(firmaAd(h.firma_id) || '')}</td>` : ''}<td class="mono">${esc(h.kod)}</td><td>${esc(HAREKET_AD[h.hareket] || h.hareket || 'Güncelleme')}</td><td class="r num ${+h.fark < 0 ? 'neg' : +h.fark > 0 ? 'pos' : ''}">${h.fark == null ? '' : (+h.fark > 0 ? '+' : '') + num(h.fark)}</td><td class="r num">${num(h.stok)}${birimKisa(h.birim)}</td><td><small class="muted">${esc(h.aciklama || '')}</small></td></tr>`).join('')}</tbody></table></div>`;
+}
+function hareketlerPenceresi(b) {
+  const l = (S.stok_gecmis || []).filter(h => h.firma_id && (!b || h.firma_id === b.firma_id));
+  const p = openDrawer(`<header class="dh"><div><p class="muted">${b ? esc(bayiAd(b)) : 'Bütün bayiler'}</p><h2 id="drawer-title">Stok hareketleri</h2></div><div class="dh-actions"><button type="button" class="btn sm ghost" data-hxlsx>Excel</button></div><button class="x" data-close aria-label="Kapat">×</button></header>
+    <div class="dbody"><p class="hint">Giriş, çıkış, Excel yüklemesi, düzeltme, pasife alma ve silme: kim, ne zaman, kaç birim. Silinen kalemlerin geçmişi de burada kalır. Son 300 hareket gösterilir.</p>${hareketListesi(l, 300, !b)}</div>`, { wide: true });
+  p.querySelector('[data-hxlsx]').onclick = () => exportXlsx(`stok-hareketleri-${today()}`, { Hareketler: l.sort((a, c) => String(c.tarih).localeCompare(String(a.tarih))).map(h => ({ Tarih: h.tarih, Bayi: firmaAd(h.firma_id), Kod: h.kod, Hareket: HAREKET_AD[h.hareket] || h.hareket || '', Fark: h.fark, Kalan: h.stok, Birim: h.birim, Açıklama: h.aciklama })) });
 }
 // Şablon ve dışa aktarma: aynı sütunlar (dışa aktarılan dosya düzenlenip geri yüklenebilir)
 export const SABLON_SUTUN = ['Ürün kodu', 'Firma stok kodu', 'Açıklama', 'Üretici kodu', 'Üretici açıklaması', 'Birim', 'Miktar', 'Birim fiyat', 'Para birimi', 'Aktif'];
@@ -202,10 +219,10 @@ function komplesil(b, l, sonra, grup = null) {
 function stokSatirFormu(b, sonra, x = null) {
   const FM = [{ title: 'Ürün', fields: [{ k: 'kod', l: 'Ürün kodu', req: true }, { k: 'firma_kodu', l: 'Firma stok kodu', ph: 'Bayinin kendi kodu' }, { k: 'aciklama', l: 'Ürün açıklaması', full: true }] },
     { title: 'Üretici', fields: [{ k: 'uretici_kodu', l: 'Üretici kodu' }, { k: 'uretici_aciklama', l: 'Üretici açıklaması', full: true }] },
-    { title: 'Miktar ve fiyat', fields: [{ k: 'adet', l: 'Miktar', t: 'num' }, { k: 'birim', l: 'Birim', t: 'combo', opts: stokBirimleri(), ph: 'Adet, metre, kg…' }, { k: 'birim_fiyat', l: 'Birim fiyat', t: 'num' }, { k: 'para_birimi', l: 'Para birimi', t: 'sel', opts: PARA_BIRIMLERI.map(v => ({ v, l: { USD: 'USD ($)', EUR: 'EUR (€)', TRY: 'TL (₺)' }[v] })) },
+    { title: 'Miktar ve fiyat', fields: [{ k: 'adet', l: 'Miktar', t: 'num' }, { k: 'birim', l: 'Birim', t: 'combo', opts: stokBirimleri(), ph: 'Adet, metre, kg…' }, { k: 'birim_fiyat', l: 'Birim fiyat', t: 'num' }, { k: 'kritik', l: 'Kritik seviye', t: 'num', ph: 'Altına düşünce uyarı' }, { k: 'para_birimi', l: 'Para birimi', t: 'sel', opts: PARA_BIRIMLERI.map(v => ({ v, l: { USD: 'USD ($)', EUR: 'EUR (€)', TRY: 'TL (₺)' }[v] })) },
       { k: 'aktif', l: 'Durum', t: 'chk', cl: 'Aktif (pasif kalem listeden ve toplamlardan çıkar, geçmişi durur)' }, { k: 'notlar', l: 'Not', t: 'area', full: true }] }];
   const o0 = x ? { ...x, aktif: aktifMi(x) } : { aktif: true, para_birimi: 'USD', birim: 'Adet' };
-  const p = openDrawer(`<header class="dh"><div><p class="muted">${esc(bayiAd(b))}</p><h2 id="drawer-title">${x ? esc(x.kod) : 'Stoğa ürün'}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header><form class="dbody form" novalidate>${renderForm(FM, o0)}
+  const p = openDrawer(`<header class="dh"><div><p class="muted">${esc(bayiAd(b))}</p><h2 id="drawer-title">${x ? esc(x.kod) : 'Stoğa ürün'}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header><form class="dbody form" novalidate>${renderForm(FM, o0)}${x ? hareketListesi((S.stok_gecmis || []).filter(h => h.firma_id === b.firma_id && h.kod === x.kod), 20, false) : ''}
     <div class="dfoot sticky">${x ? '<button type="button" class="btn ghost danger" data-ksil>Sil</button>' : ''}<button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`);
   const form = p.querySelector('form'); bindForm(form, FM, o0);
   form.onsubmit = async e => { e.preventDefault(); const o = await readForm(form, FM, o0); o.kod = String(o.kod || '').trim(); if (!o.kod) return toast('Ürün kodunu yaz.', 'err');
@@ -213,7 +230,7 @@ function stokSatirFormu(b, sonra, x = null) {
     if (cakisan && x) return toast(`${o.kod} kodu bu bayide zaten var.`, 'err');
     if (!o.aciklama) o.aciklama = S.urunler.find(u => u.kod === o.kod)?.aciklama || null;
     if (o.birim) await birimEkle(o.birim);
-    const satir = { ...(cakisan || x || {}), firma_id: b.firma_id, ...o, adet: +o.adet || 0, birim_fiyat: o.birim_fiyat === '' || o.birim_fiyat == null ? null : +o.birim_fiyat, para_birimi: o.para_birimi || 'USD', aktif: !!o.aktif };
+    const satir = { ...(cakisan || x || {}), firma_id: b.firma_id, ...o, adet: +o.adet || 0, birim_fiyat: o.birim_fiyat === '' || o.birim_fiyat == null ? null : +o.birim_fiyat, kritik: o.kritik === '' || o.kritik == null ? null : +o.kritik, para_birimi: o.para_birimi || 'USD', aktif: !!o.aktif };
     await bayiStokYaz([satir], { hareket: x || cakisan ? 'duzeltme' : 'giris', aciklama: 'Kalem kartı' }); toast('Kaydedildi.'); closeDrawer(); sonra?.(); };
   p.querySelector('[data-ksil]')?.addEventListener('click', async () => {
     if (!confirmBox(`${x.kod}${x.aciklama ? ' – ' + x.aciklama : ''} stoktan silinsin mi?\n\nGeçmiş hareketleri raporlarda kalır. Satılmayan ürünü silmek yerine "Aktif" işaretini kaldırıp pasife de alabilirsin.`)) return;

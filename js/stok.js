@@ -16,6 +16,20 @@ export const stokBirimleri = () => [...new Set([...BIRIM_VARSAYILAN, ...(ayar('s
 export async function birimEkle(b) { b = String(b || '').trim(); if (!b || stokBirimleri().some(x => x.toLocaleLowerCase('tr') === b.toLocaleLowerCase('tr'))) return; await ayarYaz('stok_birimleri', [...(ayar('stok_birimleri', []) || []), b]); }
 export const pbNorm = v => { const x = String(v ?? '').trim().toUpperCase(); if (!x) return null; if (/^(TL|TRY|₺|YTL)$/.test(x)) return 'TRY'; if (/^(EUR|EURO|€|AVRO)$/.test(x)) return 'EUR'; if (/^(USD|\$|DOLAR|US\$)$/.test(x)) return 'USD'; return PARA_BIRIMLERI.includes(x) ? x : null; };
 export const aktifMi = s => s?.aktif !== false;
+// Kritik seviye: kalemde alt sınır girilmişse miktar sınırda ya da altındaysa kritik
+export const kritikVar = s => s?.kritik != null && s.kritik !== '' && !isNaN(+s.kritik);
+export const kritikMi = s => aktifMi(s) && kritikVar(s) && (+s.adet || 0) <= +s.kritik;
+// Az kalan: kritik seviye tanımlıysa ona göre, değilse 1–5 arası
+export const azMi = s => kritikVar(s) ? kritikMi(s) : (+s.adet > 0 && +s.adet <= 5);
+// Teklif rezervi: açık tekliflerdeki (Taslak, Gönderildi) miktar ürün koduna göre "ayrılmış" sayılır
+export function teklifteAyrilan() {
+  const m = new Map();
+  for (const t of S.teklifler || []) if (['Taslak', 'Gönderildi'].includes(t.durum)) for (const k of t.kalemler || []) if (k.kod) m.set(k.kod, (m.get(k.kod) || 0) + (+k.adet || 0));
+  return m;
+}
+// USD'den gösterim para birimine (kur yoksa null)
+export function usddenCevir(v, pb = 'USD') { v = +v || 0; if (pb === 'USD' || !v) return v; const k = kur(); if (!k?.USD) return null; return pb === 'TRY' || pb === 'TL' ? v * k.USD : k[pb] ? v * k.USD / k[pb] : null; }
+export const HAREKET_AD = { giris: 'Giriş', cikis: 'Çıkış', excel: 'Excel yükleme', duzeltme: 'Düzeltme', sayim: 'Sayım düzeltmesi', silme: 'Silindi', pasif: 'Pasife alındı', aktif: 'Aktif yapıldı', transfer: 'Transfer', sevk: 'Sevk', iade: 'İade' };
 // Satırın birim fiyatı ve para birimi: bayinin kendi fiyatı, yoksa ürün listesindeki USD fiyat
 export function satirFiyat(s) {
   if (s?.birim_fiyat != null && s.birim_fiyat !== '' && +s.birim_fiyat) return { fiyat: +s.birim_fiyat, pb: s.para_birimi || 'USD' };
@@ -50,8 +64,7 @@ export const stokMetni = u => stokNerede(u).map(x => `${x.ad} ${x.adet.toLocaleS
 
 // Stok uyarıları: açık tekliflerin ihtiyacı toplam stoktan fazla olan ürünler; bayi deposunda / kendi depomuzda N günü aşkın hareketsiz stok
 export function stokUyarilariHesapla(gun = 60) {
-  const ihtiyac = new Map();
-  for (const t of S.teklifler || []) if (['Taslak', 'Gönderildi'].includes(t.durum)) for (const k of t.kalemler || []) if (k.kod) ihtiyac.set(k.kod, (ihtiyac.get(k.kod) || 0) + (+k.adet || 0));
+  const ihtiyac = teklifteAyrilan();
   const yetersiz = [];
   for (const [kod, adet] of ihtiyac) { const u = (S.urunler || []).find(x => x.kod === kod); if (!u) continue; const st = stokAdet(u); if (adet > st) yetersiz.push({ u, ihtiyac: adet, stok: st, eksik: adet - st }); }
   const sinir = gunEkle(today(), -gun), hareketsiz = [];
@@ -70,7 +83,8 @@ export function stokUyarilariHesapla(gun = 60) {
     if (ilk <= sinir) hareketsiz.push({ u, bayi: kendiDepo() ? 'Kendi depomuz' : (u.depo || ''), gun: Math.round((new Date(today()) - new Date(ilk)) / 864e5), deger: (+u.stok || 0) * (+u.birim_fiyat_usd || 0) });
   }
   hareketsiz.sort((a, b) => b.deger - a.deger);
-  return { yetersiz, hareketsiz };
+  const kritik = (S.bayi_stok || []).filter(kritikMi).map(s => ({ s, bayi: firmaAd(s.firma_id), firma_id: s.firma_id }));
+  return { yetersiz, hareketsiz, kritik };
 }
 
 // Bayi stok satırlarını yazar; adedi değişenler için stok geçmişine (firma_id ile) hareket satırı ekler

@@ -2086,6 +2086,10 @@ create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) retu
 $f$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 51 $f$;
 
+-- ---------- Sürüm 52: Bayi stoğunda kritik seviye ----------
+alter table public.bayi_stok add column if not exists kritik numeric;    -- miktar bu sınıra ya da altına düşünce uyarı
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 52 $f$;
+
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
 select public.hassas_izinleri_yenile();

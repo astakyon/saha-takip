@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 116)
+
+- **Kritik seviye** (`bayi_stok.kritik`): kalem kartından girilir; miktar sınırda ya da altındaysa satırda "kritik" bayrağı, stok uyarılarında "kritik seviyenin altında" listesi. "Kritik / az" sekmesi: kritik seviyesi olanlar ona göre, olmayanlar 1–5 adet.
+- **Teklif rezervi**: açık tekliflerdeki (Taslak, Gönderildi) miktar ürün koduna göre "teklifte" sayılır; satırda "teklifte N · serbest M" (M = bütün bayilerdeki aktif stok − teklifte; eksi ise kırmızı).
+- **Stok hareketleri**: "Hareketler" penceresi ve kalem kartının altı; tarih, bayi, kod, hareket (giriş, çıkış, Excel, düzeltme, sayım, silme, pasif/aktif), fark, kalan, açıklama (dosya adı, kim). Excel'e aktarılır.
+- **Toplam değer**: EUR ve TL fiyatlar güncel kurla USD'ye çevrilip toplanır; özetteki değere dokununca USD → EUR → TL gösterimi.
+- Şema 52: `bayi_stok.kritik`.
+
 ## Güncelleme notu (sürüm 115)
 
 - **Stok grupları** (`js/stokgrup.js`, "favori kanal" mantığı): iki katman. Şirket grupları (`stok_gruplari.firma_id` boş) bütün bayilerde ya da seçili bayilerde (`tum_bayiler`, `bayiler`) görünür; yeni bayiye "tüm bayiler" grupları kendiliğinden gelir. Bayinin kendi grupları (`firma_id` dolu) yalnız o bayide görünür. Bir kalem birden fazla grupta olabilir (`bayi_stok.gruplar`).
