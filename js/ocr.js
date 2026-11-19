@@ -51,6 +51,23 @@ export async function metinOku(blob, ilerleme) {
   const w = await hazirla(ilerleme);
   return (await tani(w, onIsle(await tuval(blob)), '3')).text || '';
 }
+// Ürün / koli etiketi: yön denenir (etiket yan ya da ters çekilmiş olabilir), seyrek metin (11) ve blok (6) okumaları birleştirilir; tablo hücreleri ikisinden birinde yakalanır
+export async function etiketOku(blob, ilerleme) {
+  const w = await hazirla(ilerleme);
+  const { dondur } = await import('./kirp.js');
+  const temel = onIsle(await tuval(blob, 2000));
+  let en = null;
+  for (const aci of [0, 90, 270, 180]) {
+    if (aci) ilerleme?.('yön deneniyor', 0);
+    const data = await tani(w, dondur(temel, aci), '11');
+    const puan = okumaPuani(data);
+    if (!en || puan > en.puan) en = { data, puan, aci };
+    if (en.puan >= 60) break;
+  }
+  ilerleme?.('tablo okunuyor', 0);
+  const blok = await tani(w, dondur(temel, en.aci), '6');
+  return { metin: [en.data.text || '', blok.text || ''].join('\n'), donus: en.aci, guven: Math.round(en.data.confidence || 0) };
+}
 // Okunan satırlar: düşük güvenli satırlar ve kelimeler (QR kod, logo, desen) atılır; her satırın yazı yüksekliği tutulur
 export function satirlariAl(data) {
   const ort = a => { const b = [...a].sort((x, y) => x - y); return b.length ? b[b.length >> 1] : 0; };

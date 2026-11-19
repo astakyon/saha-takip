@@ -2188,3 +2188,8 @@ body.giris-var #view { padding-top: 64px; }
 .bs-ozi:hover { border-color: var(--line); } .bs-ozi:focus { border-color: var(--accent, #2563eb); background: var(--card); outline: none; }
 .ss-liste li { display: flex; align-items: center; gap: 8px; } .ss-liste li input { flex: 1; min-width: 0; }
 .et-vid { width: 100%; max-height: 240px; object-fit: cover; border-radius: var(--r-sm); background: #000; margin-bottom: 8px; }
+/* Üretici etiketi tanıma */
+.ut-kutu { margin: 6px 0 10px; } .et-foto { cursor: pointer; }
+.ut-kart { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px; background: var(--line-2); }
+.ut-kart .ut-bas { margin: 0 0 4px; } .ut-aday { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; } .ut-aday .chip.on { outline: 2px solid var(--accent, #2563eb); }
+.ut-adet { max-width: 120px; } .ut-metin { white-space: pre-wrap; font-size: 11px; max-height: 160px; overflow: auto; background: var(--card); padding: 6px; border-radius: 6px; }

@@ -4,6 +4,7 @@ import { S } from './db.js';
 import { app } from './state.js';
 import { esc, num, tarih, today, fold, toast, openDrawer, closeDrawer, confirmBox } from './ui.js';
 import { bayiStokYaz, ayniKalem, depoAdi, aktifMi } from './stok.js';
+import { barkodBul, eanGecerli, taniKutusu } from './ureticietiket.js';
 
 // ---------- Etiket içeriği ----------
 const temiz = v => String(v ?? '').replace(/\|/g, '/').trim();
@@ -22,6 +23,17 @@ export function etiketCoz(metin) {
 export function kalemBul(kalemler, kod) {
   const k = fold(String(kod || '').trim()); if (!k) return null;
   return kalemler.find(s => fold(String(s.kod || '')) === k) || kalemler.find(s => [s.firma_kodu, s.uretici_kodu, s.barkod].some(v => v && fold(String(v)) === k)) || null;
+}
+
+// Okunanı çöz: bizim etiketimiz (STK1) → kod ve adet; öğrenilmiş üretici barkodu → eşlenen kod ve adet (koli barkodu kolideki adet);
+// kalem kodu / firma kodu / üretici kodu / kalem barkodu → 1 adet. bilinmeyen: stokta karşılığı olmayan geçerli bir EAN (eşleme ister).
+export function okunaniCoz(metin, kalemler, firma_id = null) {
+  const e = etiketCoz(metin); if (!e) return null;
+  if (!e.etiket) { const m = barkodBul(e.kod, firma_id);
+    if (m) { const s = kalemler.find(x => x.kod === m.kod) || null; return { ...e, kod: m.kod, adet: (+m.adet || 1) * (e.adet || 1), koli: (+m.adet || 1) > 1, s, eslesme: m }; } }
+  const s = kalemBul(kalemler, e.kod);
+  if (s) return { ...e, kod: s.kod, s };
+  return { ...e, s: null, bilinmeyen: !e.etiket && eanGecerli(e.kod) };
 }
 
 // ---------- QR kod (js/vendor/qrcode.js, MIT, Kazuhiko Arase) ----------
@@ -124,7 +136,7 @@ export async function kameraBaslat(video, onKod) {
 // mod: 'giris' stoğa ekler, 'cikis' depodan düşer. Okutulanlar listede toplanır, "Kaydet" ile stok hareketi yazılır.
 export function etiketHareketPenceresi({ b, firma_id, depo = null, mod = 'giris', bayiAdi = '', sonra }) {
   const liste = new Map();   // anahtar kod → { s, kod, aciklama, birim, adet, parti:Set }
-  let durdur = null;
+  let durdur = null, tani = null;
   const kalemler = () => (S.bayi_stok || []).filter(s => s.firma_id === firma_id && (s.depo || null) === (depo || null));
   const p = openDrawer('<div class="dbody"></div>', { wide: true, onClose: () => { durdur?.(); sonra?.(); } });
   const iskelet = () => {
@@ -134,6 +146,7 @@ export function etiketHareketPenceresi({ b, firma_id, depo = null, mod = 'giris'
       <p class="hint">Koli etiketi kolideki adedi, ürün etiketi ya da üreticinin barkodu 1 adet sayar. Okuyucu tabancayla okut ya da kodu yazıp Enter'a bas (“kod x 12” 12 adet ekler). Kaydet'e basana kadar stok değişmez.</p>
       <div class="frow"><input type="search" data-okut placeholder="Etiketi okut ya da kodu yaz, Enter" aria-label="Etiket okut" autocomplete="off" enterkeyhint="go">${'BarcodeDetector' in window ? '<button type="button" class="btn" data-kam>Kamerayla okut</button>' : ''}</div>
       <video data-vid playsinline muted hidden class="et-vid"></video>
+      <div data-utani class="ut-kutu"></div>
       <div data-l></div>
       <label class="fld"><span>Açıklama</span><input data-not placeholder="${mod === 'giris' ? 'ör. Tedarikçi irsaliyesi 12345' : 'ör. Şantiye teslimi, fire'}"></label>
     </div>
@@ -146,11 +159,16 @@ export function etiketHareketPenceresi({ b, firma_id, depo = null, mod = 'giris'
       try { durdur = await kameraBaslat(p.querySelector('[data-vid]'), k => okut(k)); e.target.textContent = 'Kamerayı kapat'; } catch (er) { toast(er.message, 'err'); }
     });
     p.querySelector('[data-kaydet]').onclick = kaydet;
+    tani = taniKutusu(p.querySelector('[data-utani]'), { kalemler, firma_id, yeniKalem: true, onEkle: ({ kod, adet, s: s0, aciklama }) => {
+      const s = s0 || null; if (!s && mod === 'cikis') return toast(`${kod}: bu depoda böyle bir kalem yok.`, 'err');
+      const u = !s && (S.urunler || []).find(x => x.kod === kod), r = liste.get(kod) || { s, kod, aciklama: s?.aciklama || u?.aciklama || aciklama || '', birim: s?.birim || u?.birim || 'Adet', adet: 0, parti: new Set(), yeni: !s };
+      r.adet += adet; liste.set(kod, r); toast(`${kod}: ${mod === 'giris' ? '+' : '−'}${num(adet)}`); ciz(); } });
     setTimeout(() => inp.focus(), 50);
   };
   const okut = metin => {
-    const e = etiketCoz(metin); if (!e) return;
-    const s = kalemBul(kalemler(), e.kod), u = !s && (S.urunler || []).find(x => fold(String(x.kod)) === fold(e.kod));
+    const e = okunaniCoz(metin, kalemler(), firma_id); if (!e) return;
+    if (e.bilinmeyen) { tani?.bilinmeyenBarkod(e.kod); toast(`${e.kod}: bu barkod henüz tanımlı değil; ürünü seçip eşle.`, 'err'); return; }
+    const s = e.s, u = !s && (S.urunler || []).find(x => fold(String(x.kod)) === fold(e.kod));
     if (!s && mod === 'cikis') { toast(`${e.kod}: bu depoda böyle bir kalem yok.`, 'err'); return; }
     const kod = s?.kod || u?.kod || e.kod, r = liste.get(kod) || { s, kod, aciklama: s?.aciklama || u?.aciklama || '', birim: s?.birim || u?.birim || 'Adet', adet: 0, parti: new Set(), yeni: !s };
     r.adet += e.adet; if (e.parti) r.parti.add(e.parti); liste.set(kod, r);

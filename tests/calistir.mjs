@@ -1450,6 +1450,62 @@ const DB = () => {
   kontrol('Ek sütun ve etiket ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 124: üretici etiketi tanıma (Pelsan, Osram / Ledvance, EAE; yeni marka), bilinmeyen barkodu eşleyip hatırlama, koli barkodu kolideki adedi taşır (giriş, sevk, sayım)
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }];
+    const k = (id, kod, a, adet, x = {}) => ({ id, owner: 'u1', firma_id: 'f1', kod, aciklama: a, adet, birim: 'Adet', son_hareket: '2026-11-10', created_at: ts, updated_at: ts, ...x });
+    d.bayi_stok = [k('p1', '117220', 'PLSETJ FONTANA 33W SU 1 ENEC STD OPAL PC 4000K', 12), k('p2', '117145', 'PLSETJ RIGO BSC 36W SIVAUSTU 6500K', 4), k('o1', 'ECO50', 'ECO CL DP 50W 865 6X1 G4 TROSR', 3, { barkod: '4099854645839' }), k('e1', '3359936', 'HBL 109-144-178U 65LN00 90 28K DS V6', 2)];
+    d.stok_barkodlari = [];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bayistok'); await w(1500);
+  await p.evaluate(async () => { const { F, saveFilters } = await import('./js/state.js'); Object.assign(F('bayistok', {}), { id: 'b1', grup: '', q: '', sadece: 'tum', depo: '' }); saveFilters(); });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  const ayr = await p.evaluate(async () => { const m = await import('./js/ureticietiket.js'), { S } = await import('./js/db.js'); const st = S.bayi_stok;
+    const ozet = (t, b) => { const a = m.etiketAyristir(t); const ad = m.adaylar(a, st, 'f1'); return [a.marka, a.kodlar[0] || '', a.adet ?? '', a.eanlar.join('/'), ad[0]?.s.kod || ''].join(','); };
+    return {
+      pelsan: ozet('Pelsan Made in Türkiye\nPLSETJ FONTANA 33W SU 1\nENEC STD OPAL PC 4000K\n6\nPCS\nST 7047 IP66 1200\nCODE 117220 P(on) 33W\nV(in) 220-240V F(Hz) 50-60Hz\n8 693119 588280'),
+      pelsanTek: ozet('Pelsan\nPLSETJ RIGO BSC 36W SIVAUSTU 1 ENEC 1\nSTD OPAL PC 6500K ST 7044 IP65 1200 PC\nCODE 117145 CRI 80\n8 693119 551338'),
+      gurultu: ozet('Polsan\nCODE (1117220 (o Plon) 33W\nPLSETJ FONTANA33W SU1'),
+      osram: ozet('OSRAM\nECO CLASS DAMP PROOF\nModel ECO CL DP 50W 865 6X1 G4 TROSR\nEAN 4099854645839\n50W - 5500 Lm IP65'),
+      eae: ozet('EAE AYDINLATMA\nMADE IN TÜRKİYE\nSip.No 2000823147/10 Miktar 1\nÜrün Kodu 3359936 Ağırlık 0,00 KG\nÜrün Adı HBL 109-144-178U 65LN00 90 28K DS V6'),
+      ean: [m.eanGecerli('8693119588280'), m.eanGecerli('4099854645839'), m.eanGecerli('8693119588281')].join() };
+  });
+  kontrol('Üretici etiketi ayrıştırma: Pelsan (CODE, 6 PCS, boşluklu EAN), tek ürün (1200 mm uzunluk adet sanılmaz), okuma hatalı kod (1117220 ≈ 117220), Osram / Ledvance (EAN ile kalem), EAE (Ürün Kodu, Miktar); EAN sağlama hanesi',
+    ayr.pelsan === 'Pelsan,117220,6,8693119588280,117220' && ayr.pelsanTek === 'Pelsan,117145,,8693119551338,117145' && ayr.gurultu.endsWith(',117220') && ayr.osram === 'Osram / Ledvance,4099854645839,,4099854645839,ECO50' && ayr.eae === 'EAE,3359936,1,,3359936' && ayr.ean === 'true,true,false', JSON.stringify(ayr));
+  // Etiketle giriş: tanımsız koli barkodu → eşleme kartı → 6 adet, hatırla; ikinci okutmada doğrudan +6
+  const ac = async sel => { if (!(await p.isVisible(sel))) await p.click('header.vh .vh-daha-btn'); await p.click(sel); await w(500); };
+  await ac('[data-etgc]');
+  const okut = async v => { await p.fill('.drawer.open [data-okut]', v); await p.press('.drawer.open [data-okut]', 'Enter'); await w(300); };
+  await okut('8693119588280');
+  const kart = await p.evaluate(() => ({ var: !!document.querySelector('.drawer.open .ut-kart'), marka: document.querySelector('.drawer.open .ut-bas')?.textContent || '' }));
+  await p.fill('.drawer.open [data-ukod]', '117220'); await p.fill('.drawer.open [data-uadet]', '6'); await p.click('.drawer.open [data-uekle]'); await w(700);
+  await okut('8693119588280'); await okut('4099854645839');
+  const l1 = await p.evaluate(() => [...document.querySelectorAll('.drawer.open [data-m]')].map(i => i.value).join());
+  await p.click('.drawer.open [data-kaydet]'); await w(1000);
+  const g = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return [S.bayi_stok.find(s => s.id === 'p1').adet, S.bayi_stok.find(s => s.id === 'o1').adet, S.stok_barkodlari.map(b => [b.barkod, b.kod, b.adet, b.marka].join(':')).join()].join('|'); });
+  kontrol('Etiketle giriş: tanımsız koli barkodu eşleme kartı açar (marka Pelsan), 117220 × 6 olarak hatırlanır; tekrar okutunca +6, kalem kartındaki Osram barkodu +1; stoğa 12 + 1 girer',
+    kart.var && /Pelsan/.test(kart.marka) && l1 === '12,1' && g === '24|4|8693119588280:117220:6:Pelsan', JSON.stringify({ kart, l1, g }));
+  // Sevk ve sayım: öğrenilen koli barkodu kolideki adedi ekler
+  await p.evaluate(async () => (await import('./js/views/sevk.js')).sevkFormu({ firma_id: 'f1' })); await w(700);
+  await p.evaluate(() => { const s = document.querySelector('.drawer.open [name=firma_id]'); if (s) { s.value = 'f1'; s.dispatchEvent(new Event('change', { bubbles: true })); } });
+  for (const v of ['8693119588280', '8693119588280']) { await p.fill('.drawer.open [data-kara]', v); await p.press('.drawer.open [data-kara]', 'Enter'); await w(250); }
+  const sv = await p.evaluate(() => [...document.querySelectorAll('.drawer.open [data-km]')].map(i => i.value).join());
+  await p.evaluate(async () => { (await import('./js/ui.js')).closeDrawer(true); await (await import('./js/sayim.js')).sayimBaslat('f1', null, null); }); await w(300);
+  await ac('[data-sayim]'); await w(300);
+  await p.fill('.drawer.open [data-sara]', '8693119588280'); await p.press('.drawer.open [data-sara]', 'Enter'); await w(500);
+  const syv = await p.evaluate(() => document.querySelector('.drawer.open [data-say="117220"]')?.value);
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  // Yeni marka tanımı
+  await ac('[data-etmarka]');
+  await p.fill('.drawer.open [data-m="ad"]', 'Schneider'); await p.fill('.drawer.open [data-m="kelime"]', 'schneider'); await p.fill('.drawer.open [data-m="ean"]', '3606480'); await p.fill('.drawer.open [data-m="kod"]', 'ref');
+  await p.click('.drawer.open [data-mekle]'); await w(600);
+  const mk = await p.evaluate(async () => { const m = await import('./js/ureticietiket.js'); const a = m.etiketAyristir('Schneider Electric\nRef. ABC12345\n10 pcs'); return [a.marka, a.kodlar[0], a.adet, document.querySelector('.drawer.open')?.innerText.includes('8693119588280')].join(); });
+  kontrol('Sevkte koli barkodu iki kez okutulunca 12, sayımda 6; yeni marka (Schneider: yazı, barkod öneki, “Ref” kod sözcüğü) eklenince tanınır; öğrenilen barkod listede',
+    sv === '12' && syv === '6' && mk === 'Schneider,ABC12345,10,true', JSON.stringify({ sv, syv, mk }));
+  kontrol('Üretici etiketi ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

@@ -64,7 +64,7 @@ export const EKRANLAR = {
   nakit:      { t: [], o: ['tahsilatlar', 'cekler', 'masraflar', 'firmalar'], salt: true, d: 'Nakit akışı: 13 haftalık giriş, çıkış ve bakiye tahmini' },
   banka:      { t: ['tahsilatlar'], o: ['firmalar'], d: 'Banka ekstresi: gelen ödemeleri açık faturalarla eşleştirme' },
   prim:       { t: [], o: ['siparisler', 'tahsilatlar'], salt: true, d: 'Prim ve hedef: kişi bazında satış, tahsilat, hedef, prim' },
-  bayistok:   { t: ['bayi_stok', 'stok_gecmis', 'stok_gruplari', 'stok_sayimlari', 'stok_seri', 'stok_paylasimlari'], o: ['bayiler', 'firmalar', 'urunler', 'teklifler'], d: 'Bayi stokları: her bayinin ayrı stoğu, hızlı adet, Excel ile yükleme, stok uyarıları' },
+  bayistok:   { t: ['bayi_stok', 'stok_gecmis', 'stok_gruplari', 'stok_sayimlari', 'stok_seri', 'stok_paylasimlari', 'stok_barkodlari'], o: ['bayiler', 'firmalar', 'urunler', 'teklifler'], d: 'Bayi stokları: her bayinin ayrı stoğu, hızlı adet, Excel ile yükleme, stok uyarıları' },
   sevk:       { t: ['sevkler'], o: ['firmalar', 'kisiler', 'projeler', 'teklifler', 'siparisler', 'bayiler', 'bayi_stok', 'urunler'], d: 'Sevk ve irsaliye: sevk ve iade belgesi, taşıma, teslim imzası, sevk takvimi ve raporu' },
   bayisatis:  { t: ['bayi_satis'], o: ['bayiler', 'firmalar', 'siparisler', 'projeler', 'urunler'], d: 'Bayi satışları: bize alım ve bayinin sattıkları, devir hızı' },
   bayihedef:  { t: [], o: ['bayiler', 'firmalar', 'siparisler'], salt: true, d: 'Bayi hedef ve prim: çeyreklik gerçekleşme, sıralama, prim' },

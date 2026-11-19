@@ -1,6 +1,6 @@
 // Stok sayımı: sistemdeki miktar ile depoda sayılan yan yana; fark raporu (eksik / fazla, adet ve tutar); onaylanınca stok sayılana çekilir,
 // fark hareket kaydına "sayım düzeltmesi" olarak (kim, ne zaman) yazılır. Sayım taslağı kaydedilir: telefonla depoda gezerken kaybolmaz.
-import { etiketCoz, kalemBul } from './etiket.js';
+import { okunaniCoz } from './etiket.js';
 import { S, uuid } from './db.js';
 import { app } from './state.js';
 import { esc, num, usd, tarih, today, toast, openDrawer, closeDrawer, confirmBox, fold, firmaAd, exportXlsx } from './ui.js';
@@ -89,9 +89,10 @@ export function sayimPenceresi({ b, firma_id, grup_id = null, grupAd = null, dep
         i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); i.blur(); p.querySelector('[data-sara]').focus(); } }; });
       ozet(); };
     // Koli etiketi kolideki adedi ekler (her zaman), ürün etiketi / barkod "+1" seçiliyse 1 ekler
-    const okut = async kod => { const e = etiketCoz(kod); if (!e) return;
-      const x = kalemBul(kalemler, e.kod);
-      if (!x) return toast(`${e.kod}: bu sayımda böyle bir kalem yok.`, 'err');
+    const okut = async kod => { const e = okunaniCoz(kod, kalemler, say.firma_id); if (!e) return;
+      if (e.eslesme) e.etiket = true;   // öğrenilmiş üretici barkodu: kolideki adet eklenir
+      const x = e.s;
+      if (!x) return toast(e.bilinmeyen ? `${e.kod}: bu barkod henüz tanımlı değil. Stoklar → Etiketle giriş / çıkış ekranında fotoğrafla tanıtıp eşleyebilirsin.` : `${e.kod}: bu sayımda böyle bir kalem yok.`, 'err');
       if (p.querySelector('[data-arti]').checked || e.etiket) { const v = (+say.sayilan?.[x.kod] || 0) + e.adet; say = await sayimYaz(say, x.kod, v); q = ''; p.querySelector('[data-sara]').value = ''; liste(); toast(`${x.kod}: ${e.koli ? `+${num(e.adet)} (koli) → ` : ''}${num(v)}`); return; }
       q = x.kod; liste(); const i = p.querySelector(`[data-say="${CSS.escape(x.kod)}"]`); i?.focus(); i?.select(); };
     p.querySelector('[data-sara]').oninput = e => { q = e.target.value; liste(); };

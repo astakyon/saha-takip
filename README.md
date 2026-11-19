@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 124)
+
+- **Üretici etiketi tanıma** (`js/ureticietiket.js`): etiket fotoğrafı tarayıcıda okunur (Tesseract; yön denenir, seyrek ve blok okuma birleşir) ve destekleyen telefonda barkod / QR da görüntüden çözülür. Marka etikette geçen yazıdan ya da barkodun firma önekinden bulunur; ürün kodu marka tanımındaki kod sözcüğünden sonra (CODE, Ürün Kodu, PRDC.CODE, Model, EAN…), adet “Miktar 6” ya da “6 PCS” biçiminden okunur; EAN sağlama hanesiyle doğrulanır, boşluklu yazılan barkod numarası da birleştirilir.
+- **Stokla eşleştirme**: öğrenilmiş barkod, kalem kartındaki barkod, kod / firma kodu / üretici kodu (okuma hatasında bir hane farkı da) ve açıklama benzerliğiyle en olası 5 kalem önerilir; kod ve adet onaydan önce düzeltilir.
+- **Öğrenme** (`stok_barkodlari`): “Bu barkodu hatırla” ile barkod → ürün kodu ve adet kaydedilir (koli barkodu kolideki adedi taşır). Sonra okuyucu tabanca ya da kamerayla okutunca etiketle giriş / çıkış, sevk belgesi ve sayımda doğrudan kullanılır. Tanımsız bir EAN okutulunca eşleme kartı açılır. Bayinin eşlemesi yalnız kendisinde, şirketinki bütün bayilerde geçerlidir.
+- **Etiket markaları**: hazır tanımlar (Pelsan, Osram / Ledvance, EAE, Philips / Signify) ve kullanıcının eklediği markalar (etikette geçen yazı, barkod öneki, kod sözcüğü, adetten önce / sonra yazan); öğrenilen barkodların listesi ve silme.
+- Şema 60: `stok_barkodlari` tablosu (RLS, bayi kısıtı), `etiket_markalari` ekipçe paylaşılan ayar.
+
 ## Güncelleme notu (sürüm 123)
 
 - **Ek sütunlar** (`js/stoksutun.js`, ayar `stok_sutunlari`, `bayi_stok.ozel`): Excel mantığında kullanıcının eklediği sütunlar (Marka, Raf yeri, Renk…). Tablodaki “+ Sütun” ya da “Sütunlar” ile eklenir, adı değiştirilir (değerler taşınır), silinir (değerleri de silinir). Hücreye yazınca kaydedilir (Enter / ↑↓ ile alttaki satıra geçer); seçili kalemlere “Sütuna yaz” ile toplu değer; kalem kartında “Ek sütunlar”; aramada bulunur; Excel'e ve boş şablona çıkar. Excel yüklemede eşlenmeyen başlıklar listelenir, işaretlenenler ek sütun olur. Şirket kullanıcısının sütunu bütün bayilerde, bayinin sütunu yalnız kendisinde görünür.

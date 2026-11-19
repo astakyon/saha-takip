@@ -4,7 +4,8 @@ import { S, uuid } from '../db.js';
 import { app, F, saveFilters } from '../state.js';
 import { esc, num, usd, tarih, today, gunEkle, byId, firmaAd, fold, match, toast, openDrawer, closeDrawer, confirmBox, exportXlsx, waLink } from '../ui.js';
 import { toplamaGiren } from '../teklif2.js';
-import { etiketCoz, kalemBul, kameraBaslat } from '../etiket.js';
+import { etiketCoz, kalemBul, kameraBaslat, okunaniCoz } from '../etiket.js';
+import { taniKutusu } from '../ureticietiket.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { ayar, ayarYaz } from '../ayar.js';
 import { izin, sahipMi, disKullanici } from '../yetki.js';
@@ -111,7 +112,7 @@ export function sevkFormu(init = {}, sonra) {
     <button class="x" data-close aria-label="Kapat">×</button></header>
     <form class="dbody form" novalidate>${renderForm(FM, x0)}
       <h3>Kalemler</h3><div class="tbl-wrap"><table class="tbl sv-k"><thead><tr><th>Kod</th><th>Ürün</th><th class="r">Miktar</th><th>Birim</th>${once.size || kalemler.some(k => k.siparis_adet) ? '<th class="r">Sipariş / önce</th>' : ''}<th></th></tr></thead><tbody data-kl></tbody></table></div>
-      <div class="frow"><input data-kara placeholder="Ürün kodu ya da adı" list="sv-urun" autocomplete="off" aria-label="Kalem ekle"><datalist id="sv-urun"></datalist><button type="button" class="btn sm" data-kekle>Ekle</button>${'BarcodeDetector' in window ? '<button type="button" class="btn sm" data-skam>Kamerayla okut</button>' : ''}</div><video data-svid playsinline muted hidden class="et-vid"></video><p class="hint">Koli ya da ürün etiketini okuyucuyla okutabilirsin: koli etiketi kolideki adedi, ürün etiketi 1 adet ekler.</p>
+      <div class="frow"><input data-kara placeholder="Ürün kodu ya da adı" list="sv-urun" autocomplete="off" aria-label="Kalem ekle"><datalist id="sv-urun"></datalist><button type="button" class="btn sm" data-kekle>Ekle</button>${'BarcodeDetector' in window ? '<button type="button" class="btn sm" data-skam>Kamerayla okut</button>' : ''}</div><video data-svid playsinline muted hidden class="et-vid"></video><div data-sutani class="ut-kutu"></div><p class="hint">Koli ya da ürün etiketini okuyucuyla okutabilirsin: koli etiketi kolideki adedi, ürün etiketi 1 adet ekler.</p>
       ${x0.teslim_zaman ? `<p class="hint">Teslim alındı: ${tarih(String(x0.teslim_zaman).slice(0, 10))}${x0.teslim_alan ? ' · ' + esc(x0.teslim_alan) : ''}${x0.teslim_konum ? ` · <a target="_blank" rel="noopener" href="https://maps.google.com/?q=${esc(x0.teslim_konum)}">konum</a>` : ''}</p>${x0.teslim_imza ? `<img class="sv-imza" src="${x0.teslim_imza}" alt="Teslim alan imzası">` : ''}` : ''}
       <p class="hint">“Yolda” ya da “Teslim edildi” olunca kalemler çıkış stoğundan bir kez düşer (iade belgesi ekler); “İptal” geri alır. Hareket kaydına belge numarasıyla yazılır.</p>
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`, { wide: true });
@@ -128,7 +129,10 @@ export function sevkFormu(init = {}, sonra) {
   // Kod, açıklama ya da etiket: koli etiketi kolideki adedi, ürün etiketi / barkod 1 adet ekler; aynı kod varsa miktarı artar
   const ekle = (metin = null) => { const v = String(metin ?? p.querySelector('[data-kara]').value).trim(); if (!v) return; const fid = firmaSel?.value, e = etiketCoz(v);
     const st = (S.bayi_stok || []).filter(y => y.firma_id === fid);
-    const s = kalemBul(st, e.kod) || st.find(y => fold(y.aciklama || '') === fold(v)) || (S.urunler || []).find(u => u.kod === e.kod || fold(u.aciklama || '') === fold(v));
+    const c = okunaniCoz(v, st, fid);
+    if (c?.bilinmeyen) { taniK?.bilinmeyenBarkod(c.kod); toast(`${c.kod}: bu barkod henüz tanımlı değil; ürünü seçip eşle.`, 'err'); p.querySelector('[data-kara]').value = ''; return; }
+    if (c?.eslesme) Object.assign(e, { kod: c.kod, adet: c.adet, koli: c.koli, etiket: true });
+    const s = c?.s || st.find(y => fold(y.aciklama || '') === fold(v)) || (S.urunler || []).find(u => u.kod === e.kod || fold(u.aciklama || '') === fold(v));
     const kod = s?.kod || e.kod, var_ = kalemler.find(k => k.kod && k.kod === kod);
     if (var_) var_.adet = (+var_.adet || 0) + e.adet;
     else kalemler.push({ kod, aciklama: s?.aciklama || (s ? '' : v), birim: s?.birim || 'Adet', adet: e.adet });
@@ -136,6 +140,8 @@ export function sevkFormu(init = {}, sonra) {
     p.querySelector('[data-kara]').value = ''; kCiz(); };
   p.querySelector('[data-kekle]').onclick = () => ekle();
   let kamDur = null;
+  const taniK = taniKutusu(p.querySelector('[data-sutani]'), { kalemler: () => (S.bayi_stok || []).filter(y => y.firma_id === firmaSel?.value), firma_id: null, yeniKalem: true,
+    onEkle: ({ kod, adet, s, aciklama }) => { const var_ = kalemler.find(k => k.kod === kod); if (var_) var_.adet = (+var_.adet || 0) + adet; else kalemler.push({ kod, aciklama: s?.aciklama || aciklama || '', birim: s?.birim || 'Adet', adet }); toast(`${kod}: +${num(adet)}`); kCiz(); } });
   p.querySelector('[data-skam]')?.addEventListener('click', async e => { if (kamDur) { kamDur(); kamDur = null; e.target.textContent = 'Kamerayla okut'; return; }
     try { kamDur = await kameraBaslat(p.querySelector('[data-svid]'), k => ekle(k)); e.target.textContent = 'Kamerayı kapat'; } catch (er) { toast(er.message, 'err'); } }); p.querySelector('[data-kara]').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); ekle(); } };
   firmaSel?.addEventListener('change', () => { urunListe(); kCiz(); }); form.querySelector('[name=depo]')?.addEventListener('change', kCiz);

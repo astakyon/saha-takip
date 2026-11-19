@@ -27,6 +27,7 @@ export const TABLES = {
   yorumlar: ['id','tablo','kayit_id','metin','yazan','yazan_ad','etiketler','created_at'],
   bayi_stok: ['id','firma_id','kod','aciklama','adet','birim_fiyat','son_hareket','notlar','firma_kodu','uretici_kodu','uretici_aciklama','birim','para_birimi','aktif','gruplar','kritik','depo','kampanya','ozel','barkod','koli_ici'],
   stok_gruplari: ['id','ad','firma_id','tum_bayiler','bayiler','sira','renk'],
+  stok_barkodlari: ['id','barkod','kod','adet','marka','firma_id'],
   sevkler: ['id','belge_no','tur','durum','plan_tarih','tarih','firma_id','depo','alici_id','proje_id','teklif_id','siparis_id','teslim_yeri','kalemler','gonderim','tasiyici','takip_no','tasima_ucreti','tasima_pb','odeyen','palet','koli','agirlik','desi','plaka','sofor','sofor_tel','teslim_alan','teslim_imza','teslim_foto','teslim_konum','teslim_zaman','stok_dustu','notlar'],
   stok_seri: ['id','firma_id','kod','depo','tur','no','adet','tarih','durum','musteri_id','proje_id','garanti_ay','notlar'],
   stok_paylasimlari: ['id','anahtar','firma_id','depo','tum_depolar','grup_id','miktar','son_tarih','baslik','gonderen','iptal','acilma','ilk_acilma','son_acilma'],

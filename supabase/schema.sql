@@ -2451,6 +2451,50 @@ create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) retu
     or (anahtar like 'sartname:%' and public.yetki(sahip, 'projeler', 'oku'))))
 $f$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 59 $f$;
+-- ---------- Sürüm 60: Üretici etiketi / barkod eşlemeleri (barkod → stok kodu ve adet; koli barkodu kolideki adedi taşır) ----------
+create table if not exists public.stok_barkodlari (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  barkod text not null,                                              -- EAN / GTIN ya da etiketteki QR içeriği
+  kod text not null,                                                 -- stoktaki ürün kodu
+  adet numeric default 1,                                            -- bu barkod kaç adet: ürün 1, koli 6, 20…
+  marka text,
+  firma_id uuid references public.firmalar(id) on delete cascade,   -- boş: şirketin bütün bayileri; dolu: yalnız o bayi
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create index if not exists stok_barkodlari_owner_idx on public.stok_barkodlari (owner);
+create index if not exists stok_barkodlari_barkod_idx on public.stok_barkodlari (barkod);
+alter table public.stok_barkodlari enable row level security;
+alter table public.stok_barkodlari alter column owner set default public.veri_sahibi();
+drop policy if exists "oku" on public.stok_barkodlari;
+drop policy if exists "ekle" on public.stok_barkodlari;
+drop policy if exists "degistir" on public.stok_barkodlari;
+drop policy if exists "sil" on public.stok_barkodlari;
+drop policy if exists "yonetici_oku" on public.stok_barkodlari;
+drop policy if exists "dis_oku" on public.stok_barkodlari;
+drop policy if exists "dis_ekle" on public.stok_barkodlari;
+drop policy if exists "dis_degistir" on public.stok_barkodlari;
+drop policy if exists "dis_sil" on public.stok_barkodlari;
+create policy "oku" on public.stok_barkodlari for select to authenticated using (public.yetki(owner, 'bayi_stok', 'oku'));
+create policy "ekle" on public.stok_barkodlari for insert to authenticated with check (public.yetki(owner, 'bayi_stok', 'yaz'));
+create policy "degistir" on public.stok_barkodlari for update to authenticated using (public.yetki(owner, 'bayi_stok', 'yaz')) with check (public.yetki(owner, 'bayi_stok', 'yaz'));
+create policy "sil" on public.stok_barkodlari for delete to authenticated using (public.yetki(owner, 'bayi_stok', 'yaz'));
+create policy "yonetici_oku" on public.stok_barkodlari for select to authenticated using (public.yonetici_mi());
+-- Bayi (dış kullanıcı): şirketin genel eşlemelerini ve kendininkileri görür; yalnız kendi eşlemesini ekler, değiştirir, siler
+create policy "dis_oku" on public.stok_barkodlari as restrictive for select to authenticated using (public.dis_firmam(owner) is null or firma_id is null or firma_id = public.dis_firmam(owner));
+create policy "dis_ekle" on public.stok_barkodlari as restrictive for insert to authenticated with check (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+create policy "dis_degistir" on public.stok_barkodlari as restrictive for update to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner)) with check (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+create policy "dis_sil" on public.stok_barkodlari as restrictive for delete to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner));
+drop trigger if exists touch on public.stok_barkodlari;
+create trigger touch before update on public.stok_barkodlari for each row execute function public.touch_updated_at();
+-- Kullanıcının eklediği marka etiketi tanımları ekipçe paylaşılır
+create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) returns boolean language sql stable security definer set search_path = public as $f$
+  select public.sirket_yetkilisi(sahip) or (public.ekipte(sahip::text) and (
+    anahtar in ('google_key', 'wa_sablonlar', 'teklif_firma', 'listeler', 'kataloglar_ek', 'ziyaret_siklik', 'usd_kur', 'kur_elle', 'elektrik_tl_kwh', 'firma_profil', 'cift_farkli', 'otomasyon', 'oto_silinen',
+                'stok_birimleri', 'sip_farkli', 'kendi_depo', 'zorunlu_alanlar', 'teklif_sablonlari', 'teklif_no_duzen', 'teklif_metinleri', 'teklif_iskonto_siniri', 'teklif_min_marj', 'stok_sutunlari', 'etiket_markalari')
+    or (anahtar like 'sartname:%' and public.yetki(sahip, 'projeler', 'oku'))))
+$f$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 60 $f$;
 
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile
