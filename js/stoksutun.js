@@ -7,7 +7,7 @@ import { ayarYaz } from './ayar.js';
 
 const K = 'stok_sutunlari';
 const benimSatir = () => { const ben = app.db?.user?.()?.id; return (S.ayarlar || []).filter(r => r.anahtar === K && (!ben || !r.owner || r.owner === ben)).sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0]; };
-const benimTanim = () => { const d = benimSatir()?.deger; if (d) return { sutunlar: [...(d.sutunlar || [])], gizle: [...(d.gizle || [])], tablo_gizle: [...(d.tablo_gizle || [])] }; try { const v = JSON.parse(localStorage.getItem('saha-ayar:' + K)); if (v) return { sutunlar: v.sutunlar || [], gizle: v.gizle || [], tablo_gizle: v.tablo_gizle || [] }; } catch {} return { sutunlar: [], gizle: [], tablo_gizle: [] }; };
+const benimTanim = () => { const d = benimSatir()?.deger; if (d) return { sutunlar: [...(d.sutunlar || [])], gizle: [...(d.gizle || [])], tablo_gizle: [...(d.tablo_gizle || [])], tablo_sira: [...(d.tablo_sira || [])] }; try { const v = JSON.parse(localStorage.getItem('saha-ayar:' + K)); if (v) return { sutunlar: v.sutunlar || [], gizle: v.gizle || [], tablo_gizle: v.tablo_gizle || [], tablo_sira: v.tablo_sira || [] }; } catch {} return { sutunlar: [], gizle: [], tablo_gizle: [], tablo_sira: [] }; };
 // Bütün görünür tanımlar (sahibin ve ekibin ayar satırları birleşir)
 function tanimlar() {
   const satirlar = (S.ayarlar || []).filter(r => r.anahtar === K && r.deger);
@@ -17,6 +17,15 @@ function tanimlar() {
 // Tabloda gösterilmeyen ek sütunlar (kullanıcının kendi ayarı): kalem kartında yine görünür
 const tabloGizli = () => new Set((benimTanim().tablo_gizle || []).map(fold));
 export const tablodaGorunen = (firma_id = null) => { const g = tabloGizli(); return ozelSutunlar(firma_id).filter(ad => !g.has(fold(ad))); };
+// Tablodaki sütun sırası (kullanıcının): kayıtlı sıradakiler önce o sırayla; yeni sütun varsayılan yerindeki komşusunun ardına girer
+export const kolonSirasi = () => benimTanim().tablo_sira || [];
+export function kolonSirala(kol) {
+  const sira = kolonSirasi().filter(k => kol.some(c => c.k === k)); if (!sira.length) return kol;
+  const l = sira.map(k => kol.find(c => c.k === k));
+  kol.forEach((c, i) => { if (l.includes(c)) return; const once = kol.slice(0, i).reverse().find(x => l.includes(x)); l.splice(once ? l.indexOf(once) + 1 : 0, 0, c); });
+  return l;
+}
+export async function kolonSirasiYaz(keys) { const t = benimTanim(); t.tablo_sira = [...keys]; await ayarYaz(K, t); }
 export async function tablodaGoster(ad, goster) {
   const t = benimTanim(); t.tablo_gizle = (t.tablo_gizle || []).filter(x => fold(x) !== fold(ad)); if (!goster) t.tablo_gizle.push(ad);
   await ayarYaz(K, t);
@@ -81,13 +90,17 @@ export async function sutunSil(ad, firma_id = null) {
 }
 
 // Sütunları yönet: ekle, adını değiştir, sil
-export function sutunlarPenceresi({ firma_id, bayiAdi = '', sirketYazar = false, sonra }) {
+export function sutunlarPenceresi({ firma_id, bayiAdi = '', sirketYazar = false, kolonlar = [], sonra }) {
+  let K2 = [...kolonlar];
   const ciz = () => { const l = ozelSutunlar(firma_id);
     return `<header class="dh"><div><p class="muted">${esc(bayiAdi)}</p><h2 id="drawer-title">Ek sütunlar</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <div class="dbody form"><p class="hint">Excel'deki gibi istediğin sütunu ekle (Marka, Renk, Garanti…). Değerleri kalem kartından, tabloda hücreye dokunarak, seçili kalemlere toplu ya da Excel'den doldurursun. “Tabloda” kapalı sütun yalnız kalem kartında görünür; tablo sade kalır.</p>
       ${l.length ? `<ul class="list ss-liste">${l.map(ad => `<li><input data-ad="${esc(ad)}" value="${esc(ad)}" aria-label="Sütun adı"><label class="chk ss-goster" title="Kapalıysa yalnız kalem kartında görünür"><input type="checkbox" data-goster="${esc(ad)}" ${tabloGizli().has(fold(ad)) ? '' : 'checked'}> <span>Tabloda</span></label><small class="muted">${(S.bayi_stok || []).filter(s => (!firma_id || s.firma_id === firma_id) && ozelDeger(s, ad) != null).length} dolu</small><button type="button" class="btn sm ghost danger" data-ssil="${esc(ad)}">Sil</button></li>`).join('')}</ul>` : '<p class="muted">Henüz ek sütun yok.</p>'}
       <div class="frow"><input data-yeni placeholder="Yeni sütun adı (ör. Marka)" aria-label="Yeni sütun adı" autocomplete="off"><button type="button" class="btn primary" data-ekle>Sütun ekle</button></div>
       ${sirketYazar && firma_id ? `<label class="chk"><input type="checkbox" data-sirket checked> <span>Bütün bayilerde görünsün (kapalıysa yalnız bu bayide)</span></label>` : ''}
+      ${K2.length > 1 ? `<h3>Tablodaki sütun sırası</h3><p class="hint">Okla yukarı (sola) ya da aşağı (sağa) taşı. Bilgisayarda tablo başlığını sürükleyerek de taşıyabilirsin. Sıra sana kayıtlıdır.</p>
+      <ol class="list ks-liste">${K2.map((c, i) => `<li><span>${esc(c.ad)}</span><span class="btnrow"><button type="button" class="btn sm ghost" data-ksyon="-1" data-ki="${i}" ${i ? '' : 'disabled'} aria-label="${esc(c.ad)} sola">↑</button><button type="button" class="btn sm ghost" data-ksyon="1" data-ki="${i}" ${i < K2.length - 1 ? '' : 'disabled'} aria-label="${esc(c.ad)} sağa">↓</button></span></li>`).join('')}</ol>
+      <button type="button" class="btn sm ghost" data-ksifirla>Varsayılan sıraya dön</button>` : ''}
     </div>`; };
   const p = openDrawer(ciz());
   const bagla = () => {
@@ -96,6 +109,8 @@ export function sutunlarPenceresi({ firma_id, bayiAdi = '', sirketYazar = false,
     p.querySelector('[data-ekle]').onclick = ekle;
     p.querySelector('[data-yeni]').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); ekle(); } };
     p.querySelectorAll('[data-ad]').forEach(i => i.onchange = async () => { try { await sutunAdiDegistir(i.dataset.ad, i.value, firma_id); toast('Sütun adı değişti.'); yen(); } catch (er) { toast(er.message, 'err'); i.value = i.dataset.ad; } });
+    p.querySelectorAll('[data-ksyon]').forEach(b => b.onclick = async () => { const i = +b.dataset.ki, j = i + +b.dataset.ksyon; [K2[i], K2[j]] = [K2[j], K2[i]]; await kolonSirasiYaz(K2.map(c => c.k)); yen(); setTimeout(() => p.querySelector(`[data-ki="${j}"][data-ksyon="${b.dataset.ksyon}"]`)?.focus(), 30); });
+    p.querySelector('[data-ksifirla]')?.addEventListener('click', async () => { await kolonSirasiYaz([]); K2 = [...kolonlar].sort((a, b) => (a.v ?? 0) - (b.v ?? 0)); toast('Sütunlar varsayılan sırada.'); yen(); });
     p.querySelectorAll('[data-goster]').forEach(c => c.onchange = async () => { await tablodaGoster(c.dataset.goster, c.checked); sonra?.(); });
     p.querySelectorAll('[data-ssil]').forEach(b => b.onclick = async () => { const ad = b.dataset.ssil, n = (S.bayi_stok || []).filter(s => (!firma_id || s.firma_id === firma_id) && ozelDeger(s, ad) != null).length;
       if (!confirmBox(`“${ad}” sütunu silinsin mi?${n ? `\n\n${n} kalemdeki değerleri de silinir.` : ''} Stok miktarları değişmez.`)) return; await sutunSil(ad, firma_id); toast(`“${ad}” sütunu silindi.`); yen(); });

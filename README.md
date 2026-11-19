@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 130)
+
+- Hazır marka logoları: Pelsan (koyu zeminde), EAE, Ledvance; kullanıcının yüklediği logo hazırın yerine geçer. Logo yuvası her satırda aynı genişlikte, logonun boyu en / boy oranına göre (kare logo yüksek, yatay logo alçak); markasız satırda boş yuva, kodlar hizalı.
+- Stok tablosunda sütun sırası: başlığı sürükleyip bırak; “Ek sütunlar” penceresinde “Tablodaki sütun sırası” okları ve “Varsayılan sıraya dön”. Sıra kullanıcıya kayıtlı, yeni sütun varsayılan yerine girer.
+- Stok başlığı hep üstte, bayi ve depo seçicileri yan yana, araçlar altta: bayi adının uzunluğu düzeni değiştirmez.
+
 ## Güncelleme notu (sürüm 129)
 
 - Stok kalemine **kategori** (Etanj, Yüksek tavan, Projektör, Spot, Panel, Acil, Lineer…): kalem kartında seçilir; “Kategoriler” penceresinde liste ve tanıma sözcükleri düzenlenir, boş olanlar ürün adından doldurulur; yeni kalemde, etiketle girişte ve Excel'de (Kategori / Ürün grubu sütunu) kendiliğinden gelir; listede kategori süzgeci ve “Kategorisiz”; Excel'e aktarımda Kategori sütunu.

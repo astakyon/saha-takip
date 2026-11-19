@@ -1684,15 +1684,18 @@ const DB = () => {
   const kk = await p.evaluate(async () => { const S = (await import('./js/db.js')).S; return S.bayi_stok.find(s => s.id === 'k5').kategori + '|' + S.bayi_stok.find(s => s.kod === 'PR2')?.kategori; });
   kontrol('Kalem kartında Kategori alanı (listeden seçilir ya da yazılır); yeni kalemde boşsa ürün adından bulunur', katAlan && kk === 'Aksesuar|Projektör', JSON.stringify({ katAlan, kk }));
   // Marka logosu: logo yoksa baş harfler; logo yüklenince satır başında resim
-  const bas = await p.evaluate(() => ({ k1: document.querySelector('[data-row="k1"] .bs-kod .mk-bas')?.textContent, k2: document.querySelector('[data-row="k2"] .bs-kod .mk-bas')?.textContent, k3: !document.querySelector('[data-row="k3"] .mk-bas, [data-row="k3"] .mk-logo'), once: document.querySelector('[data-row="k1"] .bs-kod')?.firstElementChild?.className }));
-  await p.evaluate(async () => { const m = await import('./js/ureticietiket.js'); const t = m.markalar().find(x => x.ad === 'Pelsan'); await m.markaKaydet({ ...t, logo: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=' }); });
+  await p.evaluate(async () => { const { S } = await import('./js/db.js'); const { ozelYaz } = await import('./js/stoksutun.js'); await ozelYaz(S.bayi_stok.find(s => s.id === 'k3'), 'Marka', 'Acme Işık'); });
   await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
-  const logo = await p.evaluate(() => document.querySelector('[data-row="k1"] .bs-kod img.mk-logo')?.getAttribute('alt'));
+  const bas = await p.evaluate(() => { const y = id => document.querySelector(`[data-row="${id}"] .bs-kod .mk-yuva`); const g = id => { const e = y(id); return e ? [e.className.replace(/mk-yuva\s*/, ''), e.querySelector('img')?.getAttribute('src') || e.textContent, Math.round(e.getBoundingClientRect().width)].join(':') : ''; };
+    return { k1: g('k1'), k2: g('k2'), k3: g('k3'), k4: g('k4'), ilk: document.querySelector('[data-row="k1"] .bs-kod')?.firstElementChild?.className }; });
+  await p.evaluate(async () => { const m = await import('./js/ureticietiket.js'); const t = m.markalar().find(x => x.ad === 'EAE'); await m.markaKaydet({ ...t, logo: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', oran: 4 }); });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  const logo = await p.evaluate(() => { const e = document.querySelector('[data-row="k2"] .bs-kod .mk-yuva'); return e ? /mk-genis/.test(e.className) + ':' + /^data:/.test(e.querySelector('img')?.src || '') : ''; });
   await p.click('[data-etmarka]'); await w(600);
-  const pencere = await p.evaluate(() => [...document.querySelectorAll('.drawer.open [data-mlogo]')].length > 3 && !!document.querySelector('.drawer.open .mk-hucre img.mk-logo'));
+  const pencere = await p.evaluate(() => [...document.querySelectorAll('.drawer.open [data-mlogo]')].length > 3 && document.querySelectorAll('.drawer.open .mk-hucre img.mk-logo').length >= 3 && document.querySelectorAll('.drawer.open [data-mlogosil]').length === 1);
   await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
-  kontrol('Marka logosu: logo yüklü markada kalemin başında küçük logo, yoksa renkli baş harfler; markasız kalemde boş; Etiket markaları penceresinde logo yükle',
-    bas.k1 === 'PEL' && bas.k2 === 'EAE' && bas.k3 && /mk-bas/.test(bas.once || '') && logo === 'PELSAN' && pencere, JSON.stringify({ bas, logo, pencere }));
+  kontrol('Marka logosu: Pelsan, EAE, Ledvance logoları hazır gelir (Pelsan koyu zeminde, yatay); logo yuvası her satırda aynı genişlikte, boy logonun oranına göre; logosuz markada baş harfler; yüklenen logo hazırın yerine geçer; yalnız yüklenen logo kaldırılır',
+    /^mk-genis mk-zemin:img\/markalar\/pelsan\.svg:76$/.test(bas.k1) && /^mk-kare:img\/markalar\/eae\.png:76$/.test(bas.k2) && /^:AI:76$/.test(bas.k3) && bas.k4 === '::76' && /mk-yuva/.test(bas.ilk || '') && logo === 'true:true' && pencere, JSON.stringify({ bas, logo, pencere }));
   // Ek sütunlar: tabloda “+ Sütun” yok; “Tabloda” kapatılan sütun tablodan çıkar ama kalem kartında durur; hücre dokununca düzenlenir
   const th0 = await p.evaluate(() => [...document.querySelectorAll('th.bs-oz')].map(x => x.textContent).join() + (document.querySelector('[data-sutunekle]') ? '!' : ''));
   await p.click('[data-sutunlar]'); await w(500);
@@ -1711,6 +1714,26 @@ const DB = () => {
   await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
   kontrol('Ek sütunlar: tabloda “+ Sütun” düğmesi yok; “Tabloda” kapatılan sütun tablodan çıkar, kalem kartında kalır; hücreye dokununca kutu açılır (Esc vazgeçer, Enter kaydedip alttakine geçer); kalem kartında “+ Alan ekle” açılınca yazılır',
     th0 === 'Marka,Garanti' && th1 === 'Marka' && esc === '|' && yaz === 'Osram|Osram|true' && kart.alan && kart.gizli === true && !kart.eski && yeniAlan, JSON.stringify({ th0, th1, esc, yaz, kart, yeniAlan }));
+  // Sütun sırası: başlığı sürükle; pencerede oklar; sıfırla. Başlık düzeni sabit
+  const sira = () => p.evaluate(() => [...document.querySelectorAll('th[data-kol]')].map(t => t.dataset.kol).join(','));
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  const s0 = await sira();
+  await p.evaluate(async () => { const a = document.querySelector('th[data-kol="oz:marka"]'), b = document.querySelector('th[data-kol="kod"]'), dt = new DataTransfer(), r = b.getBoundingClientRect();
+    const ev = (t, x) => x.dispatchEvent(new DragEvent(t, { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.left + 3, clientY: r.top + 5 })); ev('dragstart', a); ev('dragover', b); ev('drop', b); ev('dragend', a); }); await w(800);
+  const s1 = await sira(), hucre = await p.evaluate(() => document.querySelector('[data-row="k1"]').children[1]?.textContent);
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  const s2 = await sira();
+  await p.click('[data-sutunlar]'); await w(500);
+  const ok = await p.evaluate(() => [...document.querySelectorAll('.drawer.open .ks-liste li > span:first-child')].map(x => x.textContent).join(','));
+  await p.click('.drawer.open [data-ksyon="1"][data-ki="1"]'); await w(600);
+  const s3 = await p.evaluate(async () => (await import('./js/stoksutun.js')).kolonSirasi().join(','));
+  await p.click('.drawer.open [data-ksifirla]'); await w(500);
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(500);
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  const s4 = await sira(), vh = await p.evaluate(() => getComputedStyle(document.querySelector('header.bs-vh')).flexDirection);
+  kontrol('Sütun sırası: başlık sürüklenince sütun (başlık ve hücreler) yer değiştirir ve kayıtlı kalır; “Ek sütunlar” penceresinde oklarla taşınır, varsayılana dönülür; stok başlığı hep üst üste (bayi adı uzunluğu düzeni değiştirmez)',
+    s0 === 'kod,urun,kategori,oz:renk,oz:marka,miktar,deger,son' && s1 === 'oz:marka,kod,urun,kategori,oz:renk,miktar,deger,son' && hucre === 'PELSAN' && s2 === s1 && ok === 'Marka,Kod,Ürün,Kategori,Renk,Miktar,Değer,Son hareket' && s3 === 'oz:marka,urun,kod,kategori,oz:renk,miktar,deger,son' && s4 === s0 && vh === 'column',
+    JSON.stringify({ s0, s1, hucre, s2, ok, s3, s4, vh }));
   // Paylaşım: miktar seçimi iki düğme; radyo düğmesi büyümez
   await p.click('[data-paylas]'); await w(500);
   const pm = await p.evaluate(() => ({ dugme: [...document.querySelectorAll('.drawer.open [data-pm]')].map(b => b.textContent).join('|'), radyo: !document.querySelector('.drawer.open input[type=radio]') }));

@@ -2226,9 +2226,6 @@ details.sr-bolum { margin-top: 14px; border: 1px solid var(--line); border-radiu
 .seg-sec .seg { width: 100%; } .seg-sec .seg button { flex: 1; }
 /* Sürüm 129: marka logosu, kategori, ek sütun hücreleri, miktar */
 .bs-kod { white-space: nowrap; }
-.mk-logo { height: 18px; max-width: 54px; object-fit: contain; vertical-align: middle; margin-right: 6px; border-radius: 3px; }
-.mk-bas { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 18px; padding: 0 4px; margin-right: 6px; border-radius: 4px; background: var(--mk, #475569); color: #fff; font: 700 10px/1 var(--f, inherit); letter-spacing: .3px; vertical-align: middle; }
-.mk-logo.mk-b { height: 28px; max-width: 90px; } .mk-bas.mk-b { height: 28px; min-width: 40px; font-size: 13px; }
 .mk-hucre { white-space: nowrap; } .mk-hucre .btn { margin-left: 4px; }
 .bs-kat { white-space: nowrap; }
 .kat-cip { display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--line-2); color: var(--ink); font-size: 12.5px; font-weight: 600; }
@@ -2248,3 +2245,18 @@ details.sr-bolum { margin-top: 14px; border: 1px solid var(--line); border-radiu
 .bs-hizli input.bs-adet:focus { outline: none; background: var(--line-2); }
 td.r .bs-birim { display: block; margin-top: 2px; font-size: 11.5px; }
 tr.bs-kritik .bs-hizli { border-color: var(--neg, #c2410c); } tr.bs-kritik .bs-hizli input.bs-adet { color: var(--neg, #c2410c); }
+
+/* Sürüm 130: marka logosu yuvası — bütün satırlarda aynı genişlik; logo boyu en / boy oranına göre */
+.mk-yuva { display: inline-flex; align-items: center; justify-content: center; width: 76px; height: 26px; margin-right: 6px; vertical-align: middle; flex: none; border-radius: 5px; }
+.mk-yuva .mk-logo { display: block; max-width: 100%; object-fit: contain; }
+.mk-kare .mk-logo { height: 24px; } .mk-orta .mk-logo { height: 20px; } .mk-genis .mk-logo { height: 13px; }
+.mk-zemin { background: var(--mkz); padding: 0 4px; }
+.mk-bas { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 20px; padding: 0 5px; border-radius: 4px; background: var(--mk, #475569); color: #fff; font: 700 10.5px/1 var(--f, inherit); letter-spacing: .3px; }
+.mk-yuva.mk-b { width: 96px; height: 38px; } .mk-b.mk-kare .mk-logo { height: 36px; } .mk-b.mk-orta .mk-logo { height: 30px; } .mk-b.mk-genis .mk-logo { height: 22px; } .mk-b .mk-bas { height: 28px; min-width: 40px; font-size: 13px; }
+.bs-th[draggable=true] { cursor: grab; user-select: none; } .bs-th.kol-tasi { opacity: .45; }
+.bs-th.kol-on { box-shadow: inset 3px 0 0 var(--accent, #2563eb); } .bs-th.kol-arka { box-shadow: inset -3px 0 0 var(--accent, #2563eb); }
+.ks-liste li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* Stok başlığı: başlık hep üstte, seçiciler ve araçlar altta (bayi adının uzunluğu düzeni değiştirmesin) */
+.bs-vh { flex-direction: column; align-items: stretch; }
+.bs-vh .vh-act { width: 100%; justify-content: flex-start; }
+.bs-vh .vh-act > select { flex: 1 1 240px; max-width: 420px; width: auto; }
