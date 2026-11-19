@@ -34,7 +34,7 @@ Depoda **Settings → Pages → Build and deployment**:
 
 ## Güncelleme notu (sürüm 130)
 
-- Hazır marka logoları: Pelsan (koyu zeminde), EAE, Ledvance; kullanıcının yüklediği logo hazırın yerine geçer. Logo yuvası her satırda aynı genişlikte, logonun boyu en / boy oranına göre (kare logo yüksek, yatay logo alçak); markasız satırda boş yuva, kodlar hizalı.
+- Hazır marka logoları: Pelsan (koyu zeminde), EAE, Ledvance, Philips; kullanıcının yüklediği logo hazırın yerine geçer. Logo yuvası her satırda aynı genişlikte, logonun boyu en / boy oranına göre (kare logo yüksek, yatay logo alçak); markasız satırda boş yuva, kodlar hizalı.
 - Stok tablosunda sütun sırası: başlığı sürükleyip bırak; “Ek sütunlar” penceresinde “Tablodaki sütun sırası” okları ve “Varsayılan sıraya dön”. Sıra kullanıcıya kayıtlı, yeni sütun varsayılan yerine girer.
 - Stok başlığı hep üstte, bayi ve depo seçicileri yan yana, araçlar altta: bayi adının uzunluğu düzeni değiştirmez.
 

@@ -1694,7 +1694,7 @@ const DB = () => {
   await p.click('[data-etmarka]'); await w(600);
   const pencere = await p.evaluate(() => [...document.querySelectorAll('.drawer.open [data-mlogo]')].length > 3 && document.querySelectorAll('.drawer.open .mk-hucre img.mk-logo').length >= 3 && document.querySelectorAll('.drawer.open [data-mlogosil]').length === 1);
   await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
-  kontrol('Marka logosu: Pelsan, EAE, Ledvance logoları hazır gelir (Pelsan koyu zeminde, yatay); logo yuvası her satırda aynı genişlikte, boy logonun oranına göre; logosuz markada baş harfler; yüklenen logo hazırın yerine geçer; yalnız yüklenen logo kaldırılır',
+  kontrol('Marka logosu: Pelsan, EAE, Ledvance, Philips logoları hazır gelir (Pelsan koyu zeminde, yatay); logo yuvası her satırda aynı genişlikte, boy logonun oranına göre; logosuz markada baş harfler; yüklenen logo hazırın yerine geçer; yalnız yüklenen logo kaldırılır',
     /^mk-genis mk-zemin:img\/markalar\/pelsan\.svg:76$/.test(bas.k1) && /^mk-kare:img\/markalar\/eae\.png:76$/.test(bas.k2) && /^:AI:76$/.test(bas.k3) && bas.k4 === '::76' && /mk-yuva/.test(bas.ilk || '') && logo === 'true:true' && pencere, JSON.stringify({ bas, logo, pencere }));
   // Ek sütunlar: tabloda “+ Sütun” yok; “Tabloda” kapatılan sütun tablodan çıkar ama kalem kartında durur; hücre dokununca düzenlenir
   const th0 = await p.evaluate(() => [...document.querySelectorAll('th.bs-oz')].map(x => x.textContent).join() + (document.querySelector('[data-sutunekle]') ? '!' : ''));
