@@ -1365,6 +1365,91 @@ const DB = () => {
   kontrol('Teklif ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 123: boş grup sekmesi ve "Grubu sil", ek sütun (Marka) ekle / doldur / toplu yaz / ad değiştir / sil, Excel'de ek sütun, etiket (koli / ürün) yazdır ve okut: giriş, çıkış, sevk, sayım
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }];
+    const k = (id, kod, a, adet, x = {}) => ({ id, owner: 'u1', firma_id: 'f1', kod, aciklama: a, adet, birim: 'Adet', son_hareket: '2026-11-10', created_at: ts, updated_at: ts, ...x });
+    d.bayi_stok = [k('e1', 'L1', 'Panel 40W', 50, { koli_ici: 10, barkod: '8690001112223' }), k('e2', 'L2', 'Projektör 100W', 8), k('e3', 'K1', 'Kablo kanalı', 3)];
+    d.stok_gruplari = [{ id: 'gb', owner: 'u1', ad: 'PELSAN', firma_id: 'f1', sira: 1, created_at: ts, updated_at: ts }];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bayistok'); await w(1500);
+  await p.evaluate(async () => { const { F, saveFilters } = await import('./js/state.js'); Object.assign(F('bayistok', {}), { id: 'b1', grup: '', q: '', sadece: 'tum', depo: '' }); saveFilters(); });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  // Boş grup sekmesi görünür; seçilince "Grubu sil"
+  const bos = await p.evaluate(() => !!document.querySelector('[data-grup="gb"]'));
+  await p.click('[data-grup="gb"]'); await w(500);
+  await p.click('[data-gsil]'); await w(900);
+  const silindi = await p.evaluate(async () => !(await import('./js/db.js')).S.stok_gruplari.some(g => g.id === 'gb') && !document.querySelector('[data-grup="gb"]'));
+  kontrol('Bayinin ürünü olmayan kendi grubu da sekmede görünür; grup seçilince “Grubu sil” ile silinir', bos && silindi, JSON.stringify({ bos, silindi }));
+  // Ek sütun: + Sütun → Marka, hücreye yaz, toplu yaz, arama, ad değiştir
+  await p.evaluate(() => { window.prompt = () => 'Marka'; });
+  await p.click('[data-sutunekle]'); await w(900);
+  const th = await p.evaluate(() => [...document.querySelectorAll('th.bs-oz')].map(x => x.textContent).join());
+  await p.fill('[data-oz="0"][data-oid="e1"]', 'Pelsan'); await p.dispatchEvent('[data-oz="0"][data-oid="e1"]', 'change'); await w(500);
+  await p.check('[data-sec="e2"]'); await p.check('[data-sec="e3"]'); await p.click('[data-ssutun]'); await w(400);
+  await p.fill('.drawer.open [name=deger]', 'Philips'); await p.click('.drawer.open [type=submit]'); await w(900);
+  const deg = await p.evaluate(async () => (await import('./js/db.js')).S.bayi_stok.map(s => s.id + ':' + (s.ozel?.Marka || '')).sort().join());
+  await p.fill('[data-q]', 'philips'); await w(400);
+  const ara = await p.evaluate(() => [...document.querySelectorAll('[data-row]')].map(r => r.dataset.row).sort().join());
+  await p.fill('[data-q]', ''); await w(300);
+  const disa = await p.evaluate(async () => { const { ozelSutunlar, sutunAdiDegistir } = await import('./js/stoksutun.js'); await sutunAdiDegistir('Marka', 'Üretici marka', 'f1'); const { S } = await import('./js/db.js'); return ozelSutunlar('f1').join() + '|' + S.bayi_stok.find(s => s.id === 'e2').ozel['Üretici marka']; });
+  kontrol('Ek sütun: “+ Sütun” ile Marka eklenir, hücreye yazılır, seçili kalemlere toplu yazılır, aramada bulunur, adı değişince değerler taşınır',
+    th === 'Marka' && deg === 'e1:Pelsan,e2:Philips,e3:Philips' && ara === 'e2,e3' && disa === 'Üretici marka|Philips', JSON.stringify({ th, deg, ara, disa }));
+  // Excel: eşlenmeyen sütun ek sütun olur (birim: stokSatirlariOku)
+  const xl = await p.evaluate(async () => { const m = await import('./js/views/bayiag2.js'); const h = ['Ürün kodu', 'Açıklama', 'Miktar', 'Renk', 'Barkod', 'Koli içi'], v = [['L1', 'Panel', 50, 'Beyaz', '869', 12]];
+    const M = m.stokVarsayilanEsleme(h, v); M.ozel = [[3, 'Renk']]; const g = m.stokSatirlariOku(v, M).get('L1'); return [g.ozel.Renk, g.barkod, g.koli_ici, M.bk, M.ki].join(); });
+  // Silme
+  const sil = await p.evaluate(async () => { const { sutunSil, ozelSutunlar } = await import('./js/stoksutun.js'); await sutunSil('Üretici marka', 'f1'); const { S } = await import('./js/db.js'); return ozelSutunlar('f1').length + ':' + S.bayi_stok.filter(s => Object.keys(s.ozel || {}).length).length; });
+  kontrol('Excel’de Renk / Barkod / Koli içi sütunları okunur; ek sütun silinince değerleri de silinir', xl === 'Beyaz,869,12,4,5' && sil === '0:0', JSON.stringify({ xl, sil }));
+  // Etiket: çözümleme ve belge
+  const et = await p.evaluate(async () => { const m = await import('./js/etiket.js'); await m.qrYukle(); const k = m.etiketCoz(m.etiketMetni({ kod: 'L1', adet: 10, parti: 'P1' })), u = m.etiketCoz('8690001112223'), x = m.etiketCoz('L2 x 4');
+    const { S } = await import('./js/db.js'); const s = S.bayi_stok.find(y => y.id === 'e1');
+    const html = m.etiketBelgesi([{ s, tur: 'koli', adet: 10, parti: 'P1', kopya: 2 }, { s, tur: 'urun', kopya: 3 }], { boyut: '100x50' });
+    return { k: [k.kod, k.adet, k.parti, k.koli].join(), u: [m.kalemBul(S.bayi_stok, u.kod)?.id, u.adet].join(), x: [x.kod, x.adet].join(), et: (html.match(/class="et /g) || []).length, svg: (html.match(/<svg/g) || []).length, koli: /KOLİ · 10 Adet/.test(html) }; });
+  kontrol('Etiket: koli etiketi QR’ı kod + kolideki adet + parti taşır, ürün barkodu kalemi bulur (1 adet), “kod x 4” elle giriş; yazdırma belgesi her kopya için QR’lı etiket',
+    et.k === 'L1,10,P1,true' && et.u === 'e1,1' && et.x === 'L2,4' && et.et === 5 && et.svg === 5 && et.koli, JSON.stringify(et));
+  // Etiket yazdır penceresi: koli türü, koli içi adet kalem kartına kaydedilir
+  await p.check('[data-sec="e1"]'); await p.check('[data-sec="e2"]'); await p.click('[data-setiket]'); await w(500);
+  await p.click('.drawer.open [data-tur="koli"]'); await w(300);
+  const kopyaVars = await p.evaluate(() => document.querySelector('.drawer.open [data-kopya="0"]').value);
+  await p.fill('.drawer.open [data-koli="1"]', '4'); await p.dispatchEvent('.drawer.open [data-koli="1"]', 'input'); await w(200);
+  const kopya2 = await p.evaluate(() => document.querySelector('.drawer.open [data-kopya="1"]').value);
+  await p.evaluate(() => { window.print = () => {}; HTMLIFrameElement.prototype.focus = () => {}; });
+  await p.click('.drawer.open [data-onizle]'); await w(800);
+  const onz = await p.evaluate(() => (document.querySelector('.drawer.open [data-on] iframe')?.srcdoc.match(/class="et /g) || []).length);
+  await p.click('.drawer.open [data-yazdir]'); await w(900);
+  const koliIci = await p.evaluate(async () => (await import('./js/db.js')).S.bayi_stok.find(s => s.id === 'e2').koli_ici);
+  kontrol('Etiket yazdır: koli etiketinde etiket sayısı stok / koli içi (50/10 = 5, 8/4 = 2), önizleme, koli içi adet kalem kartına kaydedilir', kopyaVars === '5' && kopya2 === '2' && onz === 7 && koliIci === 4, JSON.stringify({ kopyaVars, kopya2, onz, koliIci }));
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(400);
+  // Etiketle giriş: koli etiketi +10, barkod +1; çıkış: kod x 3
+  const ac = async sel => { if (!(await p.isVisible(sel))) await p.click('header.vh .vh-daha-btn'); await p.click(sel); await w(500); };
+  await ac('[data-etgc]');
+  const okut = async v => { await p.fill('.drawer.open [data-okut]', v); await p.press('.drawer.open [data-okut]', 'Enter'); await w(250); };
+  await okut('STK1|L1|10|P7'); await okut('8690001112223'); await okut('YENI1');
+  await p.fill('.drawer.open [data-not]', 'İrsaliye 55'); await p.click('.drawer.open [data-kaydet]'); await w(1000);
+  const gir = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return [S.bayi_stok.find(s => s.id === 'e1').adet, S.bayi_stok.find(s => s.kod === 'YENI1')?.adet, S.stok_gecmis.filter(h => /Etiketle giriş: İrsaliye 55/.test(h.aciklama || '')).length].join(); });
+  await ac('[data-etgc]'); await p.click('.drawer.open [data-mod="cikis"]'); await w(200);
+  await okut('L2 x 3'); await okut('YOKKOD');
+  await p.click('.drawer.open [data-kaydet]'); await w(1000);
+  const cik = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const h = S.stok_gecmis.filter(x => x.kod === 'L2' && x.hareket === 'cikis'); return [S.bayi_stok.find(s => s.id === 'e2').adet, h.length, h[0]?.fark].join(); });
+  kontrol('Etiketle giriş (koli etiketi +10, ürün barkodu +1, bilinmeyen kod yeni kalem) ve depodan çıkış (“L2 x 3”, olmayan kod reddedilir); hareket kaydına açıklamayla yazılır', gir === '61,1,2' && cik === '5,1,-3', JSON.stringify({ gir, cik }));
+  // Sevk formunda koli etiketi okut: aynı kod miktarı artar
+  await p.evaluate(async () => (await import('./js/views/sevk.js')).sevkFormu({ firma_id: 'f1' })); await w(700);
+  await p.evaluate(() => { const s = document.querySelector('.drawer.open [name=firma_id]'); if (s) { s.value = 'f1'; s.dispatchEvent(new Event('change', { bubbles: true })); } });
+  for (const v of ['STK1|L1|10', 'STK1|L1|10', '8690001112223']) { await p.fill('.drawer.open [data-kara]', v); await p.press('.drawer.open [data-kara]', 'Enter'); await w(250); }
+  const sv = await p.evaluate(() => [...document.querySelectorAll('.drawer.open [data-km]')].map(i => i.value).join());
+  // Sayımda koli etiketi kolideki adedi ekler
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  const sy = await p.evaluate(async () => { const m = await import('./js/sayim.js'); let say = await m.sayimBaslat('f1', null, null); return !!say; });
+  await ac('[data-sayim]'); await w(300);
+  await p.fill('.drawer.open [data-sara]', 'STK1|L1|10'); await p.press('.drawer.open [data-sara]', 'Enter'); await w(500);
+  await p.fill('.drawer.open [data-sara]', 'STK1|L1|10'); await p.press('.drawer.open [data-sara]', 'Enter'); await w(500);
+  const syv = await p.evaluate(() => document.querySelector('.drawer.open [data-say="L1"]')?.value);
+  kontrol('Sevk belgesinde iki koli etiketi + ürün barkodu tek satırda 21 adet; sayımda koli etiketi okutunca kolideki adet eklenir (2 koli = 20)', sv === '21' && sy && syv === '20', JSON.stringify({ sv, syv }));
+  kontrol('Ek sütun ve etiket ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

@@ -32,6 +32,15 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 123)
+
+- **Ek sütunlar** (`js/stoksutun.js`, ayar `stok_sutunlari`, `bayi_stok.ozel`): Excel mantığında kullanıcının eklediği sütunlar (Marka, Raf yeri, Renk…). Tablodaki “+ Sütun” ya da “Sütunlar” ile eklenir, adı değiştirilir (değerler taşınır), silinir (değerleri de silinir). Hücreye yazınca kaydedilir (Enter / ↑↓ ile alttaki satıra geçer); seçili kalemlere “Sütuna yaz” ile toplu değer; kalem kartında “Ek sütunlar”; aramada bulunur; Excel'e ve boş şablona çıkar. Excel yüklemede eşlenmeyen başlıklar listelenir, işaretlenenler ek sütun olur. Şirket kullanıcısının sütunu bütün bayilerde, bayinin sütunu yalnız kendisinde görünür.
+- **Grup silme**: ürünü olmayan gruplar da sekmede durur; grup sekmesi seçilince “Adını değiştir” ve “Grubu sil” (kalemler silinmez, grupsuz kalır); sekmelerin sonunda “Grupları düzenle”.
+- **Etiketler** (`js/etiket.js`, `js/vendor/qrcode.js` MIT): seçili kalemlere ürün etiketi (okutunca 1 adet) ya da koli etiketi (okutunca kolideki adet) yazdırılır; QR içeriği `STK1|kod|adet|parti`. Boyutlar: 50×25, 70×40, 100×50, 100×150 mm termal ve A4 yapışkan yaprak (3×8). Koli etiketinde etiket sayısı stok / koli içi adetten gelir, koli içi adet kalem kartına kaydedilir; parti / lot no isteğe bağlı. Kalem kartına barkod (EAN) ve koli içi adet eklendi; üreticinin barkodu okutulunca kalem bulunur.
+- **Etiketle giriş / çıkış**: okuyucu tabanca, kamera ya da elle (“kod x 12”) okutulanlar listede toplanır; Kaydet ile stoğa girer ya da depodan düşer, hareket kaydına açıklamayla yazılır. Girişte bilinmeyen kod yeni kalem olur, çıkışta reddedilir; stok 0'ın altına inmez.
+- **Sevk ve sayımda etiket**: sevk belgesinde etiket okutunca kalem eklenir ya da miktarı artar (koli = kolideki adet); sayımda koli etiketi kolideki adedi ekler.
+- Şema 59: `bayi_stok.ozel` (jsonb), `barkod`, `koli_ici`; `stok_sutunlari` ekipçe paylaşılan ayar.
+
 ## Güncelleme notu (sürüm 122)
 
 - **Şablonlar** (`js/teklif2.js`, ayar `teklif_sablonlari`): logo (küçültülüp saklanır), firma adı ve iletişim (antet), ana ve vurgu rengi, banka bilgileri, standart koşullar, alt bilgi, imza, sütunlar (sıra no, kod, üretici kodu, ürün, görsel, birim, miktar, birim fiyat, iskonto, KDV, tutar; sıralanabilir) ve belge dili (Türkçe / English). Kapsam: şirket (herkes), kişisel (yalnız oluşturan) ya da bayi (bayinin kendi müşterisine). Teklifte şablon ve dil seçilir.

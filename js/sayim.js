@@ -1,5 +1,6 @@
 // Stok sayımı: sistemdeki miktar ile depoda sayılan yan yana; fark raporu (eksik / fazla, adet ve tutar); onaylanınca stok sayılana çekilir,
 // fark hareket kaydına "sayım düzeltmesi" olarak (kim, ne zaman) yazılır. Sayım taslağı kaydedilir: telefonla depoda gezerken kaybolmaz.
+import { etiketCoz, kalemBul } from './etiket.js';
 import { S, uuid } from './db.js';
 import { app } from './state.js';
 import { esc, num, usd, tarih, today, toast, openDrawer, closeDrawer, confirmBox, fold, firmaAd, exportXlsx } from './ui.js';
@@ -87,10 +88,11 @@ export function sayimPenceresi({ b, firma_id, grup_id = null, grupAd = null, dep
       p.querySelectorAll('[data-say]').forEach(i => { i.onchange = async () => { say = await sayimYaz(say, i.dataset.say, i.value); const x = sayimFarki(say, kalemler).l.find(y => y.s.kod === i.dataset.say); const tr = i.closest('tr'); tr.className = x.fark ? (x.fark < 0 ? 'eksik' : 'fazla') : ''; tr.querySelector('[data-fk]').textContent = x.fark == null ? '' : (x.fark > 0 ? '+' : '') + num(x.fark); ozet(); };
         i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); i.blur(); p.querySelector('[data-sara]').focus(); } }; });
       ozet(); };
-    const okut = async kod => { const k = fold(String(kod).trim()); if (!k) return;
-      const x = kalemler.find(s => [s.kod, s.firma_kodu, s.uretici_kodu].some(v => v && fold(String(v)) === k));
-      if (!x) return toast(`${kod}: bu sayımda böyle bir kalem yok.`, 'err');
-      if (p.querySelector('[data-arti]').checked) { const v = (+say.sayilan?.[x.kod] || 0) + 1; say = await sayimYaz(say, x.kod, v); q = ''; p.querySelector('[data-sara]').value = ''; liste(); toast(`${x.kod}: ${num(v)}`); return; }
+    // Koli etiketi kolideki adedi ekler (her zaman), ürün etiketi / barkod "+1" seçiliyse 1 ekler
+    const okut = async kod => { const e = etiketCoz(kod); if (!e) return;
+      const x = kalemBul(kalemler, e.kod);
+      if (!x) return toast(`${e.kod}: bu sayımda böyle bir kalem yok.`, 'err');
+      if (p.querySelector('[data-arti]').checked || e.etiket) { const v = (+say.sayilan?.[x.kod] || 0) + e.adet; say = await sayimYaz(say, x.kod, v); q = ''; p.querySelector('[data-sara]').value = ''; liste(); toast(`${x.kod}: ${e.koli ? `+${num(e.adet)} (koli) → ` : ''}${num(v)}`); return; }
       q = x.kod; liste(); const i = p.querySelector(`[data-say="${CSS.escape(x.kod)}"]`); i?.focus(); i?.select(); };
     p.querySelector('[data-sara]').oninput = e => { q = e.target.value; liste(); };
     p.querySelector('[data-sara]').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); okut(e.target.value); } };
