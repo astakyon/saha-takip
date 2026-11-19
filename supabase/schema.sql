@@ -2641,6 +2641,16 @@ do $$ declare t text; begin
   end loop;
 end $$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 64 $f$;
+-- ---------- Sürüm 65: Stok kalemine ürün kategorisi (Etanj, Yüksek tavan, Projektör, Spot…); kategori listesi ekipçe paylaşılır ----------
+alter table public.bayi_stok add column if not exists kategori text;
+create index if not exists bayi_stok_kategori_idx on public.bayi_stok (owner, kategori);
+create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) returns boolean language sql stable security definer set search_path = public as $f$
+  select public.sirket_yetkilisi(sahip) or (public.ekipte(sahip::text) and (
+    anahtar in ('google_key', 'wa_sablonlar', 'teklif_firma', 'listeler', 'kataloglar_ek', 'ziyaret_siklik', 'usd_kur', 'kur_elle', 'elektrik_tl_kwh', 'firma_profil', 'cift_farkli', 'otomasyon', 'oto_silinen',
+                'stok_birimleri', 'sip_farkli', 'kendi_depo', 'zorunlu_alanlar', 'teklif_sablonlari', 'teklif_no_duzen', 'teklif_metinleri', 'teklif_iskonto_siniri', 'teklif_min_marj', 'stok_sutunlari', 'etiket_markalari', 'stok_kategorileri')
+    or (anahtar like 'sartname:%' and public.yetki(sahip, 'projeler', 'oku'))))
+$f$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 65 $f$;
 
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile

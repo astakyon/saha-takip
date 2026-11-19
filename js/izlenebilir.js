@@ -75,7 +75,7 @@ export function paylasimPenceresi({ b, firma_id, depo, grup_id = null, grupAd = 
     <form class="dbody form" novalidate><p>Müşteriye ya da projeciye <b>fiyatsız, salt okunur</b> bir stok listesi bağlantısı gönder: “bu ürün hemen var mı” sorusu biter. Liste her açılışta güncel stoğu gösterir; maliyet, fiyat ve iç notlar gitmez.</p>
       <p class="hint">Kapsam: ${esc(depo === undefined ? 'bütün depolar' : depoAdi(depo))}${grupAd ? ' · ' + esc(grupAd) + ' grubu' : ''}</p>
       <label class="fld"><span>Başlık</span><input name="baslik" value="${esc(bayiAdi + ' stok listesi')}"></label>
-      <fieldset class="sg-sec"><legend>Miktar</legend><label class="chk"><input type="radio" name="miktar" value="tam" checked> <span>Miktarı göster</span></label><label class="chk"><input type="radio" name="miktar" value="var"> <span>Yalnız “var / az” göster</span></label></fieldset>
+      <div class="seg-sec" role="group" aria-label="Miktar"><span>Miktar</span><div class="seg"><button type="button" class="on" data-pm="tam" aria-pressed="true">Miktarı göster (ör. 24 adet)</button><button type="button" data-pm="var" aria-pressed="false">Yalnız “var / az”</button></div><input type="hidden" name="miktar" value="tam"></div>
       <label class="fld"><span>Geçerlilik (gün)</span><input name="gun" type="number" inputmode="numeric" value="30"></label>
       <div class="btnrow"><button type="submit" class="btn primary">Bağlantı oluştur</button></div>
       <div data-sonuc></div>
@@ -84,8 +84,9 @@ export function paylasimPenceresi({ b, firma_id, depo, grup_id = null, grupAd = 
   };
   const p = openDrawer(ciz());
   const bagla = () => {
+    p.querySelectorAll('[data-pm]').forEach(x => x.onclick = () => { p.querySelector('[name=miktar]').value = x.dataset.pm; p.querySelectorAll('[data-pm]').forEach(y => { y.classList.toggle('on', y === x); y.setAttribute('aria-pressed', y === x); }); });
     p.querySelector('form').onsubmit = async e => { e.preventDefault();
-      try { const o = await paylasimOlustur({ firma_id, depo, grup_id, miktar: p.querySelector('[name=miktar]:checked').value, gun: p.querySelector('[name=gun]').value, baslik: p.querySelector('[name=baslik]').value.trim() });
+      try { const o = await paylasimOlustur({ firma_id, depo, grup_id, miktar: p.querySelector('[name=miktar]').value, gun: p.querySelector('[name=gun]').value, baslik: p.querySelector('[name=baslik]').value.trim() });
         p.querySelector('[data-sonuc]').innerHTML = `<div class="card"><p><b>Bağlantı hazır.</b></p><input readonly value="${esc(o.adres)}" aria-label="Bağlantı" onclick="this.select()"><div class="btnrow"><button type="button" class="btn sm" data-pkopya>Kopyala</button><a class="btn sm" target="_blank" rel="noopener" href="${esc(waLink('', `${o.baslik || 'Stok listesi'}: ${o.adres}`))}">WhatsApp ile gönder</a></div></div>`;
         p.querySelector('[data-pkopya]').onclick = () => { navigator.clipboard?.writeText(o.adres).then(() => toast('Bağlantı kopyalandı.'), () => toast('Kopyalanamadı; bağlantıyı seçip kopyala.', 'err')); };
       } catch (er) { toast(/does not exist|schema cache|Could not find/i.test(er.message || '') ? 'Paylaşım için Supabase\'de güncel schema.sql dosyasını çalıştır (sürüm 56).' : er.message, 'err'); } };

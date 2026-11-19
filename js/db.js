@@ -25,7 +25,7 @@ export const TABLES = {
   tahsilatlar: ['id','sorumlu','ekip_id','firma_id','cari','belge_no','tarih','vade','tutar','para_birimi','odenen','durum','odeme_tarihi','notlar','tur'],
   belgeler: ['id','proje_id','firma_id','ad','yol','tur','boyut','notlar','kategori'],
   yorumlar: ['id','tablo','kayit_id','metin','yazan','yazan_ad','etiketler','created_at'],
-  bayi_stok: ['id','firma_id','kod','aciklama','adet','birim_fiyat','son_hareket','notlar','firma_kodu','uretici_kodu','uretici_aciklama','birim','para_birimi','aktif','gruplar','kritik','depo','kampanya','ozel','barkod','koli_ici','resimler','detay','guc_w','lumen','renk_k','ip','koli_agirlik','koli_olcu','raf'],
+  bayi_stok: ['id','firma_id','kod','aciklama','adet','birim_fiyat','son_hareket','notlar','firma_kodu','uretici_kodu','uretici_aciklama','birim','para_birimi','aktif','gruplar','kritik','depo','kampanya','ozel','barkod','koli_ici','resimler','detay','guc_w','lumen','renk_k','ip','koli_agirlik','koli_olcu','raf','kategori'],
   stok_gruplari: ['id','ad','firma_id','tum_bayiler','bayiler','sira','renk'],
   stok_barkodlari: ['id','barkod','kod','adet','marka','firma_id'],
   stok_hasar: ['id','firma_id','kod','aciklama','depo','adet','tur','durum','tarih','tedarikci','belge_no','notlar','fotolar','stoktan_dustu','kaydeden'],

@@ -5,6 +5,7 @@ import { app } from './state.js';
 import { esc, num, tarih, today, fold, toast, openDrawer, closeDrawer, confirmBox } from './ui.js';
 import { bayiStokYaz, ayniKalem, depoAdi, aktifMi } from './stok.js';
 import { barkodBul, eanGecerli, taniKutusu, markaTahmin } from './ureticietiket.js';
+import { kategoriTahmin } from './kategori.js';
 import { bildir, kisaAd, sesSecici, sesSeciciBagla, ozetGoster } from './okutmases.js';
 import { eskiParti, partiHareketi } from './izlenebilir.js';
 import { rezervUyarisi, kritikAltindakiler } from './stokrezerv.js';
@@ -232,7 +233,7 @@ export function etiketHareketPenceresi({ b, firma_id, depo = null, mod = 'giris'
       const rows = l.map(r => { const s = r.s && S.bayi_stok.find(x => x.id === r.s.id), st = +s?.adet || 0, yeni = mod === 'giris' ? st + r.adet - (r.hasar || 0) : Math.max(0, st - r.adet);
         if (s) return { ...s, adet: yeni, ...(r.raf && !s.raf ? { raf: r.raf } : {}) };
         const yk = { firma_id, depo: depo || null, kod: r.kod, aciklama: r.aciklama || null, birim: r.birim || 'Adet', adet: yeni, aktif: true, para_birimi: 'USD', raf: r.raf || null };
-        const mk = r.marka || markaTahmin(yk); if (mk) yk.ozel = { Marka: mk }; return yk; });
+        const mk = r.marka || markaTahmin(yk); if (mk) yk.ozel = { Marka: mk }; yk.kategori = kategoriTahmin(yk); return yk; });
       await bayiStokYaz(rows, { hareket: mod, aciklama: ['Etiketle ' + (mod === 'giris' ? 'giriş' : 'çıkış'), not].filter(Boolean).join(': ') });
       const FK = farkL(), hasarlar = l.filter(r => r.hasar && mod === 'giris');
       for (const r of hasarlar) { try { await hasarKaydet({ firma_id, kod: r.kod, aciklama: r.aciklama || null, depo: depo || null, adet: r.hasar, tur: 'Hasarlı geldi', notlar: r.hasarNot || null, belge_no: not || null, stoktan_dustu: true }); } catch {} }

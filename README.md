@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 129)
+
+- Stok kalemine **kategori** (Etanj, Yüksek tavan, Projektör, Spot, Panel, Acil, Lineer…): kalem kartında seçilir; “Kategoriler” penceresinde liste ve tanıma sözcükleri düzenlenir, boş olanlar ürün adından doldurulur; yeni kalemde, etiketle girişte ve Excel'de (Kategori / Ürün grubu sütunu) kendiliğinden gelir; listede kategori süzgeci ve “Kategorisiz”; Excel'e aktarımda Kategori sütunu.
+- **Marka logosu**: Etiket markaları penceresinde markaya logo yüklenir; stok listesinde her kalemin başında küçük logo, logosuz markada renkli baş harfler.
+- **Ek sütunlar** sadeleşti: tablodaki sürekli “+ Sütun” düğmesi kalktı; sütunlar “Ek sütunlar” düğmesinden eklenir / adı değişir / silinir, “Tabloda” kapatılan sütun yalnız kalem kartında görünür. Tablo hücresi düz yazı, dokununca düzenlenir (Enter kaydedip alttakine geçer, Esc vazgeçer). Kalem kartında bölüm boşken kapalı, “+ Alan ekle” ile alan eklenir.
+- Tablodaki miktar tek parça − adet + kutusu (kritikte kırmızı çerçeve); stok paylaşımında miktar seçimi iki düğme; onay ve radyo kutuları formlarda büyümez.
+- Veritabanı sürüm 65: bayi_stok.kategori, stok_kategorileri ayarı ekipçe paylaşılır.
+
 ## Güncelleme notu (sürüm 128)
 
 - Stok başlığındaki “⋯” açılır menüsü kaldırıldı; bütün işlemler gruplar halinde simgeli düğme (depo işleri, Excel, planlama / paylaş / hareketler / hasar, liste ayarları, etiket markaları, ayrı kırmızı sil). Açık hasar kaydı sayısı simgede rozet.

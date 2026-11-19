@@ -1215,7 +1215,7 @@ const DB = () => {
   await p.fill('[data-q]', ''); await w(200);
   // Paylaşım bağlantısı
   if (!(await p.isVisible('[data-paylas]'))) await p.click('header.vh .vh-daha-btn');
-  await p.click('[data-paylas]'); await w(400); await p.check('.drawer.open [name=miktar][value=var]'); await p.click('.drawer.open [type=submit]'); await w(900);
+  await p.click('[data-paylas]'); await w(400); await p.click('.drawer.open [data-pm=var]'); await p.click('.drawer.open [type=submit]'); await w(900);
   const pay = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const x = S.stok_paylasimlari[0]; return { adres: document.querySelector('.drawer.open [data-sonuc] input')?.value, miktar: x?.miktar, anahtar: (x?.anahtar || '').length, wa: !!document.querySelector('.drawer.open [data-sonuc] a[href*="wa.me"], .drawer.open [data-sonuc] a[href*="whatsapp"]') }; });
   // stok.html: RPC yanıtı taklit edilir; fiyat yok, arama çalışır
   const sp = await c.newPage(); const sh = [];
@@ -1383,10 +1383,10 @@ const DB = () => {
   const silindi = await p.evaluate(async () => !(await import('./js/db.js')).S.stok_gruplari.some(g => g.id === 'gb') && !document.querySelector('[data-grup="gb"]'));
   kontrol('Bayinin ürünü olmayan kendi grubu da sekmede görünür; grup seçilince “Grubu sil” ile silinir', bos && silindi, JSON.stringify({ bos, silindi }));
   // Ek sütun: + Sütun → Marka, hücreye yaz, toplu yaz, arama, ad değiştir
-  await p.evaluate(() => { window.prompt = () => 'Marka'; });
-  await p.click('[data-sutunekle]'); await w(900);
-  const th = await p.evaluate(() => [...document.querySelectorAll('th.bs-oz')].map(x => x.textContent).join());
-  await p.fill('[data-oz="0"][data-oid="e1"]', 'Pelsan'); await p.dispatchEvent('[data-oz="0"][data-oid="e1"]', 'change'); await w(500);
+  const eskiDugme = await p.evaluate(() => !!document.querySelector('[data-sutunekle], .bs-oz-ekle'));
+  await p.click('[data-sutunlar]'); await w(400); await p.fill('.drawer.open [data-yeni]', 'Marka'); await p.click('.drawer.open [data-ekle]'); await w(600); await p.click('.drawer.open .dh .x'); await w(500);
+  const th = (await p.evaluate(() => [...document.querySelectorAll('th.bs-oz')].map(x => x.textContent).join())) + (eskiDugme ? '!eski' : '');
+  await p.click('[data-ozh="0"][data-oid="e1"]'); await w(200); await p.fill('[data-oz="0"][data-oid="e1"]', 'Pelsan'); await p.press('[data-oz="0"][data-oid="e1"]', 'Enter'); await w(600);
   await p.check('[data-sec="e2"]'); await p.check('[data-sec="e3"]'); await p.click('[data-ssutun]'); await w(400);
   await p.fill('.drawer.open [name=deger]', 'Philips'); await p.click('.drawer.open [type=submit]'); await w(900);
   const deg = await p.evaluate(async () => (await import('./js/db.js')).S.bayi_stok.map(s => s.id + ':' + (s.ozel?.Marka || '')).sort().join());
@@ -1394,7 +1394,7 @@ const DB = () => {
   const ara = await p.evaluate(() => [...document.querySelectorAll('[data-row]')].map(r => r.dataset.row).sort().join());
   await p.fill('[data-q]', ''); await w(300);
   const disa = await p.evaluate(async () => { const { ozelSutunlar, sutunAdiDegistir } = await import('./js/stoksutun.js'); await sutunAdiDegistir('Marka', 'Üretici marka', 'f1'); const { S } = await import('./js/db.js'); return ozelSutunlar('f1').join() + '|' + S.bayi_stok.find(s => s.id === 'e2').ozel['Üretici marka']; });
-  kontrol('Ek sütun: “+ Sütun” ile Marka eklenir, hücreye yazılır, seçili kalemlere toplu yazılır, aramada bulunur, adı değişince değerler taşınır',
+  kontrol('Ek sütun: tabloda sürekli “+ Sütun” düğmesi yok; “Ek sütunlar” penceresinden Marka eklenir, hücreye dokunup yazılır, seçili kalemlere toplu yazılır, aramada bulunur, adı değişince değerler taşınır',
     th === 'Marka' && deg === 'e1:Pelsan,e2:Philips,e3:Philips' && ara === 'e2,e3' && disa === 'Üretici marka|Philips', JSON.stringify({ th, deg, ara, disa }));
   // Excel: eşlenmeyen sütun ek sütun olur (birim: stokSatirlariOku)
   const xl = await p.evaluate(async () => { const m = await import('./js/views/bayiag2.js'); const h = ['Ürün kodu', 'Açıklama', 'Miktar', 'Renk', 'Barkod', 'Koli içi'], v = [['L1', 'Panel', 50, 'Beyaz', '869', 12]];
@@ -1609,7 +1609,7 @@ const DB = () => {
   await p.click('[data-markadoldur]'); await w(900);
   const marka = await p.evaluate(async () => (await import('./js/db.js')).S.bayi_stok.filter(s => s.firma_id === 'f1').map(s => s.id + ':' + (s.ozel?.Marka || '')).sort().join());
   kontrol('Stok araç çubuğu: bütün işlemler simgeli düğme, gruplar halinde (açılır menü yok), sil ayrı; Markaları doldur ürün adı başlangıcından ve barkoddan yazar',
-    arac.simge === "Sayım|Etiketle giriş / çıkış|Hızlı sorgu|Excel'den yükle|Excel'e aktar|Planlama ve sipariş önerisi|Stok listesini paylaş|Hareketler|Hasarlı ürünler|Gruplar|Sütunlar|Markaları doldur|Boş Excel şablonu|Etiket markaları ve barkodlar|Bütün stoğu sil" && !arac.eskiDaha && menu === '6:false' && marka === 'm1:PELSAN,m2:PELSAN,m3:OSRAM,m4:', JSON.stringify({ arac, menu, marka }));
+    arac.simge === "Sayım|Etiketle giriş / çıkış|Hızlı sorgu|Excel'den yükle|Excel'e aktar|Planlama ve sipariş önerisi|Stok listesini paylaş|Hareketler|Hasarlı ürünler|Gruplar|Kategoriler|Ek sütunlar (ekle, gizle, sil)|Markaları doldur|Boş Excel şablonu|Etiket markaları ve barkodlar|Bütün stoğu sil" && !arac.eskiDaha && menu === '6:false' && marka === 'm1:PELSAN,m2:PELSAN,m3:OSRAM,m4:', JSON.stringify({ arac, menu, marka }));
   // Satırdaki belge düğmesi ve paylaşım
   const ubSay = await p.evaluate(() => [...document.querySelectorAll('[data-ub]')].map(b => b.dataset.ub + ':' + (b.querySelector('small')?.textContent || '0')).join());
   await p.click('[data-ub="m2"]'); await w(500);
@@ -1626,7 +1626,7 @@ const DB = () => {
   // Yeni kalem: başka bayideki aynı koddan açıklama, marka, teknik bilgi
   await p.click('[data-ekle]'); await w(600);
   await p.fill('.drawer.open [name=kod]', '117220'); await p.dispatchEvent('.drawer.open [name=kod]', 'change'); await w(300);
-  const yeni = await p.evaluate(() => ({ ac: document.querySelector('.drawer.open [name=aciklama]').value, w: document.querySelector('.drawer.open [name=guc_w]')?.value, koli: document.querySelector('.drawer.open [name=koli_ici]')?.value, ek: [...document.querySelectorAll('.drawer.open fieldset.fs legend')].map(l => l.textContent).join('|') }));
+  const yeni = await p.evaluate(() => ({ ac: document.querySelector('.drawer.open [name=aciklama]').value, w: document.querySelector('.drawer.open [name=guc_w]')?.value, koli: document.querySelector('.drawer.open [name=koli_ici]')?.value, ek: [...document.querySelectorAll('.drawer.open .fs > legend, .drawer.open .fs > summary b')].map(l => l.textContent).join('|') }));
   await p.fill('.drawer.open [name=adet]', '3'); await p.click('.drawer.open [type=submit]'); await w(900);
   const yk = await p.evaluate(async () => { const s = (await import('./js/db.js')).S.bayi_stok.find(x => x.firma_id === 'f1' && x.kod === '117220'); return s && [s.aciklama, s.ozel?.Marka, s.guc_w].join('|'); });
   await p.click('[data-kart="m1"]'); await w(600);
@@ -1647,6 +1647,81 @@ const DB = () => {
   kontrol('Grup şirketleri: aynı kurumsal e-posta alan adı öneri olarak çıkar (gmail çıkmaz); üst şirket aranıp seçilir, öneriden alt şirket eklenir; ağaç ve grup toplamları (siparişler 1.500 USD); firma başlığında ve listede grup rozeti',
     /Aynı gruba ait olabilir/.test(oner) && /atlasgrup\.com\.tr/.test(oner) && !/Başka Firma/.test(oner) && grup.agac === 'Atlas Holding>Atlas Elektrik>Atlas Yapı' && /Siparişler 2 · \$1,500|Siparişler 2 · .*1[.,]500/.test(grup.top) && grup.rozet === 'grup ana şirketi' && /grup: Atlas Holding/.test(liste), JSON.stringify({ oner: oner.slice(0, 300), grup, liste: liste.slice(0, 300) }));
   kontrol('Araç çubuğu, belge ve grup ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+// Sürüm 129: ürün kategorisi (doldur, süzgeç, kalem kartı), marka logosu / baş harfleri satır başında, ek sütun düzeni (tabloda gizle, dokununca düzenle), paylaşımda miktar seçimi
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }];
+    const k = (id, kod, a, adet, x = {}) => ({ id, owner: 'u1', firma_id: 'f1', kod, aciklama: a, adet, birim: 'Adet', son_hareket: '2026-11-10', created_at: ts, updated_at: ts, ...x });
+    d.bayi_stok = [k('k1', '115886', 'PLSETJ LARGO G2 ETANJ 34W', 15, { ozel: { Marka: 'PELSAN', Garanti: '2 yıl' } }), k('k2', '3359936', 'HBL 109-144-178U 650A00 90 18-23-28K V6', 4, { ozel: { Marka: 'EAE' } }),
+      k('k3', 'FL1', 'LED Floodlight 100W IP65', 3), k('k4', 'SP1', 'Gömme spot 7W', 20), k('k5', 'X9', 'Bilinmeyen ürün', 2)];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bayistok'); await w(1500);
+  await p.evaluate(async () => { const { F, saveFilters } = await import('./js/state.js'); Object.assign(F('bayistok', {}), { id: 'b1', grup: '', q: '', sadece: 'tum', depo: '', kat: '' }); saveFilters(); });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  const katYok = await p.evaluate(() => !document.querySelector('[data-kat]'));
+  // Kategoriler penceresi: boş olanları doldur
+  await p.click('[data-kategoriler]'); await w(500);
+  await p.click('.drawer.open [data-katdoldur]'); await w(900);
+  const kat = await p.evaluate(async () => (await import('./js/db.js')).S.bayi_stok.map(s => s.id + ':' + (s.kategori || '')).sort().join());
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(600);
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  const cip = await p.evaluate(() => [...document.querySelectorAll('[data-row]')].map(r => r.dataset.row + ':' + (r.querySelector('.kat-cip')?.textContent || '')).sort().join());
+  await p.selectOption('[data-kat]', 'Etanj'); await w(400);
+  const suz = await p.evaluate(() => [...document.querySelectorAll('[data-row]')].map(r => r.dataset.row).join());
+  await p.selectOption('[data-kat]', '_yok'); await w(400);
+  const suz2 = await p.evaluate(() => [...document.querySelectorAll('[data-row]')].map(r => r.dataset.row).join());
+  await p.selectOption('[data-kat]', ''); await w(400);
+  kontrol('Kategori: süzgeç kategori yokken görünmez; “Boş olanları doldur” ürün adından Etanj / Yüksek tavan / Projektör / Spot yazar, bilinmeyen boş kalır; satırda etiket, süzgeçte kategori ve “Kategorisiz”',
+    katYok && kat === 'k1:Etanj,k2:Yüksek tavan,k3:Projektör,k4:Spot,k5:' && /k1:Etanj/.test(cip) && suz === 'k1' && suz2 === 'k5', JSON.stringify({ katYok, kat, cip, suz, suz2 }));
+  // Kalem kartı: kategori elle değişir; yeni kalemde ürün adından gelir
+  await p.click('[data-kart="k5"]'); await w(600);
+  const katAlan = await p.evaluate(() => !!document.querySelector('.drawer.open [name=kategori]') && !!document.querySelector('.drawer.open datalist option[value="Projektör"], .drawer.open [list] ~ datalist option, .drawer.open datalist'));
+  await p.fill('.drawer.open [name=kategori]', 'Aksesuar'); await p.click('.drawer.open [type=submit]'); await w(900);
+  await p.click('[data-ekle]'); await w(600);
+  await p.fill('.drawer.open [name=kod]', 'PR2'); await p.fill('.drawer.open [name=aciklama]', 'Projektör 50W'); await p.fill('.drawer.open [name=adet]', '1'); await p.click('.drawer.open [type=submit]'); await w(900);
+  const kk = await p.evaluate(async () => { const S = (await import('./js/db.js')).S; return S.bayi_stok.find(s => s.id === 'k5').kategori + '|' + S.bayi_stok.find(s => s.kod === 'PR2')?.kategori; });
+  kontrol('Kalem kartında Kategori alanı (listeden seçilir ya da yazılır); yeni kalemde boşsa ürün adından bulunur', katAlan && kk === 'Aksesuar|Projektör', JSON.stringify({ katAlan, kk }));
+  // Marka logosu: logo yoksa baş harfler; logo yüklenince satır başında resim
+  const bas = await p.evaluate(() => ({ k1: document.querySelector('[data-row="k1"] .bs-kod .mk-bas')?.textContent, k2: document.querySelector('[data-row="k2"] .bs-kod .mk-bas')?.textContent, k3: !document.querySelector('[data-row="k3"] .mk-bas, [data-row="k3"] .mk-logo'), once: document.querySelector('[data-row="k1"] .bs-kod')?.firstElementChild?.className }));
+  await p.evaluate(async () => { const m = await import('./js/ureticietiket.js'); const t = m.markalar().find(x => x.ad === 'Pelsan'); await m.markaKaydet({ ...t, logo: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=' }); });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  const logo = await p.evaluate(() => document.querySelector('[data-row="k1"] .bs-kod img.mk-logo')?.getAttribute('alt'));
+  await p.click('[data-etmarka]'); await w(600);
+  const pencere = await p.evaluate(() => [...document.querySelectorAll('.drawer.open [data-mlogo]')].length > 3 && !!document.querySelector('.drawer.open .mk-hucre img.mk-logo'));
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  kontrol('Marka logosu: logo yüklü markada kalemin başında küçük logo, yoksa renkli baş harfler; markasız kalemde boş; Etiket markaları penceresinde logo yükle',
+    bas.k1 === 'PEL' && bas.k2 === 'EAE' && bas.k3 && /mk-bas/.test(bas.once || '') && logo === 'PELSAN' && pencere, JSON.stringify({ bas, logo, pencere }));
+  // Ek sütunlar: tabloda “+ Sütun” yok; “Tabloda” kapatılan sütun tablodan çıkar ama kalem kartında durur; hücre dokununca düzenlenir
+  const th0 = await p.evaluate(() => [...document.querySelectorAll('th.bs-oz')].map(x => x.textContent).join() + (document.querySelector('[data-sutunekle]') ? '!' : ''));
+  await p.click('[data-sutunlar]'); await w(500);
+  await p.uncheck('.drawer.open [data-goster="Garanti"]'); await w(500);
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  const th1 = await p.evaluate(() => [...document.querySelectorAll('th.bs-oz')].map(x => x.textContent).join());
+  await p.click('[data-ozh="0"][data-oid="k4"]'); await w(200); await p.fill('[data-oz="0"][data-oid="k4"]', 'Osram'); await p.press('[data-oz="0"][data-oid="k4"]', 'Escape'); await w(400);
+  const esc = await p.evaluate(async () => ((await import('./js/db.js')).S.bayi_stok.find(s => s.id === 'k4').ozel?.Marka || '') + '|' + document.querySelector('[data-ozh="0"][data-oid="k4"]').textContent);
+  await p.click('[data-ozh="0"][data-oid="k4"]'); await w(200); await p.fill('[data-oz="0"][data-oid="k4"]', 'Osram'); await p.press('[data-oz="0"][data-oid="k4"]', 'Enter'); await w(600);
+  const yaz = await p.evaluate(async () => ((await import('./js/db.js')).S.bayi_stok.find(s => s.id === 'k4').ozel?.Marka || '') + '|' + document.querySelector('[data-ozh="0"][data-oid="k4"]').textContent + '|' + !!document.querySelector('[data-oz="0"][data-oid="k5"]'));
+  await p.click('[data-kart="k1"]'); await w(600);
+  const kart = await p.evaluate(() => ({ alan: [...document.querySelectorAll('.drawer.open .fs')].find(f => /Ek sütunlar/.test(f.querySelector('legend, summary b')?.textContent || ''))?.innerText.includes('Garanti'), gizli: document.querySelector('.drawer.open [data-eayeni]')?.hidden, eski: !!document.querySelector('.drawer.open .btn[data-yenialan]') }));
+  await p.click('.drawer.open [data-yenialan]'); await w(200); await p.fill('.drawer.open [data-eaad]', 'Renk'); await p.press('.drawer.open [data-eaad]', 'Enter'); await w(900);
+  const yeniAlan = await p.evaluate(() => [...document.querySelectorAll('.drawer.open .fs label')].some(x => x.textContent.trim().startsWith('Renk')));
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  kontrol('Ek sütunlar: tabloda “+ Sütun” düğmesi yok; “Tabloda” kapatılan sütun tablodan çıkar, kalem kartında kalır; hücreye dokununca kutu açılır (Esc vazgeçer, Enter kaydedip alttakine geçer); kalem kartında “+ Alan ekle” açılınca yazılır',
+    th0 === 'Marka,Garanti' && th1 === 'Marka' && esc === '|' && yaz === 'Osram|Osram|true' && kart.alan && kart.gizli === true && !kart.eski && yeniAlan, JSON.stringify({ th0, th1, esc, yaz, kart, yeniAlan }));
+  // Paylaşım: miktar seçimi iki düğme; radyo düğmesi büyümez
+  await p.click('[data-paylas]'); await w(500);
+  const pm = await p.evaluate(() => ({ dugme: [...document.querySelectorAll('.drawer.open [data-pm]')].map(b => b.textContent).join('|'), radyo: !document.querySelector('.drawer.open input[type=radio]') }));
+  await p.click('.drawer.open [data-pm=var]'); await w(200);
+  const pmv = await p.evaluate(() => document.querySelector('.drawer.open [name=miktar]').value + ':' + document.querySelector('.drawer.open [data-pm=var]').classList.contains('on'));
+  const chk = await p.evaluate(() => { const d = document.createElement('div'); d.className = 'dbody form'; d.innerHTML = '<label class="chk"><input type="radio" name="zz"> <span>x</span></label>'; document.body.append(d); const r = d.querySelector('input').getBoundingClientRect(); d.remove(); return Math.round(r.width) + 'x' + Math.round(r.height); });
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  const pil = await p.evaluate(() => { const h = document.querySelector('[data-row="k1"] .bs-hizli'); return h ? getComputedStyle(h).borderTopWidth + '|' + getComputedStyle(h.querySelector('input')).borderTopWidth : ''; });
+  kontrol('Paylaşımda miktar seçimi iki düğme (Miktarı göster / Yalnız “var / az”); onay ve radyo kutuları 18 px kalır; tablodaki miktar tek parça − adet + kutusu',
+    /Miktarı göster/.test(pm.dugme) && /var \/ az/.test(pm.dugme) && pm.radyo && pmv === 'var:true' && chk === '18x18' && pil === '1px|0px', JSON.stringify({ pm, pmv, chk, pil }));
+  kontrol('Kategori, logo ve ek sütun ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
