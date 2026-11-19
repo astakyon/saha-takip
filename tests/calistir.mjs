@@ -1017,7 +1017,7 @@ const DB = () => {
   const cikar = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { g2: S.bayi_stok.find(x => x.id === 'g2').gruplar.length, g2var: !!S.bayi_stok.find(x => x.id === 'g2'), satir: [...document.querySelectorAll('[data-row]')].map(r => r.dataset.row).join() }; });
   // Gruptaki stoğu sil (grup adı yazılarak): yalnız L1 silinir
   if (!(await p.isVisible('[data-hepsinisil]'))) await p.click('header.vh .vh-daha-btn');
-  const silEtiket = await p.evaluate(() => document.querySelector('[data-hepsinisil]').textContent);
+  const silEtiket = await p.evaluate(() => document.querySelector('[data-hepsinisil]').getAttribute('aria-label'));
   await p.click('[data-hepsinisil]'); await w(400); await p.fill('[data-onayad]', 'aydınlatma'); await p.click('[data-komple]'); await w(1200);
   const gsil = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return S.bayi_stok.filter(x => x.firma_id === 'f1').map(x => x.kod).sort().join(); });
   // Başka bayi: şirket grubu sekmesi ürünü yoksa gizli, diğer bayinin grubu hiç yok
