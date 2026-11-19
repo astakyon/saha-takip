@@ -2215,3 +2215,6 @@ details.sr-bolum { margin-top: 14px; border: 1px solid var(--line); border-radiu
 .ub-liste li { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .fg-agac { margin: 4px 0 10px; padding-left: 18px; } .fg-agac ul { padding-left: 18px; } .fg-agac li { margin: 3px 0; } .fg-ben > a { font-weight: 700; }
 .fg-ekle .fld { margin-bottom: 6px; } .fg-sonuc { max-height: 240px; overflow: auto; } .fg-top { margin-top: 6px; }
+.fs-grp > .fs-silb, .fs-grp > .fs-silb svg { color: var(--red); }
+.fs-grp > .fs-rozet::before { content: attr(data-n); position: absolute; top: 2px; right: 3px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; background: var(--red); color: #fff; font: 700 10px/15px var(--f); }
+.fs-arac.st-arac { justify-content: flex-start; gap: 6px; }

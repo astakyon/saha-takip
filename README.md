@@ -32,6 +32,10 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 128)
+
+- Stok başlığındaki “⋯” açılır menüsü kaldırıldı; bütün işlemler gruplar halinde simgeli düğme (depo işleri, Excel, planlama / paylaş / hareketler / hasar, liste ayarları, etiket markaları, ayrı kırmızı sil). Açık hasar kaydı sayısı simgede rozet.
+
 ## Güncelleme notu (sürüm 127)
 
 - Stok listesinde ürün belgeleri düğmesi (📄) satırın başına, ürün kodunun soluna alındı.

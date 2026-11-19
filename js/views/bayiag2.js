@@ -353,18 +353,14 @@ const SI = {
 };
 function stokAraclari({ duzenler, yazabilir, hepsi, b, sayimDevam, grupSecili }) {
   const ib = (attr, ikon, ad, ek = '') => `<button type="button" ${attr} data-ipucu="${esc(ad)}" aria-label="${esc(ad)}" ${ek}>${ikon}</button>`;
-  const mi = (attr, ikon, ad, ek = '') => `<button type="button" role="menuitem" ${attr} ${ek}>${ikon}<span>${ad}</span></button>`;
   const hasarN = !hepsi ? (S.stok_hasar || []).filter(h => h.firma_id === b.firma_id && !['Kapandı', 'Değişim geldi', 'İade edildi'].includes(h.durum)).length : 0;
   const g1 = [duzenler && ib('data-sayim', SI.sayim, sayimDevam ? 'Sayıma devam' : 'Sayım', sayimDevam ? 'class="fs-nokta"' : ''), duzenler && ib('data-etgc', SI.etiket, 'Etiketle giriş / çıkış'), ib('data-hsorgu', SI.sorgu, 'Hızlı sorgu')].filter(Boolean).join('');
   const g2 = [duzenler && ib('data-yukle', SI.yukle, "Excel'den yükle"), ib('data-xlsx', SI.indir, "Excel'e aktar")].filter(Boolean).join('');
-  const menu = [
-    '<p class="fs-menu-bas">Depo</p>', !hepsi && mi('data-planlama', SI.plan, 'Planlama ve sipariş önerisi'), duzenler && mi('data-paylas', SI.paylas, 'Stok listesini paylaş'), mi('data-hareket', SI.hareket, 'Hareketler'), !hepsi && mi('data-hasarlar', SI.hasar, `Hasarlı ürünler${hasarN ? ` <b class="fs-say">${hasarN}</b>` : ''}`),
-    '<hr><p class="fs-menu-bas">Liste</p>', yazabilir && mi('data-gruplar', SI.grup, 'Gruplar'), duzenler && mi('data-sutunlar', SI.sutun, 'Sütunlar'), duzenler && !hepsi && mi('data-markadoldur', SI.doldur, 'Markaları doldur'), mi('data-sablon', SI.sablon, 'Boş Excel şablonu'),
-    duzenler ? '<hr><p class="fs-menu-bas">Ayarlar</p>' : '', duzenler && mi('data-etmarka', SI.marka, 'Etiket markaları ve barkodlar'),
-    duzenler ? '<hr>' : '', duzenler && mi('data-hepsinisil', SI.sil, grupSecili ? 'Bu gruptaki stoğu sil' : 'Bütün stoğu sil', 'class="fs-sil"'),
-  ].filter(Boolean).join('');
-  return `<div class="fs-arac st-arac" role="toolbar" aria-label="Stok işlemleri">${g1 ? `<div class="fs-grp">${g1}</div>` : ''}${g2 ? `<div class="fs-grp">${g2}</div>` : ''}
-    <div class="fs-grp fs-acilir" data-acilir="stok"><button type="button" class="fs-daha vh-daha-btn" aria-haspopup="menu" aria-expanded="false" aria-label="Diğer işlemler" data-ipucu="Diğer">⋯</button><div class="fs-menu fs-menu-sag" role="menu" hidden>${menu}</div></div></div>`;
+  const g3 = [!hepsi && ib('data-planlama', SI.plan, 'Planlama ve sipariş önerisi'), duzenler && ib('data-paylas', SI.paylas, 'Stok listesini paylaş'), ib('data-hareket', SI.hareket, 'Hareketler'), !hepsi && ib('data-hasarlar', SI.hasar, `Hasarlı ürünler${hasarN ? ` (${hasarN} açık)` : ''}`, hasarN ? `class="fs-rozet" data-n="${hasarN}"` : '')].filter(Boolean).join('');
+  const g4 = [yazabilir && ib('data-gruplar', SI.grup, 'Gruplar'), duzenler && ib('data-sutunlar', SI.sutun, 'Sütunlar'), duzenler && !hepsi && ib('data-markadoldur', SI.doldur, 'Markaları doldur'), ib('data-sablon', SI.sablon, 'Boş Excel şablonu')].filter(Boolean).join('');
+  const g5 = [duzenler && ib('data-etmarka', SI.marka, 'Etiket markaları ve barkodlar')].filter(Boolean).join('');
+  const g6 = duzenler ? ib('data-hepsinisil', SI.sil, grupSecili ? 'Bu gruptaki stoğu sil' : 'Bütün stoğu sil', 'class="fs-silb"') : '';
+  return `<div class="fs-arac st-arac" role="toolbar" aria-label="Stok işlemleri">${[g1, g2, g3, g4, g5, g6].filter(Boolean).map(g => `<div class="fs-grp">${g}</div>`).join('')}</div>`;
 }
 // Partide son kullanma / raf ömrü: geçmiş ya da 60 gün içinde biten partisi olan kalem işaretlenir
 function partiUyari(s) {

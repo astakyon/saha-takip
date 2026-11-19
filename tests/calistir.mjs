@@ -1605,12 +1605,11 @@ const DB = () => {
   await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
   // Araç çubuğu
   const arac = await p.evaluate(() => ({ simge: [...document.querySelectorAll('.st-arac .fs-grp > button[data-ipucu]:not(.fs-daha)')].map(b => b.getAttribute('aria-label')).join('|'), eskiDaha: !!document.querySelector('header.vh .vh-daha .vh-menu') }));
-  await p.click('.st-arac .fs-daha'); await w(300);
-  const menu = await p.evaluate(() => { const m = document.querySelector('.fs-menu:not([hidden])'); return m ? [...m.children].map(x => x.matches('hr') ? '—' : x.matches('.fs-menu-bas') ? '#' + x.textContent : x.textContent.trim()).join('|') : ''; });
+  const menu = await p.evaluate(() => [...document.querySelectorAll('.st-arac .fs-grp')].length + ':' + !!document.querySelector('.st-arac .fs-daha, .st-arac [role=menu]'));
   await p.click('[data-markadoldur]'); await w(900);
   const marka = await p.evaluate(async () => (await import('./js/db.js')).S.bayi_stok.filter(s => s.firma_id === 'f1').map(s => s.id + ':' + (s.ozel?.Marka || '')).sort().join());
-  kontrol('Stok araç çubuğu: Sayım, Etiketle giriş / çıkış, Hızlı sorgu, Excel simgeleri; “⋯” menüsü başlıklı (Depo, Liste, Ayarlar), sil en altta; Markaları doldur ürün adı başlangıcından ve barkoddan yazar',
-    arac.simge === "Sayım|Etiketle giriş / çıkış|Hızlı sorgu|Excel'den yükle|Excel'e aktar" && !arac.eskiDaha && /^#Depo\|.*#Liste\|.*Markaları doldur.*#Ayarlar\|Etiket markaları ve barkodlar\|—\|Bütün stoğu sil$/.test(menu) && marka === 'm1:PELSAN,m2:PELSAN,m3:OSRAM,m4:', JSON.stringify({ arac, menu, marka }));
+  kontrol('Stok araç çubuğu: bütün işlemler simgeli düğme, gruplar halinde (açılır menü yok), sil ayrı; Markaları doldur ürün adı başlangıcından ve barkoddan yazar',
+    arac.simge === "Sayım|Etiketle giriş / çıkış|Hızlı sorgu|Excel'den yükle|Excel'e aktar|Planlama ve sipariş önerisi|Stok listesini paylaş|Hareketler|Hasarlı ürünler|Gruplar|Sütunlar|Markaları doldur|Boş Excel şablonu|Etiket markaları ve barkodlar|Bütün stoğu sil" && !arac.eskiDaha && menu === '6:false' && marka === 'm1:PELSAN,m2:PELSAN,m3:OSRAM,m4:', JSON.stringify({ arac, menu, marka }));
   // Satırdaki belge düğmesi ve paylaşım
   const ubSay = await p.evaluate(() => [...document.querySelectorAll('[data-ub]')].map(b => b.dataset.ub + ':' + (b.querySelector('small')?.textContent || '0')).join());
   await p.click('[data-ub="m2"]'); await w(500);
