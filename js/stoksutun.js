@@ -123,3 +123,33 @@ export function ekSutunSec(basliklar, firma_id) {
     p.querySelector('[data-al]').onclick = () => { son([...p.querySelectorAll('.sg-sec input:checked')].map(c => +c.value)); closeDrawer(true); };
   });
 }
+
+// ---------- Marka ----------
+export const MARKA = 'Marka';
+const markaSutunuHazirla = async firma_id => { const v = ozelSutunlar(firma_id).find(x => fold(x) === 'marka'); if (v) return v; try { return await sutunEkle(MARKA, null); } catch { return MARKA; } };
+// Markası boş kalemlere marka yaz (aynı koddaki marka, barkod öneki, ürün adının başı)
+export async function markalariDoldur(firma_id) {
+  const { markaTahmin } = await import('./ureticietiket.js');
+  const ad = await markaSutunuHazirla(firma_id);
+  const l = (S.bayi_stok || []).filter(s => s.firma_id === firma_id && !ozelDeger(s, ad)).map(s => [s, markaTahmin(s)]).filter(x => x[1]);
+  if (l.length) await app.db.bulk('bayi_stok', l.map(([s, m]) => ({ ...s, ozel: { ...(s.ozel && typeof s.ozel === 'object' ? s.ozel : {}), [ad]: m } })));
+  const bos = (S.bayi_stok || []).filter(s => s.firma_id === firma_id && !ozelDeger(s, ad)).length;
+  return { yazilan: l.length, bos, sutun: ad };
+}
+// Excel yüklemede dosyada marka sütunu yoksa: listenin markası (ya da ürün adından bul)
+export function markaSor(firma_id) {
+  return import('./ureticietiket.js').then(({ markalar }) => new Promise(res => {
+    let bitti = false; const son = v => { if (bitti) return; bitti = true; res(v); };
+    const var_ = [...new Set([...(S.bayi_stok || []).filter(s => s.firma_id === firma_id).map(s => ozelDeger(s, MARKA)).filter(Boolean), ...markalar().map(m => String(m.ad).split('/')[0].trim().toLocaleUpperCase('tr'))])];
+    const p = openDrawer(`<header class="dh"><div><p class="muted">Excel yükleme</p><h2 id="drawer-title">Bu listenin markası?</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+      <div class="dbody form"><p class="hint">Dosyada marka sütunu yok. Hepsi aynı markaysa yaz; karışıksa ürün adından bulunsun.</p>
+        <label class="chk"><input type="radio" name="mk" value="_oto" checked> <span>Ürün adından bul (Pelsan için PLSETJ, EMERA, LECTO… gibi)</span></label>
+        <label class="chk"><input type="radio" name="mk" value="_tek"> <span>Hepsi aynı marka:</span></label>
+        <input data-mkad list="mk-liste" placeholder="ör. PELSAN" autocomplete="off"><datalist id="mk-liste">${var_.map(m => `<option value="${esc(m)}">`).join('')}</datalist>
+        <div class="dfoot sticky"><button type="button" class="btn ghost" data-mkgec>Marka yazma</button><button type="button" class="btn primary" data-mktamam>Devam</button></div></div>`, { onClose: () => son(null) });
+    p.querySelector('[data-mkad]').oninput = () => { p.querySelector('[name=mk][value=_tek]').checked = true; };
+    p.querySelector('[data-mkgec]').onclick = () => { son(null); closeDrawer(true); };
+    p.querySelector('[data-mktamam]').onclick = () => { const tek = p.querySelector('[name=mk]:checked').value === '_tek', ad = p.querySelector('[data-mkad]').value.trim().toLocaleUpperCase('tr');
+      if (tek && !ad) return toast('Markayı yaz ya da “Ürün adından bul”u seç.', 'err'); son(tek ? ad : '_oto'); closeDrawer(true); };
+  }));
+}

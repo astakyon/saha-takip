@@ -4,7 +4,7 @@ import { S } from './db.js';
 import { app } from './state.js';
 import { esc, num, tarih, today, fold, toast, openDrawer, closeDrawer, confirmBox } from './ui.js';
 import { bayiStokYaz, ayniKalem, depoAdi, aktifMi } from './stok.js';
-import { barkodBul, eanGecerli, taniKutusu } from './ureticietiket.js';
+import { barkodBul, eanGecerli, taniKutusu, markaTahmin } from './ureticietiket.js';
 import { bildir, kisaAd, sesSecici, sesSeciciBagla, ozetGoster } from './okutmases.js';
 import { eskiParti, partiHareketi } from './izlenebilir.js';
 import { rezervUyarisi, kritikAltindakiler } from './stokrezerv.js';
@@ -182,10 +182,10 @@ export function etiketHareketPenceresi({ b, firma_id, depo = null, mod = 'giris'
       try { durdur = await kameraBaslat(p.querySelector('[data-vid]'), k => okut(k)); e.target.textContent = 'Kamerayı kapat'; } catch (er) { toast(er.message, 'err'); }
     });
     p.querySelector('[data-kaydet]').onclick = kaydet;
-    tani = taniKutusu(p.querySelector('[data-utani]'), { kalemler, firma_id, yeniKalem: true, onEkle: ({ kod, adet, s: s0, aciklama }) => {
+    tani = taniKutusu(p.querySelector('[data-utani]'), { kalemler, firma_id, yeniKalem: true, onEkle: ({ kod, adet, s: s0, aciklama, marka }) => {
       const s = s0 || null; if (!s && mod === 'cikis') { bildir('hata', 'Bu depoda yok'); return toast(`${kod}: bu depoda böyle bir kalem yok.`, 'err'); }
       const u = !s && (S.urunler || []).find(x => x.kod === kod), r = liste.get(kod) || { s, kod, aciklama: s?.aciklama || u?.aciklama || aciklama || '', birim: s?.birim || u?.birim || 'Adet', adet: 0, parti: new Set(), yeni: !s, kaynak: {} };
-      r.adet += adet; r.kaynak.tanitilan = (r.kaynak.tanitilan || 0) + 1; liste.set(kod, r); sesle(r, adet); toast(`${kod}: ${mod === 'giris' ? '+' : '−'}${num(adet)}`); ciz(); } });
+      if (marka && !r.marka) r.marka = String(marka).split('/')[0].trim().toLocaleUpperCase('tr'); r.adet += adet; r.kaynak.tanitilan = (r.kaynak.tanitilan || 0) + 1; liste.set(kod, r); sesle(r, adet); toast(`${kod}: ${mod === 'giris' ? '+' : '−'}${num(adet)}`); ciz(); } });
     setTimeout(() => inp.focus(), 50);
   };
   const okut = metin => {
@@ -230,7 +230,9 @@ export function etiketHareketPenceresi({ b, firma_id, depo = null, mod = 'giris'
     const not = p.querySelector('[data-not]').value.trim();
     try {
       const rows = l.map(r => { const s = r.s && S.bayi_stok.find(x => x.id === r.s.id), st = +s?.adet || 0, yeni = mod === 'giris' ? st + r.adet - (r.hasar || 0) : Math.max(0, st - r.adet);
-        return s ? { ...s, adet: yeni, ...(r.raf && !s.raf ? { raf: r.raf } : {}) } : { firma_id, depo: depo || null, kod: r.kod, aciklama: r.aciklama || null, birim: r.birim || 'Adet', adet: yeni, aktif: true, para_birimi: 'USD', raf: r.raf || null }; });
+        if (s) return { ...s, adet: yeni, ...(r.raf && !s.raf ? { raf: r.raf } : {}) };
+        const yk = { firma_id, depo: depo || null, kod: r.kod, aciklama: r.aciklama || null, birim: r.birim || 'Adet', adet: yeni, aktif: true, para_birimi: 'USD', raf: r.raf || null };
+        const mk = r.marka || markaTahmin(yk); if (mk) yk.ozel = { Marka: mk }; return yk; });
       await bayiStokYaz(rows, { hareket: mod, aciklama: ['Etiketle ' + (mod === 'giris' ? 'giriş' : 'çıkış'), not].filter(Boolean).join(': ') });
       const FK = farkL(), hasarlar = l.filter(r => r.hasar && mod === 'giris');
       for (const r of hasarlar) { try { await hasarKaydet({ firma_id, kod: r.kod, aciklama: r.aciklama || null, depo: depo || null, adet: r.hasar, tur: 'Hasarlı geldi', notlar: r.hasarNot || null, belge_no: not || null, stoktan_dustu: true }); } catch {} }

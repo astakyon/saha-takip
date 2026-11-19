@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 126)
+
+- **Grup şirketleri** (`js/firmagrup.js`): firma kartının Özet sekmesinde bağlı olduğu ana şirket (holding) aranıp seçilir, ilişki türü (bağlı, kardeş, ortaklık, iştirak) yazılır, alt şirket eklenir; grup ağaç olarak görünür. Grubun açık projeleri, siparişleri (USD), açık teklifleri ve açık bakiyesi toplu; birden fazla grup şirketinde görünen kişiler listelenir. Vergi numarası farklı ama kurumsal e-posta alan adı, telefon ya da adresi aynı olan firmalar “aynı gruba ait olabilir” diye önerilir (gmail, hotmail gibi genel adresler sayılmaz). Firma başlığında ve Firmalar listesinde grup rozeti, Excel'de ana şirket sütunu. Şube (aynı vergi numaralı ikinci adres) ayrı kalır.
+- **Stok araç çubuğu**: firma kartındaki gibi simgeli; Sayım, Etiketle giriş / çıkış, Hızlı sorgu, Excel'den yükle, Excel'e aktar başlıkta; “⋯” menüsü başlıklı gruplar (Depo, Liste, Ayarlar) ve en altta ayrı “Bütün stoğu sil”. Uzun menüler ekrana sığdırılır.
+- **Marka otomatik**: “Markaları doldur” markası boş kalemlere aynı koddaki markayı, barkodun firma önekini ya da ürün adının başını (Pelsan: PLSETJ, EMERA, LECTO, MONTE, LARGO…) yazar; ön ekler ve üretici sitesi Etiket markaları'ndan düzenlenir (hazır markalar da). Excel'de marka sütunu yoksa listenin markası sorulur ya da ürün adından bulunur; etiketle girişte açılan yeni kaleme tanınan marka yazılır.
+- **Yeni kalemde öneri**: ürün kodu ya da açıklaması yazılınca başka bayideki aynı üründen ya da Ürünler listesinden açıklama, marka, birim, barkod, koli ve teknik bilgiler boş alanlara gelir.
+- **Ürün belgeleri** (`js/urunbelge.js`, `urun_belgeleri`): satırdaki 📄 düğmesi (belge sayısıyla) ve kalem kartındaki “Belgeler”: veri sayfası, sertifika, fotometrik dosya, montaj kılavuzu, üretici sayfası, diğer; bağlantı ya da PDF / dosya yükleme. Belgeler ürün koduna bağlıdır, bütün bayilerde görünür; Ürünler kartındaki föy / sertifika bağlantıları da gelir. İşaretli belgeler telefonun paylaşım menüsü, WhatsApp, e-posta ya da kopyalama ile paylaşılır (yüklenen dosyanın bağlantısı 7 gün geçerli). Üretici sayfası yoksa “Üreticide ara” markanın sitesinde ürün kodunu arar.
+- Kalem kartında “Ek açıklamalar” adı “Ek sütunlar” oldu (tablodaki “+ Sütun” ile aynı); seri / parti bölümü kapalı gelir.
+- Şema 64: `firmalar.ust_firma_id`, `grup_iliski`; `urun_belgeleri` tablosu (RLS; bayi şirketin ve kendi belgelerini görür).
+
 ## Güncelleme notu (sürüm 125)
 
 - **Okutma sesi** (`js/okutmases.js`): okutma ekranlarında (etiketle giriş / çıkış, sevk, sayım, hızlı sorgu) üç seçenek: sesli okuma (telefonun Türkçe sesiyle “Fontana 33W, 6 adet eklendi”), yalnız uyarı sesi (başarıda kısa bip, hatada farklı ses) ya da sessiz (yalnız titreşim). Seçim cihazda saklanır. Kaydettikten sonra ekranda özet kartı: kaç kalem / adet, nasıl tanındı (üretici barkodu, bizim etiket, fotoğraf / eşleme, elle), irsaliye farkları, hasarlılar, kritik seviyenin altına inenler.

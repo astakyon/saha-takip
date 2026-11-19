@@ -1103,7 +1103,7 @@ const DB = () => {
   const ozet = await p.evaluate(() => document.querySelector('[data-ozet]').innerText.replace(/\s+/g, ' '));
   // Kapat, yeniden aç: taslak duruyor; stok henüz değişmedi
   await p.click('.drawer.open .x[data-close]'); await w(500);
-  const devam = await p.evaluate(() => document.querySelector('[data-sayim]')?.textContent);
+  const devam = await p.evaluate(() => document.querySelector('[data-sayim]')?.getAttribute('aria-label'));
   const once = await p.evaluate(async () => (await import('./js/db.js')).S.bayi_stok.map(x => x.kod + ':' + x.adet).sort().join());
   await ac();
   const taslak = await p.evaluate(() => ['P1', 'P2', 'P3'].map(k => document.querySelector(`[data-say="${k}"]`)?.value).join());
@@ -1201,9 +1201,9 @@ const DB = () => {
   await p.goto(U + '#/bayistok'); await w(1000);
   await p.evaluate(async () => { const { F, saveFilters } = await import('./js/state.js'); Object.assign(F('bayistok', {}), { id: 'b1', grup: '', sadece: 'tum', pb: 'USD', depo: '', q: '' }); saveFilters(); });
   await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1000);
-  await p.click('[data-kart="s1"]'); await w(500);
+  await p.click('[data-kart="s1"]'); await w(500); await p.evaluate(() => document.querySelectorAll('details.sr-bolum').forEach(d => d.open = true));
   await p.selectOption('[data-srtur]', 'Seri'); await p.fill('[data-srno]', 'DRV-2026-0042'); await p.fill('[data-srgar]', '24'); await p.click('[data-srekle]'); await w(800);
-  await p.fill('[data-srno]', 'drv-2026-0042'); await p.click('[data-srekle]'); await w(500);
+  await p.evaluate(() => document.querySelectorAll('details.sr-bolum').forEach(d => d.open = true)); await p.fill('[data-srno]', 'drv-2026-0042'); await p.click('[data-srekle]'); await w(500);
   const seri = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const x = S.stok_seri; return { n: x.length, tur: x[0]?.tur, adet: x[0]?.adet, gar: x[0]?.garanti_ay, liste: document.querySelector('[data-sr]')?.innerText.replace(/\s+/g, ' ') }; });
   await p.selectOption('[data-srdurum]', 'Satıldı'); await w(500);
   await p.click('[data-srservis]'); await w(800);
@@ -1586,6 +1586,68 @@ const DB = () => {
   kontrol('Sevk yola çıkınca ayrılan miktardan düşer; kritik altındaki ürün için “Sipariş zamanı” görevi; hızlı sorgu sesli cümleden ve raf adından bulur; hasarlı ürünler penceresi',
     son.rz === '18,Aktif' && /Sipariş zamanı: .* ürün kritik/.test(son.g) && /^L1:/.test(son.q) && son.q2.includes('L1') && /FONTANA/i.test(son.m) && /Hasarlı geldi/.test(hp) && /L2/.test(hp) && /toplam 11/.test(hs), JSON.stringify({ son, hp: hp.slice(0, 200), hs }));
   kontrol('Okutma, kontrol ve rezerv ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+// Sürüm 126: stok araç çubuğu (simgeler, başlıklı menü), markaları doldur, yeni kalemde kod / açıklama / marka önerisi, ürün belgeleri ve paylaşım, üretici sayfası araması, parti bölümü kapalı, grup şirketleri
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }, { id: 'b2', owner: 'u1', firma_id: 'fg2', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }];
+    const k = (id, kod, a, adet, x = {}) => ({ id, owner: 'u1', firma_id: 'f1', kod, aciklama: a, adet, birim: 'Adet', son_hareket: '2026-11-10', created_at: ts, updated_at: ts, ...x });
+    d.bayi_stok = [k('m1', '109780', 'EMERA EMERGENCY 2X10W SURF. MOUNT', 12), k('m2', '115886', 'PLSETJ LARGO G2 ETANJ 34W', 1500), k('m3', 'OS1', 'Damp proof 50W', 4, { barkod: '4099854645839' }), k('m4', 'X9', 'Bilinmeyen ürün', 2),
+      k('m5', '117220', 'PLSETJ FONTANA 33W SU 1 ENEC 4000K', 6, { firma_id: 'fg2', ozel: { Marka: 'PELSAN' }, guc_w: 33, koli_ici: 6 })];
+    d.urun_belgeleri = [{ id: 'ub1', owner: 'u1', kod: '109780', tur: 'Veri sayfası', ad: 'Emera veri sayfası', url: 'https://ornek.com/emera.pdf', created_at: ts, updated_at: ts }];
+    const f = (id, ad, x = {}) => ({ id, owner: 'u1', ad, tipler: ['Müşteri'], created_at: ts, updated_at: ts, ...x });
+    d.firmalar = (d.firmalar || []).concat([f('fg1', 'Atlas Holding', { eposta: 'info@atlasgrup.com.tr' }), f('fg2', 'Atlas Elektrik', { eposta: 'satis@atlasgrup.com.tr', vergi_no: '1111111111' }), f('fg3', 'Atlas Yapı', { eposta: 'yapi@atlasgrup.com.tr', vergi_no: '2222222222' }), f('fg4', 'Başka Firma', { eposta: 'a@gmail.com' })]);
+    d.siparisler = (d.siparisler || []).concat([{ id: 'sg1', owner: 'u1', firma_id: 'fg2', net_deger: 1000, para_birimi: 'USD', tarih: '2026-10-01', created_at: ts, updated_at: ts }, { id: 'sg2', owner: 'u1', firma_id: 'fg3', net_deger: 500, para_birimi: 'USD', tarih: '2026-10-02', created_at: ts, updated_at: ts }]);
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/bayistok'); await w(1500);
+  await p.evaluate(async () => { const { F, saveFilters } = await import('./js/state.js'); Object.assign(F('bayistok', {}), { id: 'b1', grup: '', q: '', sadece: 'tum', depo: '' }); saveFilters(); });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  // Araç çubuğu
+  const arac = await p.evaluate(() => ({ simge: [...document.querySelectorAll('.st-arac .fs-grp > button[data-ipucu]:not(.fs-daha)')].map(b => b.getAttribute('aria-label')).join('|'), eskiDaha: !!document.querySelector('header.vh .vh-daha .vh-menu') }));
+  await p.click('.st-arac .fs-daha'); await w(300);
+  const menu = await p.evaluate(() => { const m = document.querySelector('.fs-menu:not([hidden])'); return m ? [...m.children].map(x => x.matches('hr') ? '—' : x.matches('.fs-menu-bas') ? '#' + x.textContent : x.textContent.trim()).join('|') : ''; });
+  await p.click('[data-markadoldur]'); await w(900);
+  const marka = await p.evaluate(async () => (await import('./js/db.js')).S.bayi_stok.filter(s => s.firma_id === 'f1').map(s => s.id + ':' + (s.ozel?.Marka || '')).sort().join());
+  kontrol('Stok araç çubuğu: Sayım, Etiketle giriş / çıkış, Hızlı sorgu, Excel simgeleri; “⋯” menüsü başlıklı (Depo, Liste, Ayarlar), sil en altta; Markaları doldur ürün adı başlangıcından ve barkoddan yazar',
+    arac.simge === "Sayım|Etiketle giriş / çıkış|Hızlı sorgu|Excel'den yükle|Excel'e aktar" && !arac.eskiDaha && /^#Depo\|.*#Liste\|.*Markaları doldur.*#Ayarlar\|Etiket markaları ve barkodlar\|—\|Bütün stoğu sil$/.test(menu) && marka === 'm1:PELSAN,m2:PELSAN,m3:OSRAM,m4:', JSON.stringify({ arac, menu, marka }));
+  // Satırdaki belge düğmesi ve paylaşım
+  const ubSay = await p.evaluate(() => [...document.querySelectorAll('[data-ub]')].map(b => b.dataset.ub + ':' + (b.querySelector('small')?.textContent || '0')).join());
+  await p.click('[data-ub="m2"]'); await w(500);
+  const ara = await p.evaluate(() => document.querySelector('.drawer.open a[href*="google.com/search"]')?.getAttribute('href') || '');
+  await p.selectOption('.drawer.open [data-ubtur]', 'Sertifika'); await p.fill('.drawer.open [data-ubad]', 'ENEC'); await p.fill('.drawer.open [data-uburl]', 'https://ornek.com/enec.pdf'); await p.click('.drawer.open [data-ubekle]'); await w(500);
+  await p.selectOption('.drawer.open [data-ubtur]', 'Üretici sayfası'); await p.fill('.drawer.open [data-uburl]', 'https://www.pelsan.com.tr/largo'); await p.click('.drawer.open [data-ubekle]'); await w(500);
+  await p.evaluate(() => { window.__acilan = []; window.open = u => { window.__acilan.push(u); return null; }; });
+  await p.click('.drawer.open [data-ubpay="wa"]'); await w(500);
+  const pay = await p.evaluate(() => decodeURIComponent(window.__acilan[0] || ''));
+  const aramaYok = await p.evaluate(() => !document.querySelector('.drawer.open a[href*="google.com/search"]'));
+  kontrol('Satırda belge düğmesi (belge sayısıyla); üretici sayfası yokken “Üreticide ara” markanın sitesinde kodu arar; sertifika ve üretici sayfası eklenir; işaretli belgeler WhatsApp ile paylaşılır (üretici sayfası varsayılan işaretsiz)',
+    /m1:1/.test(ubSay) && /m2:0/.test(ubSay) && /site%3Apelsan\.com\.tr%20115886|site:pelsan\.com\.tr 115886/.test(decodeURIComponent(ara)) && /ENEC: https:\/\/ornek\.com\/enec\.pdf/.test(pay) && !/pelsan\.com\.tr\/largo/.test(pay) && aramaYok, JSON.stringify({ ubSay, ara, pay, aramaYok }));
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  // Yeni kalem: başka bayideki aynı koddan açıklama, marka, teknik bilgi
+  await p.click('[data-ekle]'); await w(600);
+  await p.fill('.drawer.open [name=kod]', '117220'); await p.dispatchEvent('.drawer.open [name=kod]', 'change'); await w(300);
+  const yeni = await p.evaluate(() => ({ ac: document.querySelector('.drawer.open [name=aciklama]').value, w: document.querySelector('.drawer.open [name=guc_w]')?.value, koli: document.querySelector('.drawer.open [name=koli_ici]')?.value, ek: [...document.querySelectorAll('.drawer.open fieldset.fs legend')].map(l => l.textContent).join('|') }));
+  await p.fill('.drawer.open [name=adet]', '3'); await p.click('.drawer.open [type=submit]'); await w(900);
+  const yk = await p.evaluate(async () => { const s = (await import('./js/db.js')).S.bayi_stok.find(x => x.firma_id === 'f1' && x.kod === '117220'); return s && [s.aciklama, s.ozel?.Marka, s.guc_w].join('|'); });
+  await p.click('[data-kart="m1"]'); await w(600);
+  const sr = await p.evaluate(() => { const d = document.querySelector('.drawer.open details.sr-bolum'); return d ? (d.open ? 'açık' : 'kapalı') : 'yok'; });
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  kontrol('Yeni kalemde kod yazınca açıklama, W, koli içi ve marka gelir; kalem kartında “Ek sütunlar” başlığı; seri / parti bölümü kapalı gelir',
+    /FONTANA/.test(yeni.ac) && yeni.w === '33' && yeni.koli === '6' && /Ek sütunlar/.test(yeni.ek) && yk === 'PLSETJ FONTANA 33W SU 1 ENEC 4000K|PELSAN|33' && sr === 'kapalı', JSON.stringify({ yeni, yk, sr }));
+  // Grup şirketleri
+  await p.goto(U + '#/firma/fg2'); await w(1200);
+  const oner = await p.evaluate(() => document.querySelector('[data-fgrup]')?.innerText.replace(/\s+/g, ' ') || '');
+  await p.fill('[data-fgara]', 'Atlas Hol'); await p.dispatchEvent('[data-fgara]', 'input'); await w(300);
+  await p.click('[data-fgsec="fg1"]'); await w(900);
+  await p.goto(U + '#/firma/fg1'); await w(1200);
+  await p.click('[data-fgoner="fg3"][data-yon="alt"]'); await w(900);
+  const grup = await p.evaluate(() => ({ agac: [...document.querySelectorAll('.fg-agac li > a')].map(a => a.textContent).join('>'), top: document.querySelector('.fg-top')?.innerText.replace(/\s+/g, ' '), rozet: document.querySelector('h1 .flag')?.textContent }));
+  await p.goto(U + '#/firmalar'); await w(1000); await p.fill('[data-q], input[type=search]', 'Atlas'); await w(500);
+  const liste = await p.evaluate(() => [...document.querySelectorAll('[data-rows] .row')].map(r => r.innerText.replace(/\s+/g, ' ')).join(' / '));
+  kontrol('Grup şirketleri: aynı kurumsal e-posta alan adı öneri olarak çıkar (gmail çıkmaz); üst şirket aranıp seçilir, öneriden alt şirket eklenir; ağaç ve grup toplamları (siparişler 1.500 USD); firma başlığında ve listede grup rozeti',
+    /Aynı gruba ait olabilir/.test(oner) && /atlasgrup\.com\.tr/.test(oner) && !/Başka Firma/.test(oner) && grup.agac === 'Atlas Holding>Atlas Elektrik>Atlas Yapı' && /Siparişler 2 · \$1,500|Siparişler 2 · .*1[.,]500/.test(grup.top) && grup.rozet === 'grup ana şirketi' && /grup: Atlas Holding/.test(liste), JSON.stringify({ oner: oner.slice(0, 300), grup, liste: liste.slice(0, 300) }));
+  kontrol('Araç çubuğu, belge ve grup ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"

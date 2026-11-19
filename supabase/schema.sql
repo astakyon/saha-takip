@@ -2598,6 +2598,49 @@ do $$ declare t text; begin
   end loop;
 end $$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 63 $f$;
+-- ---------- Sürüm 64: Ürün belgeleri (veri sayfası, sertifika, fotometrik dosya, üretici sayfası); grup şirketleri (üst şirket, ilişki türü) ----------
+alter table public.firmalar add column if not exists ust_firma_id uuid references public.firmalar(id) on delete set null;   -- bağlı olduğu ana şirket (holding)
+alter table public.firmalar add column if not exists grup_iliski text;      -- Bağlı şirket / Kardeş şirket / Ortaklık
+create index if not exists firmalar_ust_idx on public.firmalar (ust_firma_id);
+create table if not exists public.urun_belgeleri (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  firma_id uuid references public.firmalar(id) on delete cascade,   -- boş: şirketin bütün bayileri; dolu: yalnız o bayi (bayinin eklediği)
+  kod text not null,                          -- ürün kodu (aynı kod bütün bayilerde aynı belgeleri görür)
+  tur text default 'Veri sayfası',            -- Veri sayfası / Sertifika / Fotometrik dosya / Montaj kılavuzu / Üretici sayfası / Diğer
+  ad text, url text, yol text,                -- bağlantı ya da yüklenen dosyanın depo yolu
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create index if not exists urun_belgeleri_kod_idx on public.urun_belgeleri (owner, kod);
+do $$ declare t text; begin
+  foreach t in array array['urun_belgeleri'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('alter table public.%I alter column owner set default public.veri_sahibi()', t);
+    execute format('create index if not exists %I on public.%I (owner)', t || '_owner_idx', t);
+    execute format('drop policy if exists "oku" on public.%I', t);
+    execute format('drop policy if exists "ekle" on public.%I', t);
+    execute format('drop policy if exists "degistir" on public.%I', t);
+    execute format('drop policy if exists "sil" on public.%I', t);
+    execute format('drop policy if exists "yonetici_oku" on public.%I', t);
+    execute format('drop policy if exists "dis_oku" on public.%I', t);
+    execute format('drop policy if exists "dis_ekle" on public.%I', t);
+    execute format('drop policy if exists "dis_degistir" on public.%I', t);
+    execute format('drop policy if exists "dis_sil" on public.%I', t);
+    execute format('create policy "oku" on public.%I for select to authenticated using (public.yetki(owner, ''bayi_stok'', ''oku''))', t);
+    execute format('create policy "ekle" on public.%I for insert to authenticated with check (public.yetki(owner, ''bayi_stok'', ''yaz''))', t);
+    execute format('create policy "degistir" on public.%I for update to authenticated using (public.yetki(owner, ''bayi_stok'', ''yaz'')) with check (public.yetki(owner, ''bayi_stok'', ''yaz''))', t);
+    execute format('create policy "sil" on public.%I for delete to authenticated using (public.yetki(owner, ''bayi_stok'', ''yaz''))', t);
+    execute format('create policy "yonetici_oku" on public.%I for select to authenticated using (public.yonetici_mi())', t);
+    execute format('create policy "dis_oku" on public.%I as restrictive for select to authenticated using (public.dis_firmam(owner) is null or firma_id is null or firma_id = public.dis_firmam(owner))', t);
+    execute format('create policy "dis_ekle" on public.%I as restrictive for insert to authenticated with check (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner))', t);
+    execute format('create policy "dis_degistir" on public.%I as restrictive for update to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner)) with check (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner))', t);
+    execute format('create policy "dis_sil" on public.%I as restrictive for delete to authenticated using (public.dis_firmam(owner) is null or firma_id = public.dis_firmam(owner))', t);
+    execute format('drop trigger if exists touch on public.%I', t);
+    execute format('create trigger touch before update on public.%I for each row execute function public.touch_updated_at()', t);
+    execute format('revoke all on public.%I from anon', t);
+  end loop;
+end $$;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 64 $f$;
 
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile

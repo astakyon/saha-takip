@@ -10,13 +10,15 @@ import { disKullanici } from './yetki.js';
 // ---------- Marka tanımları ----------
 // kelime: etikette geçen marka yazısı; ean: GS1 firma önekleri; kod: ürün kodundan önce yazan etiket sözcükleri; adetOnce: "Miktar 6" gibi; adetSonra: "6 PCS" gibi
 export const HAZIR_MARKALAR = [
-  { ad: 'Pelsan', kelime: ['pelsan', 'plsetj'], ean: ['8693119'], kod: ['code', 'kod'], adetOnce: [], adetSonra: ['pcs', 'pc'] },
-  { ad: 'Osram / Ledvance', kelime: ['osram', 'ledvance'], ean: ['4099854', '4058075', '4052899', '4050300', '4008321'], kod: ['ean', 'model', 'product code'], adetOnce: ['qty', 'quantity'], adetSonra: ['pcs', 'pc', 'adet'] },
-  { ad: 'EAE', kelime: ['eae aydinlatma', 'eae', 'elektrikticaret'], ean: [], kod: ['ürün kodu', 'urun kodu', 'prdc.code', 'prdc code', 'product code'], adetOnce: ['miktar'], adetSonra: [] },
-  { ad: 'Philips / Signify', kelime: ['philips', 'signify'], ean: ['8718699', '8719514', '8710163', '8718291', '8711500'], kod: ['12nc', 'eoc', 'code'], adetOnce: ['qty', 'quantity'], adetSonra: ['pcs', 'pc'] },
+  { ad: 'Pelsan', kelime: ['pelsan', 'plsetj'], ean: ['8693119'], kod: ['code', 'kod'], adetOnce: [], adetSonra: ['pcs', 'pc'], onek: ['plsetj', 'emera', 'lecto', 'monte', 'largo', 'fontana', 'rigo'], site: 'pelsan.com.tr' },
+  { ad: 'Osram / Ledvance', kelime: ['osram', 'ledvance'], ean: ['4099854', '4058075', '4052899', '4050300', '4008321'], kod: ['ean', 'model', 'product code'], adetOnce: ['qty', 'quantity'], adetSonra: ['pcs', 'pc', 'adet'], onek: ['eco cl', 'sl pro', 'osram', 'ledvance'], site: 'ledvance.com' },
+  { ad: 'EAE', kelime: ['eae aydinlatma', 'eae', 'elektrikticaret'], ean: [], kod: ['ürün kodu', 'urun kodu', 'prdc.code', 'prdc code', 'product code'], adetOnce: ['miktar'], adetSonra: [], onek: ['hbl', 'blm', 'revos'], site: '' },
+  { ad: 'Philips / Signify', kelime: ['philips', 'signify'], ean: ['8718699', '8719514', '8710163', '8718291', '8711500'], kod: ['12nc', 'eoc', 'code'], adetOnce: ['qty', 'quantity'], adetSonra: ['pcs', 'pc'], onek: ['philips'], site: '' },
 ];
 const GENEL = { kod: ['ürün kodu', 'urun kodu', 'stok kodu', 'kod', 'code', 'art.no', 'art no', 'article', 'item', 'ref', 'mat.no', 'material', 'prdc.code', 'product code', 'model'], adetOnce: ['miktar', 'adet', 'qty', 'quantity', 'menge', 'pcs/box'], adetSonra: ['pcs', 'pc', 'adet', 'ad', 'stk', 'units'] };
-export const markalar = () => [...(ayar('etiket_markalari', []) || []), ...HAZIR_MARKALAR];
+export const markalar = () => markalarTum();
+// Kullanıcının hazır markada değiştirdiği (ön ek, site…) tanım hazırın yerine geçer
+export const markalarTum = () => { const k = ayar('etiket_markalari', []) || []; return [...k, ...HAZIR_MARKALAR.filter(h => !k.some(x => fold(x.ad) === fold(h.ad)))]; };
 export async function markaKaydet(m) { const l = (ayar('etiket_markalari', []) || []).filter(x => fold(x.ad) !== fold(m.ad)); await ayarYaz('etiket_markalari', [...l, m]); }
 
 // ---------- EAN / GTIN ----------
@@ -156,11 +158,13 @@ export async function markalarPenceresi({ sonra } = {}) {
     p.innerHTML = `<header class="dh"><div><p class="muted">Stoklar</p><h2 id="drawer-title">Etiket markaları ve barkodlar</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <div class="dbody form">
       <p class="hint">Üretici etiketinin fotoğrafı çekilince marka buradaki tanımlarla bulunur: etikette geçen yazı ya da barkodun ilk haneleri (firma öneki). Ürün kodu “kod sözcüğü”nden sonra, adet “Miktar 6” ya da “6 PCS” gibi yazılır. Yeni bir marka için etikette gördüğün sözcükleri yaz.</p>
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Marka</th><th>Etikette geçen</th><th>Barkod öneki</th><th>Kod sözcüğü</th><th>Adet</th><th></th></tr></thead><tbody>
-      ${markalar().map(m => { const k = kendi.some(x => x.ad === m.ad); return `<tr><td><b>${esc(m.ad)}</b>${k ? '' : ' <small class="muted">hazır</small>'}</td><td>${esc(virgul(m.kelime))}</td><td class="mono">${esc(virgul(m.ean))}</td><td>${esc(virgul(m.kod))}</td><td>${esc([virgul(m.adetOnce) && virgul(m.adetOnce) + ' N', virgul(m.adetSonra) && 'N ' + virgul(m.adetSonra)].filter(Boolean).join(' · '))}</td><td>${k ? `<button type="button" class="btn sm ghost danger" data-msil="${esc(m.ad)}">Sil</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>
-      <h3>Marka ekle</h3>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Marka</th><th>Etikette geçen</th><th>Barkod öneki</th><th>Ürün adı başı</th><th>Site</th><th>Kod sözcüğü</th><th>Adet</th><th></th></tr></thead><tbody>
+      ${markalar().map(m => { const k = kendi.some(x => x.ad === m.ad); return `<tr><td><b>${esc(m.ad)}</b>${k ? '' : ' <small class="muted">hazır</small>'}</td><td>${esc(virgul(m.kelime))}</td><td class="mono">${esc(virgul(m.ean))}</td><td>${esc(virgul(m.onek))}</td><td>${esc(m.site || '')}</td><td>${esc(virgul(m.kod))}</td><td>${esc([virgul(m.adetOnce) && virgul(m.adetOnce) + ' N', virgul(m.adetSonra) && 'N ' + virgul(m.adetSonra)].filter(Boolean).join(' · '))}</td><td class="btnrow"><button type="button" class="btn sm ghost" data-mduz="${esc(m.ad)}">Düzenle</button>${k ? `<button type="button" class="btn sm ghost danger" data-msil="${esc(m.ad)}">${HAZIR_MARKALAR.some(h => h.ad === m.ad) ? 'Hazıra dön' : 'Sil'}</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>
+      <h3 data-mbas>Marka ekle</h3>
       <div class="frow"><label class="fld"><span>Marka adı</span><input data-m="ad" placeholder="ör. Schneider"></label><label class="fld"><span>Etikette geçen yazı (virgülle)</span><input data-m="kelime" placeholder="ör. schneider, se"></label></div>
       <div class="frow"><label class="fld"><span>Barkod öneki (virgülle)</span><input data-m="ean" inputmode="numeric" placeholder="ör. 3606480"></label><label class="fld"><span>Kod sözcüğü (virgülle)</span><input data-m="kod" placeholder="ör. ref, code"></label></div>
+      <div class="frow"><label class="fld"><span>Ürün adı başlangıçları (virgülle)</span><input data-m="onek" placeholder="ör. plsetj, emera, lecto"></label><label class="fld"><span>Üretici sitesi</span><input data-m="site" placeholder="ör. pelsan.com.tr" inputmode="url"></label></div>
+      <p class="hint">Ürün adı bu sözcükle başlıyorsa “Markaları doldur” markayı yazar. Site yazılırsa ürünün belgelerinde “Üreticide ara” o sitede ürün kodunu arar.</p>
       <div class="frow"><label class="fld"><span>Adetten önce yazan</span><input data-m="adetOnce" placeholder="ör. miktar, qty"></label><label class="fld"><span>Adetten sonra yazan</span><input data-m="adetSonra" placeholder="ör. pcs, adet"></label></div>
       <button type="button" class="btn" data-mekle>Markayı kaydet</button>
       <h3>Öğrenilen barkodlar (${B.length})</h3>
@@ -169,10 +173,27 @@ export async function markalarPenceresi({ sonra } = {}) {
     </div>`;
     p.querySelector('[data-mekle]').onclick = async () => { const v = k => p.querySelector(`[data-m="${k}"]`).value.trim(); const ad = v('ad');
       if (!ad || !(ayir(v('kelime')).length || ayir(v('ean')).length)) return toast('Marka adını ve etikette geçen yazıyı ya da barkod önekini yaz.', 'err');
-      await markaKaydet({ ad, kelime: ayir(v('kelime')).map(x => x.toLocaleLowerCase('tr')), ean: ayir(v('ean')).filter(x => /^\d{3,9}$/.test(x)), kod: ayir(v('kod')).map(x => x.toLocaleLowerCase('tr')), adetOnce: ayir(v('adetOnce')).map(x => x.toLocaleLowerCase('tr')), adetSonra: ayir(v('adetSonra')).map(x => x.toLocaleLowerCase('tr')) });
+      await markaKaydet({ ad, kelime: ayir(v('kelime')).map(x => x.toLocaleLowerCase('tr')), ean: ayir(v('ean')).filter(x => /^\d{3,9}$/.test(x)), kod: ayir(v('kod')).map(x => x.toLocaleLowerCase('tr')), adetOnce: ayir(v('adetOnce')).map(x => x.toLocaleLowerCase('tr')), adetSonra: ayir(v('adetSonra')).map(x => x.toLocaleLowerCase('tr')), onek: ayir(v('onek')).map(x => x.toLocaleLowerCase('tr')), site: v('site').replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/.*$/, '') });
       toast(`${ad} eklendi.`); ciz(); };
+    p.querySelectorAll('[data-mduz]').forEach(b => b.onclick = () => { const m = markalar().find(x => x.ad === b.dataset.mduz); for (const k of ['ad', 'kelime', 'ean', 'kod', 'adetOnce', 'adetSonra', 'onek']) p.querySelector(`[data-m="${k}"]`).value = Array.isArray(m[k]) ? m[k].join(', ') : (m[k] || ''); p.querySelector('[data-m="site"]').value = m.site || ''; p.querySelector('[data-mbas]').textContent = `${m.ad} tanımını düzenle`; p.querySelector('[data-mbas]').scrollIntoView({ block: 'start' }); });
     p.querySelectorAll('[data-msil]').forEach(b => b.onclick = async () => { if (!confirmBox(`${b.dataset.msil} tanımı silinsin mi?`)) return; await ayarYaz('etiket_markalari', (ayar('etiket_markalari', []) || []).filter(x => x.ad !== b.dataset.msil)); ciz(); });
     p.querySelectorAll('[data-bsil]').forEach(b => b.onclick = async () => { const x = S.stok_barkodlari.find(y => y.id === b.dataset.bsil); if (!confirmBox(`${x.barkod} → ${x.kod} eşlemesi silinsin mi?`)) return; await app.db.del('stok_barkodlari', x.id); toast('Eşleme silindi.'); ciz(); });
   };
   ciz();
 }
+
+// ---------- Markayı kalemden bul ----------
+// Sıra: aynı kodlu başka kalemde yazan marka → barkodun firma öneki → ürün adının başı (ön ekler) → ürün adında marka yazısı
+export function markaTahmin(s) {
+  const baska = (S.bayi_stok || []).find(x => x !== s && x.kod === s.kod && x.ozel && Object.keys(x.ozel).some(k => fold(k) === 'marka' && x.ozel[k]));
+  if (baska) { const k = Object.keys(baska.ozel).find(k => fold(k) === 'marka'); return baska.ozel[k]; }
+  const L = markalar();
+  const bk = String(s.barkod || ''); if (bk) { const m = L.find(m => (m.ean || []).some(p => bk.startsWith(p))); if (m) return markaAdi(m); }
+  const ac = fold([s.aciklama, s.uretici_aciklama].filter(Boolean).join(' ')).trim();
+  if (ac) { const m = L.find(m => (m.onek || []).some(o => ac.startsWith(fold(o) + ' ') || ac === fold(o))) || L.find(m => (m.kelime || []).some(k => k.length >= 4 && new RegExp(`(^|[^\\p{L}])${rx(fold(k))}([^\\p{L}]|$)`, 'u').test(ac))); if (m) return markaAdi(m); }
+  return null;
+}
+// Kısa marka adı: "Osram / Ledvance" → kalemde "Ledvance"? Tanımdaki adın ilk parçası yazılır (kullanıcı değiştirebilir)
+const markaAdi = m => String(m.ad || '').split('/')[0].trim().toLocaleUpperCase('tr');
+export function markaSitesi(marka) { const m = markalar().find(x => fold(x.ad).split('/').map(t => t.trim()).includes(fold(marka || '').trim()) || fold(x.ad) === fold(marka || '')); return m?.site || ''; }
+export const ureticideAra = (marka, kod, ac = '') => { const site = markaSitesi(marka); const q = [kod, site ? '' : marka, site ? '' : ac.split(/\s+/).slice(0, 3).join(' ')].filter(Boolean).join(' '); return `https://www.google.com/search?q=${encodeURIComponent((site ? `site:${site} ` : '') + q)}`; };

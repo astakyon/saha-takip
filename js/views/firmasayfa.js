@@ -1,6 +1,7 @@
 // Firma kartı: kendi sayfası (#/firma/<id>[/<sekme>]). Üstte geri dönüş, başlık ve işlemler; altında sekmeler.
 // Düzenleme pencerede açılır (firmaFormu); kişi, ziyaret, teklif gibi kayıtlar da pencerede açılıp sayfayı yeniler.
 import { riskRozeti } from '../vaderisk.js';
+import { grupBolumu, grupRozeti } from '../firmagrup.js';
 import { firmaDoluluk } from '../alanlar.js';
 import { firmaRozet } from '../zorunlu.js';
 import { dogrulamaRozet } from '../dogrula.js';
@@ -70,7 +71,7 @@ export function firmaSayfa(el, id, sekme0) {
     <header class="fs-bas">
       <span class="sk-logo fs-logo" aria-hidden="true">${esc((x.ad || 'F').slice(0, 1).toLocaleUpperCase('tr'))}</span>
       <div class="fs-kim"><p class="muted">${esc([(x.tipler || []).join(', ') || 'Firma', [x.ilce, x.il].filter(Boolean).join(', ')].filter(Boolean).join(' · '))}</p>
-        <h1>${esc(x.ad)}${x.key_account ? ' <em class="flag soft">Key account</em>' : ''}${riskRozeti(x.id)}</h1>
+        <h1>${esc(x.ad)}${x.key_account ? ' <em class="flag soft">Key account</em>' : ''}${riskRozeti(x.id)}${grupRozeti(x)}</h1>
         <div class="dh-meta"><span data-gerek="projeler">${acik.length} açık proje${acikT ? ' · ' + usd(acikT) : ''}</span><span data-gerek="projeler">${won} sipariş · ${lost} kayıp</span>${sip.length ? `<span data-gerek="siparisler">${usd(sipT)} SAP sipariş</span>` : ''}<span data-gerek="ziyaretler" class="${gun == null || gun > 60 ? 'neg' : ''}">${gun == null ? 'hiç ziyaret yok' : gun === 0 ? 'bugün ziyaret edildi' : `son ziyaret ${gun} gün önce`}</span>${tah.length ? `<span class="neg" data-gerek="tahsilatlar">${tah.length} açık fatura</span>` : ''}${x.segment ? `<span>Segment ${esc(x.segment)}</span>` : ''}${dogrulamaRozet('firmalar', x)}${firmaRozet(x)}${(() => { const d = firmaDoluluk(x); return d.top ? `<a class="fs-doluluk" href="#/eksikler" title="Bilgi doluluğu${d.eksik.length ? ': eksik ' + esc(d.eksik.map(e => e.a.l).join(', ')) : ''}"><span class="hedef-bar"><i style="width:${d.yuzde}%" class="${d.yuzde >= 90 ? 'ok' : d.yuzde < 60 ? 'neg' : ''}"></i></span>%${d.yuzde} dolu</a>` : ''; })()}</div></div>
       <div class="fs-arac" role="toolbar" aria-label="Firma işlemleri">
         <div class="fs-grp" data-grp="iletisim">${x.telefon ? `<a href="tel:${esc(x.telefon)}" data-ipucu="Ara" aria-label="Ara: ${esc(x.telefon)}">${IK.tel}</a>` : ''}<button type="button" data-a="wa" data-ipucu="WhatsApp" aria-label="WhatsApp" class="fs-wa">${IK.wa}</button>${x.lat != null ? `<a target="_blank" rel="noopener" href="${directionsUrl(x.lat, x.lng)}" data-ipucu="Yol tarifi" aria-label="Yol tarifi" class="fs-yol">${IK.yol}</a>` : ''}</div>
@@ -94,6 +95,7 @@ export function firmaSayfa(el, id, sekme0) {
         ${dd('Sektör', esc(x.sektor || ''))}${dd('Segment', esc(x.segment || ''))}${dd('Ticari unvan', esc(x.unvan || ''))}${dd('Vergi no', esc(x.vergi_no || ''))}${dd('Vergi dairesi', esc(x.vergi_dairesi || ''))}${dd('Cari kodu', esc(x.cari_kodu || ''))}${dd('Vade / iskonto', esc([x.vade_gun ? x.vade_gun + ' gün' : '', x.iskonto != null && x.iskonto !== '' ? '%' + x.iskonto : ''].filter(Boolean).join(' · ')))}${x.sube_ana_id ? dd('Şubesi olduğu firma', `<a href="#/firma/${x.sube_ana_id}">${esc(firmaAd(x.sube_ana_id) || '')}</a>`) : ''}${dd('Sorumlu', esc((app.ekipTum || []).find(k => k.eposta === x.sorumlu)?.ad || x.sorumlu || ''))}
 `)}${!x.telefon && !x.eposta && !x.il && !x.adres ? '<p class="hint">İletişim bilgisi girilmemiş.</p>' : ''}
         <div class="btnrow" data-gerek="yaz:firmalar"><button type="button" class="btn sm ghost" data-a="duzenle">Bilgileri düzenle</button></div></section>
+      <section class="card fg-kart" data-fgrup></section>
       <section class="card" data-gerek="kisiler"><div class="fs-kb"><h2>Kişiler <span class="muted">${kisiler.length}</span></h2>${kisiler.length > 4 ? tumu('kisiler', kisiler.length) : ''}</div>
         ${kisiler.length ? `<ul class="cards">${kisiler.slice(0, 4).map(k => kisiSatir(k) + '</li>').join('')}</ul>` : '<p class="hint">Henüz kişi eklenmedi.</p>'}
         ${kisiler.length >= 2 ? `<button type="button" class="linkbtn" data-git="kisiler">Organizasyon şemasını gör →</button>` : ''}</section>
@@ -155,6 +157,7 @@ export function firmaSayfa(el, id, sekme0) {
 
   gerekUygula(el);
   acilirKur(el); araciTemizle(el);
+  grupBolumu(el.querySelector('[data-fgrup]'), x, () => firmaSayfa(el, id, 'ozet'));
   ciftUyarisi(el, 'firmalar', x);
   el.querySelector('[data-hazirlik]')?.addEventListener('click', async () => (await import('../hazirlik.js')).hazirlikAc(x.id));
   el.querySelector('[data-geri]').onclick = () => sayfadanDon('firmalar');
