@@ -5,14 +5,20 @@ import { app } from './state.js';
 import { esc, num, tarih, today, fold, toast, openDrawer, closeDrawer, confirmBox } from './ui.js';
 import { bayiStokYaz, ayniKalem, depoAdi, aktifMi } from './stok.js';
 import { barkodBul, eanGecerli, taniKutusu } from './ureticietiket.js';
+import { bildir, kisaAd, sesSecici, sesSeciciBagla, ozetGoster } from './okutmases.js';
+import { eskiParti, partiHareketi } from './izlenebilir.js';
+import { rezervUyarisi, kritikAltindakiler } from './stokrezerv.js';
+import { beklenenMetinden, beklenenExcelden, farkHesapla, farkTutanagi, DURUM_AD, hasarKaydet, yazdir as belgeYazdir } from './stokkontrol.js';
 
 // ---------- Etiket içeriği ----------
 const temiz = v => String(v ?? '').replace(/\|/g, '/').trim();
+export const rafMetni = raf => 'RAF1|' + temiz(raf);
 export const etiketMetni = ({ kod, adet = 1, parti = '' }) => ['STK1', temiz(kod), +adet || 1, temiz(parti)].join('|').replace(/\|$/, '');
 // Okunan metin → { kod, adet, parti, koli }. Bizim etiketimiz değilse (üretici barkodu, elle yazılan kod) 1 adet.
 export function etiketCoz(metin) {
   const m = String(metin ?? '').trim(); if (!m) return null;
   const p = m.split('|');
+  if (p[0] === 'RAF1' && p[1]) return { raf: p.slice(1).join('|').trim(), kod: null, adet: 0, etiket: true };
   if (p[0] === 'STK1' && p[1]) { const adet = Math.max(1, +String(p[2] || '1').replace(',', '.') || 1); return { kod: p[1].trim(), adet, parti: (p[3] || '').trim() || null, koli: adet > 1, etiket: true }; }
   // "kod x 20" ya da "kod*20" elle hızlı giriş
   const c = /^(.+?)\s*[x*×]\s*(\d+(?:[.,]\d+)?)$/i.exec(m);
@@ -29,6 +35,7 @@ export function kalemBul(kalemler, kod) {
 // kalem kodu / firma kodu / üretici kodu / kalem barkodu → 1 adet. bilinmeyen: stokta karşılığı olmayan geçerli bir EAN (eşleme ister).
 export function okunaniCoz(metin, kalemler, firma_id = null) {
   const e = etiketCoz(metin); if (!e) return null;
+  if (e.raf) return e;
   if (!e.etiket) { const m = barkodBul(e.kod, firma_id);
     if (m) { const s = kalemler.find(x => x.kod === m.kod) || null; return { ...e, kod: m.kod, adet: (+m.adet || 1) * (e.adet || 1), koli: (+m.adet || 1) > 1, s, eslesme: m }; } }
   const s = kalemBul(kalemler, e.kod);
@@ -57,7 +64,7 @@ export const BOYUTLAR = {
 // Etiket listesi: [{ s, tur: 'urun'|'koli', adet, parti, kopya }]
 export function etiketBelgesi(liste, { boyut = '50x25', baslik = '', bayi = '' } = {}) {
   const B = BOYUTLAR[boyut] || BOYUTLAR['50x25'], buyuk = B.h >= 50, kare = Math.min(B.h - 4, B.w * 0.45);
-  const tek = e => `<div class="et ${e.tur}"><div class="qr">${qrSvg(etiketMetni({ kod: e.s.kod, adet: e.tur === 'koli' ? e.adet : 1, parti: e.parti }))}</div>
+  const tek = e => e.tur === 'raf' ? `<div class="et raf"><div class="qr">${qrSvg(rafMetni(e.raf))}</div><div class="tx"><span class="ac">RAF</span><b class="rafad">${esc(e.raf)}</b>${e.not ? `<span class="ac">${esc(e.not)}</span>` : ''}</div></div>` : `<div class="et ${e.tur}"><div class="qr">${qrSvg(etiketMetni({ kod: e.s.kod, adet: e.tur === 'koli' ? e.adet : 1, parti: e.parti }))}</div>
     <div class="tx"><b class="kod">${esc(e.s.kod)}</b>${e.s.firma_kodu ? `<span class="fk">${esc(e.s.firma_kodu)}</span>` : ''}<span class="ac">${esc(e.s.aciklama || '')}</span>
     <span class="ad">${e.tur === 'koli' ? `KOLİ · ${num(e.adet)} ${esc(e.s.birim || 'Adet')}` : `1 ${esc(e.s.birim || 'Adet')}`}</span>${e.parti ? `<span class="pt">Parti ${esc(e.parti)}</span>` : ''}${buyuk && (bayi || baslik) ? `<span class="by">${esc([bayi, baslik].filter(Boolean).join(' · '))}</span>` : ''}${buyuk ? `<span class="tr">${tarih(today())}</span>` : ''}</div></div>`;
   const hepsi = liste.flatMap(e => Array.from({ length: Math.max(0, Math.min(500, +e.kopya || 0)) }, () => e));
@@ -69,7 +76,7 @@ export function etiketBelgesi(liste, { boyut = '50x25', baslik = '', bayi = '' }
     .et .qr { width: ${kare}mm; height: ${kare}mm; flex: 0 0 auto; } .et .qr svg { width: 100%; height: 100%; display: block; }
     .tx { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; font-size: ${buyuk ? 10 : 6.5}pt; }
     .kod { font-size: ${buyuk ? 15 : 9}pt; } .fk, .pt, .by, .tr { color: #222; } .ac { overflow: hidden; display: -webkit-box; -webkit-line-clamp: ${buyuk ? 4 : 2}; -webkit-box-orient: vertical; }
-    .ad { font-weight: 700; font-size: ${buyuk ? 16 : 8}pt; margin-top: 1mm; } .koli .ad { ${buyuk ? 'border: 0.6mm solid #000; padding: 0.5mm 1.5mm; align-self: flex-start;' : ''} }
+    .rafad { font-size: ${buyuk ? 34 : 18}pt; line-height: 1; } .ad { font-weight: 700; font-size: ${buyuk ? 16 : 8}pt; margin-top: 1mm; } .koli .ad { ${buyuk ? 'border: 0.6mm solid #000; padding: 0.5mm 1.5mm; align-self: flex-start;' : ''} }
     @media screen { body { background: #ddd; } .sayfa { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; } .et { background: #fff; } }
   </style></head><body><div class="sayfa">${hepsi.map(tek).join('')}</div></body></html>`;
 }
@@ -86,22 +93,27 @@ export function etiketPenceresi({ kalemler, bayiAdi = '', sonra }) {
   const ciz = () => {
     p.innerHTML = `<header class="dh"><div><p class="muted">${esc(bayiAdi)} · ${kalemler.length} kalem</p><h2 id="drawer-title">Etiket yazdır</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <div class="dbody form">
-      <div class="seg" role="group" aria-label="Etiket türü"><button type="button" data-tur="urun" class="${tur === 'urun' ? 'on' : ''}">Ürün etiketi (1 adet)</button><button type="button" data-tur="koli" class="${tur === 'koli' ? 'on' : ''}">Koli etiketi (kolideki adet)</button></div>
-      <p class="hint">${tur === 'urun' ? 'Her ürünün üstüne yapıştırılır; okutunca 1 adet sayılır. Kopya sayısı stok miktarından gelir.' : 'Koliye yapıştırılır; okutunca kolideki adet kadar sayılır (giriş, çıkış, sevk, sayım). Koli içi adedi kalem kartına kaydedilir.'}</p>
+      <div class="seg" role="group" aria-label="Etiket türü"><button type="button" data-tur="urun" class="${tur === 'urun' ? 'on' : ''}">Ürün etiketi (1 adet)</button><button type="button" data-tur="koli" class="${tur === 'koli' ? 'on' : ''}">Koli etiketi (kolideki adet)</button><button type="button" data-tur="raf" class="${tur === 'raf' ? 'on' : ''}">Raf etiketi</button></div>
+      ${tur === 'raf' ? `<p class="hint">Rafa yapıştırılır. Sayımda okutunca yalnız o raftaki ürünler listelenir; etiketle girişte okutunca sonraki ürünler o rafa yerleşir.</p>
+      <label class="fld"><span>Raflar (her satıra bir raf)</span><textarea data-raflar rows="5" placeholder="A-01-1&#10;A-01-2">${esc([...new Set(kalemler.map(s => s.raf).filter(Boolean))].join('\n'))}</textarea></label>` : ''}
+      <p class="hint" ${tur === 'raf' ? 'hidden' : ''}>${tur === 'urun' ? 'Her ürünün üstüne yapıştırılır; okutunca 1 adet sayılır. Kopya sayısı stok miktarından gelir.' : 'Koliye yapıştırılır; okutunca kolideki adet kadar sayılır (giriş, çıkış, sevk, sayım). Koli içi adedi kalem kartına kaydedilir.'}</p>
       <label class="fld"><span>Etiket boyutu</span><select data-boyut>${Object.entries(BOYUTLAR).map(([k, v]) => `<option value="${k}" ${k === B0 ? 'selected' : ''}>${esc(v.ad)}</option>`).join('')}</select></label>
-      <div class="tbl-wrap"><table class="tbl et-t"><thead><tr><th>Kod</th><th>Ürün</th><th class="r">Stok</th>${tur === 'koli' ? '<th class="r">Koli içi</th>' : ''}<th>Parti / lot</th><th class="r">Etiket sayısı</th></tr></thead><tbody>
+      <div class="tbl-wrap" ${tur === 'raf' ? 'hidden' : ''}><table class="tbl et-t"><thead><tr><th>Kod</th><th>Ürün</th><th class="r">Stok</th>${tur === 'koli' ? '<th class="r">Koli içi</th>' : ''}<th>Parti / lot</th><th class="r">Etiket sayısı</th></tr></thead><tbody>
       ${satirlar.map((r, i) => `<tr><td class="mono">${esc(r.s.kod)}</td><td>${esc(r.s.aciklama || '')}</td><td class="r num">${num(r.s.adet)}</td>${tur === 'koli' ? `<td class="r"><input type="number" inputmode="numeric" min="1" class="sy-say" data-koli="${i}" value="${r.koliIci || ''}" placeholder="adet" aria-label="${esc(r.s.kod)} koli içi adet"></td>` : ''}<td><input data-parti="${i}" value="${esc(r.parti)}" placeholder="isteğe bağlı" aria-label="${esc(r.s.kod)} parti"></td><td class="r"><input type="number" inputmode="numeric" min="0" class="sy-say" data-kopya="${i}" value="${r.kopya}" aria-label="${esc(r.s.kod)} etiket sayısı"></td></tr>`).join('')}</tbody></table></div>
       <p data-ozet class="hint"></p>
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-onizle>Önizleme</button><button type="button" class="btn primary" data-yazdir>Yazdır</button></div>
       <div class="tk-onizle" data-on hidden><iframe title="Etiket önizleme"></iframe></div>
     </div>`;
-    const oz = () => { const n = satirlar.reduce((a, r) => a + (+r.kopya || 0), 0); p.querySelector('[data-ozet]').textContent = `${n} etiket${tur === 'koli' ? ` · ${num(satirlar.reduce((a, r) => a + (+r.kopya || 0) * (+r.koliIci || 0), 0))} adet ürün` : ''}`; };
+    const oz = () => { if (tur === 'raf') { p.querySelector('[data-ozet]').textContent = ''; return; } const n = satirlar.reduce((a, r) => a + (+r.kopya || 0), 0); p.querySelector('[data-ozet]').textContent = `${n} etiket${tur === 'koli' ? ` · ${num(satirlar.reduce((a, r) => a + (+r.kopya || 0) * (+r.koliIci || 0), 0))} adet ürün` : ''}`; };
     p.querySelectorAll('[data-tur]').forEach(b => b.onclick = () => { tur = b.dataset.tur; satirlar.forEach(r => { r.kopya = varsayilanKopya(r); }); ciz(); });
     p.querySelectorAll('[data-koli]').forEach(i => i.oninput = () => { const r = satirlar[+i.dataset.koli]; r.koliIci = +i.value || 0; r.kopya = varsayilanKopya(r); p.querySelector(`[data-kopya="${i.dataset.koli}"]`).value = r.kopya; oz(); });
     p.querySelectorAll('[data-kopya]').forEach(i => i.oninput = () => { satirlar[+i.dataset.kopya].kopya = Math.max(0, Math.round(+i.value || 0)); oz(); });
     p.querySelectorAll('[data-parti]').forEach(i => i.oninput = () => { satirlar[+i.dataset.parti].parti = i.value.trim(); });
     p.querySelector('[data-boyut]').onchange = e => { try { localStorage.setItem('saha-etiket-boyut', e.target.value); } catch {} };
     const hazir = async () => {
+      if (tur === 'raf') { const r = [...new Set(p.querySelector('[data-raflar]').value.split('\n').map(x => x.trim()).filter(Boolean))]; if (!r.length) { toast('En az bir raf yaz.', 'err'); return null; }
+        try { await qrYukle(); } catch (e) { toast(e.message, 'err'); return null; }
+        return etiketBelgesi(r.map(raf => ({ tur: 'raf', raf, kopya: 1, not: bayiAdi })), { boyut: p.querySelector('[data-boyut]').value }); }
       if (tur === 'koli') { const eksik = satirlar.filter(r => r.kopya > 0 && !(r.koliIci > 0)); if (eksik.length) { toast(`Koli içi adedini yaz: ${eksik.slice(0, 3).map(r => r.s.kod).join(', ')}`, 'err'); return null; } }
       const l = satirlar.filter(r => r.kopya > 0); if (!l.length) { toast('Etiket sayısı 0.', 'err'); return null; }
       if (l.reduce((a, r) => a + r.kopya, 0) > 2000) { toast('Tek seferde en çok 2000 etiket.', 'err'); return null; }
@@ -136,22 +148,33 @@ export async function kameraBaslat(video, onKod) {
 // mod: 'giris' stoğa ekler, 'cikis' depodan düşer. Okutulanlar listede toplanır, "Kaydet" ile stok hareketi yazılır.
 export function etiketHareketPenceresi({ b, firma_id, depo = null, mod = 'giris', bayiAdi = '', sonra }) {
   const liste = new Map();   // anahtar kod → { s, kod, aciklama, birim, adet, parti:Set }
-  let durdur = null, tani = null;
+  let durdur = null, tani = null, aktifRaf = null, beklenen = null;   // beklenen: irsaliyedeki liste (kod → adet)
   const kalemler = () => (S.bayi_stok || []).filter(s => s.firma_id === firma_id && (s.depo || null) === (depo || null));
   const p = openDrawer('<div class="dbody"></div>', { wide: true, onClose: () => { durdur?.(); sonra?.(); } });
   const iskelet = () => {
     p.innerHTML = `<header class="dh"><div><p class="muted">${esc(bayiAdi)} · ${esc(depoAdi(depo))}</p><h2 id="drawer-title">${mod === 'giris' ? 'Etiketle stoğa giriş' : 'Etiketle depodan çıkış'}</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
     <div class="dbody form">
-      <div class="seg" role="group" aria-label="Yön"><button type="button" data-mod="giris" class="${mod === 'giris' ? 'on' : ''}">Giriş (+)</button><button type="button" data-mod="cikis" class="${mod === 'cikis' ? 'on' : ''}">Çıkış (−)</button></div>
+      <div class="et-ust"><div class="seg" role="group" aria-label="Yön"><button type="button" data-mod="giris" class="${mod === 'giris' ? 'on' : ''}">Giriş (+)</button><button type="button" data-mod="cikis" class="${mod === 'cikis' ? 'on' : ''}">Çıkış (−)</button></div>${sesSecici()}</div>
       <p class="hint">Koli etiketi kolideki adedi, ürün etiketi ya da üreticinin barkodu 1 adet sayar. Okuyucu tabancayla okut ya da kodu yazıp Enter'a bas (“kod x 12” 12 adet ekler). Kaydet'e basana kadar stok değişmez.</p>
       <div class="frow"><input type="search" data-okut placeholder="Etiketi okut ya da kodu yaz, Enter" aria-label="Etiket okut" autocomplete="off" enterkeyhint="go">${'BarcodeDetector' in window ? '<button type="button" class="btn" data-kam>Kamerayla okut</button>' : ''}</div>
       <video data-vid playsinline muted hidden class="et-vid"></video>
+      <details class="bk-kutu" data-bk ${mod === 'giris' ? '' : 'hidden'}><summary>Beklenen liste (irsaliye) ile karşılaştır</summary>
+        <p class="hint">Gelen malın irsaliyesindeki kalemleri yapıştır (her satıra “kod miktar”) ya da Excel'den al. Okuttukça eksik, fazla ve listede olmayan ürünler görünür.</p>
+        <textarea data-bkmetin rows="4" placeholder="117220 12&#10;117145 6"></textarea>
+        <div class="btnrow"><button type="button" class="btn sm" data-bkuygula>Listeyi kullan</button><button type="button" class="btn sm ghost" data-bkexcel>Excel'den al</button><button type="button" class="btn sm ghost" data-bktemizle>Listeyi kaldır</button></div></details>
+      <p class="raf-aktif" data-rafak hidden></p>
       <div data-utani class="ut-kutu"></div>
       <div data-l></div>
-      <label class="fld"><span>Açıklama</span><input data-not placeholder="${mod === 'giris' ? 'ör. Tedarikçi irsaliyesi 12345' : 'ör. Şantiye teslimi, fire'}"></label>
+      <label class="fld"><span>Açıklama / irsaliye no</span><input data-not placeholder="${mod === 'giris' ? 'ör. Tedarikçi irsaliyesi 12345' : 'ör. Şantiye teslimi, fire'}"></label>
     </div>
-    <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn primary" data-kaydet>Kaydet</button></div>`;
-    p.querySelectorAll('[data-mod]').forEach(x => x.onclick = () => { mod = x.dataset.mod; p.querySelectorAll('[data-mod]').forEach(y => y.classList.toggle('on', y === x)); p.querySelector('#drawer-title').textContent = mod === 'giris' ? 'Etiketle stoğa giriş' : 'Etiketle depodan çıkış'; ciz(); });
+    <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn ghost" data-tutanak hidden>Fark tutanağı</button><button type="button" class="btn primary" data-kaydet>Kaydet</button></div>`;
+    p.querySelectorAll('[data-mod]').forEach(x => x.onclick = () => { mod = x.dataset.mod; p.querySelector('[data-bk]').hidden = mod !== 'giris'; p.querySelectorAll('[data-mod]').forEach(y => y.classList.toggle('on', y === x)); p.querySelector('#drawer-title').textContent = mod === 'giris' ? 'Etiketle stoğa giriş' : 'Etiketle depodan çıkış'; ciz(); });
+    sesSeciciBagla(p);
+    const bkUygula = m => { beklenen = m && m.size ? m : null; if (beklenen) toast(`Beklenen liste: ${beklenen.size} kalem, ${num([...beklenen.values()].reduce((a, b) => a + b, 0))} adet.`); ciz(); };
+    p.querySelector('[data-bkuygula]').onclick = () => bkUygula(beklenenMetinden(p.querySelector('[data-bkmetin]').value));
+    p.querySelector('[data-bkexcel]').onclick = async () => { try { const m = await beklenenExcelden(); if (m) { p.querySelector('[data-bkmetin]').value = [...m].map(([k, a]) => `${k} ${a}`).join('\n'); bkUygula(m); } } catch (er) { toast(er.message, 'err'); } };
+    p.querySelector('[data-bktemizle]').onclick = () => { p.querySelector('[data-bkmetin]').value = ''; bkUygula(null); };
+    p.querySelector('[data-tutanak]').onclick = () => belgeYazdir(farkTutanagi({ bayi: bayiAdi, belge: p.querySelector('[data-not]').value.trim(), satirlar: farkL(), hasarlar: [...liste.values()].filter(r => r.hasar).map(r => ({ kod: r.kod, adet: r.hasar, notlar: r.hasarNot })) }));
     const inp = p.querySelector('[data-okut]');
     inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); okut(inp.value); inp.value = ''; } };
     p.querySelector('[data-kam]')?.addEventListener('click', async e => {
@@ -160,27 +183,44 @@ export function etiketHareketPenceresi({ b, firma_id, depo = null, mod = 'giris'
     });
     p.querySelector('[data-kaydet]').onclick = kaydet;
     tani = taniKutusu(p.querySelector('[data-utani]'), { kalemler, firma_id, yeniKalem: true, onEkle: ({ kod, adet, s: s0, aciklama }) => {
-      const s = s0 || null; if (!s && mod === 'cikis') return toast(`${kod}: bu depoda böyle bir kalem yok.`, 'err');
-      const u = !s && (S.urunler || []).find(x => x.kod === kod), r = liste.get(kod) || { s, kod, aciklama: s?.aciklama || u?.aciklama || aciklama || '', birim: s?.birim || u?.birim || 'Adet', adet: 0, parti: new Set(), yeni: !s };
-      r.adet += adet; liste.set(kod, r); toast(`${kod}: ${mod === 'giris' ? '+' : '−'}${num(adet)}`); ciz(); } });
+      const s = s0 || null; if (!s && mod === 'cikis') { bildir('hata', 'Bu depoda yok'); return toast(`${kod}: bu depoda böyle bir kalem yok.`, 'err'); }
+      const u = !s && (S.urunler || []).find(x => x.kod === kod), r = liste.get(kod) || { s, kod, aciklama: s?.aciklama || u?.aciklama || aciklama || '', birim: s?.birim || u?.birim || 'Adet', adet: 0, parti: new Set(), yeni: !s, kaynak: {} };
+      r.adet += adet; r.kaynak.tanitilan = (r.kaynak.tanitilan || 0) + 1; liste.set(kod, r); sesle(r, adet); toast(`${kod}: ${mod === 'giris' ? '+' : '−'}${num(adet)}`); ciz(); } });
     setTimeout(() => inp.focus(), 50);
   };
   const okut = metin => {
     const e = okunaniCoz(metin, kalemler(), firma_id); if (!e) return;
-    if (e.bilinmeyen) { tani?.bilinmeyenBarkod(e.kod); toast(`${e.kod}: bu barkod henüz tanımlı değil; ürünü seçip eşle.`, 'err'); return; }
+    if (e.raf) { aktifRaf = e.raf; const k = p.querySelector('[data-rafak]'); k.hidden = false; k.innerHTML = `▦ Raf <b>${esc(aktifRaf)}</b>: ${mod === 'giris' ? 'bundan sonra okutulan ve rafı boş ürünler bu rafa yerleşir' : 'okutulan raf'} <button type="button" class="linkbtn" data-rafsil>kaldır</button>`; k.querySelector('[data-rafsil]').onclick = () => { aktifRaf = null; k.hidden = true; }; bildir('ok', 'Raf ' + aktifRaf); return; }
+    if (e.bilinmeyen) { tani?.bilinmeyenBarkod(e.kod); bildir('hata', 'Barkod tanımlı değil'); toast(`${e.kod}: bu barkod henüz tanımlı değil; ürünü seçip eşle.`, 'err'); return; }
     const s = e.s, u = !s && (S.urunler || []).find(x => fold(String(x.kod)) === fold(e.kod));
-    if (!s && mod === 'cikis') { toast(`${e.kod}: bu depoda böyle bir kalem yok.`, 'err'); return; }
-    const kod = s?.kod || u?.kod || e.kod, r = liste.get(kod) || { s, kod, aciklama: s?.aciklama || u?.aciklama || '', birim: s?.birim || u?.birim || 'Adet', adet: 0, parti: new Set(), yeni: !s };
-    r.adet += e.adet; if (e.parti) r.parti.add(e.parti); liste.set(kod, r);
+    if (!s && mod === 'cikis') { bildir('hata', 'Bu depoda yok'); toast(`${e.kod}: bu depoda böyle bir kalem yok.`, 'err'); return; }
+    const kod = s?.kod || u?.kod || e.kod, r = liste.get(kod) || { s, kod, aciklama: s?.aciklama || u?.aciklama || '', birim: s?.birim || u?.birim || 'Adet', adet: 0, parti: new Set(), yeni: !s, kaynak: {} };
+    const kay = e.eslesme || (s?.barkod && String(s.barkod) === String(metin).trim()) ? 'barkod' : e.etiket ? 'etiket' : 'kod';
+    if (mod === 'cikis' && e.parti && s) { const es = eskiParti(firma_id, kod, e.parti); if (es) { bildir('uyari', `Önce eski parti çıkmalı: ${es.no}`); toast(`${kod}: önce eski parti çıkmalı → ${es.no}${es.uretim_tarihi ? ' (üretim ' + es.uretim_tarihi + ')' : ''}`, 'err'); } }
+    r.adet += e.adet; r.kaynak[kay] = (r.kaynak[kay] || 0) + 1; if (e.parti) { r.parti.add(e.parti); (r.partiAdet ||= {})[e.parti] = (r.partiAdet[e.parti] || 0) + e.adet; } if (aktifRaf && !r.s?.raf) r.raf = aktifRaf; liste.set(kod, r);
+    const rzUyari = mod === 'cikis' && s ? rezervUyarisi(s, r.adet) : '';
+    const bkUyari = beklenenUyari(kod) || (rzUyari && `dikkat, ${rzUyari}`);
+    if (bkUyari) { bildir('uyari', `${kisaAd(r, kod)}, ${bkUyari}`); toast(`${kod}: ${bkUyari}`, 'err'); }
+    else if (!(mod === 'cikis' && e.parti && eskiParti(firma_id, kod, e.parti))) sesle(r, e.adet, e.koli);
     toast(`${kod}: ${mod === 'giris' ? '+' : '−'}${num(e.adet)}${e.koli ? ' (koli)' : ''} · toplam ${num(r.adet)}`); ciz();
   };
+  const okutulanMap = () => new Map([...liste.values()].map(r => [r.kod, r.adet]));
+  const farkL = () => beklenen ? farkHesapla(beklenen, okutulanMap(), kalemler()) : [];
+  const beklenenUyari = kod => { if (!beklenen || mod !== 'giris') return ''; const f = farkL().find(x => x.kod === kod); return !f ? '' : f.durum === 'listede yok' ? 'irsaliyede yok' : f.durum === 'fazla' ? `irsaliyeden fazla (${num(f.beklenen)} bekleniyordu)` : ''; };
+  const sesle = (r, adet, koli) => bildir(r.yeni && mod === 'giris' ? 'uyari' : 'ok', `${kisaAd(r, r.kod)}, ${num(adet)} adet ${koli ? 'koli ' : ''}${mod === 'giris' ? 'eklendi' : 'çıkarıldı'}${r.yeni ? ', yeni kalem' : ''}`);
   const ciz = () => {
     const l = [...liste.values()], kutu = p.querySelector('[data-l]'); if (!kutu) return;
-    kutu.innerHTML = l.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Kod</th><th>Ürün</th><th class="r">Stokta</th><th class="r">${mod === 'giris' ? 'Girecek' : 'Çıkacak'}</th><th class="r">Sonra</th><th></th></tr></thead><tbody>
-      ${l.map((r, i) => { const st = +r.s?.adet || 0, sonra_ = mod === 'giris' ? st + r.adet : st - r.adet; return `<tr><td class="mono">${esc(r.kod)}${r.yeni ? ' <em class="flag soft">yeni kalem</em>' : ''}</td><td>${esc(r.aciklama)}${r.parti.size ? `<br><small class="muted">Parti ${esc([...r.parti].join(', '))}</small>` : ''}</td><td class="r num">${num(st)}</td><td class="r"><input type="number" inputmode="decimal" step="any" min="0" class="sy-say" data-m="${i}" value="${r.adet}" aria-label="${esc(r.kod)} miktar"></td><td class="r num ${sonra_ < 0 ? 'neg' : ''}">${num(sonra_)}</td><td><button type="button" class="x" data-sil="${i}" aria-label="${esc(r.kod)} çıkar">×</button></td></tr>`; }).join('')}</tbody></table></div>
-      <p class="hint">${l.length} kalem · ${num(l.reduce((a, r) => a + r.adet, 0))} adet</p>` : '<p class="muted">Henüz okutulan yok.</p>';
+    const FK = farkL(), bk = !!beklenen && mod === 'giris';
+    p.querySelector('[data-tutanak]').hidden = !bk;
+    const eksikler = bk ? FK.filter(x => x.durum === 'eksik' && !liste.has(x.kod)) : [];
+    kutu.innerHTML = (bk ? `<p class="bk-ozet">${['tamam', 'eksik', 'fazla', 'listede yok'].map(d => `<span class="bk-${d.replace(' ', '-')}">${DURUM_AD[d]}: <b>${FK.filter(x => x.durum === d).length}</b></span>`).join(' · ')}</p>` : '') + (l.length || eksikler.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Kod</th><th>Ürün</th><th class="r">Stokta</th>${bk ? '<th class="r">Beklenen</th>' : ''}<th class="r">${mod === 'giris' ? 'Girecek' : 'Çıkacak'}</th><th class="r">Sonra</th>${bk ? '<th>Durum</th>' : ''}<th></th></tr></thead><tbody>
+      ${l.map((r, i) => { const st = +r.s?.adet || 0, sonra_ = mod === 'giris' ? st + r.adet : st - r.adet; return `<tr><td class="mono">${esc(r.kod)}${r.yeni ? ' <em class="flag soft">yeni kalem</em>' : ''}</td><td>${esc(r.aciklama)}${r.parti.size ? `<br><small class="muted">Parti ${esc([...r.parti].join(', '))}</small>` : ''}${r.raf ? `<br><small class="raf-r">▦ ${esc(r.raf)}</small>` : ''}</td><td class="r num">${num(st)}</td>${bk ? `<td class="r num">${num(FK.find(x => x.kod === r.kod)?.beklenen || 0)}</td>` : ''}<td class="r"><input type="number" inputmode="decimal" step="any" min="0" class="sy-say" data-m="${i}" value="${r.adet}" aria-label="${esc(r.kod)} miktar">${r.hasar ? `<br><small class="neg">${num(r.hasar)} hasarlı</small>` : ''}</td><td class="r num ${sonra_ < 0 ? 'neg' : ''}">${num(sonra_ - (r.hasar || 0))}</td>${bk ? `<td>${(d => `<span class="bk-${d.replace(' ', '-')}">${DURUM_AD[d]}</span>`)(FK.find(x => x.kod === r.kod)?.durum || 'listede yok')}</td>` : ''}<td class="btnrow">${mod === 'giris' ? `<button type="button" class="btn sm ghost" data-hasar="${i}" title="Hasarlı geleni işaretle">Hasarlı</button>` : ''}<button type="button" class="x" data-sil="${i}" aria-label="${esc(r.kod)} çıkar">×</button></td></tr>`; }).join('')}
+      ${eksikler.map(x => `<tr class="eksik"><td class="mono">${esc(x.kod)}</td><td class="muted">${esc((S.bayi_stok || []).find(s => s.kod === x.kod)?.aciklama || '')}</td><td></td><td class="r num">${num(x.beklenen)}</td><td class="r num">0</td><td></td><td><span class="bk-eksik">Eksik</span></td><td></td></tr>`).join('')}</tbody></table></div>
+      <p class="hint">${l.length} kalem · ${num(l.reduce((a, r) => a + r.adet, 0))} adet</p>` : '<p class="muted">Henüz okutulan yok.</p>');
     kutu.querySelectorAll('[data-m]').forEach(i => i.onchange = () => { l[+i.dataset.m].adet = Math.max(0, +i.value || 0); ciz(); });
     kutu.querySelectorAll('[data-sil]').forEach(x => x.onclick = () => { liste.delete(l[+x.dataset.sil].kod); ciz(); });
+    kutu.querySelectorAll('[data-hasar]').forEach(x => x.onclick = () => { const r = l[+x.dataset.hasar]; const n = window.prompt(`${r.kod}: kaç adet hasarlı geldi? (0 = işareti kaldır)`, String(r.hasar || 1)); if (n == null) return;
+      r.hasar = Math.min(r.adet, Math.max(0, +String(n).replace(',', '.') || 0)); if (r.hasar) r.hasarNot = (window.prompt('Hasarın kısa açıklaması (kırık, ezik koli…):', r.hasarNot || '') || '').trim(); ciz(); });
   };
   const kaydet = async e => {
     const l = [...liste.values()].filter(r => r.adet > 0); if (!l.length) return toast('Okutulan kalem yok.', 'err');
@@ -189,10 +229,17 @@ export function etiketHareketPenceresi({ b, firma_id, depo = null, mod = 'giris'
     e.target.disabled = true;
     const not = p.querySelector('[data-not]').value.trim();
     try {
-      const rows = l.map(r => { const s = r.s && S.bayi_stok.find(x => x.id === r.s.id), st = +s?.adet || 0, yeni = mod === 'giris' ? st + r.adet : Math.max(0, st - r.adet);
-        return s ? { ...s, adet: yeni } : { firma_id, depo: depo || null, kod: r.kod, aciklama: r.aciklama || null, birim: r.birim || 'Adet', adet: yeni, aktif: true, para_birimi: 'USD' }; });
+      const rows = l.map(r => { const s = r.s && S.bayi_stok.find(x => x.id === r.s.id), st = +s?.adet || 0, yeni = mod === 'giris' ? st + r.adet - (r.hasar || 0) : Math.max(0, st - r.adet);
+        return s ? { ...s, adet: yeni, ...(r.raf && !s.raf ? { raf: r.raf } : {}) } : { firma_id, depo: depo || null, kod: r.kod, aciklama: r.aciklama || null, birim: r.birim || 'Adet', adet: yeni, aktif: true, para_birimi: 'USD', raf: r.raf || null }; });
       await bayiStokYaz(rows, { hareket: mod, aciklama: ['Etiketle ' + (mod === 'giris' ? 'giriş' : 'çıkış'), not].filter(Boolean).join(': ') });
-      toast(`${l.length} kalem ${mod === 'giris' ? 'stoğa girdi' : 'depodan çıktı'}.`); liste.clear(); closeDrawer(true);
+      const FK = farkL(), hasarlar = l.filter(r => r.hasar && mod === 'giris');
+      for (const r of hasarlar) { try { await hasarKaydet({ firma_id, kod: r.kod, aciklama: r.aciklama || null, depo: depo || null, adet: r.hasar, tur: 'Hasarlı geldi', notlar: r.hasarNot || null, belge_no: not || null, stoktan_dustu: true }); } catch {} }
+      for (const r of l) for (const [no, n] of Object.entries(r.partiAdet || {})) { try { await partiHareketi(firma_id, r.kod, depo || null, no, mod === 'giris' ? n : -n); } catch {} }
+      const kritikler = mod === 'cikis' ? kritikAltindakiler(firma_id).filter(s => l.some(r => r.kod === s.kod) && (s.depo || null) === (depo || null)) : [];
+      const top = l.reduce((a, r) => a + r.adet, 0), say = k => l.reduce((a, r) => a + (r.kaynak?.[k] || 0), 0), AD = { barkod: 'üretici barkodundan', etiket: 'bizim etiketten', tanitilan: 'fotoğraf ya da eşlemeyle', kod: 'koddan / elle' };
+      ozetGoster({ baslik: `${l.length} kalem, ${num(top)} adet ${mod === 'giris' ? 'stoğa girdi' : 'depodan çıktı'}`, satirlar: [Object.keys(AD).filter(k => say(k)).map(k => `${say(k)} okutma ${AD[k]}`).join(' · '), ...(FK.length ? [`İrsaliye: ${['tamam', 'eksik', 'fazla', 'listede yok'].filter(d => FK.some(x => x.durum === d)).map(d => `${FK.filter(x => x.durum === d).length} ${DURUM_AD[d].toLocaleLowerCase('tr')}`).join(', ')}`] : []), ...(kritikler.length ? [`⚠ ${kritikler.length} ürün kritik seviyenin altına indi: ${kritikler.slice(0, 4).map(s => `${s.kod} (${num(s.adet)}/${num(s.kritik)})`).join(', ')}`] : []), ...(hasarlar.length ? [`${hasarlar.length} kalemde ${num(hasarlar.reduce((a, r) => a + r.hasar, 0))} adet hasarlı: Hasarlı ürünler listesine eklendi`] : []), ...l.filter(r => r.yeni).length ? [`${l.filter(r => r.yeni).length} yeni kalem açıldı`] : [], ...l.slice(0, 8).map(r => `${r.kod} · ${r.aciklama ? r.aciklama.slice(0, 40) + ' · ' : ''}${mod === 'giris' ? '+' : '−'}${num(r.adet)}`), ...l.length > 8 ? [`… ve ${l.length - 8} kalem daha`] : []].filter(Boolean),
+        konus: `${l.length} kalem, ${num(top)} adet ${mod === 'giris' ? 'stoğa girdi' : 'depodan çıktı'}` });
+      liste.clear(); closeDrawer(true);
     } catch (er) { e.target.disabled = false; toast('Kaydedilemedi: ' + er.message, 'err'); }
   };
   iskelet(); ciz();

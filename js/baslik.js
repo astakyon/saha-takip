@@ -1,5 +1,6 @@
 // Ortak sayfa başlığı: başlıktaki ikincil düğmeler (Excel'e aktar, Toplu düzelt…) "⋯ Diğer" menüsünde toplanır;
 // görünür kalanlar ana düğme (Yeni …), görünüm seçicileri ve yıl gibi seçimler. Telefonda başlık tek satıra iner.
+import { menuSigdir } from './ui.js';
 const isle = act => {
   if (act.dataset.duzen) return; act.dataset.duzen = '1';
   const ikincil = [...act.children].filter(x => x.matches('.btn:not(.primary), a.btn:not(.primary)') && !x.matches('[data-kalsin]'));
@@ -11,7 +12,7 @@ const isle = act => {
   const ana = act.querySelector('.btn.primary');
   ana ? act.insertBefore(kutu, ana) : act.appendChild(kutu);
   const kapat = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
-  btn.onclick = e => { e.stopPropagation(); if (!menu.hidden) return kapat(); document.querySelectorAll('.vh-menu').forEach(m => m.hidden = true); menu.hidden = false; btn.setAttribute('aria-expanded', 'true'); };
+  btn.onclick = e => { e.stopPropagation(); if (!menu.hidden) return kapat(); document.querySelectorAll('.vh-menu').forEach(m => m.hidden = true); menu.hidden = false; menuSigdir(menu); btn.setAttribute('aria-expanded', 'true'); };
   menu.addEventListener('click', () => setTimeout(kapat, 0));
   document.addEventListener('click', e => { if (!kutu.contains(e.target)) kapat(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') kapat(); });

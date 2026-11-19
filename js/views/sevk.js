@@ -6,6 +6,9 @@ import { esc, num, usd, tarih, today, gunEkle, byId, firmaAd, fold, match, toast
 import { toplamaGiren } from '../teklif2.js';
 import { etiketCoz, kalemBul, kameraBaslat, okunaniCoz } from '../etiket.js';
 import { taniKutusu } from '../ureticietiket.js';
+import { eskiParti } from '../izlenebilir.js';
+import { rezervUyarisi } from '../stokrezerv.js';
+import { bildir, kisaAd, sesSecici, sesSeciciBagla, ozetGoster } from '../okutmases.js';
 import { renderForm, bindForm, readForm } from '../forms.js';
 import { ayar, ayarYaz } from '../ayar.js';
 import { izin, sahipMi, disKullanici } from '../yetki.js';
@@ -57,7 +60,7 @@ export async function sevkKaydet(o, onceki = null) {
   if (!x.id) x.id = uuid();
   await app.db.save('sevkler', x);
   const yeni = S.sevkler.find(y => y.id === x.id) || x;
-  if (['Yolda', 'Teslim edildi'].includes(yeni.durum) && !yeni.stok_dustu) await stokIsle(yeni);
+  if (['Yolda', 'Teslim edildi'].includes(yeni.durum) && !yeni.stok_dustu) { await stokIsle(yeni); if (yeni.tur !== 'İade') { try { await (await import('../stokrezerv.js')).sevkRezervDus(yeni); } catch {} } }
   if (yeni.durum === 'İptal' && yeni.stok_dustu) await stokIsle(yeni, true);
   return S.sevkler.find(y => y.id === x.id) || yeni;
 }
@@ -97,6 +100,7 @@ const aliciTel = x => (S.kisiler || []).find(k => k.firma_id === x.alici_id && k
 export function sevkFormu(init = {}, sonra) {
   const x0 = init.id ? { ...S.sevkler.find(y => y.id === init.id) } : { tur: 'Sevk', durum: 'Taslak', plan_tarih: today(), kalemler: [], tasima_pb: 'TRY', odeyen: 'Gönderici', ...init, _new: true };
   let kalemler = (x0.kalemler || []).map(k => ({ ...k }));
+  let kontrol = kalemler.some(k => k.hazirlanan != null);   // kontrollü hazırlama: okutulan, listedeki miktarla karşılaştırılır
   const kaynak = { teklif_id: x0.teklif_id, siparis_id: x0.siparis_id }, once = gonderilen(kaynak, x0.id);
   const tasiyicilar = () => [...new Set([...(S.sevkler || []).map(y => y.tasiyici).filter(Boolean), ...(ayar('tasiyicilar') || [])])];
   const FM = [{ title: 'Belge', fields: [{ k: 'tur', l: 'Tür', t: 'sel', opts: ['Sevk', 'İade'] }, { k: 'durum', l: 'Durum', t: 'sel', opts: SEVK_DURUM }, { k: 'plan_tarih', l: 'Planlanan tarih', t: 'date' }, { k: 'tarih', l: 'Sevk tarihi', t: 'date' },
@@ -111,8 +115,9 @@ export function sevkFormu(init = {}, sonra) {
     ${x0._new ? '' : `<div class="dh-actions"><button class="btn sm" data-sa="pdf">PDF / yazdır</button><button class="btn sm" data-sa="wa">WhatsApp</button><button class="btn sm" data-sa="eposta">E-posta</button><button class="btn sm" data-sa="yola">Yola çıktı mesajı</button><button class="btn sm" data-sa="teslim">Teslim alındı</button>${x0.tur !== 'İade' ? '<button class="btn sm" data-sa="iade">İade belgesi</button>' : ''}</div>`}
     <button class="x" data-close aria-label="Kapat">×</button></header>
     <form class="dbody form" novalidate>${renderForm(FM, x0)}
-      <h3>Kalemler</h3><div class="tbl-wrap"><table class="tbl sv-k"><thead><tr><th>Kod</th><th>Ürün</th><th class="r">Miktar</th><th>Birim</th>${once.size || kalemler.some(k => k.siparis_adet) ? '<th class="r">Sipariş / önce</th>' : ''}<th></th></tr></thead><tbody data-kl></tbody></table></div>
-      <div class="frow"><input data-kara placeholder="Ürün kodu ya da adı" list="sv-urun" autocomplete="off" aria-label="Kalem ekle"><datalist id="sv-urun"></datalist><button type="button" class="btn sm" data-kekle>Ekle</button>${'BarcodeDetector' in window ? '<button type="button" class="btn sm" data-skam>Kamerayla okut</button>' : ''}</div><video data-svid playsinline muted hidden class="et-vid"></video><div data-sutani class="ut-kutu"></div><p class="hint">Koli ya da ürün etiketini okuyucuyla okutabilirsin: koli etiketi kolideki adedi, ürün etiketi 1 adet ekler.</p>
+      <h3>Kalemler</h3><div class="tbl-wrap"><table class="tbl sv-k"><thead><tr><th>Kod</th><th>Ürün</th><th class="r">Miktar</th><th class="r" data-khb ${kontrol ? '' : 'hidden'}>Okutulan</th><th>Birim</th>${once.size || kalemler.some(k => k.siparis_adet) ? '<th class="r">Sipariş / önce</th>' : ''}<th></th></tr></thead><tbody data-kl></tbody></table></div>
+      <label class="chk sv-kontrol"><input type="checkbox" data-kontrol ${kontrol ? 'checked' : ''}> <span>Kontrollü hazırla: listedeki kalemleri okutarak doğrula (listede olmayan ya da fazla okutulan uyarır)</span></label><p class="hint" data-kozet></p>
+      <div class="frow"><input data-kara placeholder="Ürün kodu ya da adı" list="sv-urun" autocomplete="off" aria-label="Kalem ekle"><datalist id="sv-urun"></datalist><button type="button" class="btn sm" data-kekle>Ekle</button>${'BarcodeDetector' in window ? '<button type="button" class="btn sm" data-skam>Kamerayla okut</button>' : ''}</div><video data-svid playsinline muted hidden class="et-vid"></video><div data-sutani class="ut-kutu"></div>${sesSecici()}<p class="hint">Koli ya da ürün etiketini okuyucuyla okutabilirsin: koli etiketi kolideki adedi, ürün etiketi 1 adet ekler.</p>
       ${x0.teslim_zaman ? `<p class="hint">Teslim alındı: ${tarih(String(x0.teslim_zaman).slice(0, 10))}${x0.teslim_alan ? ' · ' + esc(x0.teslim_alan) : ''}${x0.teslim_konum ? ` · <a target="_blank" rel="noopener" href="https://maps.google.com/?q=${esc(x0.teslim_konum)}">konum</a>` : ''}</p>${x0.teslim_imza ? `<img class="sv-imza" src="${x0.teslim_imza}" alt="Teslim alan imzası">` : ''}` : ''}
       <p class="hint">“Yolda” ya da “Teslim edildi” olunca kalemler çıkış stoğundan bir kez düşer (iade belgesi ekler); “İptal” geri alır. Hareket kaydına belge numarasıyla yazılır.</p>
       <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`, { wide: true });
@@ -122,28 +127,46 @@ export function sevkFormu(init = {}, sonra) {
   const kCiz = () => {
     const fid = firmaSel?.value, dp = String(form.querySelector('[name=depo]')?.value || '').trim() || null;
     p.querySelector('[data-kl]').innerHTML = kalemler.map((k, i) => { const st = (S.bayi_stok || []).find(s => ayniKalem(s, fid, k.kod, dp)); const o = once.get(k.kod) || 0;
-      return `<tr><td class="mono">${esc(k.kod || '')}</td><td>${esc(k.aciklama || '')}${st ? `<br><small class="muted">stokta ${num(st.adet)}</small>` : k.kod ? '<br><small class="neg">çıkış stoğunda yok</small>' : ''}</td><td class="r"><input type="number" inputmode="decimal" step="any" min="0" class="sy-say" data-km="${i}" value="${k.adet ?? ''}" aria-label="${esc(k.kod)} miktar"></td><td>${esc(k.birim || 'Adet')}</td>${once.size || kalemler.some(y => y.siparis_adet) ? `<td class="r num">${k.siparis_adet ? num(k.siparis_adet) : '—'}${o ? ` / ${num(o)}` : ''}</td>` : ''}<td><button type="button" class="btn sm ghost" data-ksil="${i}" aria-label="${esc(k.kod)} çıkar">×</button></td></tr>`; }).join('') || '<tr><td colspan="6" class="muted">Kalem yok.</td></tr>';
+      return `<tr><td class="mono">${esc(k.kod || '')}</td><td>${esc(k.aciklama || '')}${st ? `<br><small class="muted">stokta ${num(st.adet)}</small>` : k.kod ? '<br><small class="neg">çıkış stoğunda yok</small>' : ''}</td><td class="r"><input type="number" inputmode="decimal" step="any" min="0" class="sy-say" data-km="${i}" value="${k.adet ?? ''}" aria-label="${esc(k.kod)} miktar"></td>${kontrol ? `<td class="r num ${(+k.hazirlanan || 0) === (+k.adet || 0) ? 'pos' : (+k.hazirlanan || 0) > (+k.adet || 0) ? 'warn' : 'neg'}">${num(k.hazirlanan || 0)}${(+k.hazirlanan || 0) === (+k.adet || 0) ? ' ✓' : ''}</td>` : ''}<td>${esc(k.birim || 'Adet')}</td>${once.size || kalemler.some(y => y.siparis_adet) ? `<td class="r num">${k.siparis_adet ? num(k.siparis_adet) : '—'}${o ? ` / ${num(o)}` : ''}</td>` : ''}<td><button type="button" class="btn sm ghost" data-ksil="${i}" aria-label="${esc(k.kod)} çıkar">×</button></td></tr>`; }).join('') || '<tr><td colspan="6" class="muted">Kalem yok.</td></tr>';
+    p.querySelector('[data-khb]').hidden = !kontrol;
+    const kz = p.querySelector('[data-kozet]'); if (kz) { const tam = kalemler.filter(k => (+k.hazirlanan || 0) === (+k.adet || 0)).length; kz.textContent = kontrol ? `${tam}/${kalemler.length} kalem tamam · ${num(kalemler.reduce((a, k) => a + (+k.hazirlanan || 0), 0))}/${num(kalemler.reduce((a, k) => a + (+k.adet || 0), 0))} adet okutuldu` : ''; }
     p.querySelectorAll('[data-km]').forEach(i => i.onchange = () => { kalemler[+i.dataset.km].adet = +i.value || 0; });
     p.querySelectorAll('[data-ksil]').forEach(b => b.onclick = () => { kalemler.splice(+b.dataset.ksil, 1); kCiz(); });
   };
   // Kod, açıklama ya da etiket: koli etiketi kolideki adedi, ürün etiketi / barkod 1 adet ekler; aynı kod varsa miktarı artar
+  // Kontrollü hazırlama: okutulan miktar listedekiyle karşılaştırılır
+  const hazirla = (kod, adet, s) => { const k = kalemler.find(y => y.kod === kod), ad = kisaAd(s || k, kod);
+    if (!k) { bildir('hata', `${ad}, bu sevkte yok`); toast(`${kod}: bu sevk listesinde yok.`, 'err'); return; }
+    k.hazirlanan = (+k.hazirlanan || 0) + adet; const h = +k.hazirlanan, a = +k.adet || 0;
+    if (h > a) { bildir('uyari', `${ad}, fazla: ${num(h)} okutuldu, ${num(a)} olmalı`); toast(`${kod}: fazla okutuldu (${num(h)}/${num(a)})`, 'err'); }
+    else bildir('ok', h === a ? `${ad} tamam` : `${ad}, ${num(h)} / ${num(a)}`);
+    kCiz();
+    if (kalemler.every(y => (+y.hazirlanan || 0) === (+y.adet || 0))) ozetGoster({ baslik: 'Sevk hazır: bütün kalemler okutuldu', satirlar: [`${kalemler.length} kalem · ${num(kalemler.reduce((x, y) => x + (+y.adet || 0), 0))} adet`] });
+  };
   const ekle = (metin = null) => { const v = String(metin ?? p.querySelector('[data-kara]').value).trim(); if (!v) return; const fid = firmaSel?.value, e = etiketCoz(v);
     const st = (S.bayi_stok || []).filter(y => y.firma_id === fid);
     const c = okunaniCoz(v, st, fid);
-    if (c?.bilinmeyen) { taniK?.bilinmeyenBarkod(c.kod); toast(`${c.kod}: bu barkod henüz tanımlı değil; ürünü seçip eşle.`, 'err'); p.querySelector('[data-kara]').value = ''; return; }
+    if (c?.bilinmeyen) { bildir('hata', 'Barkod tanımlı değil'); taniK?.bilinmeyenBarkod(c.kod); toast(`${c.kod}: bu barkod henüz tanımlı değil; ürünü seçip eşle.`, 'err'); p.querySelector('[data-kara]').value = ''; return; }
     if (c?.eslesme) Object.assign(e, { kod: c.kod, adet: c.adet, koli: c.koli, etiket: true });
     const s = c?.s || st.find(y => fold(y.aciklama || '') === fold(v)) || (S.urunler || []).find(u => u.kod === e.kod || fold(u.aciklama || '') === fold(v));
     const kod = s?.kod || e.kod, var_ = kalemler.find(k => k.kod && k.kod === kod);
+    if (kontrol) { p.querySelector('[data-kara]').value = ''; return hazirla(kod, e.adet, s); }
     if (var_) var_.adet = (+var_.adet || 0) + e.adet;
     else kalemler.push({ kod, aciklama: s?.aciklama || (s ? '' : v), birim: s?.birim || 'Adet', adet: e.adet });
     if (e.etiket) toast(`${kod}: +${num(e.adet)}${e.koli ? ' (koli)' : ''}`);
+    const es = e.parti && s && eskiParti(fid, kod, e.parti);
+    if (es) { toast(`${kod}: önce eski parti çıkmalı → ${es.no}${es.uretim_tarihi ? ' (üretim ' + es.uretim_tarihi + ')' : ''}`, 'err'); bildir('uyari', `Önce eski parti çıkmalı: ${es.no}`); }
+    else { const rz = s && rezervUyarisi(s, +(kalemler.find(k => k.kod === kod)?.adet || e.adet), { proje_id: form.querySelector('[name=proje_id]')?.value || null, musteri_id: form.querySelector('[name=alici_id]')?.value || null });
+      if (rz) { toast(`${kod}: ${rz}`, 'err'); bildir('uyari', `${kisaAd(s, kod)}, dikkat, ${rz}`); } else bildir(s ? 'ok' : 'uyari', `${kisaAd(s, kod)}, ${num(e.adet)} adet eklendi${s ? '' : ', stokta yok'}`); }
     p.querySelector('[data-kara]').value = ''; kCiz(); };
   p.querySelector('[data-kekle]').onclick = () => ekle();
+  sesSeciciBagla(p);
   let kamDur = null;
   const taniK = taniKutusu(p.querySelector('[data-sutani]'), { kalemler: () => (S.bayi_stok || []).filter(y => y.firma_id === firmaSel?.value), firma_id: null, yeniKalem: true,
-    onEkle: ({ kod, adet, s, aciklama }) => { const var_ = kalemler.find(k => k.kod === kod); if (var_) var_.adet = (+var_.adet || 0) + adet; else kalemler.push({ kod, aciklama: s?.aciklama || aciklama || '', birim: s?.birim || 'Adet', adet }); toast(`${kod}: +${num(adet)}`); kCiz(); } });
+    onEkle: ({ kod, adet, s, aciklama }) => { if (kontrol) return hazirla(kod, adet, s); const var_ = kalemler.find(k => k.kod === kod); if (var_) var_.adet = (+var_.adet || 0) + adet; else kalemler.push({ kod, aciklama: s?.aciklama || aciklama || '', birim: s?.birim || 'Adet', adet }); toast(`${kod}: +${num(adet)}`); kCiz(); } });
   p.querySelector('[data-skam]')?.addEventListener('click', async e => { if (kamDur) { kamDur(); kamDur = null; e.target.textContent = 'Kamerayla okut'; return; }
     try { kamDur = await kameraBaslat(p.querySelector('[data-svid]'), k => ekle(k)); e.target.textContent = 'Kamerayı kapat'; } catch (er) { toast(er.message, 'err'); } }); p.querySelector('[data-kara]').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); ekle(); } };
+  p.querySelector('[data-kontrol]').onchange = e => { kontrol = e.target.checked; if (kontrol) kalemler.forEach(k => { if (k.hazirlanan == null) k.hazirlanan = 0; }); else kalemler.forEach(k => { delete k.hazirlanan; }); kCiz(); };
   firmaSel?.addEventListener('change', () => { urunListe(); kCiz(); }); form.querySelector('[name=depo]')?.addEventListener('change', kCiz);
   urunListe(); kCiz();
   form.onsubmit = async e => { e.preventDefault(); const o = await readForm(form, FM, x0);
@@ -152,6 +175,8 @@ export function sevkFormu(init = {}, sonra) {
     if (!o.alici_id && o.tur !== 'İade') return toast('Alıcıyı seç.', 'err');
     if (!o.kalemler.length) return toast('En az bir kalem ekle.', 'err');
     if (['Yolda', 'Teslim edildi'].includes(o.durum) && !o.tarih) o.tarih = today();
+    if (kontrol && ['Hazırlanıyor', 'Yolda', 'Teslim edildi'].includes(o.durum)) { const fark = o.kalemler.filter(k => (+k.hazirlanan || 0) !== (+k.adet || 0));
+      if (fark.length && o.durum !== 'Hazırlanıyor' && !confirmBox(`Kontrolde ${fark.length} kalem tutmuyor:\n${fark.slice(0, 8).map(k => `• ${k.kod}: ${num(k.hazirlanan || 0)} okutuldu, ${num(k.adet)} olmalı`).join('\n')}\n\nYine de kaydedilsin mi?`)) return; }
     if (['Yolda', 'Teslim edildi'].includes(o.durum) && !x0.stok_dustu && o.firma_id) {
       const eksik = o.kalemler.filter(k => { const st = (S.bayi_stok || []).find(s => ayniKalem(s, o.firma_id, k.kod, o.depo)); return o.tur !== 'İade' && (+st?.adet || 0) < (+k.adet || 0); });
       if (eksik.length && !confirmBox(`Çıkış stoğu yetmiyor:\n${eksik.map(k => `• ${k.kod}: ${num(k.adet)} isteniyor`).join('\n')}\n\nYine de kaydedilsin mi? (stok sıfırın altına inmez)`)) return;

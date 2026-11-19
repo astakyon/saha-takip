@@ -32,6 +32,20 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 125)
+
+- **Okutma sesi** (`js/okutmases.js`): okutma ekranlarında (etiketle giriş / çıkış, sevk, sayım, hızlı sorgu) üç seçenek: sesli okuma (telefonun Türkçe sesiyle “Fontana 33W, 6 adet eklendi”), yalnız uyarı sesi (başarıda kısa bip, hatada farklı ses) ya da sessiz (yalnız titreşim). Seçim cihazda saklanır. Kaydettikten sonra ekranda özet kartı: kaç kalem / adet, nasıl tanındı (üretici barkodu, bizim etiket, fotoğraf / eşleme, elle), irsaliye farkları, hasarlılar, kritik seviyenin altına inenler.
+- **Kalem kartı**: ürün resimleri, güç (W), ışık akısı (lm), renk sıcaklığı (K), IP (açıklamadan kendiliğinden önerilir), ayrıntılı açıklama, “+ Yeni alan” ile kendi açıklama alanların, koli içi adet, koli ağırlığı ve ölçüsü, raf yeri. Listede raf yeri ve resim işareti görünür, aramada raf ve ayrıntılı açıklama da aranır.
+- **Raf**: “Etiket yazdır → Raf etiketi” (QR `RAF1|raf`). Etiketle girişte raf etiketi okutulunca rafı boş ürünler o rafa yerleşir; sayımda okutulunca yalnız o raftaki ürünler listelenir.
+- **Parti ve raf ömrü**: partiye üretim ve son tarih; etiketle girişte etiketteki parti açılır / artar, çıkışta azalır. Çıkış ve sevkte daha eski parti stoktayken yeni parti okutulursa “önce eski parti” uyarısı; son tarihi geçen ya da 60 gün içinde gelen parti listede işaretlenir.
+- **Mal kabul** (`js/stokkontrol.js`): etiketle girişte irsaliyedeki liste yapıştırılır ya da Excel'den alınır; okuttukça tamam / eksik / fazla / listede yok görünür, irsaliye dışı ve fazla okutma uyarır. Satırda “Hasarlı” ile hasarlı adet stoğa girmez, hasar kaydı açılır. “Fark tutanağı” yazdırılır.
+- **Sevk kontrolü**: sevk belgesinde “Kontrollü hazırla” açılınca okutulan miktar listedekiyle karşılaştırılır (✓ tamam, listede yok hata, fazla uyarı); tutmayan kalemle yola çıkarken onay istenir.
+- **Hasarlı ürünler** (`stok_hasar`): gelen malda hasar, depoda hasar, müşteri iadesi; fotoğraf (tarih damgalı), tedarikçi, irsaliye no, durum (Açık → Üreticiye bildirildi → Değişim geldi / İade edildi / Kapandı), isteğe bağlı stoktan düşme, tutanak (fotoğraflı) ve WhatsApp metni.
+- **Projeye ayırma** (`stok_rezerv`, `js/stokrezerv.js`): seçili kalemi projeye / müşteriye ayır; listede “ayrıldı · serbest” görünür, başka müşteriye çıkış ve sevkte uyarı verir, o projeye sevk yola çıkınca ayrılan miktardan düşülür.
+- **Kritik stok görevi**: otomasyon kuralı; kritik seviyenin altına inen ürünler için bayi başına haftada bir “Sipariş zamanı” görevi (ürünler görevde yazar).
+- **Hızlı sorgu**: kod, barkod ya da ürün adı yaz, okut ya da 🎤 ile sor (“Fontana 33 watt kaç tane var”); bütün bayilerdeki miktar, ayrılan, raf; sonuç sesli söylenir.
+- Şema 61–63: `bayi_stok` resim, teknik, koli, raf sütunları; `stok_seri` üretim / son tarih; `stok_hasar`, `stok_rezerv` tabloları (RLS, bayi kısıtı).
+
 ## Güncelleme notu (sürüm 124)
 
 - **Üretici etiketi tanıma** (`js/ureticietiket.js`): etiket fotoğrafı tarayıcıda okunur (Tesseract; yön denenir, seyrek ve blok okuma birleşir) ve destekleyen telefonda barkod / QR da görüntüden çözülür. Marka etikette geçen yazıdan ya da barkodun firma önekinden bulunur; ürün kodu marka tanımındaki kod sözcüğünden sonra (CODE, Ürün Kodu, PRDC.CODE, Model, EAN…), adet “Miktar 6” ya da “6 PCS” biçiminden okunur; EAN sağlama hanesiyle doğrulanır, boşluklu yazılan barkod numarası da birleştirilir.

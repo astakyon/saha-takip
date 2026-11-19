@@ -1,6 +1,7 @@
 // Stok sayımı: sistemdeki miktar ile depoda sayılan yan yana; fark raporu (eksik / fazla, adet ve tutar); onaylanınca stok sayılana çekilir,
 // fark hareket kaydına "sayım düzeltmesi" olarak (kim, ne zaman) yazılır. Sayım taslağı kaydedilir: telefonla depoda gezerken kaybolmaz.
 import { okunaniCoz } from './etiket.js';
+import { bildir, kisaAd, sesSecici, sesSeciciBagla } from './okutmases.js';
 import { S, uuid } from './db.js';
 import { app } from './state.js';
 import { esc, num, usd, tarih, today, toast, openDrawer, closeDrawer, confirmBox, fold, firmaAd, exportXlsx } from './ui.js';
@@ -71,30 +72,35 @@ export function sayimPenceresi({ b, firma_id, grup_id = null, grupAd = null, dep
       <div class="dbody">
         <div class="sy-ozet" data-ozet></div>
         <div class="frow"><input type="search" data-sara placeholder="Kodu okut ya da yaz, Enter" aria-label="Kod okut ya da ara" autocomplete="off" enterkeyhint="go">${'BarcodeDetector' in window ? '<button type="button" class="btn" data-kamera>Kamerayla okut</button>' : ''}
-          <label class="chk"><input type="checkbox" data-arti> <span>Her okutma +1</span></label></div>
+          <label class="chk"><input type="checkbox" data-arti> <span>Her okutma +1</span></label></div>${sesSecici()}
         <div class="seg" role="group" aria-label="Göster">${[['hepsi', 'Hepsi'], ['sayilmadi', 'Sayılmadı'], ['fark', 'Farklı']].map(([k, t], i) => `<button type="button" data-sg="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
+        <p class="raf-aktif" data-sraf hidden></p>
         <video data-vid playsinline hidden></video>
         <div class="tbl-wrap"><table class="tbl sy-t"><thead><tr><th>Kod</th><th>Ürün</th><th class="r">Sistem</th><th class="r">Sayılan</th><th class="r">Fark</th></tr></thead><tbody data-tb></tbody></table></div>
       </div>
       <div class="dfoot sticky"><label class="chk"><input type="checkbox" data-sifir> <span>Sayılmayanları 0 kabul et</span></label><button type="button" class="btn primary" data-onay>Onayla ve stoğu güncelle</button></div>`;
-    let sg = 'hepsi', q = '';
+    let sg = 'hepsi', q = '', raf = null;
     const ozet = () => { const F = sayimFarki(say, kalemler);
       p.querySelector('[data-ozet]').innerHTML = `<b>${F.sayilanN}/${kalemler.length}</b> kalem sayıldı · <span class="neg">${F.eksik.length} eksik${F.eksikTutar ? ' (' + usd(Math.round(Math.abs(F.eksikTutar))) + ')' : ''}</span> · <span class="pos">${F.fazla.length} fazla${F.fazlaTutar ? ' (' + usd(Math.round(F.fazlaTutar)) + ')' : ''}</span> · ${F.esit.length} aynı`; };
     const satir = x => `<tr data-k="${esc(x.s.kod)}" class="${x.fark ? (x.fark < 0 ? 'eksik' : 'fazla') : ''}"><td class="mono">${esc(x.s.kod)}${x.s.firma_kodu ? `<br><small class="muted">${esc(x.s.firma_kodu)}</small>` : ''}</td><td>${esc(x.s.aciklama || '')}</td><td class="r num">${num(x.s.adet)}${x.s.birim ? ' <small class="muted">' + esc(x.s.birim) + '</small>' : ''}</td>
       <td class="r"><input type="number" inputmode="decimal" step="any" class="sy-say" data-say="${esc(x.s.kod)}" value="${x.sayilan ?? ''}" aria-label="${esc(x.s.kod)} sayılan"></td><td class="r num" data-fk>${x.fark == null ? '' : (x.fark > 0 ? '+' : '') + num(x.fark)}</td></tr>`;
     const liste = () => { const F = sayimFarki(say, kalemler);
-      const g = F.l.filter(x => (!q || fold([x.s.kod, x.s.firma_kodu, x.s.uretici_kodu, x.s.aciklama].join(' ')).includes(fold(q))) && (sg === 'hepsi' || (sg === 'sayilmadi' ? x.sayilan == null : x.fark)));
+      const rk = p.querySelector('[data-sraf]'); if (rk) { rk.hidden = !raf; rk.innerHTML = raf ? `▦ Raf <b>${esc(raf)}</b>: yalnız bu raftaki ${F.l.filter(x => x.s.raf === raf).length} ürün <button type="button" class="linkbtn" data-srafsil>bütün raflar</button>` : ''; rk.querySelector('[data-srafsil]')?.addEventListener('click', () => { raf = null; liste(); }); }
+      const g = F.l.filter(x => (!raf || x.s.raf === raf) && (!q || fold([x.s.kod, x.s.firma_kodu, x.s.uretici_kodu, x.s.aciklama].join(' ')).includes(fold(q))) && (sg === 'hepsi' || (sg === 'sayilmadi' ? x.sayilan == null : x.fark)));
       p.querySelector('[data-tb]').innerHTML = g.slice(0, 500).map(satir).join('') || '<tr><td colspan="5" class="muted">Kalem yok.</td></tr>';
       p.querySelectorAll('[data-say]').forEach(i => { i.onchange = async () => { say = await sayimYaz(say, i.dataset.say, i.value); const x = sayimFarki(say, kalemler).l.find(y => y.s.kod === i.dataset.say); const tr = i.closest('tr'); tr.className = x.fark ? (x.fark < 0 ? 'eksik' : 'fazla') : ''; tr.querySelector('[data-fk]').textContent = x.fark == null ? '' : (x.fark > 0 ? '+' : '') + num(x.fark); ozet(); };
         i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); i.blur(); p.querySelector('[data-sara]').focus(); } }; });
       ozet(); };
     // Koli etiketi kolideki adedi ekler (her zaman), ürün etiketi / barkod "+1" seçiliyse 1 ekler
     const okut = async kod => { const e = okunaniCoz(kod, kalemler, say.firma_id); if (!e) return;
+      if (e.raf) { raf = e.raf; q = ''; p.querySelector('[data-sara]').value = ''; liste(); bildir('ok', 'Raf ' + raf); return; }
       if (e.eslesme) e.etiket = true;   // öğrenilmiş üretici barkodu: kolideki adet eklenir
       const x = e.s;
+      if (!x) bildir('hata', e.bilinmeyen ? 'Barkod tanımlı değil' : 'Bu sayımda yok');
       if (!x) return toast(e.bilinmeyen ? `${e.kod}: bu barkod henüz tanımlı değil. Stoklar → Etiketle giriş / çıkış ekranında fotoğrafla tanıtıp eşleyebilirsin.` : `${e.kod}: bu sayımda böyle bir kalem yok.`, 'err');
-      if (p.querySelector('[data-arti]').checked || e.etiket) { const v = (+say.sayilan?.[x.kod] || 0) + e.adet; say = await sayimYaz(say, x.kod, v); q = ''; p.querySelector('[data-sara]').value = ''; liste(); toast(`${x.kod}: ${e.koli ? `+${num(e.adet)} (koli) → ` : ''}${num(v)}`); return; }
+      if (p.querySelector('[data-arti]').checked || e.etiket) { const v = (+say.sayilan?.[x.kod] || 0) + e.adet; say = await sayimYaz(say, x.kod, v); q = ''; p.querySelector('[data-sara]').value = ''; liste(); toast(`${x.kod}: ${e.koli ? `+${num(e.adet)} (koli) → ` : ''}${num(v)}`); bildir('ok', `${kisaAd(x)}, ${num(e.adet)} eklendi, toplam ${num(v)}`); return; }
       q = x.kod; liste(); const i = p.querySelector(`[data-say="${CSS.escape(x.kod)}"]`); i?.focus(); i?.select(); };
+    sesSeciciBagla(p);
     p.querySelector('[data-sara]').oninput = e => { q = e.target.value; liste(); };
     p.querySelector('[data-sara]').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); okut(e.target.value); } };
     p.querySelectorAll('[data-sg]').forEach(x => x.onclick = () => { sg = x.dataset.sg; p.querySelectorAll('[data-sg]').forEach(y => y.classList.toggle('on', y === x)); liste(); });

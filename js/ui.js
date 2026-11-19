@@ -118,6 +118,13 @@ export function toast(msg, kind = '') {
   clearTimeout(tt); tt = setTimeout(() => el.className = '', kind === 'err' ? 6000 : 2800);
 }
 
+// Açılır menü ekrandan ve alttaki menü çubuğundan taşmasın: kalan yüksekliğe sığdır, gerisi kaydırılır
+export function menuSigdir(menu) {
+  menu.style.maxHeight = '';
+  const nav = document.getElementById('nav'), navUst = nav && getComputedStyle(nav).position === 'fixed' ? nav.getBoundingClientRect().top : innerHeight;
+  const ust = menu.getBoundingClientRect().top, kalan = Math.floor(Math.min(innerHeight, navUst) - ust - 8);
+  if (kalan > 120 && menu.scrollHeight > kalan) { menu.style.maxHeight = kalan + 'px'; menu.style.overflowY = 'auto'; }
+}
 // ---------- Çekmece (detay / form paneli) ----------
 const drawer = () => document.getElementById('drawer');
 let onCloseCb = null;
@@ -172,7 +179,7 @@ export function aksiyonlariDuzenle(p) {
   for (const x of kalan) { x.setAttribute('role', 'menuitem'); menu.appendChild(x); }
   act.appendChild(kutu);
   const kapat = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
-  btn.onclick = e => { e.stopPropagation(); if (!menu.hidden) return kapat(); menu.hidden = false; btn.setAttribute('aria-expanded', 'true'); };
+  btn.onclick = e => { e.stopPropagation(); if (!menu.hidden) return kapat(); menu.hidden = false; menuSigdir(menu); btn.setAttribute('aria-expanded', 'true'); };
   menu.addEventListener('click', () => setTimeout(kapat, 0));
   p.addEventListener('click', e => { if (!kutu.contains(e.target)) kapat(); });
 }

@@ -18,22 +18,35 @@ export async function seriKaydet(o) {
   const ayni = (S.stok_seri || []).find(x => x.id !== o.id && x.firma_id === o.firma_id && x.kod === o.kod && fold(String(x.no)) === fold(no));
   if (ayni) throw new Error(`${no} bu üründe zaten kayıtlı.`);
   const r = { id: o.id || uuid(), firma_id: o.firma_id, kod: o.kod, depo: o.depo || null, tur: o.tur || 'Parti', no, adet: o.tur === 'Seri' ? 1 : (+o.adet || null), tarih: o.tarih || today(), durum: o.durum || 'Stokta',
-    musteri_id: o.musteri_id || null, proje_id: o.proje_id || null, garanti_ay: o.garanti_ay === '' || o.garanti_ay == null ? null : +o.garanti_ay, notlar: o.notlar || null };
+    musteri_id: o.musteri_id || null, proje_id: o.proje_id || null, garanti_ay: o.garanti_ay === '' || o.garanti_ay == null ? null : +o.garanti_ay, notlar: o.notlar || null, uretim_tarihi: o.uretim_tarihi || null, son_tarih: o.son_tarih || null };
   await app.db.save('stok_seri', r); return r;
+}
+// Önce eski parti: çıkış / sevkte okutulan partiden daha eski (üretim ya da giriş tarihi) stokta parti varsa onu döndürür
+export function eskiParti(firma_id, kod, no) {
+  const l = (S.stok_seri || []).filter(x => x.firma_id === firma_id && x.kod === kod && x.tur !== 'Seri' && x.durum === 'Stokta' && (x.adet == null || +x.adet > 0));
+  const yas = x => String(x.uretim_tarihi || x.tarih || '9999'), bu = l.find(x => fold(String(x.no)) === fold(String(no || '')));
+  if (!bu) return null; return l.filter(x => x !== bu && yas(x) < yas(bu)).sort((a, b) => yas(a).localeCompare(yas(b)))[0] || null;
+}
+// Etiketle giriş / çıkışta parti miktarı: girişte parti yoksa açılır, varsa artar; çıkışta azalır
+export async function partiHareketi(firma_id, kod, depo, no, adet) {
+  if (!no || !adet) return;
+  const x = (S.stok_seri || []).find(y => y.firma_id === firma_id && y.kod === kod && fold(String(y.no)) === fold(String(no)));
+  if (x) { const yeni = Math.max(0, (+x.adet || 0) + adet); await app.db.save('stok_seri', { ...x, adet: yeni, durum: yeni > 0 ? 'Stokta' : x.durum === 'Stokta' ? 'Satıldı' : x.durum }); }
+  else if (adet > 0) await seriKaydet({ firma_id, kod, depo, tur: 'Parti', no, adet });
 }
 // Kalem kartının altındaki bölüm
 export function seriBolumu(s) {
   const l = seriler(s.firma_id, s.kod, s.depo ?? null);
   return `<section class="sr-bolum" data-sr="${s.id}"><h3>Seri / parti numaraları <small class="muted">${l.length || ''}</small></h3>
-    ${l.length ? `<ul class="list">${l.map(x => { const sv = seriServisleri(x.no), gb = garantiBitis(x); return `<li><span><b class="mono">${esc(x.no)}</b> <small class="muted">${esc(x.tur)}${x.tur !== 'Seri' && x.adet ? ' · ' + num(x.adet) : ''} · ${tarih(x.tarih)}${gb ? ` · garanti ${gb < today() ? '<span class="neg">bitti</span>' : tarih(gb) + "'e kadar"}` : ''}${x.musteri_id ? ' · ' + esc(firmaAd(x.musteri_id) || '') : ''}</small>${sv.length ? ` <em class="flag soft">${sv.length} servis kaydı</em>` : ''}</span>
+    ${l.length ? `<ul class="list">${l.map(x => { const sv = seriServisleri(x.no), gb = garantiBitis(x); return `<li><span><b class="mono">${esc(x.no)}</b> <small class="muted">${esc(x.tur)}${x.tur !== 'Seri' && x.adet ? ' · ' + num(x.adet) : ''} · ${tarih(x.tarih)}${x.uretim_tarihi ? ` · üretim ${tarih(x.uretim_tarihi)}` : ''}${x.son_tarih ? ` · son tarih ${String(x.son_tarih) < today() ? `<span class="neg">${tarih(x.son_tarih)} (geçti)</span>` : tarih(x.son_tarih)}` : ''}${gb ? ` · garanti ${gb < today() ? '<span class="neg">bitti</span>' : tarih(gb) + "'e kadar"}` : ''}${x.musteri_id ? ' · ' + esc(firmaAd(x.musteri_id) || '') : ''}</small>${sv.length ? ` <em class="flag soft">${sv.length} servis kaydı</em>` : ''}</span>
       <span class="btnrow"><select data-srdurum="${x.id}" aria-label="${esc(x.no)} durum">${SERI_DURUM.map(d => `<option ${d === x.durum ? 'selected' : ''}>${d}</option>`).join('')}</select><button type="button" class="btn sm ghost" data-srservis="${x.id}">Servis kaydı</button><button type="button" class="btn sm ghost danger" data-srsil="${x.id}" aria-label="${esc(x.no)} sil">Sil</button></span></li>`; }).join('')}</ul>` : '<p class="muted">Kayıtlı seri ya da parti numarası yok.</p>'}
-    <div class="sr-ekle"><select data-srtur aria-label="Tür"><option>Parti</option><option>Seri</option></select><input data-srno placeholder="Parti / seri no" aria-label="Seri ya da parti numarası" autocomplete="off"><input data-sradet type="number" inputmode="decimal" placeholder="Miktar" aria-label="Partideki miktar"><input data-srgar type="number" inputmode="numeric" placeholder="Garanti (ay)" aria-label="Garanti süresi, ay"><button type="button" class="btn sm" data-srekle>Ekle</button></div>
-    <p class="hint">Armatürde parti, sürücüde seri numarası. Servis kaydında aynı seri numarası girilince bu kalemle eşleşir.</p></section>`;
+    <div class="sr-ekle"><select data-srtur aria-label="Tür"><option>Parti</option><option>Seri</option></select><input data-srno placeholder="Parti / seri no" aria-label="Seri ya da parti numarası" autocomplete="off"><input data-sradet type="number" inputmode="decimal" placeholder="Miktar" aria-label="Partideki miktar"><input data-srgar type="number" inputmode="numeric" placeholder="Garanti (ay)" aria-label="Garanti süresi, ay"><label class="sr-t"><small>Üretim</small><input data-sruret type="date" aria-label="Üretim tarihi"></label><label class="sr-t"><small>Son tarih</small><input data-srson type="date" aria-label="Son kullanma ya da raf ömrü bitişi"></label><button type="button" class="btn sm" data-srekle>Ekle</button></div>
+    <p class="hint">Armatürde parti, sürücüde seri numarası. Üretim tarihi girilen partilerde çıkışta önce eski parti önerilir; son tarihi yaklaşan parti stok listesinde işaretlenir. Servis kaydında aynı seri numarası girilince bu kalemle eşleşir.</p></section>`;
 }
 export function seriBolumuBagla(kok, s, yenile) {
   const b = kok.querySelector(`[data-sr="${s.id}"]`); if (!b) return;
   b.querySelector('[data-srekle]').onclick = async () => {
-    try { await seriKaydet({ firma_id: s.firma_id, kod: s.kod, depo: s.depo ?? null, tur: b.querySelector('[data-srtur]').value, no: b.querySelector('[data-srno]').value, adet: b.querySelector('[data-sradet]').value, garanti_ay: b.querySelector('[data-srgar]').value }); toast('Seri / parti eklendi.'); yenile(); }
+    try { await seriKaydet({ firma_id: s.firma_id, kod: s.kod, depo: s.depo ?? null, tur: b.querySelector('[data-srtur]').value, no: b.querySelector('[data-srno]').value, adet: b.querySelector('[data-sradet]').value, garanti_ay: b.querySelector('[data-srgar]').value, uretim_tarihi: b.querySelector('[data-sruret]').value || null, son_tarih: b.querySelector('[data-srson]').value || null }); toast('Seri / parti eklendi.'); yenile(); }
     catch (er) { toast(er.message, 'err'); } };
   b.querySelectorAll('[data-srdurum]').forEach(x => x.onchange = async () => { const r = S.stok_seri.find(y => y.id === x.dataset.srdurum); await app.db.save('stok_seri', { ...r, durum: x.value }); toast(`${r.no}: ${x.value}`); });
   b.querySelectorAll('[data-srsil]').forEach(x => x.onclick = async () => { const r = S.stok_seri.find(y => y.id === x.dataset.srsil); if (!confirmBox(`${r.no} silinsin mi?`)) return; await app.db.del('stok_seri', r.id); yenile(); });

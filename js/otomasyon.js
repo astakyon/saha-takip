@@ -43,6 +43,7 @@ export const KURALLAR = [
   { k: 'siparis_sonrasi', ad: 'Siparişten sonra teslimat takibi', ac: 'Proje "Sipariş" olunca teslimat ve montajı takip etme görevi açılır.', gun: 14, metin: p => `Teslimat ve montajı takip et: ${p.ad}` },
   { k: 'teklif_sure', ad: 'Teklif süresi dolmadan hatırlat', ac: 'Gönderilmiş teklifin geçerliliği bitmeden seçilen gün kala görev açılır.', gun: 2, tarama: true },
   { k: 'teklif_yanit', ad: 'Yanıtsız teklifi takip et', ac: 'Gönderilen teklife seçilen gün içinde yanıt (kabul ya da red) gelmezse "Teklifin sonucunu sor" görevi açılır.', gun: 7, tarama: true },
+  { k: 'stok_kritik', ad: 'Kritik seviyenin altındaki stok', ac: 'Bir bayide ürün kritik seviyenin altına inince haftada bir "Sipariş zamanı" görevi açılır (ürünler görevde yazar).', gun: 0, tarama: true },
   { k: 'numune_iade', ad: 'Numune iade günü', ac: 'Müşterideki numunenin iade tarihi gelince "Numuneyi geri al" görevi açılır.', gun: 0, tarama: true },
   { k: 'tahsilat_vade', ad: 'Vadesi geçen fatura', ac: 'Açık faturanın vadesi seçilen gün geçince tahsilat görevi açılır.', gun: 1, tarama: true },
 ];
@@ -89,6 +90,12 @@ export async function otomasyonTara({ zorla = false } = {}) {
       if (!x.gecerlilik || x.durum !== 'Gönderildi') continue;
       if (gunEkle(x.gecerlilik, -R.teklif_sure.gun) <= t && x.gecerlilik >= gunEkle(t, -1))
         n += await ac(`oto:teklif_sure:${x.id}`, { baslik: `Teklif süresi doluyor: ${x.teklif_no || 'teklif'}${x.firma_id ? ' (' + firmaAd(x.firma_id) + ')' : ''}`, son_tarih: x.gecerlilik, firma_id: x.firma_id || null, proje_id: x.proje_id || null, kisi_id: x.kisi_id || null, oncelik: 'Yüksek' }) ? 1 : 0;
+    }
+    if (R.stok_kritik.acik && (S.bayi_stok || []).length) {
+      const { kritikAltindakiler } = await import('./stokrezerv.js'); const m = new Map();
+      for (const s of kritikAltindakiler()) (m.get(s.firma_id) || m.set(s.firma_id, []).get(s.firma_id)).push(s);
+      const hafta = (d => { const t = new Date(d + 'T00:00'); const y = new Date(t.getFullYear(), 0, 1); return t.getFullYear() + '-' + Math.ceil(((t - y) / 864e5 + y.getDay() + 1) / 7); })(t);
+      for (const [fid, l] of m) n += await ac(`oto:stok_kritik:${fid}:${hafta}`, { baslik: `Sipariş zamanı: ${firmaAd(fid) || 'bayi'} – ${l.length} ürün kritik seviyenin altında`, notlar: l.slice(0, 25).map(s => `• ${s.kod} ${s.aciklama || ''}: ${s.adet} / kritik ${s.kritik}`).join('\n'), son_tarih: t, firma_id: fid, oncelik: 'Yüksek' }) ? 1 : 0;
     }
     if (R.teklif_yanit.acik) for (const x of S.teklifler || []) {
       if (x.durum !== 'Gönderildi') continue;

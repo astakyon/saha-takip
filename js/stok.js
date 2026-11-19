@@ -38,7 +38,7 @@ export function teklifteAyrilan() {
 }
 // USD'den gösterim para birimine (kur yoksa null)
 export function usddenCevir(v, pb = 'USD') { v = +v || 0; if (pb === 'USD' || !v) return v; const k = kur(); if (!k?.USD) return null; return pb === 'TRY' || pb === 'TL' ? v * k.USD : k[pb] ? v * k.USD / k[pb] : null; }
-export const HAREKET_AD = { giris: 'Giriş', cikis: 'Çıkış', excel: 'Excel yükleme', duzeltme: 'Düzeltme', sayim: 'Sayım düzeltmesi', silme: 'Silindi', pasif: 'Pasife alındı', aktif: 'Aktif yapıldı', transfer: 'Transfer', sevk: 'Sevk', iade: 'İade' };
+export const HAREKET_AD = { giris: 'Giriş', cikis: 'Çıkış', excel: 'Excel yükleme', duzeltme: 'Düzeltme', sayim: 'Sayım düzeltmesi', silme: 'Silindi', pasif: 'Pasife alındı', aktif: 'Aktif yapıldı', transfer: 'Transfer', sevk: 'Sevk', iade: 'İade', hasar: 'Hasar' };
 // Satırın birim fiyatı ve para birimi: bayinin kendi fiyatı, yoksa ürün listesindeki USD fiyat
 export function satirFiyat(s) {
   if (s?.birim_fiyat != null && s.birim_fiyat !== '' && +s.birim_fiyat) return { fiyat: +s.birim_fiyat, pb: s.para_birimi || 'USD' };

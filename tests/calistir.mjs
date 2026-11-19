@@ -1506,6 +1506,88 @@ const DB = () => {
   kontrol('Üretici etiketi ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 125–128: okutma sesi ve özet, kalem kartında resim / teknik / koli / raf, raf etiketi ve raf sayımı, parti ve önce eski parti, mal kabul (beklenen liste, hasarlı), sevk kontrolü, hasar kayıtları, projeye ayırma, kritik görevi, hızlı sorgu
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.bayiler = [{ id: 'b1', owner: 'u1', firma_id: 'f1', tur: 'Bayi', durum: 'Aktif', created_at: ts, updated_at: ts }];
+    const k = (id, kod, a, adet, x = {}) => ({ id, owner: 'u1', firma_id: 'f1', kod, aciklama: a, adet, birim: 'Adet', son_hareket: '2026-11-10', created_at: ts, updated_at: ts, ...x });
+    d.bayi_stok = [k('s1', 'L1', 'PLSETJ FONTANA 33W 4000K IP66', 40, { kritik: 10 }), k('s2', 'L2', 'Projektör 100W', 8, { raf: 'B-02' }), k('s3', 'L3', 'Kablo kanalı', 3)];
+    d.stok_seri = [{ id: 'pr1', owner: 'u1', firma_id: 'f1', kod: 'L1', tur: 'Parti', no: 'P1', adet: 20, tarih: '2026-01-10', uretim_tarihi: '2025-12-01', son_tarih: '2026-12-01', durum: 'Stokta', created_at: ts, updated_at: ts }];
+    d.stok_barkodlari = []; d.stok_hasar = []; d.stok_rezerv = [];
+    localStorage.setItem('__DB', JSON.stringify(d)); localStorage.setItem('saha-okutma-ses', 'konus');`) });
+  await p.goto(U + '#/bayistok'); await w(1500);
+  await p.evaluate(async () => { const { F, saveFilters } = await import('./js/state.js'); Object.assign(F('bayistok', {}), { id: 'b1', grup: '', q: '', sadece: 'tum', depo: '' }); saveFilters(); window.__geribildirim = []; window.prompt = () => '2'; });
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/bayistok'); await w(1200);
+  await p.evaluate(() => { window.__geribildirim = []; });
+  const ac = async sel => { if (!(await p.isVisible(sel))) await p.click('header.vh .vh-daha-btn'); await p.click(sel); await w(500); };
+  const okut = async (v, sel = '[data-okut]') => { await p.fill('.drawer.open ' + sel, v); await p.press('.drawer.open ' + sel, 'Enter'); await w(300); };
+  const gb = () => p.evaluate(() => window.__geribildirim.map(x => x.tur + ':' + x.metin));
+  // Mal kabul: beklenen liste, raf etiketi, parti, hasarlı, ses ve özet
+  await ac('[data-etgc]');
+  const sesSec = await p.evaluate(() => [...document.querySelectorAll('.drawer.open [data-sesmod]')].map(b => b.dataset.sesmod + (b.classList.contains('on') ? '*' : '')).join());
+  await p.evaluate(() => document.querySelector('.drawer.open [data-bk]').open = true);
+  await p.fill('.drawer.open [data-bkmetin]', 'L1 20\nL2 5\nL3 1'); await p.click('.drawer.open [data-bkuygula]'); await w(300);
+  await okut('RAF1|A-01'); await okut('STK1|L1|10|P2'); await okut('STK1|L1|10|P2'); await okut('L2 x 5'); await okut('YENI9');
+  const ses1 = await gb();
+  await p.click('.drawer.open [data-hasar="1"]'); await w(300);
+  const tablo = await p.evaluate(() => document.querySelector('.drawer.open [data-l]').innerText.replace(/\s+/g, ' '));
+  await p.fill('.drawer.open [data-not]', 'İrs 77'); await p.click('.drawer.open [data-kaydet]'); await w(1500);
+  const gir = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return { l1: S.bayi_stok.find(s => s.id === 's1').adet, raf1: S.bayi_stok.find(s => s.id === 's1').raf, l2: S.bayi_stok.find(s => s.id === 's2').adet, raf2: S.bayi_stok.find(s => s.id === 's2').raf, yeniRaf: S.bayi_stok.find(s => s.kod === 'YENI9')?.raf, p2: S.stok_seri.find(x => x.no === 'P2')?.adet, hasar: S.stok_hasar.map(h => [h.kod, h.adet, h.tur, h.belge_no].join(':')).join(), ozet: document.getElementById('okutma-ozet')?.innerText.replace(/\s+/g, ' ') || '' }; });
+  kontrol('Mal kabul: sesli okuma seçili, okutmalar söylenir; irsaliye dışı ürün uyarır; raf etiketi okutulunca rafı boş ürünler o rafa yerleşir; parti açılır; hasarlı 2 adet stoğa girmez ve hasar kaydı olur; onaydan sonra özet kartı',
+    sesSec === 'konus*,bip,sessiz' && ses1.some(x => /^ok:FONTANA 33W, 10 adet/.test(x)) && ses1.some(x => /^ok:Raf A-01/.test(x)) && ses1.some(x => /^uyari:.*irsaliyede yok/.test(x)) && /Eksik/.test(tablo) && /2 hasarlı/.test(tablo)
+    && gir.l1 === 60 && gir.raf1 === 'A-01' && gir.l2 === 11 && gir.raf2 === 'B-02' && gir.yeniRaf === 'A-01' && gir.p2 === 20 && gir.hasar === 'L2:2:Hasarlı geldi:İrs 77' && /3 kalem, 26 adet stoğa girdi/.test(gir.ozet) && /İrsaliye: .*eksik/.test(gir.ozet) && /hasarlı/.test(gir.ozet), JSON.stringify({ sesSec, ses1, tablo: tablo.slice(0, 300), gir }));
+  // Çıkış: önce eski parti uyarısı, projeye ayrılana dokunma uyarısı, kritik altına inince özet
+  await p.evaluate(async () => { const { app } = await import('./js/state.js'); await app.db.save('stok_rezerv', { id: 'rz1', firma_id: 'f1', kod: 'L1', depo: null, adet: 30, proje_id: null, musteri_id: 'f2', durum: 'Aktif' }); window.__geribildirim = []; });
+  await ac('[data-etgc]'); await p.click('.drawer.open [data-mod="cikis"]'); await w(200);
+  await okut('STK1|L1|10|P2'); await okut('L1 x 45');
+  const ses2 = await gb();
+  await p.evaluate(() => { window.confirm = () => true; });
+  await p.click('.drawer.open [data-kaydet]'); await w(1300);
+  const oz2 = await p.evaluate(() => document.getElementById('okutma-ozet')?.innerText.replace(/\s+/g, ' ') || '');
+  kontrol('Çıkış: daha eski parti varken yeni parti okutulunca “önce eski parti” uyarısı; başka müşteriye ayrılmış miktara inince uyarı; kritik seviyenin altına inen ürün özette',
+    ses2.some(x => /^uyari:Önce eski parti çıkmalı: P1/.test(x)) && ses2.some(x => /^uyari:.*ayrılmış/.test(x)) && /kritik seviyenin altına indi: L1 \(5\/10\)/.test(oz2), JSON.stringify({ ses2, oz2 }));
+  // Kalem kartı: resim / teknik bilgiler açıklamadan, koli ve raf, projelere ayrılan bölümü
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  await p.click('[data-kart="s1"]'); await w(600);
+  const kart = await p.evaluate(() => ({ w: document.querySelector('.drawer.open [name=guc_w]')?.value, ip: document.querySelector('.drawer.open [name=ip]')?.value, rz: !!document.querySelector('.drawer.open [data-rz]'), yeni: !!document.querySelector('.drawer.open [data-yenialan]'), foto: !!document.querySelector('.drawer.open [data-photos="resimler"]') }));
+  await p.evaluate(() => { for (const d of document.querySelectorAll('.drawer.open details')) d.open = true; });
+  await p.fill('.drawer.open [name=koli_agirlik]', '7.4'); await p.fill('.drawer.open [name=koli_olcu]', '125 × 30 × 20 cm'); await p.fill('.drawer.open [name=detay]', 'Opal difüzör, ENEC');
+  await p.click('.drawer.open [type=submit]'); await w(900);
+  const kk = await p.evaluate(async () => { const s = (await import('./js/db.js')).S.bayi_stok.find(x => x.id === 's1'); return [s.guc_w, s.ip, s.koli_agirlik, s.koli_olcu, s.detay, s.raf].join('|'); });
+  kontrol('Kalem kartı: resim alanı, W ve IP açıklamadan dolar, koli ağırlık / ölçü ve ayrıntılı açıklama kaydedilir, “+ Yeni alan” ve projelere ayrılan bölümü var',
+    kart.w === '33' && kart.ip === 'IP66' && kart.rz && kart.yeni && kart.foto && kk === '33|IP66|7.4|125 × 30 × 20 cm|Opal difüzör, ENEC|A-01', JSON.stringify({ kart, kk }));
+  // Sayımda raf etiketi: yalnız o raf
+  await p.evaluate(async () => { await (await import('./js/sayim.js')).sayimBaslat('f1', null, null); });
+  await ac('[data-sayim]'); await w(300);
+  await okut('RAF1|B-02', '[data-sara]'); await w(300);
+  const rafS = await p.evaluate(() => [...document.querySelectorAll('.drawer.open [data-say]')].map(i => i.dataset.say).join());
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  // Sevk kontrolü
+  await p.evaluate(async () => { window.__geribildirim = []; (await import('./js/views/sevk.js')).sevkFormu({ firma_id: 'f1', alici_id: 'f2', kalemler: [{ kod: 'L1', aciklama: 'Fontana', adet: 6, birim: 'Adet' }, { kod: 'L2', aciklama: 'Projektör', adet: 2, birim: 'Adet' }] }); }); await w(700);
+  await p.check('.drawer.open [data-kontrol]'); await w(200);
+  for (const v of ['L1 x 6', 'L3', 'L2 x 3']) { await p.fill('.drawer.open [data-kara]', v); await p.press('.drawer.open [data-kara]', 'Enter'); await w(250); }
+  const sk = await p.evaluate(() => ({ oz: document.querySelector('.drawer.open [data-kozet]')?.textContent, n: document.querySelectorAll('.drawer.open [data-km]').length }));
+  const ses3 = await gb();
+  kontrol('Raf etiketi okutulunca sayım yalnız o raftaki ürünleri listeler; kontrollü sevk: tam okutulan ✓, listede olmayan hata, fazla okutulan uyarı, yeni satır eklenmez',
+    rafS === 'L2' && sk.n === 2 && /1\/2 kalem tamam/.test(sk.oz) && ses3.some(x => /^ok:.*tamam/.test(x)) && ses3.some(x => /^hata:.*bu sevkte yok/.test(x)) && ses3.some(x => /^uyari:.*fazla/.test(x)), JSON.stringify({ rafS, sk, ses3 }));
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  // Rezerv sevkte düşülür; hasar penceresi; kritik görevi; hızlı sorgu
+  const son = await p.evaluate(async () => { const r = await import('./js/stokrezerv.js'), { S } = await import('./js/db.js');
+    await r.sevkRezervDus({ firma_id: 'f1', alici_id: 'f2', proje_id: null, kalemler: [{ kod: 'L1', adet: 12 }] });
+    const rz = S.stok_rezerv.find(x => x.id === 'rz1');
+    const o = await import('./js/otomasyon.js'); await o.otomasyonTara({ zorla: true });
+    const g = S.gorevler.find(x => /^oto:stok_kritik:f1:/.test(x.kaynak || ''));
+    const q = r.stokAra('Fontana kaç tane var'), q2 = r.stokAra('A-01');
+    return { rz: [rz.adet, rz.durum].join(), g: g ? g.baslik : '', q: q.map(e => e.kod + ':' + e.toplam).join(), q2: q2.map(e => e.kod).sort().join(), m: r.sorguMetni(q) }; });
+  await ac('[data-hasarlar]'); const hp = await p.evaluate(() => document.querySelector('.drawer.open')?.innerText.replace(/\s+/g, ' ') || '');
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  await ac('[data-hsorgu]'); await p.fill('.drawer.open [data-hq]', 'L2'); await p.press('.drawer.open [data-hq]', 'Enter'); await w(300);
+  const hs = await p.evaluate(() => document.querySelector('.drawer.open [data-hs]')?.innerText.replace(/\s+/g, ' ') || '');
+  kontrol('Sevk yola çıkınca ayrılan miktardan düşer; kritik altındaki ürün için “Sipariş zamanı” görevi; hızlı sorgu sesli cümleden ve raf adından bulur; hasarlı ürünler penceresi',
+    son.rz === '18,Aktif' && /Sipariş zamanı: .* ürün kritik/.test(son.g) && /^L1:/.test(son.q) && son.q2.includes('L1') && /FONTANA/i.test(son.m) && /Hasarlı geldi/.test(hp) && /L2/.test(hp) && /toplam 11/.test(hs), JSON.stringify({ son, hp: hp.slice(0, 200), hs }));
+  kontrol('Okutma, kontrol ve rezerv ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });
@@ -1744,7 +1826,7 @@ const DB = () => {
   kontrol('Silinen otomatik görev yeniden açılmıyor; mesaj şablonları Firmalar\'da, teklif bilgileri Teklifler\'de', sil.n === 0 && sil.yok && sab && tkb, JSON.stringify({ sil, sab, tkb }));
   await p.goto(U + '#/sirket/otomasyon'); await w(1500);
   const ayr = await p.evaluate(() => document.querySelectorAll('[data-otomasyon] [data-oto]').length);
-  kontrol('Yinelenen görev tamamlanınca sonraki açılıyor; aşama değişince ve tarih yaklaşınca otomatik görev (bir kez); şirket profilinde kurallar', tek.var && tek.tarih && tek.acik && tek.firma === 'f1' && tek.tekrar === 'hafta' && asama.var && asama.tarih && asama.proje === 'p1' && tara.var && tara.n >= 1 && tara.n2 === 0 && ayr === 7, JSON.stringify({ tek, asama, tara, ayr }));
+  kontrol('Yinelenen görev tamamlanınca sonraki açılıyor; aşama değişince ve tarih yaklaşınca otomatik görev (bir kez); şirket profilinde kurallar', tek.var && tek.tarih && tek.acik && tek.firma === 'f1' && tek.tekrar === 'hafta' && asama.var && asama.tarih && asama.proje === 'p1' && tara.var && tara.n >= 1 && tara.n2 === 0 && ayr === 8, JSON.stringify({ tek, asama, tara, ayr }));
   kontrol('Otomasyonda hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
