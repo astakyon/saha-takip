@@ -32,6 +32,10 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 127)
+
+- Stok listesinde ürün belgeleri düğmesi (📄) satırın başına, ürün kodunun soluna alındı.
+
 ## Güncelleme notu (sürüm 126)
 
 - **Grup şirketleri** (`js/firmagrup.js`): firma kartının Özet sekmesinde bağlı olduğu ana şirket (holding) aranıp seçilir, ilişki türü (bağlı, kardeş, ortaklık, iştirak) yazılır, alt şirket eklenir; grup ağaç olarak görünür. Grubun açık projeleri, siparişleri (USD), açık teklifleri ve açık bakiyesi toplu; birden fazla grup şirketinde görünen kişiler listelenir. Vergi numarası farklı ama kurumsal e-posta alan adı, telefon ya da adresi aynı olan firmalar “aynı gruba ait olabilir” diye önerilir (gmail, hotmail gibi genel adresler sayılmaz). Firma başlığında ve Firmalar listesinde grup rozeti, Excel'de ana şirket sütunu. Şube (aynı vergi numaralı ikinci adres) ayrı kalır.
