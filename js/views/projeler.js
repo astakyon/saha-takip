@@ -11,6 +11,7 @@ import { ayar, ayarYaz } from '../ayar.js';
 
 // Proje formu: yeni projede yalnızca gerekli alanlar açık; ayrıntılar açılır bölümlerde
 const yeniMi = o => !!o._new;
+export const KAPSAM = ['İç aydınlatma', 'Dış aydınlatma', 'Acil aydınlatma', 'Çevre ve yol aydınlatması', 'Peyzaj', 'Cephe', 'Otopark', 'Busbar', 'Pano'];
 export const PROJE_FORM = [
   { title: 'Proje', fields: [
     { k: 'ad', l: 'Proje adı', auto: true, full: true, req: true, ph: 'Örn. Oyak Çimento Ek Kapsam' },
@@ -42,6 +43,20 @@ export const PROJE_FORM = [
     { k: 'belde', l: 'Belde / mahalle' },
     { k: 'lokasyon', l: 'Lokasyon notu' },
     { k: 'adres', l: 'Adres', full: true },
+  ]},
+  { title: 'Şantiye ve tabela', ozet: 'ana proje, kapsam, ruhsat, ada / parsel, şantiye şefi, müellifler', kapali: o => !(o.ust_proje_id || (o.kapsam || []).length || o.ruhsat_no || o.ada || o.parsel || o.santiye_sefi_id || o.elektrik_projeci_id), fields: [
+    { k: 'ust_proje_id', l: 'Ana proje (şantiye)', t: 'ref', ref: 'projeler', help: 'Doluysa bu proje o şantiyenin bir bloğu / alt projesidir' },
+    { k: 'kapsam', l: 'Kapsam', t: 'tags', opts: KAPSAM, free: true },
+    { k: 'ruhsat_no', l: 'Ruhsat no' },
+    { k: 'ruhsat_tarihi', l: 'Ruhsat tarihi', t: 'date' },
+    { k: 'ada', l: 'Ada' },
+    { k: 'parsel', l: 'Parsel' },
+    { k: 'yapi_denetim', l: 'Yapı denetim firması' },
+    { k: 'santiye_sefi_id', l: 'Şantiye şefi', t: 'ref', ref: 'kisiler' },
+    { k: 'elektrik_projeci_id', l: 'Elektrik projecisi', t: 'ref', ref: 'kisiler' },
+    { k: 'mimar_id', l: 'Mimar', t: 'ref', ref: 'kisiler' },
+    { k: 'statik_id', l: 'Statik projeci', t: 'ref', ref: 'kisiler' },
+    { k: 'mekanik_id', l: 'Mekanik projeci', t: 'ref', ref: 'kisiler' },
   ]},
   { id: 'sip', title: 'Sipariş', show: o => o.durum === 'Sipariş', fields: [
     { k: 'siparis_tutari_usd', l: 'Sipariş tutarı (USD)', t: 'num' },
@@ -110,7 +125,7 @@ const SORTS = {
 // ---------- Tablo sütunları (Sütunlar düğmesiyle seçilir, başlığa dokununca sıralanır) ----------
 const SUTUNLAR = [
   { k: 'sip', l: 'Sipariş', cls: 'c-sip r num', td: p => { const st = siparisToplam(p); return st ? usd(st) : '<span class="muted">—</span>'; }, v: p => siparisToplam(p) || 0 },
-  { k: 'ad', l: 'Proje', cls: 'c-ad', sabit: true, td: p => `<b>${esc(p.ad)}</b>${p.kritik ? ' <em class="flag">Kritik</em>' : ''}${p.hedef_listesi ? ' <em class="flag soft">Hedef</em>' : ''}${p.lat == null || p.konum_yaklasik ? ' <em class="flag gray">Konum bekliyor</em>' : ''}${p.notlar ? `<small>${esc(p.notlar.slice(0, 80))}</small>` : ''}`, v: p => p.ad },
+  { k: 'ad', l: 'Proje', cls: 'c-ad', sabit: true, td: p => `${p.ust_proje_id ? `<small class="ps-ust">↳ ${esc(byId('projeler', p.ust_proje_id)?.ad || 'ana proje')}</small>` : ''}<b>${esc(p.ad)}</b>${(n => n ? ` <em class="flag soft">${n} blok</em>` : '')(S.projeler.filter(x => x.ust_proje_id === p.id).length)}${p.kritik ? ' <em class="flag">Kritik</em>' : ''}${p.hedef_listesi ? ' <em class="flag soft">Hedef</em>' : ''}${p.lat == null || p.konum_yaklasik ? ' <em class="flag gray">Konum bekliyor</em>' : ''}${p.notlar ? `<small>${esc(p.notlar.slice(0, 80))}</small>` : ''}`, v: p => p.ad },
   { k: 'yer', l: 'Yer', td: p => esc([p.belde, p.ilce, p.il].filter(Boolean).join(', ') || p.lokasyon || '—'), v: p => [p.il, p.ilce].join(' ') },
   { k: 'osb', l: 'Bölge / OSB', td: p => esc(p.osb || '—'), v: p => p.osb || '' },
   { k: 'yatirimci_id', l: 'Yatırımcı', td: p => fa(p.yatirimci_id), v: p => firmaAd(p.yatirimci_id) || '' },
@@ -364,8 +379,8 @@ function exportProjeler(list) {
 }
 
 // ---------- Detay ----------
-export function yeniProje(init) {
-  projeDetay(null, { durum: 'Proje', takip_yili: new Date().getFullYear() >= 2026 ? 2026 : 2026, kanal: 'Bayi', bayi_id: (anaBayi() && S.firmalar.find(x => x.ad === anaBayi())?.id) || null, fotolar: [], urun_gruplari: [], konum_yaklasik: false, ...init });
+export function yeniProje(init, kaydedilince = null) {
+  projeFormu(null, { durum: 'Proje', takip_yili: new Date().getFullYear() >= 2026 ? 2026 : 2026, kanal: 'Bayi', bayi_id: (anaBayi() && S.firmalar.find(x => x.ad === anaBayi())?.id) || null, fotolar: [], urun_gruplari: [], konum_yaklasik: false, ...init }, { kaydedilince });
 }
 
 // Şantiye ilerleme fotoğrafları: projenin ve projeye bağlı ziyaretlerin fotoğrafları tarih sırasıyla
@@ -402,7 +417,7 @@ export function projeDetay(id, init) {
   else location.hash = '#/proje/' + id;
 }
 
-export function projeFormu(id, init, { durum, odak } = {}) {
+export function projeFormu(id, init, { durum, odak, kaydedilince = null } = {}) {
   const p0 = id ? byId('projeler', id) : { id: uuid(), ...init, _new: true };
   if (!p0) { toast('Proje bulunamadı.', 'err'); return; }
   const p = { ...p0, takip_yili: p0.takip_yili ? String(p0.takip_yili) : '2026', ...(durum ? { durum } : {}) };
@@ -448,6 +463,7 @@ export function projeFormu(id, init, { durum, odak } = {}) {
         if (dup && !confirmBox(`“${dup.ad}” adında bir proje zaten var${dup.aday ? ' (aday listesinde)' : ''}. Yine de yeni proje açılsın mı?`)) return;
       }
       const saved = await app.db.save('projeler', o);
+      if (p._new && kaydedilince) try { await kaydedilince(saved || o); } catch (er) { console.warn(er); }
       if (p._new && o.lat == null) setTimeout(() => toast('Proje kaydedildi. Haritada görünmesi için Harita → Araçlar → Konum ata ile yerini işaretleyebilirsin.'), 1500);
       if (!p._new && p0.durum !== o.durum) await app.db.save('proje_gecmis', { proje_id: o.id, tarih: new Date().toISOString(), eski_durum: p0.durum, yeni_durum: o.durum });
       if (p._new) await app.db.save('proje_gecmis', { proje_id: o.id, tarih: new Date().toISOString(), eski_durum: null, yeni_durum: o.durum, notlar: 'Kayıt oluşturuldu' });

@@ -93,6 +93,13 @@ export function ziyaretForm(init = {}, after) {
   import('../vaderisk.js').then(m => m.riskBagla(panel, 'ziyaret', z.firma_id)).catch(() => {});
   bindForm(form, ZIYARET_FORM, z);
   yetkiliBagla(form);
+  // Ana proje (şantiye) ziyaretinde konuşulan bloklar işaretlenir; blok sayfasında da bu ziyaret görünür
+  const pi = form.querySelector('[name=proje_id]'), blokKutu = document.createElement('div'); blokKutu.className = 'z-blok'; pi?.closest('.fld')?.appendChild(blokKutu);
+  let secBlok = new Set(z.alt_proje_ids || []);
+  const blokCiz = () => { const pr = S.projeler.find(x => fold(x.ad) === fold(pi?.value.trim() || '')), bl = pr ? S.projeler.filter(x => x.ust_proje_id === pr.id) : [];
+    blokKutu.innerHTML = bl.length ? `<span class="muted">Konuşulan bloklar:</span> ${bl.map(b => `<label class="chk"><input type="checkbox" data-blok="${b.id}" ${secBlok.has(b.id) ? 'checked' : ''}> <span>${esc(b.ad.replace(pr.ad, '').replace(/^\s*[–-]\s*/, '') || b.ad)}</span></label>`).join('')}` : '';
+    blokKutu.querySelectorAll('[data-blok]').forEach(c => c.onchange = () => { c.checked ? secBlok.add(c.dataset.blok) : secBlok.delete(c.dataset.blok); }); };
+  pi?.addEventListener('change', blokCiz); blokCiz();
   // Yapılan yeni ziyarette konumu otomatik al
   // Otomatik konum sessizdir: izin yoksa kırmızı uyarı çıkmaz, yalnızca konum alanında yazar
   const autoLoc = () => { const b = form.querySelector('[data-loc]'); if (b && !b.dataset.lat) { b.dataset.sessiz = '1'; b.querySelector('[data-loc-me]').click(); } };
@@ -111,6 +118,7 @@ export function ziyaretForm(init = {}, after) {
       if (!o.firma_id && !o.notlar) return toast('Firma veya not gir.', 'err');
       if (o.kisi_id && o.firma_id) { const k = byId('kisiler', o.kisi_id); if (k && !k.firma_id) await app.db.save('kisiler', { ...k, firma_id: o.firma_id }); }
       o.tarih = o.tarih || today(); o.durum = o.durum || 'Yapıldı';
+      o.alt_proje_ids = blokKutu.querySelector('[data-blok]') ? [...secBlok].filter(id => S.projeler.some(x => x.id === id && x.ust_proje_id === o.proje_id)) : (z.alt_proje_ids || []);
       await app.db.save('ziyaretler', o);
       const extra = [];
       if (o.durum === 'Yapıldı' && o.sonraki) { await app.db.save('gorevler', { baslik: o.sonraki, son_tarih: o.sonraki_tarih, durum: 'Açık', oncelik: 'Normal', firma_id: o.firma_id, proje_id: o.proje_id, kisi_id: o.kisi_id }); extra.push('sonraki adım görevlere eklendi'); }

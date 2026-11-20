@@ -16,6 +16,8 @@ import { numuneForm } from './kayitlar.js';
 import { belgeBolumu, belgeleri } from '../belgeler.js';
 import { googleBul, aramaMetni } from '../google.js';
 import { grubu, haritaOzeti, haritaBolumu, kisiSec } from '../satisharitasi.js';
+import { bloklari, anaProje, blokOzeti, asamadaGun, alimTahmini, yakindakiler } from '../projeyapi.js';
+import { altProjeAlanlari } from '../tabelaesle.js';
 
 export const ROLLER = [['yatirimci_id', 'Yatırımcı'], ['projeci_id', 'Projeci'], ['danisman_id', 'Danışman'], ['gemut_id', 'Gemüt'], ['emut_id', 'Emüt'], ['alici_id', 'Malzeme alıcısı'], ['bayi_id', 'Bayi']];
 const SERIT = ['Proje', 'İhale', 'Teklif Verildi', 'Sıcak', 'Sipariş'], YAN = ['Beklemede', 'Kayıp', 'İptal'];
@@ -27,7 +29,7 @@ export function projeSayfa(el, id) {
   if (!p) { el.innerHTML = `<div class="empty"><p>Proje bulunamadı. Silinmiş ya da görme yetkin olmayabilir.</p><p><a class="btn" href="#/projeler">Projelere dön</a></p></div>`; return; }
   document.title = p.ad + ' · Saha Takip'; app.sayfaAd = p.ad;
   const renk = durumRenk(p.durum);
-  const ziy = S.ziyaretler.filter(z => z.proje_id === p.id).sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
+  const ziy = S.ziyaretler.filter(z => z.proje_id === p.id || (z.alt_proje_ids || []).includes(p.id)).sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
   const yapilan = ziy.filter(z => (z.durum || 'Yapıldı') === 'Yapıldı'), planli = ziy.filter(z => z.durum === 'Planlandı').sort((a, b) => (a.tarih || '').localeCompare(b.tarih || ''));
   const gor = (S.gorevler || []).filter(g => g.proje_id === p.id).sort((a, b) => (a.durum === 'Tamam') - (b.durum === 'Tamam') || (a.son_tarih || '9').localeCompare(b.son_tarih || '9'));
   const acikGor = gor.filter(g => g.durum !== 'Tamam');
@@ -55,12 +57,23 @@ export function projeSayfa(el, id) {
     <div class="ps-yan" data-gerek="yaz:projeler">${YAN.map(d => `<button type="button" data-asama="${d}" class="${d === p.durum ? 'on' : ''}" style="--c:${durumRenk(d)}" aria-pressed="${d === p.durum}">${esc(d)}</button>`).join('')}</div>`;
 
   const bilgiIc = dlk(dd('Sektör', esc([p.sektor, p.alt_sektor].filter(Boolean).join(' · '))) + dd('İçerik', esc(p.icerik || '')) + dd('Ürün grupları', esc((p.urun_gruplari || []).join(', '))) + dd('Yeni / yenileme', esc(p.yeni_refit || '')) + dd('Satış kanalı', esc(p.kanal || '')) + dd('Takip eden', esc([p.takipci, p.takipci_tel].filter(Boolean).join(' · '))) + dd('Teklif no', esc(p.teklif_no || '')) + dd('İhale tarihi', p.ihale_tarihi ? tarih(p.ihale_tarihi) : '') + dd('Şantiye aşaması', esc(p.santiye_asamasi || '')) + dd('Takip yılı', esc(p.takip_yili || '')) + dd('Sorulacak', esc(p.sorulacak || '')) + dd('Sorumlu', esc((app.ekipTum || []).find(k => k.eposta === p.sorumlu)?.ad || p.sorumlu || ''))) + (p.notlar ? `<h3>Notlar</h3><p class="fs-notmetin">${esc(p.notlar)}</p>` : '');
+  const ana = anaProje(p), blok = bloklari(p).sort((a, b) => (a.ad || '').localeCompare(b.ad || '', 'tr')), bo = blokOzeti(p), yakin = yakindakiler(p), alim = !p.alim_tarihi ? alimTahmini(p) : null;
+  const kisiLnk = id => { const k = byId('kisiler', id); return k ? `<a href="#/kisi/${k.id}">${esc(k.ad_soyad)}</a>${k.unvan ? ` <span class="muted">${esc(k.unvan)}</span>` : ''}${k.telefon ? ` · <a href="tel:${esc(k.telefon)}">${esc(k.telefon)}</a>` : ''}` : ''; };
+  const tabelaIc = dlk(dd('Kapsam', (p.kapsam || []).map(k => `<span class="chip">${esc(k)}</span>`).join(' ')) + dd('Ruhsat', esc([p.ruhsat_no && 'No ' + p.ruhsat_no, p.ruhsat_tarihi && tarih(p.ruhsat_tarihi)].filter(Boolean).join(' · '))) + dd('Ada / parsel', esc([p.ada && 'Ada ' + p.ada, p.parsel && 'Parsel ' + p.parsel].filter(Boolean).join(' · '))) + dd('Yapı denetim', esc(p.yapi_denetim || ''))
+    + dd('Şantiye şefi', kisiLnk(p.santiye_sefi_id)) + dd('Elektrik projecisi', kisiLnk(p.elektrik_projeci_id)) + dd('Mimar', kisiLnk(p.mimar_id)) + dd('Statik', kisiLnk(p.statik_id)) + dd('Mekanik', kisiLnk(p.mekanik_id))
+    + dd('Aydınlatma alımı', p.alim_tarihi ? esc(ayAd(p.alim_tarihi)) : alim ? `~${esc(ayAd(alim.tarih))} <span class="muted">(şantiye ${esc(p.santiye_asamasi.toLowerCase())}; tahmin)</span> <button type="button" class="linkbtn" data-a="alimyaz" data-gerek="yaz:projeler">Tarihe yaz</button>` : ''));
+  const tabelaKart = `<section class="card fs-not ps-tabela"><div class="fs-kb"><h2>Şantiye ve tabela</h2><button type="button" class="btn sm" data-a="tabela" data-gerek="yaz:projeler">Tabeladan doldur</button></div>${tabelaIc || '<p class="hint">Ruhsat, ada / parsel, şantiye şefi ve müellifler boş. Tabela fotoğrafını okutarak doldurabilirsin.</p>'}</section>`;
+  const blokKart = p.ust_proje_id ? '' : `<section class="card ps-bloklar"><div class="fs-kb"><h2>Bloklar / alt projeler <span class="muted">${blok.length}</span></h2><button type="button" class="btn sm" data-a="blok" data-gerek="yaz:projeler">+ Blok</button></div>
+    ${blok.length ? `<p class="ps-blokozet">${[`${bo.n} blok`, bo.toplam ? `toplam ${usd(bo.toplam)}` : '', bo.kazN ? `<span class="pos">kazanılan ${bo.kazN}${bo.kazanilan ? ' · ' + usd(bo.kazanilan) : ''}</span>` : '', bo.kayN ? `<span class="neg">kaybedilen ${bo.kayN}${bo.rakipler.length ? ' (' + esc(bo.rakipler.join(', ')) + ')' : ''}</span>` : '', bo.acik ? `${bo.acik} açık` : ''].filter(Boolean).join(' · ')}</p>
+      <ul class="list ps-blok">${blok.map(b => { const g = asamadaGun(b); return `<li><a class="linkrow" href="#/proje/${b.id}"><span><b>${esc(b.ad)}</b>${(b.kapsam || []).length ? ` <small class="muted">${esc(b.kapsam.join(', '))}</small>` : ''}${b.durum === 'Kayıp' && b.rakip_marka ? ` <small class="neg">→ ${esc(b.rakip_marka)}</small>` : ''}</span></a><span>${pill(b.durum)}${g != null && g >= 30 && ['Teklif Verildi', 'Sıcak', 'İhale'].includes(b.durum) ? ` <small class="asama-gun bekle30">${g} gün</small>` : ''}</span><b class="num">${b.tutar_usd ? usd(b.tutar_usd) : ''}</b></li>`; }).join('')}</ul>`
+      : '<p class="hint">Şantiyede A blok, B blok, mercimek eleme gibi ayrı işler varsa her birini blok olarak aç: yatırımcı, müteahhit, konum ve ruhsat buradan gelir; teklif, tutar ve aşama blokta ayrı tutulur.</p>'}</section>`;
+  const yakinKart = yakin.length ? `<section class="card ps-yakin"><h2>Yakındaki şantiyeler</h2><ul class="list">${yakin.map(x => `<li><a class="linkrow" href="#/proje/${x.p.id}"><span>${esc(x.p.ad)}</span></a><span>${pill(x.p.durum)}</span><span class="muted num">${x.km < 1 ? Math.round(x.km * 1000) + ' m' : num(Math.round(x.km * 10) / 10) + ' km'}</span></li>`).join('')}</ul></section>` : '';
   const bilgiKart = bilgiIc.trim() ? `<section class="card fs-not"><h2>Proje bilgileri</h2>${bilgiIc}</section>` : '';
   el.innerHTML = `<div class="fs-sayfa ps-sayfa" data-proje="${esc(p.id)}" style="--durum:${renk}">
     <button type="button" class="geri-lnk" data-geri>← ${esc(onceki || 'Projeler')}</button>
     <header class="fs-bas">
       <span class="fs-logo ps-logo" aria-hidden="true">${KLASOR}</span>
-      <div class="fs-kim"><p class="muted">${esc(['Proje', [p.ilce, p.il].filter(Boolean).join(', '), p.osb].filter(Boolean).join(' · '))}</p>
+      <div class="fs-kim">${ana ? `<p class="ps-ana">Ana proje: <a href="#/proje/${ana.id}">${esc(ana.ad)}</a></p>` : ''}<p class="muted">${esc([p.ust_proje_id ? 'Blok' : 'Proje', [p.ilce, p.il].filter(Boolean).join(', '), p.osb].filter(Boolean).join(' · '))}</p>
         <h1>${esc(p.ad)}${p.kritik ? ' <em class="flag">Kritik</em>' : ''}${p.referans ? ' <em class="flag soft">Referans</em>' : ''}</h1>
         <div class="dh-meta">${pill(p.durum)}${p.tutar_usd ? `<b class="ps-tutar">${usd(p.tutar_usd)}</b>` : ''}${p.olasilik != null && p.olasilik !== '' ? `<span>olasılık %${num(p.olasilik)}</span>` : ''}${p.beklenen_tarih ? `<span>beklenen sipariş ${esc(ayAd(p.beklenen_tarih))}</span>` : ''}<span data-gerek="ziyaretler" class="${gun == null || gun > 60 ? 'neg' : ''}">${gun == null ? 'hiç ziyaret yok' : gun === 0 ? 'bugün ziyaret edildi' : `son ziyaret ${gun} gün önce`}</span>${dogrulamaRozet('projeler', p)}</div></div>
       ${asamaGunMetni(p) ? `<p class="ps-asamagun">${asamaGunMetni(p)}</p>` : ''}
@@ -70,6 +83,7 @@ export function projeSayfa(el, id) {
         <div class="fs-grp fs-acilir" data-acilir="daha"><button type="button" class="fs-daha" aria-haspopup="menu" aria-expanded="false" aria-label="Diğer işlemler" data-ipucu="Diğer">⋯</button>
           <div class="fs-menu fs-menu-sag" role="menu" hidden>
             <button type="button" role="menuitem" data-a="google" data-gerek="yaz:projeler">${IK.ara}<span>Google'dan konum al</span></button>${p.google_url ? `<a role="menuitem" href="${esc(p.google_url)}" target="_blank" rel="noopener">${IK.yol}<span>Google Haritalar'da aç</span></a>` : ''}
+            <button type="button" role="menuitem" data-a="tabela" data-gerek="yaz:projeler">${IK.ara}<span>Tabeladan doldur</span></button>${p.ust_proje_id ? '' : `<button type="button" role="menuitem" data-a="blok" data-gerek="yaz:projeler">${IK.tek}<span>Blok / alt proje ekle</span></button>`}
             <button type="button" role="menuitem" data-a="kopya" data-gerek="yaz:projeler">${IK.tek}<span>Projeyi kopyala</span></button>
             <hr><button type="button" role="menuitem" class="fs-sil" data-a="sil" data-gerek="yaz:projeler">${IK.sil}<span>Projeyi sil</span></button></div></div>
       </div>
@@ -96,6 +110,7 @@ export function projeSayfa(el, id) {
       </div>
       ${p.durum === 'Kayıp' ? `<section class="card fs-not ps-kayip"><h2>Kayıp bilgisi</h2>${dlk(dd('Neden', esc(p.kayip_nedeni || '')) + dd('İşi alan marka', esc(p.rakip_marka || '')) + dd('Rakip ürün', esc(p.rakip_urun || '')) + dd('Rakip birim fiyat', p.rakip_birim_fiyat ? usd(p.rakip_birim_fiyat) : '') + dd('Bizim teklif', p.bizim_teklif_usd ? usd(p.bizim_teklif_usd) : '') + dd('Açıklama', esc(p.kayip_aciklama || '')))}</section>` : ''}
       ${p.durum === 'Sipariş' ? `<section class="card fs-not ps-siparis"><h2>Sipariş</h2>${dlk(dd('Tutar', p.siparis_tutari_usd ? usd(p.siparis_tutari_usd) : '') + dd('Tarih', p.siparis_tarihi ? tarih(p.siparis_tarihi) : ''))}</section>` : ''}
+      ${blokKart}${tabelaKart}${yakinKart}
       ${bilgiKart}
     </div></div>
 
@@ -167,6 +182,9 @@ export function projeSayfa(el, id) {
   el.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     const a = b.dataset.a;
     if (a === 'duzenle') projeFormu(p.id);
+    if (a === 'tabela') (await import('../tabela.js')).tabeladanDoldur(p);
+    if (a === 'blok') projeFormu(null, { ...altProjeAlanlari(p), ust_proje_id: p.id, ad: p.ad + ' – ', durum: 'Proje', takip_yili: p.takip_yili || 2026, fotolar: [], kapsam: [] });
+    if (a === 'alimyaz' && alim) { try { await app.db.save('projeler', { ...p, alim_tarihi: alim.tarih }); toast('Tahmini alım tarihi yazıldı.'); app.refresh(); } catch (e) { toast(e.message, 'err'); } }
     if (a === 'wa') waGonder({ kisi: ilgili, proje: p });
     if (a === 'ziyaret') ziyaretForm({ proje_id: p.id, firma_id: firma, kisi_id: p.ilgili_kisi_id || null });
     if (a === 'gorev') gorevForm({ proje_id: p.id, firma_id: firma, baslik: '' });

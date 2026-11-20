@@ -32,6 +32,16 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 132)
+
+- Tabela eşleştirme ekranı: okunan her firma (yatırımcı, genel müteahhit = yüklenici, Emüt, danışman) ve kişi (şantiye şefi, elektrik projecisi, mimar, statik, mekanik) bir satır; kayıtlı firma / kişi adayları benzerlikle listelenir (“Bağla”), yoksa yeni kart, istenirse atla; seçilen firmanın yetkilileri gösterilir, projenin ilgili kişisi seçilir. Kişi ünvanı (İnşaat Mühendisi…) ayrı alana. Aynı kişi iki görevde geçerse tek kart.
+- Projede yeni alanlar: ruhsat no ve tarihi, ada, parsel, yapı denetim, şantiye şefi, elektrik projecisi, mimar, statik, mekanik (kişi kartları), ana proje, kapsam. Tabelanın diğer bilgileri (bedel, başlama…) notlara.
+- Fotoğrafın GPS bilgisinden konum; tabeladaki telefon / e-posta / web seçilen firmaya ya da kişiye; aynı ruhsat no ya da ada / parselle kayıtlı proje varsa uyarı (“yine de yeni” ya da “o şantiyeye blok olarak ekle”); yeni projede takip görevleri (genel müteahhidi ziyaret, elektrik projecisiyle görüş).
+- Kayıtlı projede “Tabeladan doldur”: projedeki fotoğraf ya da yeni fotoğraf okunur; yalnız boş alanlar dolar, farklı okunan dolu alan işaretlenirse değişir.
+- Yapı: firma → şantiye (ana proje) → blok (alt proje) → kapsam. “+ Blok” ana projenin yatırımcı, müteahhit, konum, ruhsat, ada / parsel, müellif bilgileriyle açılır; teklif, tutar, aşama, Emüt blokta ayrı. Ana projede blok listesi ve özeti (toplam, kazanılan, kaybedilen ve rakip markalar); blokta ana proje bağlantısı; listede blok sayısı ve ana proje adı.
+- Ana proje ziyaretinde konuşulan bloklar işaretlenir, blok sayfasında da görünür. Yakındaki şantiyeler (10 km). Şantiye aşamasına göre aydınlatma alımı tahmini (“Tarihe yaz”). Bugün ekranında uzun süre teklif / sıcak / ihale aşamasında kalan proje ve yaklaşan tahmini alım hatırlatılır.
+- Veritabanı sürüm 66.
+
 ## Güncelleme notu (sürüm 131)
 
 - Şantiye tabelası: fotoğraftan sonra çerçeveleme ekranı (köşeleri sürükle, eğik tabela düzlenir; bütün fotoğraf da okunabilir). Koyu zeminli etiket kutuları (lacivert vb.) bulunur, bitişik kutular ayrılır; her satırın etiketi ters çevrilip, değeri sağındaki alandan ayrı okunur. Bulunamazsa koyu bölgeler ters çevrilerek bütün tabela konumlu satırlarla okunur ve etiket ile değer yan yana getirilir.

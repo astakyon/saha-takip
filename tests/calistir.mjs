@@ -1769,6 +1769,100 @@ const DB = () => {
   kontrol('Kategori, logo ve ek sütun ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 132: tabela bilgileri kendi alanlarında, eşleştirme ekranı, tabeladan doldur, mükerrer, GPS, iletişim, takip görevi; ana proje → bloklar, yakındaki şantiyeler, alım tahmini, ziyarette bloklar
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    const r = (x) => ({ owner: 'u1', created_at: ts, updated_at: ts, ...x });
+    d.firmalar = [...(d.firmalar || []), r({ id: 'fp', ad: 'Piramit İnşaat', tipler: ['Gemüt'], il: 'Adana' }), r({ id: 'fa', ad: 'Armada Gıda Tic. San. A.Ş.', tipler: ['Yatırımcı'], il: 'Adana' })];
+    d.kisiler = [...(d.kisiler || []), r({ id: 'kp', ad_soyad: 'Mehmet Kaya', firma_id: 'fp', pozisyon: 'Satınalma' }), r({ id: 'ke', ad_soyad: 'Emrah İşeri', unvan: 'Elektrik Mühendisi' })];
+    d.projeler = [...(d.projeler || []), r({ id: 'pa', ad: 'Armada Gıda Adana', durum: 'Proje', il: 'Adana', lat: 37.0, lng: 35.3, yatirimci_id: 'fa', gemut_id: 'fp', ruhsat_no: '105975072', santiye_asamasi: 'Temel / kaba inşaat', takip_yili: 2026 }),
+      r({ id: 'pk', ad: 'Komşu Fabrika', durum: 'Teklif Verildi', il: 'Adana', lat: 37.01, lng: 35.31, takip_yili: 2026, created_at: '2026-09-01T10:00:00Z' }),
+      r({ id: 'pu', ad: 'Uzak Proje', durum: 'Proje', il: 'Mersin', lat: 36.8, lng: 34.6, takip_yili: 2026 })];
+    d.proje_gecmis = [...(d.proje_gecmis || []), r({ id: 'g1', proje_id: 'pk', tarih: '2026-09-01T10:00:00Z', eski_durum: 'Proje', yeni_durum: 'Teklif Verildi' })];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.clock.setFixedTime(new Date('2026-11-20T10:00:00'));
+  await p.goto(U + '#/bugun'); await w(1500);
+  // Yardımcılar
+  const yd = await p.evaluate(async () => { const m = await import('./js/tabelaesle.js');
+    // GPS'li küçük JPEG (EXIF: 37°0'36" N, 35°19'12" E)
+    const b = [0xFF, 0xD8], tiff = [], u16 = v => [v & 255, v >> 8], u32 = v => [v & 255, (v >> 8) & 255, (v >> 16) & 255, v >>> 24];
+    // TIFF (little endian): başlık 8, IFD0 @8 (1 giriş: GPS işaretçisi), GPS IFD @26 (4 giriş), rasyoneller @80
+    tiff.push(0x49, 0x49, 42, 0, ...u32(8), ...u16(1), ...u16(0x8825), ...u16(4), ...u32(1), ...u32(26), ...u32(0));
+    const gps = [[1, 2, 2, [78, 0, 0, 0]], [2, 5, 3, u32(80)], [3, 2, 2, [69, 0, 0, 0]], [4, 5, 3, u32(104)]];
+    tiff.push(...u16(4)); for (const [t, ty, n, v] of gps) tiff.push(...u16(t), ...u16(ty), ...u32(n), ...v); tiff.push(...u32(0));
+    while (tiff.length < 80) tiff.push(0);
+    for (const [a, bb, cc] of [[37, 0, 36], [35, 19, 12]]) tiff.push(...u32(a), ...u32(1), ...u32(bb), ...u32(1), ...u32(cc), ...u32(1));
+    const app1 = [0x45, 0x78, 0x69, 0x66, 0, 0, ...tiff]; b.push(0xFF, 0xE1, ...[(app1.length + 2) >> 8, (app1.length + 2) & 255], ...app1, 0xFF, 0xD9);
+    const gpsK = await m.exifKonum(new File([new Uint8Array(b)], 'a.jpg', { type: 'image/jpeg' }));
+    return { gps: gpsK, kisi: m.kisiAyir('İNŞAAT MÜHENDİSİ H. İBRAHİM TAŞDEMİR'), ruhsat: m.ruhsatAyir('Tarih 08.08.2022 · No 105975072'), parsel: [m.parselAyir('Ada 143 · Parsel 99'), m.parselAyir('12/3')],
+      ilet: m.iletisimBul('PİRAMİT İNŞAAT 0322 457 12 34 www.piramit.com.tr info@piramit.com.tr'), firma: m.firmaAdaylari('PİRAMİT İNŞAAT A.Ş.').map(x => x.f.id), kisiA: m.kisiAdaylari('EMRAH İŞERİ').map(x => x.k.id),
+      muk: m.mukerrerProje({ ruhsat_no: '105 975 072' }).map(x => x.id) }; });
+  kontrol('Tabela yardımcıları: fotoğrafın GPS konumu, kişi ünvanı ayrılır, ruhsat tarih / no, ada / parsel, telefon / web / e-posta, kayıtlı firma ve kişi adayı, aynı ruhsatlı proje',
+    yd.gps?.lat === 37.01 && yd.gps?.lng === 35.32 && yd.kisi.ad === 'H. İbrahim Taşdemir' && yd.kisi.unvan === 'İnşaat Mühendisi' && yd.ruhsat.no === '105975072' && yd.ruhsat.tarih === '2022-08-08' && yd.parsel[0].ada === '143' && yd.parsel[0].parsel === '99' && yd.parsel[1].ada === '12'
+    && yd.ilet.tel[0] === '03224571234' && yd.ilet.web[0] === 'www.piramit.com.tr' && yd.ilet.eposta[0] === 'info@piramit.com.tr' && yd.firma[0] === 'fp' && yd.kisiA[0] === 'ke' && yd.muk[0] === 'pa', JSON.stringify(yd));
+  // Eşleştirme ekranı: yeni proje
+  const o = { ad: 'Armada Gıda Mersin', yatirimci: 'ARMADA GIDA TİC. SAN. A.Ş.', gemut: 'PİRAMİT İNŞAAT A.Ş.', parsel: 'Ada 7 · Parsel 8', ruhsat: 'Tarih 01.02.2023 · No 999888', santiye_sefi: 'İNŞAAT MÜHENDİSİ H. İBRAHİM TAŞDEMİR', projeci: 'NİHARİ ŞEN', elektrik_proje: 'EMRAH İŞERİ', statik: 'H. İBRAHİM TAŞDEMİR', mekanik: 'HİLAL TOKATLI', il: 'Mersin', bedel: '10.000.000 TL' };
+  await p.evaluate(async o => { (await import('./js/tabelaesle.js')).eslestirmeEkrani({ o, metin: 'PİRAMİT İNŞAAT 0322 457 12 34' }); }, o); await w(600);
+  const ekr = await p.evaluate(() => { const d = document.querySelector('.drawer.open'); const v = s => d.querySelector(s)?.value;
+    return { baslik: d.querySelector('#drawer-title').textContent, gemut: v('[data-fsec="gemut"]'), yat: v('[data-fsec="yatirimci"]'), sef: v('[data-ksec="santiye_sefi"]'), sefAd: v('#te-k-santiye_sefi'), sefUnvan: d.querySelector('[data-krol="santiye_sefi"] [data-unvan]')?.value, ep: v('[data-ksec="elektrik_proje"]'),
+      yetkili: d.querySelector('[data-yetkili="gemut"]')?.textContent, ruhsat: v('#te-ruhsat_no'), rt: v('#te-ruhsat_tarihi'), ada: v('#te-ada'), tel: d.querySelector('[data-ilet] [data-ihedef]')?.value, not: v('#te-not'), gorev: d.querySelector('#te-gorev')?.checked,
+      ilgili: [...d.querySelectorAll('#te-ilgili option')].map(o => o.textContent).join('|') }; });
+  kontrol('Eşleştirme ekranı: kayıtlı müteahhit ve yatırımcı “bağla” seçili, yetkilisi gösterilir; şantiye şefi ünvanından ayrılmış yeni kişi, kayıtlı elektrik projecisi bağlanır; ruhsat / ada ayrı alanlarda; tabeladaki telefon müteahhide; ilgili kişi adayları',
+    ekr.baslik === 'Tabeladaki bilgileri eşleştir' && ekr.gemut === 'f:fp' && ekr.yat === 'f:fa' && ekr.sef === 'yeni' && ekr.sefAd === 'H. İbrahim Taşdemir' && ekr.sefUnvan === 'İnşaat Mühendisi' && ekr.ep === 'k:ke' && /Mehmet Kaya/.test(ekr.yetkili || '') && ekr.ruhsat === '999888' && ekr.rt === '2023-02-01' && ekr.ada === '7' && ekr.tel === 'f:gemut' && /Bedel/.test(ekr.not || '') && ekr.gorev && /Mehmet Kaya · Piramit/.test(ekr.ilgili) && /Taşdemir · Şantiye şefi \(yeni\)/.test(ekr.ilgili), JSON.stringify(ekr));
+  await p.selectOption('.drawer.open #te-ilgili', 'kp');
+  await p.selectOption('.drawer.open [data-ksec="statik"]', 'atla');
+  await p.click('.drawer.open [data-uygula]'); await w(900);
+  const form = await p.evaluate(() => { const d = document.querySelector('.drawer.open'); return { ad: d.querySelector('[name=ad]')?.value, ruhsat: d.querySelector('[name=ruhsat_no]')?.value, ada: d.querySelector('[name=ada]')?.value }; });
+  await p.click('.drawer.open [type=submit]'); await w(1200);
+  const kay = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const pr = S.projeler.find(x => x.ad === 'Armada Gıda Mersin'); const k = id => S.kisiler.find(x => x.id === id);
+    return pr && { gemut: pr.gemut_id, yat: pr.yatirimci_id, ruhsat: pr.ruhsat_no, rt: pr.ruhsat_tarihi, ada: pr.ada, parsel: pr.parsel, il: pr.il, sef: k(pr.santiye_sefi_id)?.ad_soyad + '/' + k(pr.santiye_sefi_id)?.unvan + '/' + k(pr.santiye_sefi_id)?.firma_id, ep: pr.elektrik_projeci_id, mimar: k(pr.mimar_id)?.ad_soyad, statik: pr.statik_id, mekanik: k(pr.mekanik_id)?.pozisyon,
+      ilgili: pr.ilgili_kisi_id, not: pr.notlar, tel: S.firmalar.find(f => f.id === 'fp').telefon, gorev: S.gorevler.filter(g => g.proje_id === pr.id).map(g => g.baslik).join('|') }; });
+  kontrol('Onaylanınca proje formu tabela alanlarıyla açılır; kaydedince: müteahhit / yatırımcı bağlı, ruhsat no-tarih, ada, parsel, il kendi alanında, şantiye şefi ünvanıyla müteahhide bağlı kişi, elektrik projecisi kayıtlı kişi, mimar ve mekanik yeni kişi, statik atlandı, ilgili kişi, telefon firmaya, takip görevleri',
+    form.ruhsat === '999888' && form.ada === '7' && kay && kay.gemut === 'fp' && kay.yat === 'fa' && kay.ruhsat === '999888' && kay.rt === '2023-02-01' && kay.ada === '7' && kay.parsel === '8' && kay.il === 'Mersin' && kay.sef === 'H. İbrahim Taşdemir/İnşaat Mühendisi/fp' && kay.ep === 'ke' && kay.mimar === 'Nihari Şen' && !kay.statik && kay.mekanik === 'Mekanik proje müellifi'
+    && kay.ilgili === 'kp' && /Bedel/.test(kay.not) && kay.tel === '03224571234' && /Genel müteahhidi ziyaret et: Piramit İnşaat/.test(kay.gorev) && /Elektrik projecisiyle görüş: Emrah İşeri/.test(kay.gorev), JSON.stringify({ form, kay }));
+  // Mükerrer: aynı ruhsatlı tabela → uyarı, "blok olarak ekle"
+  await p.evaluate(async () => { (await import('./js/tabelaesle.js')).eslestirmeEkrani({ o: { ad: 'P Blok', ruhsat: 'No 105975072', gemut: 'Piramit İnşaat' } }); }); await w(600);
+  const muk = await p.evaluate(() => document.querySelector('.drawer.open .te-muk')?.textContent || '');
+  await p.click('.drawer.open [data-muk="alt"]'); await p.click('.drawer.open [data-uygula]'); await w(900);
+  const mf = await p.evaluate(() => { const d = document.querySelector('.drawer.open'); return { ust: d.querySelector('[name=ust_proje_id]')?.value, ad: d.querySelector('[name=ad]')?.value }; });
+  await p.click('.drawer.open [type=submit]'); await w(1000);
+  const blk = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const b = S.projeler.find(x => x.ad === 'P Blok'); return b && [b.ust_proje_id, b.yatirimci_id, b.lat, b.ruhsat_no].join(','); });
+  kontrol('Aynı ruhsatlı proje varsa uyarı; “blok olarak ekle” seçilince yeni kayıt ana projenin bloğu olur, ortak bilgileri (yatırımcı, konum, ruhsat) ana projeden alır',
+    /Armada Gıda Adana/.test(muk) && mf.ust === 'Armada Gıda Adana' && blk === 'pa,fa,37,105975072', JSON.stringify({ muk, mf, blk }));
+  // Tabeladan doldur (kayıtlı proje): boş alan dolar, dolu ve farklı alan işaretlenmeden değişmez
+  await p.evaluate(async () => { const { S } = await import('./js/db.js'); (await import('./js/tabelaesle.js')).eslestirmeEkrani({ o: { ruhsat: 'Tarih 08.08.2022 · No 111', parsel: 'Ada 143 · Parsel 99', santiye_sefi: 'Ali Veli', gemut: 'Başka İnşaat' }, proje: S.projeler.find(x => x.id === 'pa') }); }); await w(600);
+  const dl = await p.evaluate(() => { const d = document.querySelector('.drawer.open'); return { baslik: d.querySelector('#drawer-title').textContent, degistir: !!d.querySelector('[data-degistir="ruhsat_no"]'), gemut: d.querySelector('[data-fsec="gemut"]')?.value, buton: d.querySelector('[data-uygula]').textContent }; });
+  await p.click('.drawer.open [data-uygula]'); await w(900);
+  const dol = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const pr = S.projeler.find(x => x.id === 'pa'); return [pr.ruhsat_no, pr.ruhsat_tarihi, pr.ada, pr.parsel, pr.gemut_id, S.kisiler.find(k => k.id === pr.santiye_sefi_id)?.ad_soyad].join(','); });
+  kontrol('Tabeladan doldur: boş alanlar (ruhsat tarihi, ada, parsel, şantiye şefi) dolar; farklı okunan dolu alan (ruhsat no, müteahhit) sorulmadan değişmez',
+    dl.baslik === 'Tabeladan doldur' && dl.degistir && dl.gemut === 'koru' && dl.buton === 'Projeye uygula' && dol === '105975072,2022-08-08,143,99,fp,Ali Veli', JSON.stringify({ dl, dol }));
+  // Proje sayfası: bloklar, tabela kartı, yakındaki şantiyeler, alım tahmini
+  await p.goto(U + '#/proje/pa'); await w(1200);
+  const ps = await p.evaluate(() => ({ blok: document.querySelector('.ps-bloklar')?.innerText || '', tabela: document.querySelector('.ps-tabela')?.innerText || '', yakin: document.querySelector('.ps-yakin')?.innerText || '' }));
+  await p.click('[data-a="alimyaz"]'); await w(600);
+  const alim = await p.evaluate(async () => (await import('./js/db.js')).S.projeler.find(x => x.id === 'pa').alim_tarihi);
+  await p.click('.ps-bloklar [data-a="blok"]'); await w(700);
+  const yb = await p.evaluate(() => { const d = document.querySelector('.drawer.open'); return { ust: d.querySelector('[name=ust_proje_id]')?.value, ad: d.querySelector('[name=ad]')?.value }; });
+  await p.fill('.drawer.open [name=ad]', 'Armada Gıda Adana – G Blok'); await p.fill('.drawer.open [name=tutar_usd]', '5000'); await p.click('.drawer.open [type=submit]'); await w(1000);
+  await p.goto(U + '#/bugun'); await w(300); await p.goto(U + '#/proje/pa'); await w(1000);
+  const ps2 = await p.evaluate(() => document.querySelector('.ps-blokozet')?.textContent || '');
+  kontrol('Ana proje sayfası: bloklar listesi ve özeti (blok sayısı, toplam), tabela kartı (ruhsat, ada / parsel, şantiye şefi), yakındaki şantiyeler (uzaktaki yok), şantiye aşamasına göre alım tahmini “Tarihe yaz”, “+ Blok” ana projenin bilgileriyle açılır',
+    /P Blok/.test(ps.blok) && /Ruhsat/.test(ps.tabela) && /Ali Veli/.test(ps.tabela) && /Komşu Fabrika/.test(ps.yakin) && !/Uzak Proje/.test(ps.yakin) && alim === '2027-04-19' && yb.ust === 'Armada Gıda Adana' && /^Armada Gıda Adana – /.test(yb.ad) && /2 blok/.test(ps2) && /5\.000/.test(ps2), JSON.stringify({ ps, alim, yb, ps2 }));
+  // Blok sayfası: ana proje bağlantısı; ziyarette blok işaretlenir, blokta görünür
+  const bid = await p.evaluate(async () => (await import('./js/db.js')).S.projeler.find(x => x.ad === 'P Blok').id);
+  await p.evaluate(async () => (await import('./js/views/ziyaret.js')).ziyaretForm({ proje_id: 'pa', notlar: 'Şantiye görüşmesi' })); await w(700);
+  const zb = await p.evaluate(() => [...document.querySelectorAll('.drawer.open [data-blok]')].length);
+  await p.check(`.drawer.open [data-blok="${bid}"]`); await p.click('.drawer.open [type=submit]'); await w(900);
+  await p.goto(U + `#/proje/${bid}/ziyaret`); await w(1000);
+  const bs = await p.evaluate(() => ({ ana: document.querySelector('.ps-ana')?.textContent, ziy: document.querySelector('[data-fs="ziyaret"]')?.innerText || '' }));
+  kontrol('Ana proje ziyaretinde bloklar işaretlenir; blok sayfasında “Ana proje” bağlantısı ve işaretlenen ziyaret görünür', zb === 2 && /Armada Gıda Adana/.test(bs.ana || '') && /Ziyaretler\s*1/.test(bs.ziy), JSON.stringify({ zb, bs }));
+  // Bugün: aynı aşamada uzun kalan proje
+  await p.goto(U + '#/bugun'); await w(1200);
+  const bg = await p.evaluate(async () => ((await import('./js/views/bugun.js')).zamaniGelenler().find(x => x.p.id === 'pk')?.neden || []).join(', ') + ' | ' + (document.body.innerText.includes('80 gündür teklif verildi aşamasında') ? 'ekranda' : ''));
+  kontrol('Bugün: 30 günden uzun teklif aşamasında kalan proje “… gündür teklif verildi aşamasında” diye hatırlatılır', /80 gündür teklif verildi aşamasında.*ekranda/.test(bg), bg);
+  kontrol('Tabela eşleştirme ve proje yapısı ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

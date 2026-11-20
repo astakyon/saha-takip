@@ -109,62 +109,47 @@ export function firmaEslestir(ad) {
   return S.firmalar.find(f => cekirdek(f.ad) === c) || S.firmalar.find(f => { const x = cekirdek(f.ad); return x.length >= 4 && (x.startsWith(c) || c.startsWith(x)); }) || null;
 }
 
-const ROLLER = [['yatirimci', 'Yatırımcı / yapı sahibi', 'yatirimci_id', 'Yatırımcı'], ['gemut', 'Müteahhit (Gemüt)', 'gemut_id', 'Gemüt'], ['emut', 'Elektrik yüklenicisi (Emüt)', 'emut_id', 'Emüt'], ['elektrik_proje', 'Elektrik projesi (müellif)', 'projeci_id', 'Proje Bürosu'], ['projeci', 'Mimari proje (müellif)', 'projeci_id', 'Proje Bürosu'], ['danisman', 'Kontrollük / danışman', 'danisman_id', 'Danışman']];
-const BILGI = [['statik', 'Statik proje'], ['mekanik', 'Mekanik proje'], ['denetim', 'Yapı denetim'], ['ruhsat', 'Ruhsat'], ['parsel', 'Ada / parsel'], ['baslama', 'Başlama'], ['bitis', 'Bitiş'], ['bedel', 'Bedel'], ['alan', 'İnşaat alanı'], ['adres', 'Adres']];
+// Tabela fotoğrafını çerçevelet ve oku → { o, metin, kirpik } (vazgeçilirse null)
+async function tabelaOkut(dosya, baslik) {
+  let okunacak = dosya;
+  try { const { kartvizitKirp } = await import('./kirp.js'); const r = await kartvizitKirp(dosya, { ad: 'Tabela', yatay: false, uzun: 2400, kalite: 0.92, otomatik: false }); if (!r) return null; if (r.blob) okunacak = r.blob; }
+  catch (e) { console.warn('Tabela çerçeveleme', e); }
+  const p = openDrawer(`<header class="dh"><div><p class="muted">${esc(baslik)}</p><h2 id="drawer-title">Şantiye tabelası</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+    <div class="dbody form"><div class="tb-foto"><img alt="Tabela fotoğrafı" src="${URL.createObjectURL(okunacak)}"></div><div data-durum aria-live="polite"><p class="hint">Tabeladaki yazı okunuyor… (ilk seferde okuma motoru indirilir, ~15 MB)</p><progress max="1" value="0"></progress></div></div>`, { wide: true });
+  let o = {}, metin = '';
+  try { const { tabelaOku } = await import('./ocr.js'); const r = await tabelaOku(okunacak, (s, v) => { const pr = p.querySelector('progress'); if (pr && v != null) pr.value = v; }); metin = r.hucreler ? tabelaHucreMetni(r) : tabelaSatirlari(r.satirlar) || r.metin; o = tabelaAyristir(metin); }
+  catch (e) { toast('Tabela okunamadı: ' + e.message + '. Alanları elle doldurabilirsin.', 'err'); }
+  if (!p.isConnected) return null;
+  return { o, metin, kirpik: okunacak !== dosya ? okunacak : null };
+}
 
+// Yeni proje: tabela fotoğrafı → çerçevele → oku → eşleştirme ekranı → proje formu
 export async function tabeladanProje() {
   const [file] = await pickFiles({ capture: true, multiple: false }); if (!file) return;
-  // Önce tabelayı çerçevele: zemin, duvar ve çevredeki yazılar okunmaz; eğik çekilen tabela düzlenir, yüksek çözünürlükte kesilir
-  let okunacak = file;
-  try { const { kartvizitKirp } = await import('./kirp.js'); const r = await kartvizitKirp(file, { ad: 'Tabela', yatay: false, uzun: 2400, kalite: 0.92, otomatik: false }); if (!r) return; if (r.blob) okunacak = r.blob; }
-  catch (e) { console.warn('Tabela çerçeveleme', e); }
-  const p = openDrawer(`<header class="dh"><div><p class="muted">Yeni proje</p><h2 id="drawer-title">Şantiye tabelası</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
-    <div class="dbody form"><div class="tb-foto"><img alt="Tabela fotoğrafı" src="${URL.createObjectURL(okunacak)}"></div><div data-durum aria-live="polite"><p class="hint">Tabeladaki yazı okunuyor… (ilk seferde okuma motoru indirilir, ~15 MB)</p><progress max="1" value="0"></progress></div><div data-alanlar></div></div>`, { wide: true });
-  let o, metin = '';
-  try { const { tabelaOku } = await import('./ocr.js'); const r = await tabelaOku(okunacak, (s, v) => { const pr = p.querySelector('progress'); if (pr && v != null) pr.value = v; }); metin = r.hucreler ? tabelaHucreMetni(r) : tabelaSatirlari(r.satirlar) || r.metin; o = tabelaAyristir(metin); }
-  catch (e) { p.querySelector('[data-durum]').innerHTML = `<p class="warn">Okunamadı: ${esc(e.message)}. Alanları elle doldurabilirsin.</p>`; o = {}; }
-  if (!p.isConnected) return;
-  const bulunan = ROLLER.filter(([k]) => o[k]).length + BILGI.filter(([k]) => o[k]).length + (o.ad ? 1 : 0) + (o.santiye_sefi ? 1 : 0);
-  p.querySelector('[data-durum]').innerHTML = `<p class="hint">${bulunan ? `${bulunan} alan okundu. Kontrol et, yanlışları düzelt.` : 'Tabeladan alan ayrılamadı. Fotoğraf net değilse yeniden çek ya da alanları elle doldur.'}</p>`;
-  p.querySelector('[data-alanlar]').innerHTML = `
-    <div class="fld"><label for="tb-ad">Proje adı</label><input id="tb-ad" value="${esc(o.ad || '')}"></div>
-    ${ROLLER.map(([k, l]) => { const f = o[k] ? firmaEslestir(o[k]) : null; return `<div class="fld tb-rol" data-rol="${k}"><label for="tb-${k}">${l}</label><input id="tb-${k}" value="${esc(o[k] || '')}" placeholder="—">
-      <small data-esles>${f ? `Kayıtlı firma: <b>${esc(f.ad)}</b>` : o[k] ? '<label class="chk"><input type="checkbox" data-olustur checked> <span>Firmalara yeni firma olarak ekle</span></label>' : ''}</small></div>`; }).join('')}
-    ${(sef => `<div class="fld"><label for="tb-sef">Şantiye şefi</label><input id="tb-sef" value="${esc(sef)}" placeholder="—"><small>${sef ? '<label class="chk"><input type="checkbox" id="tb-sefkisi" checked> <span>Kişilere ekle (müteahhit firmasına bağlı)</span></label>' : ''}</small></div>`)(o.santiye_sefi || '')}
-    <div class="grid"><div class="fld"><label for="tb-il">İl</label><select id="tb-il"><option value="">—</option>${ILLER.map(i => `<option ${o.il === i ? 'selected' : ''}>${i}</option>`).join('')}</select></div></div>
-    ${BILGI.some(([k]) => o[k]) ? `<div class="fld"><label>Tabeladaki diğer bilgiler (projenin notlarına eklenir)</label><textarea id="tb-not" rows="4">${esc(BILGI.filter(([k]) => o[k]).map(([k, l]) => `${l}: ${o[k]}`).join('\n'))}</textarea></div>` : '<textarea id="tb-not" hidden></textarea>'}
-    <label class="chk"><input type="checkbox" id="tb-foto" checked> <span>Tabela fotoğrafını projeye ekle (yüksek çözünürlükte; çerçevelenmiş hâli de)</span></label>
-    <details><summary>Okunan metnin tamamı</summary><pre class="tb-metin">${esc(metin || '—')}</pre></details>
-    <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn primary" data-devam>Proje formunu aç</button></div>`;
-  // Firma adı değişince eşleşmeyi yenile
-  p.querySelectorAll('.tb-rol input[id^="tb-"]').forEach(inp => inp.addEventListener('change', () => {
-    const f = inp.value.trim() ? firmaEslestir(inp.value) : null, sm = inp.parentElement.querySelector('[data-esles]');
-    sm.innerHTML = f ? `Kayıtlı firma: <b>${esc(f.ad)}</b>` : inp.value.trim() ? '<label class="chk"><input type="checkbox" data-olustur checked> <span>Firmalara yeni firma olarak ekle</span></label>' : '';
-  }));
-  p.querySelector('[data-devam]').onclick = async () => {
-    const b = p.querySelector('[data-devam]'); b.disabled = true;
-    try {
-      const init = { ad: p.querySelector('#tb-ad').value.trim(), il: p.querySelector('#tb-il').value || null, durum: 'Proje', santiye_asamasi: null };
-      for (const [k, , alan, tip] of ROLLER) {
-        const kutu = p.querySelector(`[data-rol="${k}"]`), ad = kutu.querySelector('input').value.trim(); if (!ad || init[alan]) continue;
-        let f = firmaEslestir(ad);
-        if (!f && kutu.querySelector('[data-olustur]')?.checked) f = await app.db.save('firmalar', { id: uuid(), ad: ad.replace(/\s+/g, ' '), tipler: [tip], il: init.il, notlar: 'Şantiye tabelasından eklendi' });
-        if (f) init[alan] = f.id;
-      }
-      // Aynı alana düşen ikinci müellif (ör. mimar, elektrik projecisi bağlandıysa) notlarda kalır
-      const ekNot = ROLLER.filter(([k, , alan]) => { const ad = p.querySelector(`[data-rol="${k}"] input`).value.trim(); return ad && !(firmaEslestir(ad)?.id === init[alan]) && ROLLER.find(r => r[2] === alan)[0] !== k && init[alan]; }).map(([k, l]) => `${l}: ${p.querySelector(`[data-rol="${k}"] input`).value.trim()}`);
-      const sef = p.querySelector('#tb-sef')?.value.trim();
-      if (sef && p.querySelector('#tb-sefkisi')?.checked) {
-        const m = /^((in[şs]aat|elektrik|makin[ae]|mimar|harita|jeoloji)\s*(y\.?\s*)?(m[üu]hendis[ıi]|tekn[ıi]ker)|mimar)\s*/i.exec(sef), adSoyad = sef.slice(m ? m[0].length : 0).trim() || sef;
-        try { await app.db.save('kisiler', { id: uuid(), firma_id: init.gemut_id || null, ad_soyad: adSoyad.toLocaleLowerCase('tr').replace(/(^|[\s.])\S/g, c => c.toLocaleUpperCase('tr')), unvan: m ? m[0].trim().toLocaleLowerCase('tr').replace(/(^|\s)\S/g, c => c.toLocaleUpperCase('tr')) : null, pozisyon: 'Şantiye şefi', notlar: 'Şantiye tabelasından' }); }
-        catch (e) { toast('Şantiye şefi kişilere eklenemedi: ' + e.message, 'err'); }
-      }
-      if (sef) ekNot.unshift(`Şantiye şefi: ${sef}`);
-      const not = p.querySelector('#tb-not').value.trim();
-      init.notlar = ['Şantiye tabelasından', ...ekNot, not].filter(Boolean).join('\n');
-      if (p.querySelector('#tb-foto').checked) { try { init.fotolar = [await app.db.upload(file, { max: 2560, q: 0.9 }), ...(okunacak !== file ? [await app.db.upload(okunacak, { max: 2560, q: 0.92 })] : [])]; } catch (e) { toast('Fotoğraf eklenemedi: ' + e.message, 'err'); } }
-      closeDrawer();
-      (await import('./views/projeler.js')).yeniProje(init);
-    } catch (e) { b.disabled = false; toast('Olmadı: ' + e.message, 'err'); }
-  };
+  const r = await tabelaOkut(file, 'Yeni proje'); if (!r) return;
+  const { eslestirmeEkrani } = await import('./tabelaesle.js');
+  await eslestirmeEkrani({ ...r, dosya: file });
+}
+
+// Kayıtlı proje: projedeki bir fotoğrafı ya da yeni seçilen fotoğrafı yeniden oku, boş alanları doldur
+export async function tabeladanDoldur(proje) {
+  const fotolar = proje.fotolar || [];
+  let dosya = null, kayitli = false;
+  if (fotolar.length) {
+    const sec = await new Promise(coz => {
+      const p = openDrawer(`<header class="dh"><div><p class="muted">${esc(proje.ad)}</p><h2 id="drawer-title">Tabeladan doldur</h2></div><button class="x" data-close aria-label="Kapat">×</button></header>
+        <div class="dbody"><p class="hint">Projedeki tabela fotoğrafını seç ya da yeni bir fotoğraf çek / dosyalardan seç. Okunan bilgiler yalnızca boş alanlara yazılır; dolu bir alanı değiştirmeden önce sorulur.</p>
+        <div class="te-fotolar">${fotolar.map((y, i) => `<button type="button" class="te-foto" data-i="${i}" aria-label="${i + 1}. fotoğrafı oku"><img alt="" data-yol="${esc(y)}"></button>`).join('')}</div>
+        <div class="btnrow"><button type="button" class="btn" data-yeni>Yeni fotoğraf</button></div></div>`, { onClose: () => coz(null) });
+      p.querySelectorAll('img[data-yol]').forEach(async im => { const u = await app.db.url(im.dataset.yol, true); if (u) im.src = u; });
+      p.querySelectorAll('[data-i]').forEach(b => b.onclick = () => coz({ yol: fotolar[+b.dataset.i] }));
+      p.querySelector('[data-yeni]').onclick = () => coz({ yeni: true });
+    });
+    if (!sec) return;
+    if (sec.yol) { try { const u = await app.db.url(sec.yol); const bl = await (await fetch(u)).blob(); dosya = new File([bl], 'tabela.jpg', { type: bl.type || 'image/jpeg' }); kayitli = true; } catch (e) { toast('Fotoğraf açılamadı: ' + e.message, 'err'); return; } }
+  }
+  if (!dosya) { const [f] = await pickFiles({ accept: 'image/*', capture: true, multiple: false }); if (!f) return; dosya = f; }
+  const r = await tabelaOkut(dosya, proje.ad); if (!r) return;
+  const { eslestirmeEkrani } = await import('./tabelaesle.js');
+  await eslestirmeEkrani({ ...r, dosya: kayitli ? null : dosya, kirpik: kayitli ? null : r.kirpik, proje, kayitliFoto: kayitli });
 }

@@ -21,6 +21,7 @@ import { etiketKarti } from '../yorum.js';
 import { radarKarti, radarBagla, radarListesi, TURLER as RADAR_TUR } from '../radar.js';
 import { eksikKarti, eksikBagla } from '../eksikveri.js';
 import { hedefDurumu } from '../hedef.js';
+import { asamadaGun, BEKLEME_SINIRI, alimTahmini } from '../projeyapi.js';
 
 // Segmente göre ziyaret sıklığı: A 30, B 60, C 90 gün; segmentsiz firmalarda 45 gün
 export const SIKLIK = { A: 30, B: 60, C: 90 };
@@ -69,10 +70,13 @@ export function zamaniGelenler() {
     const neden = [];
     if (p.alim_tarihi && p.alim_tarihi <= ay) neden.push(p.alim_tarihi < t ? `aydınlatma alımı ${tarih(p.alim_tarihi)} bekleniyordu` : `aydınlatma alımı ${tarih(p.alim_tarihi)}`);
     if (['İnce işler', 'Elektrik tesisatı'].includes(p.santiye_asamasi)) neden.push('şantiye ' + p.santiye_asamasi.toLowerCase() + ' aşamasında');
+    else if (!p.alim_tarihi) { const at = alimTahmini(p); if (at && at.tarih <= ay) neden.push(`şantiye aşamasına göre aydınlatma alımı yaklaşıyor (~${tarih(at.tarih)})`); }
+    const bg = BEKLEME_SINIRI[p.durum] && ['Teklif Verildi', 'Sıcak', 'İhale'].includes(p.durum) ? asamadaGun(p) : null;
+    if (bg != null && bg >= BEKLEME_SINIRI[p.durum]) neden.push(`${bg} gündür ${p.durum.toLocaleLowerCase('tr')} aşamasında`);
     if (p.beklenen_tarih && p.beklenen_tarih <= ay && p.beklenen_tarih >= gunEkle(t, -60)) neden.push(p.beklenen_tarih < t ? `beklenen sipariş tarihi geçti (${tarih(p.beklenen_tarih)})` : `beklenen sipariş ${tarih(p.beklenen_tarih)}`);
     if (!neden.length) return null;
     const sz = son.get(p.id);
-    return { p, neden, sz, oncelik: (p.alim_tarihi || p.beklenen_tarih || '9') };
+    return { p, neden, sz, oncelik: (p.alim_tarihi || p.beklenen_tarih || '8') };
   }).filter(Boolean).filter(x => !x.sz || gunFarki(x.sz, t) > 14).sort((a, b) => a.oncelik.localeCompare(b.oncelik));
 }
 export function gidilmeyenler(gun = null) {

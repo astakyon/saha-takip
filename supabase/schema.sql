@@ -2651,6 +2651,23 @@ create or replace function public.ayar_paylasilir(sahip uuid, anahtar text) retu
     or (anahtar like 'sartname:%' and public.yetki(sahip, 'projeler', 'oku'))))
 $f$;
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 65 $f$;
+-- ---------- Sürüm 66: Şantiye tabelası alanları (ruhsat, ada / parsel, yapı denetim, şantiye şefi ve müellifler kişi olarak); ana proje → alt proje (blok) ve kapsam; ziyarette konuşulan bloklar ----------
+alter table public.projeler add column if not exists ust_proje_id uuid references public.projeler(id) on delete set null;   -- ana proje (şantiye); doluysa bu proje bir blok / alt proje
+alter table public.projeler add column if not exists kapsam text[] default '{}';       -- iç aydınlatma, dış aydınlatma, acil aydınlatma…
+alter table public.projeler add column if not exists ruhsat_no text;
+alter table public.projeler add column if not exists ruhsat_tarihi date;
+alter table public.projeler add column if not exists ada text;
+alter table public.projeler add column if not exists parsel text;
+alter table public.projeler add column if not exists yapi_denetim text;
+alter table public.projeler add column if not exists santiye_sefi_id uuid references public.kisiler(id) on delete set null;
+alter table public.projeler add column if not exists mimar_id uuid references public.kisiler(id) on delete set null;
+alter table public.projeler add column if not exists statik_id uuid references public.kisiler(id) on delete set null;
+alter table public.projeler add column if not exists mekanik_id uuid references public.kisiler(id) on delete set null;
+alter table public.projeler add column if not exists elektrik_projeci_id uuid references public.kisiler(id) on delete set null;
+create index if not exists projeler_ust_idx on public.projeler (ust_proje_id);
+create index if not exists projeler_ruhsat_idx on public.projeler (owner, ruhsat_no);
+alter table public.ziyaretler add column if not exists alt_proje_ids uuid[] default '{}';   -- ana proje ziyaretinde konuşulan bloklar
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 66 $f$;
 
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile

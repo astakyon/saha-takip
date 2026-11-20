@@ -2260,3 +2260,23 @@ tr.bs-kritik .bs-hizli { border-color: var(--neg, #c2410c); } tr.bs-kritik .bs-h
 .bs-vh { flex-direction: column; align-items: stretch; }
 .bs-vh .vh-act { width: 100%; justify-content: flex-start; }
 .bs-vh .vh-act > select { flex: 1 1 240px; max-width: 420px; width: auto; }
+/* Sürüm 132: tabela eşleştirme ekranı, ana proje / bloklar, yakındaki şantiyeler */
+.te h3 { margin: 18px 0 6px; font-size: 15px; }
+.te-satir { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; border-top: 1px solid var(--line-2); }
+.te-satir > label { font-weight: 600; font-size: 14px; }
+.te-ic { display: flex; flex-wrap: wrap; gap: 8px; }
+.te-ic > input { flex: 2 1 220px; min-width: 0; }
+.te-ic > input.te-unvan { flex: 1 1 150px; }
+.te-ic > select { flex: 1.5 1 220px; min-width: 0; }
+.te-muk { display: flex; flex-direction: column; gap: 8px; }
+.te-mukk { flex-wrap: wrap; }
+.te-fotolar { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin: 12px 0; }
+.te-foto { padding: 0; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--line-2); aspect-ratio: 3 / 4; cursor: pointer; }
+.te-foto:hover, .te-foto:focus-visible { border-color: var(--accent, #2563eb); }
+.te-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ps-ana { margin: 0 0 2px; font-size: 13.5px; font-weight: 600; }
+.ps-ust { display: block; font-size: 12px; color: var(--muted); }
+.ps-blokozet { margin: 0 0 8px; font-size: 14px; }
+.ps-blok li { gap: 8px; }
+.z-blok { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 6px; }
+.te-izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0 14px; }
