@@ -32,6 +32,14 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 133)
+
+- Mevcut projeleri şantiye → blok düzenine sokma: proje listesinde ⋯ → Toplu düzelt ile projeleri seç → “Şantiyede topla”: seçilenlerden birini ana proje yap ya da yeni ana proje aç (seçilenlerde ortak olan yatırımcı, müteahhit, konum, ruhsat… ona taşınır); diğerleri blok olur. “Ana projeden ayır” seçilen blokları bağımsız yapar.
+- Proje sayfasında “Bir şantiyeye bağla (blok yap)”: aynı yatırımcı / müteahhit, benzer ad ve yakın konumdaki şantiyeler “önerilen” olarak üstte; bloğun boş ortak bilgileri istenirse ana projeden doldurulur. Blok sayfasında “Başka şantiyeye taşı” ve “Ana projeden ayır”.
+- Ana projede “Mevcut projeyi ekle”: birden çok kayıtlı proje seçilip blok yapılır.
+- Kurallar: iki katman (bloğun bloğu olmaz); blokları olan proje başka şantiyeye bağlanamaz; proje formundaki “Ana proje” alanında da denetlenir.
+- Toplu düzelt çubuğu telefonda taşmıyor (düğmeler alt satıra iner).
+
 ## Güncelleme notu (sürüm 132)
 
 - Tabela eşleştirme ekranı: okunan her firma (yatırımcı, genel müteahhit = yüklenici, Emüt, danışman) ve kişi (şantiye şefi, elektrik projecisi, mimar, statik, mekanik) bir satır; kayıtlı firma / kişi adayları benzerlikle listelenir (“Bağla”), yoksa yeni kart, istenirse atla; seçilen firmanın yetkilileri gösterilir, projenin ilgili kişisi seçilir. Kişi ünvanı (İnşaat Mühendisi…) ayrı alana. Aynı kişi iki görevde geçerse tek kart.

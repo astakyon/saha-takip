@@ -1863,6 +1863,53 @@ const DB = () => {
   kontrol('Tabela eşleştirme ve proje yapısı ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
+// Sürüm 133: mevcut projeleri şantiye → blok düzenine sokma (listeden topla, proje sayfasından bağla / ayır, ana projeye mevcut proje ekle)
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    const r = x => ({ owner: 'u1', created_at: ts, updated_at: ts, takip_yili: 2026, ...x });
+    d.firmalar = [...(d.firmalar || []), r({ id: 'fy', ad: 'Armada Gıda', tipler: ['Yatırımcı'] })];
+    d.projeler = [...(d.projeler || []), r({ id: 'a1', ad: 'Armada P Blok', durum: 'Teklif Verildi', il: 'Adana', yatirimci_id: 'fy', lat: 37, lng: 35.3, ruhsat_no: '555', tutar_usd: 1000 }),
+      r({ id: 'a2', ad: 'Armada G Blok', durum: 'Proje', il: 'Adana', tutar_usd: 2000 }), r({ id: 'a3', ad: 'Armada Mercimek Eleme', durum: 'Sipariş', il: 'Adana', yatirimci_id: 'fy', tutar_usd: 500 }),
+      r({ id: 'x1', ad: 'Başka İş', durum: 'Proje', il: 'Mersin' })];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.goto(U + '#/projeler'); await w(1500);
+  // Listeden: üçünü seç → Şantiyede topla → yeni ana proje
+  await p.evaluate(() => document.querySelector('[data-toplu]').click()); await w(300);
+  for (const id of ['a1', 'a2', 'a3']) await p.evaluate(id => { const c = document.querySelector(`[data-sec="${id}"]`); c.checked = true; c.dispatchEvent(new Event('change')); }, id);
+  await p.evaluate(() => document.querySelector('[data-ttopla]').click()); await w(500);
+  const ad0 = await p.evaluate(() => document.querySelector('.drawer.open [data-ad]')?.value);
+  await p.check('.drawer.open [name=ana][value=_yeni]'); await p.fill('.drawer.open [data-ad]', 'Armada Gıda Adana'); await p.click('.drawer.open [data-topla]'); await w(900);
+  const t1 = await p.evaluate(async () => { const { S } = await import('./js/db.js'); const ana = S.projeler.find(x => x.ad === 'Armada Gıda Adana'); const b = S.projeler.filter(x => x.ust_proje_id === ana?.id);
+    return ana && { n: b.length, yat: ana.yatirimci_id, a2yat: S.projeler.find(x => x.id === 'a2').yatirimci_id, a2lat: S.projeler.find(x => x.id === 'a2').lat, a1tutar: S.projeler.find(x => x.id === 'a1').tutar_usd, liste: document.querySelector('tr[data-id="a2"], [data-id="a2"]')?.textContent?.includes('↳') }; });
+  kontrol('Proje listesi: seçilen projeler “Şantiyede topla” ile yeni ana projenin blokları olur; ana proje ortak bilgileri (yatırımcı, konum) alır, bloklar boş ortak bilgileri ana projeden doldurur, tutarları kendinde kalır',
+    ad0 === 'Armada' && t1 && t1.n === 3 && t1.yat === 'fy' && t1.a2yat === 'fy' && t1.a2lat === 37 && t1.a1tutar === 1000, JSON.stringify({ ad0, t1 }));
+  // Proje sayfası: blok → ana projeden ayır; sonra "Bir şantiyeye bağla"
+  await p.goto(U + '#/proje/a3'); await w(1000);
+  const k1 = await p.evaluate(() => document.querySelector('.ps-bloklar')?.innerText || '');
+  await p.click('.ps-bloklar [data-a="ayir"]'); await w(700);
+  const ayr = await p.evaluate(async () => (await import('./js/db.js')).S.projeler.find(x => x.id === 'a3').ust_proje_id);
+  await p.goto(U + '#/proje/x1'); await w(300); await p.goto(U + '#/proje/a3'); await w(900);
+  await p.click('.ps-bloklar [data-a="bagla"]'); await w(500);
+  const onerilen = await p.evaluate(() => document.querySelector('.drawer.open [data-pl] li')?.textContent || '');
+  await p.fill('.drawer.open [data-pq]', 'Armada Gıda Adana'); await w(200);
+  await p.click('.drawer.open [data-pl] input'); await p.click('.drawer.open [data-pok]'); await w(800);
+  const bag = await p.evaluate(async () => { const { S } = await import('./js/db.js'); return byIdAd(S); function byIdAd(S) { const a = S.projeler.find(x => x.id === 'a3'); return S.projeler.find(x => x.id === a.ust_proje_id)?.ad; } });
+  kontrol('Blok sayfasında “Bu proje … şantiyesinin bloğu” ve “Ana projeden ayır”; bağımsız projede “bir şantiyeye bağla” (aynı yatırımcılı şantiye önerilen olarak üstte)',
+    /Armada Gıda Adana/.test(k1) && ayr == null && /Armada Gıda Adana/.test(onerilen) && /önerilen/.test(onerilen) && bag === 'Armada Gıda Adana', JSON.stringify({ k1, ayr, onerilen, bag }));
+  // Ana proje: "Mevcut projeyi ekle" (çoklu)
+  const anaId = await p.evaluate(async () => (await import('./js/db.js')).S.projeler.find(x => x.ad === 'Armada Gıda Adana').id);
+  await p.goto(U + '#/proje/' + anaId); await w(1000);
+  await p.click('.ps-bloklar [data-a="blokekle"]'); await w(500);
+  const aday = await p.evaluate(() => [...document.querySelectorAll('.drawer.open [data-pl] b')].map(b => b.textContent).join('|'));
+  await p.check('.drawer.open [data-pid="x1"]'); await p.click('.drawer.open [data-pok]'); await w(800);
+  const say = await p.evaluate(async id => (await import('./js/db.js')).S.projeler.filter(x => x.ust_proje_id === id).length, anaId);
+  // Kural: bloğu ana proje yapılamaz (formda)
+  const kural = await p.evaluate(async () => { const { santiyeyeBagla } = await import('./js/projebagla.js'); const { S } = await import('./js/db.js'); const ana = S.projeler.find(x => x.ad === 'Armada Gıda Adana'); santiyeyeBagla(ana); await new Promise(r => setTimeout(r, 200)); return document.getElementById('toast')?.textContent || ''; });
+  kontrol('Ana proje sayfasında “Mevcut projeyi ekle”: blokları ve kendisi listede yok, seçilen proje blok olur; blokları olan proje başka şantiyeye bağlanamaz',
+    !/Armada P Blok|Armada Gıda Adana/.test(aday) && /Başka İş/.test(aday) && say === 4 && /kendi blokları var/.test(kural), JSON.stringify({ aday, say, kural }));
+  kontrol('Şantiyeye bağlama ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

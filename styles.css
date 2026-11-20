@@ -974,7 +974,7 @@ section.card:empty { display: none; }
 .sec-k { display: inline-flex; margin-right: 6px; vertical-align: middle; } .sec-k input { width: 18px; height: 18px; min-height: 0; }
 .toplu-bar { position: sticky; bottom: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px; margin-top: 12px; box-shadow: 0 -6px 20px rgba(29, 43, 54, .15); }
 .toplu-bar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); } .toplu-bar select { min-height: 34px; padding: 4px 8px; width: auto; max-width: 180px; }
-.toplu-bar .tb-act { margin-left: auto; display: flex; gap: 8px; }
+.toplu-bar .tb-act { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; }
 @media (max-width: 899px) { .toplu-bar { bottom: calc(var(--nav-h) + var(--safe-b) + 8px); } }
 [data-toplu].on { background: var(--koyu); color: #fff; border-color: var(--koyu); }
 body:has(.toplu-bar) #fab { display: none; }
@@ -2280,3 +2280,9 @@ tr.bs-kritik .bs-hizli { border-color: var(--neg, #c2410c); } tr.bs-kritik .bs-h
 .ps-blok li { gap: 8px; }
 .z-blok { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 6px; }
 .te-izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0 14px; }
+/* Sürüm 133: projeleri şantiyeye bağlama */
+.pb-liste { max-height: 52vh; overflow: auto; }
+.pb-satir { display: flex; align-items: center; gap: 10px; width: 100%; cursor: pointer; }
+.pb-satir > span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pb-satir > input { width: 18px; height: 18px; flex: none; margin: 0; }
+.ps-bloklar .btnrow { display: flex; gap: 6px; flex-wrap: wrap; }

@@ -148,8 +148,7 @@ export async function eslestirmeEkrani({ o = {}, metin = '', dosya = null, kirpi
       ${!pr ? `<label class="chk"><input type="checkbox" id="te-gorev" checked> <span>Takip görevleri oluştur (genel müteahhidi ziyaret et, elektrik projecisiyle görüş)</span></label>` : ''}
       ${dosya || kirpik ? `<label class="chk"><input type="checkbox" id="te-foto" ${kayitliFoto ? '' : 'checked'}> <span>${kayitliFoto ? 'Fotoğrafı projeye yeniden ekle' : 'Tabela fotoğrafını projeye ekle (yüksek çözünürlükte; çerçevelenmiş hâli de)'}</span></label>` : ''}
       <details><summary>Okunan metnin tamamı</summary><pre class="tb-metin">${esc(metin || '—')}</pre></details>
-    </div>
-    <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn primary" data-uygula>${pr ? 'Projeye uygula' : 'Proje formunu aç'}</button></div>`, { wide: true });
+    <div class="dfoot sticky"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn primary" data-uygula>${pr ? 'Projeye uygula' : 'Proje formunu aç'}</button></div></div>`, { wide: true });
   let mukSecim = 'yeni';
   p.querySelectorAll('[data-muk]').forEach(b => b.onclick = () => { mukSecim = b.dataset.muk; p.querySelectorAll('[data-muk]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); });
   // Seçilen firmaya göre yetkili önerisi ve "ilgili kişi" listesi

@@ -256,10 +256,12 @@ export function projelerView(el) {
         ${sec('kanal', 'Kanal', [['Direkt', 'Direkt'], ...bayiListesi().map(x => ['bayi:' + x.id, 'Bayi: ' + x.ad])])}
         ${sec('hedef_listesi', 'Hedef listesi', [['1', 'Ekle'], ['0', 'Çıkar']])}
         ${sec('kritik', 'Kritik', [['1', 'İşaretle'], ['0', 'Kaldır']])}
-        <span class="tb-act"><button type="button" class="btn primary" data-tuygula>Uygula</button><button type="button" class="btn ghost" data-tbitir>Bitir</button></span>`;
+        <span class="tb-act"><button type="button" class="btn" data-ttopla title="Seçilenlerden birini şantiye (ana proje) yap, diğerleri blok olsun">Şantiyede topla</button><button type="button" class="btn ghost" data-tayir>Ana projeden ayır</button><button type="button" class="btn primary" data-tuygula>Uygula</button><button type="button" class="btn ghost" data-tbitir>Bitir</button></span>`;
       el.appendChild(bar);
       bar.querySelector('[data-tbitir]').onclick = () => { secMod = false; secili.clear(); el.querySelector('[data-toplu]').setAttribute('aria-pressed', 'false'); el.querySelector('[data-toplu]').classList.remove('on'); draw(); };
       bar.querySelector('[data-tuygula]').onclick = topluUygula;
+      bar.querySelector('[data-ttopla]').onclick = async () => (await import('../projebagla.js')).santiyedeTopla([...secili], () => { secili.clear(); draw(); });
+      bar.querySelector('[data-tayir]').onclick = async () => { const l = [...secili].map(id => byId('projeler', id)).filter(p => p?.ust_proje_id); if (!l.length) return toast('Seçilenlerde blok yok.', 'err'); if (!confirmBox(`${l.length} blok ana projesinden ayrılsın mı?`)) return; await app.db.bulk('projeler', l.map(p => ({ ...p, ust_proje_id: null }))); toast(`${l.length} blok ayrıldı.`); secili.clear(); draw(); };
     }
     bar.querySelector('[data-tsay]').textContent = secili.size ? `${secili.size} proje seçili` : 'Satırlara dokunarak proje seç';
   }
@@ -462,6 +464,8 @@ export function projeFormu(id, init, { durum, odak, kaydedilince = null } = {}) 
         const ad = fold(o.ad).replace(/[^a-z0-9]/g, ''), dup = ad.length >= 5 && S.projeler.find(x => fold(x.ad).replace(/[^a-z0-9]/g, '') === ad);
         if (dup && !confirmBox(`“${dup.ad}” adında bir proje zaten var${dup.aday ? ' (aday listesinde)' : ''}. Yine de yeni proje açılsın mı?`)) return;
       }
+      // Şantiye düzeni iki katman: kendine, bir bloğa ya da blokları olan proje başka şantiyeye bağlanamaz
+      if (o.ust_proje_id) { const u = byId('projeler', o.ust_proje_id); if (o.ust_proje_id === o.id) o.ust_proje_id = null; else if (u?.ust_proje_id) return toast(`“${u.ad}” bir blok; ana proje olarak onun şantiyesini (“${byId('projeler', u.ust_proje_id)?.ad || ''}”) seç.`, 'err'); else if (S.projeler.some(x => x.ust_proje_id === o.id)) return toast('Bu projenin kendi blokları var; başka bir şantiyenin bloğu yapılamaz.', 'err'); }
       const saved = await app.db.save('projeler', o);
       if (p._new && kaydedilince) try { await kaydedilince(saved || o); } catch (er) { console.warn(er); }
       if (p._new && o.lat == null) setTimeout(() => toast('Proje kaydedildi. Haritada görünmesi için Harita → Araçlar → Konum ata ile yerini işaretleyebilirsin.'), 1500);
