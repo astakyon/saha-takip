@@ -123,7 +123,7 @@ export const guvenliAd = n => String(n || 'dosya').normalize('NFD').replace(/[\u
 const kucukYol = p => p.replace(/\.jpg$/, '_k.jpg');
 // ---------- Görsel küçültme ----------
 export async function shrink(file, max = 1600, q = 0.82) {
-  if (!file.type.startsWith('image/')) return file;
+  if (!(file.type || 'image/jpeg').startsWith('image/')) return file;
   const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
   const sc = Math.min(1, max / Math.max(img.width, img.height));
   const c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
@@ -160,8 +160,8 @@ class LocalAdapter {
     for (const r of rows) { const p = pick(t, r); byId.set(p.id, { ...(byId.get(p.id) || { created_at: now }), ...p, updated_at: now }); }
     S[t] = [...byId.values()]; await this.persist(t); onProgress && onProgress(rows.length);
   }
-  async upload(file) {
-    const blob = await shrink(file); const path = 'local/' + uuid() + '.jpg';
+  async upload(file, { max = 1600, q = 0.82 } = {}) {
+    const blob = await shrink(file, max, q); const path = 'local/' + uuid() + '.jpg';
     await idbSet(path, blob, 'photos'); return path;
   }
   async uploadFile(file) {
@@ -462,10 +462,10 @@ class SupaAdapter {
     for (const r of rows) byId.set(r.id, { ...(byId.get(r.id) || {}), ...pick(t, r), updated_at: null });
     S[t] = [...byId.values()]; this.cache();
   }
-  async upload(file) {
+  async upload(file, { max = 1600, q = 0.82 } = {}) {
     if (this.onizleme) throw new Error(this.bakilan ? 'Bu hesaba salt okunur bakıyorsun; dosya yüklenmez.' : 'Önizlemedesin: dosya yüklenmez.');
     if (!navigator.onLine) throw new Error('Fotoğraf yüklemek için internet bağlantısı gerekiyor.');
-    const blob = await shrink(file);
+    const blob = await shrink(file, max, q);
     const path = `${this.sahip || this.user().id}/${uuid()}.jpg`;
     const { error } = await this.c.storage.from('fotograflar').upload(path, blob, { contentType: 'image/jpeg' });
     if (error) throw error;

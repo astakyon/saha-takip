@@ -32,6 +32,13 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 131)
+
+- Şantiye tabelası: fotoğraftan sonra çerçeveleme ekranı (köşeleri sürükle, eğik tabela düzlenir; bütün fotoğraf da okunabilir). Koyu zeminli etiket kutuları (lacivert vb.) bulunur, bitişik kutular ayrılır; her satırın etiketi ters çevrilip, değeri sağındaki alandan ayrı okunur. Bulunamazsa koyu bölgeler ters çevrilerek bütün tabela konumlu satırlarla okunur ve etiket ile değer yan yana getirilir.
+- Ayrıştırma: çok satırlı unvan (TİC. SAN. A.Ş.), yapışık “A.Ş.”, ruhsat tarih / no, ada / parsel, şantiye şefi, mimar, statik, mekanik, elektrik projecisi (Elektrik T); yanlış okunan etiket en yakın bilinen etikete düzeltilir; kenar gürültüsü atılır; proje adı yoksa işverenin adından.
+- Şantiye şefi kişilere eklenebilir (müteahhit firmasına bağlı, ünvanıyla); aynı alana düşen ikinci müellif notlara yazılır.
+- Tabela fotoğrafı projeye 2560 px yüksek kalitede, çerçevelenmiş hâliyle birlikte kaydedilir.
+
 ## Güncelleme notu (sürüm 130)
 
 - Hazır marka logoları: Pelsan (koyu zeminde), EAE, Ledvance, Philips; kullanıcının yüklediği logo hazırın yerine geçer. Logo yuvası her satırda aynı genişlikte, logonun boyu en / boy oranına göre (kare logo yüksek, yatay logo alçak); markasız satırda boş yuva, kodlar hizalı.

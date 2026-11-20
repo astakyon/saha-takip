@@ -302,24 +302,25 @@ export function dondur(kaynak, derece) {
   return c;
 }
 // Fotoğraftan kartı kes; dikey çıkarsa yatay çevir (kartların çoğu yataydır, yön okuma sırasında ayrıca denetlenir)
-export function kartiKes(kaynak, koseler) {
+export function kartiKes(kaynak, koseler, { yatay = true, uzun = 1600 } = {}) {
   // Kenarlarda zemin kalmasın diye çerçeveyi çok az içeri al
   const m = [koseler.reduce((s, q) => s + q[0], 0) / 4, koseler.reduce((s, q) => s + q[1], 0) / 4];
-  const k = duzle(kaynak, koseler.map(([a, b]) => [a + (m[0] - a) * 0.012, b + (m[1] - b) * 0.012]));
-  return k.height > k.width * 1.1 ? dondur(k, 90) : k;
+  const k = duzle(kaynak, koseler.map(([a, b]) => [a + (m[0] - a) * 0.012, b + (m[1] - b) * 0.012]), uzun);
+  return yatay && k.height > k.width * 1.1 ? dondur(k, 90) : k;
 }
 
 // ---------- Kırpma ekranı ----------
 // Döner: { blob } (kırpılmış kart), ya da null (vazgeçildi)
 // Köşeler parmağın altında kalmasın diye sürüklerken büyüteç gösterilir; köşe parmağa zıplamaz, olduğu yerden kayar.
 // Kenarların ortasındaki tutamaçlarla bütün bir kenar birlikte kaydırılabilir.
-export async function kartvizitKirp(girdi, { koseler: verilen = null, onizle = false, kilavuz = false, tekrar = '' } = {}) {
+export async function kartvizitKirp(girdi, { koseler: verilen = null, onizle = false, kilavuz = false, tekrar = '', ad = 'Kart', yatay = true, uzun = 1600, kalite = 0.9, otomatik = true } = {}) {
+  const adK = ad.toLocaleLowerCase('tr'), adIn = { Kart: 'kartın', Tabela: 'tabelanın' }[ad] || adK + 'ın';
   const kaynak = girdi instanceof HTMLCanvasElement ? girdi : await gorselYukle(girdi);
-  let bulunan = verilen; if (!bulunan) try { bulunan = koseBul(kaynak); } catch (e) { console.warn('Köşe bulma', e); }
-  let koseler = (bulunan || icKoseler(kaynak)).map(p => [...p]);
+  let bulunan = verilen; if (!bulunan && otomatik) try { bulunan = koseBul(kaynak); } catch (e) { console.warn('Köşe bulma', e); }
+  let koseler = (bulunan || (otomatik ? icKoseler(kaynak) : tumKoseler(kaynak))).map(p => [...p]);
   return new Promise(res => {
-    const kap = document.createElement('div'); kap.className = 'kirp'; kap.setAttribute('role', 'dialog'); kap.setAttribute('aria-modal', 'true'); kap.setAttribute('aria-label', 'Kartviziti çerçevele');
-    kap.innerHTML = `<div class="kirp-ust-bar"><button type="button" class="btn sm ghost" data-iptal aria-label="İptal et">✕ İptal</button>${tekrar ? `<button type="button" class="btn sm ghost" data-tekrar>↺ ${tekrar}</button>` : ''}</div><div class="kirp-ust"><b data-baslik>Kartı çerçevele</b><small data-ipucu>${bulunan ? 'Kart bulundu. Çerçeve doğruysa “Kırp”a dokun.' : 'Kart bulunamadı. Sarı köşeleri kartın köşelerine sürükle.'}</small>${bulunan ? '<button type="button" class="linkbtn" data-yeniden hidden>Otomatik çerçeveye dön</button>' : ''}</div>
+    const kap = document.createElement('div'); kap.className = 'kirp'; kap.setAttribute('role', 'dialog'); kap.setAttribute('aria-modal', 'true'); kap.setAttribute('aria-label', ad === 'Kart' ? 'Kartviziti çerçevele' : `${ad}yı çerçevele`);
+    kap.innerHTML = `<div class="kirp-ust-bar"><button type="button" class="btn sm ghost" data-iptal aria-label="İptal et">✕ İptal</button>${tekrar ? `<button type="button" class="btn sm ghost" data-tekrar>↺ ${tekrar}</button>` : ''}</div><div class="kirp-ust"><b data-baslik>${ad}${ad === 'Kart' ? 'ı' : 'yı'} çerçevele</b><small data-ipucu>${!otomatik ? `Sarı köşeleri ${adIn} köşelerine sürükle (eğik çekildiyse düzlenir). Bütün fotoğraf okunsun istersen doğrudan “Kırp”a dokun.` : bulunan ? `${ad} bulundu. Çerçeve doğruysa “Kırp”a dokun.` : `${ad} bulunamadı. Sarı köşeleri ${adIn} köşelerine sürükle.`}</small>${bulunan ? '<button type="button" class="linkbtn" data-yeniden hidden>Otomatik çerçeveye dön</button>' : ''}</div>
       <div class="kirp-sahne" data-sahne><canvas data-c></canvas><svg data-svg><polygon data-poli></polygon>${[0, 1, 2, 3].map(i => `<g data-o="${i}" class="kirp-orta"><circle r="9"></circle></g>`).join('')}${[0, 1, 2, 3].map(i => `<g data-k="${i}" class="kirp-kose"><circle r="18"></circle><circle r="3" class="nokta"></circle></g>`).join('')}</svg><canvas class="kirp-lup" data-lup width="260" height="260" hidden></canvas></div>
       <div class="kirp-alt" data-adim1><button type="button" class="btn ghost" data-vaz>Vazgeç</button><button type="button" class="btn ghost" data-tum>Tüm fotoğraf</button><button type="button" class="btn primary" data-kes>Kırp</button></div>
       <div class="kirp-alt" data-adim2 hidden><button type="button" class="btn ghost" data-geri>Köşeleri düzelt</button><button type="button" class="btn ghost" data-don aria-label="90 derece döndür">↻ Döndür</button><button type="button" class="btn primary" data-kul>Kullan</button></div>`;
@@ -378,17 +379,17 @@ export async function kartvizitKirp(girdi, { koseler: verilen = null, onizle = f
     svg.addEventListener('pointerup', birak); svg.addEventListener('pointercancel', birak);
     const kapat = v => { window.removeEventListener('resize', ciz); kap.remove(); document.body.classList.remove('kirp-acik'); res(v); };
     const adim = n => { kap.querySelector('[data-adim1]').hidden = n !== 1; kap.querySelector('[data-adim2]').hidden = n !== 2;
-      kap.querySelector('[data-baslik]').textContent = n === 1 ? 'Kartı çerçevele' : 'Kart böyle kaydedilecek';
-      kap.querySelector('[data-ipucu]').textContent = n === 1 ? 'Sarı köşeleri kartın köşelerine sürükle. Kenar ortasındaki noktalar bütün kenarı kaydırır.' : 'Yazılar ters ya da yan duruyorsa “Döndür”e dokun.'; };
+      kap.querySelector('[data-baslik]').textContent = n === 1 ? `${ad}${ad === 'Kart' ? 'ı' : 'yı'} çerçevele` : `${ad} böyle kaydedilecek`;
+      kap.querySelector('[data-ipucu]').textContent = n === 1 ? `Sarı köşeleri ${adIn} köşelerine sürükle. Kenar ortasındaki noktalar bütün kenarı kaydırır.` : 'Yazılar ters ya da yan duruyorsa “Döndür”e dokun.'; };
     kap.querySelector('[data-yeniden]')?.addEventListener('click', e => { koseler = bulunan.map(p => [...p]); e.target.hidden = true; cerceve(); });
     kap.querySelector('[data-vaz]').onclick = () => kapat(null);
     kap.querySelector('[data-iptal]').onclick = () => kapat(null);
     kap.querySelector('[data-tekrar]')?.addEventListener('click', () => kapat({ tekrar: true }));
     kap.querySelector('[data-tum]').onclick = () => { koseler = tumKoseler(kaynak); cerceve(); const y = kap.querySelector('[data-yeniden]'); if (y) y.hidden = false; };
-    kap.querySelector('[data-kes]').onclick = () => { sonuc = kartiKes(kaynak, koseler); aci = 0; goster = sonuc; adim(2); ciz(); };
+    kap.querySelector('[data-kes]').onclick = () => { sonuc = kartiKes(kaynak, koseler, { yatay, uzun }); aci = 0; goster = sonuc; adim(2); ciz(); };
     kap.querySelector('[data-geri]').onclick = () => { goster = kaynak; adim(1); ciz(); };
     kap.querySelector('[data-don]').onclick = () => { aci = (aci + 90) % 360; goster = dondur(sonuc, aci); ciz(); };
-    kap.querySelector('[data-kul]').onclick = async e => { e.target.disabled = true; const blob = await blobYap(goster); kapat({ blob, elle: aci !== 0 }); };
+    kap.querySelector('[data-kul]').onclick = async e => { e.target.disabled = true; const blob = await blobYap(goster, kalite); kapat({ blob, elle: aci !== 0 }); };
     kap.addEventListener('keydown', e => { if (e.key === 'Escape') kapat(null); });
     window.addEventListener('resize', ciz);
     requestAnimationFrame(() => { ciz(); if (onizle) { kap.querySelector('[data-kes]').click(); if (kilavuz) kap.querySelector('[data-ipucu]').textContent = 'Kartın kenarları bulunamadı, çerçevenin içi kesildi. Gerekirse “Köşeleri düzelt”e dokun.'; } });

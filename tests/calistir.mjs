@@ -128,6 +128,28 @@ const DB = () => {
   await p.goto(U + '#/bugun'); await w(1000);
   const tb = await p.evaluate(async () => (await import('./js/tabela.js')).tabelaAyristir('İŞİN ADI : ÖRNEK HASTANE EK BİNA\nYAPI SAHİBİ: Örnek Bakanlık\nYÜKLENİCİ FİRMA : ÖRNEK İNŞAAT LTD. ŞTİ.\nELEKTRİK YÜKLENİCİSİ: Örnek Elektrik\nADA/PARSEL: 12/3\nMERSİN'));
   kontrol('Tabeladan proje adı ve firmalar ayrılıyor', tb.ad === 'Örnek Hastane Ek Bina' && tb.yatirimci === 'Örnek Bakanlık' && /İNŞAAT/.test(tb.gemut || '') && tb.emut === 'Örnek Elektrik' && tb.parsel === '12/3' && tb.il === 'Mersin', JSON.stringify(tb));
+  // Sürüm 131: hücreli tabela (lacivert etiket kutuları): hücre bulma, satır satır okunan metnin ayrıştırılması
+  const tb2 = await p.evaluate(async () => { const m = await import('./js/tabela.js');
+    const metin = m.tabelaHucreMetni({ ust: ['FOODS'], hucreler: [
+      { etiket: ['İŞVEREN'], degerler: ['ARMADA GIDA', 'TİC. SAN. A.Ş.'] }, { etiket: ['YÜKLENİCİ'], degerler: ['PİRAMİT.', 'İNŞAATA.Ş.'] },
+      { etiket: ['PAFTA:'], degerler: ['“ADA: 143', 'PARSEL: 99'] }, { etiket: ['RUHSAT TARİH:', 'RUHSATNO :'], degerler: ['08.08.2022', '105975072 :'] },
+      { etiket: ['ŞANTİYE ŞEFİ:'], degerler: ['İNŞAAT MÜHENDİSİ :', 'H. İBRAHİM TAŞDEMİR ç'] },
+      { etiket: ['PROJELER:'], degerler: ['MİMAR: NİHARİ ŞEN', 'STATİK :H. İBRAHİM TAŞDEMİR', 'MEKANİK T : HİLAL TOKATLI', 'ELEKTRİK T :EMRAH İŞERİ İ'] }] });
+    const o = m.tabelaAyristir(metin);
+    const ocr = await import('./js/ocr.js'); const c = document.createElement('canvas'); c.width = 900; c.height = 1200; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 900, 1200);
+    [[100, 260], [380, 220], [620, 140], [780, 300]].forEach(([y, h]) => { x.fillStyle = '#1f3d8a'; x.fillRect(40, y, 260, h); x.fillStyle = '#fff'; x.font = 'bold 34px sans-serif'; x.fillText('ETİKET', 80, y + h / 2); x.fillStyle = '#111'; x.font = '28px sans-serif'; x.fillText('Değer yazısı', 340, y + h / 2); });
+    x.fillStyle = '#1f3d8a'; x.font = 'bold 90px sans-serif'; x.fillText('logo', 330, 80);
+    const h = ocr.hucreBul(c).map(r => [Math.round(r.y0 / 10), Math.round(r.y1 / 10)]);
+    return { o, h }; });
+  kontrol('Hücreli tabela: lacivert etiket kutuları sırayla bulunur (bitişik kutular ayrılır, logo karışmaz); İşveren / yüklenici unvanı iki satırdan birleşir, “A.Ş.” düzelir, ruhsat tarih ve no eşlenir, şantiye şefi, mimar, statik, mekanik, elektrik projecisi ayrılır, kenar gürültüsü atılır, proje adı işverenden',
+    tb2.o.yatirimci === 'ARMADA GIDA TİC. SAN. A.Ş.' && tb2.o.gemut === 'PİRAMİT İNŞAAT A.Ş.' && tb2.o.parsel === 'Ada 143 · Parsel 99' && tb2.o.ruhsat === 'Tarih 08.08.2022 · No 105975072' && tb2.o.santiye_sefi === 'İNŞAAT MÜHENDİSİ H. İBRAHİM TAŞDEMİR' && tb2.o.projeci === 'NİHARİ ŞEN' && tb2.o.statik === 'H. İBRAHİM TAŞDEMİR' && tb2.o.mekanik === 'HİLAL TOKATLI' && tb2.o.elektrik_proje === 'EMRAH İŞERİ' && tb2.o.ad === 'Armada Gıda' && JSON.stringify(tb2.h) === '[[10,36],[38,60],[62,76],[78,108]]', JSON.stringify(tb2));
+  // Tabelayı çerçeveleme: başlık tabelaya göre, dikey tabela yatay çevrilmez
+  const kr = await p.evaluate(async () => { const k = await import('./js/kirp.js'); const c = document.createElement('canvas'); c.width = 600; c.height = 900; const x = c.getContext('2d'); x.fillStyle = '#ddd'; x.fillRect(0, 0, 600, 900); x.fillStyle = '#fff'; x.fillRect(100, 100, 400, 700);
+    const bekle = k.kartvizitKirp(c, { ad: 'Tabela', yatay: false, uzun: 1200 }); await new Promise(r => setTimeout(r, 300));
+    const baslik = document.querySelector('.kirp [data-baslik]')?.textContent; document.querySelector('.kirp [data-kes]').click(); await new Promise(r => setTimeout(r, 300));
+    const cv = document.querySelector('.kirp [data-c]'), dikey = cv.height > cv.width; document.querySelector('.kirp [data-kul]').click(); const r = await bekle;
+    const im = await createImageBitmap(r.blob); return { baslik, dikey, w: im.width, h: im.height }; });
+  kontrol('Tabela çerçeveleme: “Tabelayı çerçevele”, dikey tabela dikey kalır, yüksek çözünürlükte kesilir', kr.baslik === 'Tabelayı çerçevele' && kr.dikey && kr.h === 1200 && kr.w < kr.h, JSON.stringify(kr));
   await p.evaluate(async () => { const { app } = await import('./js/state.js');
     await app.db.save('hedefler', { yil: 2026, ceyrek: 4, tutar_usd: 200000 }); await app.db.save('siparisler', { tarih: '2026-10-05', net_deger: 50000, para_birimi: 'USD' });
     await app.db.save('projeler', { id: 'hs', ad: 'Sıcak Proje', durum: 'Sıcak', tutar_usd: 80000, beklenen_tarih: '2026-11-15' });
