@@ -48,6 +48,7 @@ export function okumaPuani(data) {
 // Genel metin okuma (ürün etiketi, şantiye tabelası)
 async function tani(w, c, psm) { await w.setParameters({ tessedit_pageseg_mode: psm }); return (await w.recognize(c)).data; }
 export async function metinOku(blob, ilerleme) {
+  import('./hareket.js').then(m => m.iz('okuma', { ozet: 'Metin okundu' })).catch(() => {});
   const w = await hazirla(ilerleme);
   return (await tani(w, onIsle(await tuval(blob)), '3')).text || '';
 }
@@ -129,6 +130,7 @@ const satirlar = t => String(t || '').split(/\n+/).map(s => s.replace(/[|_~]+/g,
 // Tabela okuma: etiket hücreleri bulunursa her satır ayrı okunur (etiket kutusu ters çevrilip, değeri sağındaki alandan);
 // bulunamazsa bütün tabela konumlu satırlarla okunur (tabela.js etiket ile değeri yan yana getirir)
 export async function tabelaOku(blob, ilerleme) {
+  import('./hareket.js').then(m => m.iz('okuma', { ozet: 'Şantiye tabelası okundu' })).catch(() => {});
   const w = await hazirla(ilerleme);
   const gri = onIsle(await tuval(blob, 2400)), W = gri.width;
   const hucre = hucreBul(gri);
@@ -151,6 +153,7 @@ export async function tabelaOku(blob, ilerleme) {
 }
 // Ürün / koli etiketi: yön denenir (etiket yan ya da ters çekilmiş olabilir), seyrek metin (11) ve blok (6) okumaları birleştirilir; tablo hücreleri ikisinden birinde yakalanır
 export async function etiketOku(blob, ilerleme) {
+  import('./hareket.js').then(m => m.iz('okuma', { ozet: 'Ürün etiketi okundu' })).catch(() => {});
   const w = await hazirla(ilerleme);
   const { dondur } = await import('./kirp.js');
   const temel = onIsle(await tuval(blob, 2000));
@@ -178,6 +181,7 @@ export function satirlariAl(data) {
 // Sonuç zayıfsa 180°, 90° ve 270° döndürülerek denenir, en anlamlı okuma seçilir.
 // donus: kartın kaç derece döndürülünce düz okunduğu (kaydedilen fotoğraf da buna göre çevrilir).
 export async function kartvizitOku(blob, ilerleme, { yonDene = true } = {}) {
+  import('./hareket.js').then(m => m.iz('okuma', { ozet: 'Kartvizit okundu' })).catch(() => {});
   const w = await hazirla(ilerleme);
   const { dondur } = await import('./kirp.js');
   const temel = await tuval(blob);

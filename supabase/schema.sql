@@ -2668,6 +2668,103 @@ create index if not exists projeler_ust_idx on public.projeler (ust_proje_id);
 create index if not exists projeler_ruhsat_idx on public.projeler (owner, ruhsat_no);
 alter table public.ziyaretler add column if not exists alt_proje_ids uuid[] default '{}';   -- ana proje ziyaretinde konuşulan bloklar
 create or replace function public.yetki_surum() returns int language sql stable as $f$ select 66 $f$;
+-- ---------- Sürüm 67: Kullanıcı hareketleri (giriş / çıkış, etkin süre, gezilen ekranlar, çıktılar, paylaşım, içe aktarma, okutma);
+-- değişiklik geçmişi stok, sevk, bayi, kullanıcı ve rol tablolarına da yayılır; herkes kendi geçmişini, şirket yöneticisi herkesinkini görür ----------
+create table if not exists public.kullanici_hareketleri (
+  id bigserial primary key,
+  owner uuid not null default public.veri_sahibi(),
+  kim_id uuid not null default auth.uid(),
+  kim text default public.benim_epostam(),
+  zaman timestamptz not null default now(),
+  tur text not null,                 -- giris, oturum, cikis, aktif, ekran, disa_aktarma, indirme, yazdirma, paylasim, iletisim, ice_aktarma, okuma, islem
+  ekran text, tablo text, kayit_id text, ozet text, ayrinti jsonb,
+  cihaz text, surum text, oturum text
+);
+create index if not exists kullanici_hareketleri_zaman_idx on public.kullanici_hareketleri (owner, zaman desc);
+create index if not exists kullanici_hareketleri_kim_idx on public.kullanici_hareketleri (owner, kim_id, zaman desc);
+alter table public.kullanici_hareketleri enable row level security;
+drop policy if exists "hareket_ekle" on public.kullanici_hareketleri;
+drop policy if exists "hareket_oku" on public.kullanici_hareketleri;
+-- Yalnız kendi adına ve üyesi olduğu şirkete yazar; satırlar değiştirilemez, silinemez (saklama süresi dolunca sistem siler)
+create policy "hareket_ekle" on public.kullanici_hareketleri for insert to authenticated with check (kim_id = auth.uid() and public.ekipte(owner::text));
+create policy "hareket_oku" on public.kullanici_hareketleri for select to authenticated using (kim_id = auth.uid() or public.sirket_yetkilisi(owner) or public.yonetici_mi());
+revoke all on public.kullanici_hareketleri from anon;
+grant select, insert on public.kullanici_hareketleri to authenticated;
+grant usage, select on sequence public.kullanici_hareketleri_id_seq to authenticated;
+create or replace function public.hareket_temizle() returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  -- kim ve şirket sunucuda kesinleşir (istemci başkası adına yazamaz)
+  new.kim_id := auth.uid(); new.kim := public.benim_epostam(); new.zaman := least(coalesce(new.zaman, now()), now()); 
+  if new.zaman < now() - interval '3 days' then new.zaman := now(); end if;
+  if random() < 0.001 then delete from public.kullanici_hareketleri where zaman < now() - interval '365 days'; end if;
+  return new;
+end $f$;
+drop trigger if exists hareket_temizle on public.kullanici_hareketleri;
+create trigger hareket_temizle before insert on public.kullanici_hareketleri for each row execute function public.hareket_temizle();
+
+-- Değişiklik geçmişi: herkes kendi yaptığını da görür
+drop policy if exists "gecmis_oku" on public.degisiklikler;
+create policy "gecmis_oku" on public.degisiklikler for select to authenticated using (public.sirket_yetkilisi(owner) or kim_id = auth.uid());
+create index if not exists degisiklikler_kim_idx on public.degisiklikler (owner, kim_id, zaman desc);
+
+-- Değişiklik yazıcı: "son görülme" gibi kendiliğinden güncellenen alanlar değişiklik sayılmaz; özet için daha çok ad alanı
+create or replace function public.degisiklik_yaz() returns trigger language plpgsql security definer set search_path = public as $f$
+declare eski jsonb; yeni jsonb; r jsonb; fark jsonb := '{}'::jsonb; k text;
+begin
+  if auth.uid() is null then return null; end if;
+  if tg_op = 'DELETE' then eski := to_jsonb(old);
+  elsif tg_op = 'INSERT' then yeni := to_jsonb(new);
+  else
+    eski := to_jsonb(old); yeni := to_jsonb(new);
+    for k in select jsonb_object_keys(yeni) loop
+      if k not in ('updated_at', 'created_at', 'son_gorulme') and (eski -> k) is distinct from (yeni -> k) then
+        fark := fark || jsonb_build_object(k, jsonb_build_object('e', eski -> k, 'y', yeni -> k));
+      end if;
+    end loop;
+    if fark = '{}'::jsonb then return null; end if;
+  end if;
+  r := coalesce(yeni, eski);
+  insert into public.degisiklikler (owner, tablo, kayit_id, islem, kim, kim_id, ozet, degisen)
+  values ((r ->> 'owner')::uuid, tg_table_name, (r ->> 'id')::uuid,
+          case tg_op when 'INSERT' then 'ekleme' when 'UPDATE' then 'değişiklik' else 'silme' end,
+          public.benim_epostam(), auth.uid(),
+          left(coalesce(r ->> 'ad', r ->> 'baslik', r ->> 'ad_soyad', r ->> 'kod', r ->> 'siparis_no', r ->> 'teklif_no', r ->> 'sevk_no', r ->> 'cari', r ->> 'urun_ad', r ->> 'eposta', r ->> 'aciklama', ''), 200),
+          case when tg_op = 'UPDATE' then fark else null end);
+  if random() < 0.002 then delete from public.degisiklikler where zaman < now() - interval '365 days'; end if;
+  return null;
+end $f$;
+do $$
+declare t text;
+begin
+  foreach t in array array['projeler','firmalar','kisiler','ziyaretler','gorevler','siparisler','teklifler','urunler','tahsilatlar','numuneler','servis_kayitlari','belgeler','bolgeler','hedefler',
+                           'bayi_stok','stok_gruplari','stok_barkodlari','stok_hasar','stok_rezerv','urun_belgeleri','sevkler','stok_seri','stok_paylasimlari','stok_sayimlari','bayi_satis','bayiler',
+                           'masraflar','cekler','urun_aileleri','yorumlar','rakip_fiyatlar','ekip_uyeleri','roller','ekipler'] loop
+    if to_regclass('public.' || t) is null or not exists (select 1 from information_schema.columns c where c.table_schema = 'public' and c.table_name = t and c.column_name = 'owner') then continue; end if;
+    execute format('drop trigger if exists gecmis on public.%I', t);
+    execute format('create trigger gecmis after insert or update or delete on public.%I for each row execute function public.degisiklik_yaz()', t);
+  end loop;
+end $$;
+
+-- Kullanıcı etkinlik özeti (dönem): kişi başına hareket türleri, etkin süre, etkin gün; değişikliklerde tablo ve işlem.
+-- Şirket yöneticisi herkesinkini, diğerleri yalnız kendininkini alır.
+create or replace function public.kullanici_etkinlik(p_bas timestamptz, p_bit timestamptz)
+returns table (kim_id uuid, kim text, kaynak text, tur text, alt text, adet bigint, sure bigint, gun bigint, son timestamptz)
+language sql stable security definer set search_path = public as $f$
+  with s as (select public.veri_sahibi() as o), y as (select public.sirket_yetkilisi((select o from s)) as hep)
+  select h.kim_id, max(h.kim), 'hareket', h.tur, coalesce(h.ekran, ''), count(*), coalesce(sum((h.ayrinti ->> 'sn')::bigint) filter (where h.tur = 'aktif'), 0),
+         count(distinct (h.zaman at time zone 'Europe/Istanbul')::date), max(h.zaman)
+  from public.kullanici_hareketleri h
+  where h.owner = (select o from s) and h.zaman >= p_bas and h.zaman < p_bit and ((select hep from y) or h.kim_id = auth.uid())
+  group by h.kim_id, h.tur, coalesce(h.ekran, '')
+  union all
+  select d.kim_id, max(d.kim), 'degisiklik', d.islem, d.tablo, count(*), 0, count(distinct (d.zaman at time zone 'Europe/Istanbul')::date), max(d.zaman)
+  from public.degisiklikler d
+  where d.owner = (select o from s) and d.zaman >= p_bas and d.zaman < p_bit and ((select hep from y) or d.kim_id = auth.uid())
+  group by d.kim_id, d.islem, d.tablo
+$f$;
+revoke all on function public.kullanici_etkinlik(timestamptz, timestamptz) from public, anon;
+grant execute on function public.kullanici_etkinlik(timestamptz, timestamptz) to authenticated;
+create or replace function public.yetki_surum() returns int language sql stable as $f$ select 67 $f$;
 
 
 -- (her zaman en sonda kalsın) sütun izinlerini güncel sütunlara göre yenile

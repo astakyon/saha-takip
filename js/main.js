@@ -343,6 +343,7 @@ async function boot() {
     }
     listeleriUygula();
     if (app.db.mode === 'supabase') import('./guvenlik.js').then(g => g.gorundum());
+    if (app.db.mode === 'supabase') import('./hareket.js').then(h => h.basla()).catch(() => {});
     temaUygula(); yaziUygula();
     app.ekip = [];
     if (app.db.mode === 'supabase' && sahipMi()) app.db.c.from('ekip_uyeleri').select('eposta,ad,aktif,yetkiler').eq('owner', app.db.sahip || app.db.user().id).then(({ data }) => { app.ekip = (data || []).filter(u => u.aktif); if (app.ekip.length && ['gorevler', 'bugun'].includes(lastView) && !document.querySelector('.drawer.open')) app.refresh(); }).catch(() => {});

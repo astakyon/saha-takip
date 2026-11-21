@@ -27,7 +27,7 @@ export async function profilimView(el) {
         <div class="chips"><em class="rol-r">${esc(b.rol)}</em>${sirket ? `<a class="pr-sirket" href="#/sirket">${esc(sirket)} ›</a>` : ''}</div></div></div>
       <dl class="profil-dl pr-dl">${satir('Kullanıcı adı', b.kad ? `<b>${esc(b.kad)}</b>` : '')}${satir('Giriş e-postası', esc(b.eposta))}${satir('Telefon', b.telefon ? `<a href="tel:${esc(b.telefon)}">${esc(b.telefon)}</a>` : '')}${satir('İletişim e-postası', esc(b.iletisim))}${sup ? satir('Bu girişin zamanı', zaman(b.sonGiris)) : ''}</dl>
       ${sup ? '' : '<p class="hint">Deneme modundasın: giriş yok, veriler yalnızca bu tarayıcıda. Şirket hesabın varsa "Hesabımla giriş yap"a dokun.</p>'}
-      <div class="btnrow pr-btn">${b.telefon || b.iletisim || b.eposta ? '<button type="button" class="btn sm" data-kartvizit>Kartvizitimi gönder</button>' : ''}${sup ? '<button type="button" class="btn sm ghost danger" data-cikis>Çıkış yap</button>' : '<button type="button" class="btn sm primary" data-hesabagec>Hesabımla giriş yap</button>'}</div></section>
+      <div class="btnrow pr-btn">${b.telefon || b.iletisim || b.eposta ? '<button type="button" class="btn sm" data-kartvizit>Kartvizitimi gönder</button>' : ''}${sup ? '<button type="button" class="btn sm ghost" data-hareketlerim>Hareketlerim</button>' : ''}${sup ? '<button type="button" class="btn sm ghost danger" data-cikis>Çıkış yap</button>' : '<button type="button" class="btn sm primary" data-hesabagec>Hesabımla giriş yap</button>'}</div></section>
 
     <div class="pr-izgara">
     <section class="card"><h2>Bilgilerim</h2><p class="hint">Yalnızca seninle ilgili: teklif ve mesajlarda adın, ünvanın ve imzan olarak kullanılır. Şirket bilgileri Şirket profilinde.</p>
@@ -48,6 +48,7 @@ export async function profilimView(el) {
   </div>`;
   el.querySelectorAll('[data-cikis]').forEach(x => x.onclick = cikisSor);
   el.querySelector('[data-hesabagec]')?.addEventListener('click', async () => { const { setConfig, VARSAYILAN_BAGLANTI } = await import('../db.js'); if (!confirmBox('Şirket hesabınla giriş ekranına geçilsin mi? Deneme modundaki kayıtlar bu tarayıcıda kalır, hesabına taşınmaz.')) return; setConfig({ ...VARSAYILAN_BAGLANTI }); location.hash = '#/bugun'; location.reload(); });
+  el.querySelector('[data-hareketlerim]')?.addEventListener('click', async () => (await import('../kullanicikart.js')).hareketlerim());
   el.querySelector('[data-kartvizit]')?.addEventListener('click', () => {
     const g = benBilgisi(), metin = [g.ad, g.unvan, sirket, g.telefon ? 'Tel: ' + g.telefon : '', (g.iletisim || g.eposta) ? 'E-posta: ' + (g.iletisim || g.eposta) : ''].filter(Boolean).join('\n');
     if (navigator.share) navigator.share({ title: g.ad, text: metin }).catch(() => {}); else window.open(waLink('', metin), '_blank', 'noopener');

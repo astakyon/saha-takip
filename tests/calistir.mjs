@@ -350,7 +350,7 @@ const DB = () => {
   await p.goto(U + '#/sirket/ekip'); await w(1500);
   const sekmeEkip = await p.evaluate(() => ({ h: location.hash, on: document.querySelector('[data-fsk].on')?.dataset.fsk, sek: [...document.querySelectorAll('[data-fsk]')].map(b => b.dataset.fsk).join(',') }));
   await p.screenshot({ path: 'tests/cikti/sirket-ekip.png', fullPage: true });
-  kontrol('Ayarlar sadeleşti (Ekip, Mesaj, Firma profili, Döviz kuru, Araç çıktı; Bildirimler ayrı); Ekip ve yetkiler şirket profilinde', ayarEkipYok && sekmeEkip.h === '#/sirket/ekip' && sekmeEkip.on === 'ekip' && sekmeEkip.sek === 'genel,ekip,roller,ekipler,degisiklik,otomasyon,kur', JSON.stringify({ ayarEkipYok, sekmeEkip }));
+  kontrol('Ayarlar sadeleşti (Ekip, Mesaj, Firma profili, Döviz kuru, Araç çıktı; Bildirimler ayrı); Ekip ve yetkiler şirket profilinde', ayarEkipYok && sekmeEkip.h === '#/sirket/ekip' && sekmeEkip.on === 'ekip' && sekmeEkip.sek === 'genel,ekip,roller,ekipler,hareketler,degisiklik,otomasyon,kur', JSON.stringify({ ayarEkipYok, sekmeEkip }));
   await p.goto(U + '#/sirket/genel'); await w(1200);
   const kart = await p.isVisible('.sirket-kart');
   await p.fill('#sk-ad', 'Yeni Şirket AŞ'); await p.click('[data-sk-ad]'); await w(300);
@@ -1908,6 +1908,66 @@ const DB = () => {
   kontrol('Ana proje sayfasında “Mevcut projeyi ekle”: blokları ve kendisi listede yok, seçilen proje blok olur; blokları olan proje başka şantiyeye bağlanamaz',
     !/Armada P Blok|Armada Gıda Adana/.test(aday) && /Başka İş/.test(aday) && say === 4 && /kendi blokları var/.test(kural), JSON.stringify({ aday, say, kural }));
   kontrol('Şantiyeye bağlama ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
+// Sürüm 134: kullanıcı hareketleri (giriş, etkin süre, ekranlar, çıktılar, iletişim, içe aktarma) ve Şirket → Hareketler, kullanıcı kartı, Hareketlerim
+{
+  const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+    d.ekip_uyeleri = [{ id: 'e1', owner: 'u1', eposta: 'ali@x.com', ad: 'Ali Yılmaz', aktif: true, yetkiler: { _rol: 'Satış temsilcisi' }, created_at: ts }];
+    const z = (g, s) => new Date(Date.now() - g * 864e5 - s * 36e5).toISOString();
+    d.kullanici_hareketleri = [
+      { id: 1, owner: 'u1', kim: 'ali@x.com', kim_id: 'u9', zaman: z(1, 3), tur: 'giris', ozet: 'Giriş yapıldı', cihaz: 'Telefon · Android · Chrome', surum: '133' },
+      { id: 2, owner: 'u1', kim: 'ali@x.com', kim_id: 'u9', zaman: z(1, 2.9), tur: 'ekran', ekran: 'projeler', ozet: 'Projeler' },
+      { id: 3, owner: 'u1', kim: 'ali@x.com', kim_id: 'u9', zaman: z(1, 2.8), tur: 'ekran', ekran: 'proje/:id', tablo: 'projeler', kayit_id: 'p1', ozet: 'Örnek Hastane' },
+      { id: 4, owner: 'u1', kim: 'ali@x.com', kim_id: 'u9', zaman: z(1, 2.5), tur: 'disa_aktarma', ozet: 'projeler.xlsx', ekran: 'projeler' },
+      { id: 5, owner: 'u1', kim: 'ali@x.com', kim_id: 'u9', zaman: z(1, 2), tur: 'aktif', ayrinti: { sn: 3600 }, ozet: 'arka plana geçti' },
+      { id: 6, owner: 'u1', kim: 'ali@x.com', kim_id: 'u9', zaman: z(1, 1.9), tur: 'cikis', ozet: 'Çıkış yapıldı' },
+      { id: 7, owner: 'u1', kim: 'ali@x.com', kim_id: 'u9', zaman: z(10, 2), tur: 'aktif', ayrinti: { sn: 600 } }];
+    d.degisiklikler = [
+      { id: 1, owner: 'u1', kim: 'ali@x.com', kim_id: 'u9', zaman: z(1, 2.7), tablo: 'projeler', kayit_id: 'p1', islem: 'değişiklik', ozet: 'Örnek Hastane', degisen: { durum: { e: 'Proje', y: 'Teklif Verildi' } } },
+      { id: 2, owner: 'u1', kim: 'ali@x.com', kim_id: 'u9', zaman: z(1, 2.6), tablo: 'ziyaretler', kayit_id: 'z9', islem: 'ekleme', ozet: '' },
+      { id: 3, owner: 'u1', kim: 'ali@x.com', kim_id: 'u9', zaman: z(1, 2.4), tablo: 'firmalar', kayit_id: 'f9', islem: 'silme', ozet: 'Eski Firma' }];
+    localStorage.setItem('__DB', JSON.stringify(d));`) });
+  await p.addInitScript(() => { window.__hareketler = []; });
+  await p.goto(U + '#/bugun'); await w(1800);
+  await p.evaluate(() => { window.__hareketler = window.__hareketler || []; });
+  // Uygulamanın kendi kaydı: oturum, ekran, dışa aktarma, iletişim, içe aktarma, yazdırma; kuyruk sunucuya gider
+  await p.goto(U + '#/projeler'); await w(1500);
+  await p.evaluate(async () => { const ui = await import('./js/ui.js'); await ui.exportXlsx('deneme.xlsx', { Liste: [{ a: 1 }, { a: 2 }] });
+    const a = document.createElement('a'); a.href = 'tel:05321234567'; a.textContent = 'Ali'; document.body.append(a); a.addEventListener('click', e => e.preventDefault()); a.click(); a.remove();
+    window.XLSX.read(window.XLSX.write(window.XLSX.utils.book_new.call ? (() => { const wb = window.XLSX.utils.book_new(); window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.json_to_sheet([{ x: 1 }, { x: 2 }]), 'S1'); return wb; })() : null, { type: 'array', bookType: 'xlsx' }), { type: 'array' });
+    dispatchEvent(new Event('beforeprint'));
+    document.dispatchEvent(new Event('visibilitychange'));
+    await (await import('./js/hareket.js')).gonder(); });
+  await w(500);
+  const kendi = await p.evaluate(() => { const l = window.__DB.kullanici_hareketleri.filter(x => x.kim === 'sahip@x.com'); return { tur: [...new Set(l.map(x => x.tur))].sort().join(','), ekran: l.filter(x => x.tur === 'ekran').map(x => x.ekran).join(','), xls: l.find(x => x.tur === 'disa_aktarma')?.ozet, ilet: l.find(x => x.tur === 'iletisim')?.ozet, ice: JSON.stringify(l.find(x => x.tur === 'ice_aktarma')?.ayrinti), cihaz: l[0]?.cihaz, surum: l[0]?.surum, owner: l[0]?.owner, kuyruk: localStorage.getItem('saha-hareket-kuyruk') }; });
+  kontrol('Hareket kaydı: uygulama açılışı, gezilen ekranlar, Excel’e aktarma (bir kez), arama bağlantısı, Excel’den okuma, yazdırma; cihaz ve sürümle sunucuya gönderilir, kuyruk boşalır',
+    /oturum/.test(kendi.tur) && /ekran/.test(kendi.tur) && /disa_aktarma/.test(kendi.tur) && /iletisim/.test(kendi.tur) && /ice_aktarma/.test(kendi.tur) && /yazdirma/.test(kendi.tur) && /bugun/.test(kendi.ekran) && /projeler/.test(kendi.ekran)
+    && kendi.xls === 'deneme.xlsx' && /Arama: Ali/.test(kendi.ilet) && /sayfalar/.test(kendi.ice) && /Bilgisayar|Telefon/.test(kendi.cihaz || '') && kendi.surum && kendi.owner === 'u1' && kendi.kuyruk === '[]', JSON.stringify(kendi));
+  const tekXls = await p.evaluate(() => window.__DB.kullanici_hareketleri.filter(x => x.kim === 'sahip@x.com' && x.ozet === 'deneme.xlsx').length);
+  // Şirket → Hareketler
+  await p.goto(U + '#/sirket/hareketler'); await w(1500);
+  const tab = await p.evaluate(() => { const r = [...document.querySelectorAll('.kh-t tbody tr')].find(t => /Ali Yılmaz/.test(t.textContent)); return r ? [...r.querySelectorAll('td')].map(td => td.textContent.trim()) : null; });
+  kontrol('Şirket → Hareketler: kişi başına etkin süre, etkin gün, giriş, ekran, ekleme, değişiklik, silme, çıktı, son hareket (7 gün)', tekXls === 1 && tab && tab[1] === '1 sa' && tab[3] === '1' && tab[4] === '2' && tab[5] === '1' && tab[6] === '1' && tab[7] === '1' && tab[8] === '1', JSON.stringify({ tekXls, tab }));
+  // Kullanıcı kartı
+  await p.click('.kh-t [data-kart="ali@x.com"]'); await w(1200);
+  const kart = await p.evaluate(() => { const d = document.querySelector('.drawer.open'); return { baslik: d.querySelector('#drawer-title')?.textContent, kutu: [...d.querySelectorAll('.kh-k')].map(k => k.querySelector('span').textContent + '=' + k.querySelector('b').textContent).join('|'), isi: d.querySelectorAll('.kh-isi i').length, akis: [...d.querySelectorAll('.kh-akis li')].map(l => l.textContent.replace(/\s+/g, ' ').trim()), bilgi: d.querySelector('.kh-bilgi')?.textContent, ekran: d.querySelector('.kh-ek')?.textContent }; });
+  await p.click('.drawer.open [data-suz="veri"]'); await w(600);
+  const veri = await p.evaluate(() => document.querySelectorAll('.drawer.open .kh-akis li').length);
+  await p.click('.drawer.open [data-dn="30"]'); await w(800);
+  const otuz = await p.evaluate(() => document.querySelector('.drawer.open .kh-k b')?.textContent);
+  kontrol('Kullanıcı kartı: özet kutuları (etkin süre, gün, giriş, ekran, ziyaret, silme…), gün × saat haritası, en çok gezilen ekranlar, gün gün akış (değişiklikte eski → yeni, kayda bağlantı), süzgeç ve dönem',
+    kart.baslik === 'Ali Yılmaz' && /Etkin süre=1 sa/.test(kart.kutu) && /Etkin gün=1/.test(kart.kutu) && /Ziyaret=1/.test(kart.kutu) && /Silme=1/.test(kart.kutu) && kart.isi === 168 && kart.akis.some(t => /Değişiklik · Proje: Örnek Hastane.*Durum: Proje → Teklif Verildi/.test(t)) && kart.akis.some(t => /Giriş.*Android/.test(t)) && kart.akis.some(t => /Proje sayfası: Örnek Hastane/.test(t)) && /Satış temsilcisi/.test(kart.bilgi) && /Projeler/.test(kart.ekran || '') && veri === 3 && otuz === '1 sa 10 dk', JSON.stringify({ kart, veri, otuz }));
+  await p.evaluate(async () => (await import('./js/ui.js')).closeDrawer(true)); await w(300);
+  // Kullanıcılar sekmesinde "Hareketleri", Profilim'de "Hareketlerim"
+  await p.goto(U + '#/sirket/ekip'); await w(1500);
+  const kulBtn = await p.evaluate(() => !!document.querySelector('[data-uye="ali@x.com"] [data-hareket]'));
+  await p.goto(U + '#/profilim'); await w(1200);
+  const benim = await p.evaluate(() => !!document.querySelector('[data-hareketlerim]'));
+  if (benim) { await p.click('[data-hareketlerim]'); await w(1000); }
+  const benimKart = await p.evaluate(() => document.querySelector('.drawer.open #drawer-title')?.textContent + '|' + document.querySelectorAll('.drawer.open .kh-akis li').length);
+  kontrol('Kullanıcılar listesinde kişiye “Hareketleri”, Profilim’de “Hareketlerim” (kendi kaydı)', kulBtn && benim && /^Hareketlerim\|[1-9]/.test(benimKart), JSON.stringify({ kulBtn, benim, benimKart }));
+  kontrol('Hareket ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
 }
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"

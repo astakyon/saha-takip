@@ -32,6 +32,15 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 134)
+
+- Kullanıcı hareketleri (veritabanı 67): giriş / çıkış, uygulamanın açık ve etkin olduğu süre, gezilen ekranlar, Excel / PDF / indirme / yazdırma çıktıları, paylaşım, WhatsApp / e-posta / arama / yol tarifi bağlantıları, Excel’den içe aktarma, tabela / kartvizit / etiket okutma, fotoğraf yükleme. Olaylar cihazda kuyruğa alınıp toplu gönderilir; çevrimdışıyken bekler.
+- Değişiklik geçmişi stok, sevk, bayi, masraf, çek, ekip ve rol tablolarını da kapsar (eski → yeni).
+- Şirket → Hareketler: kişi başına etkin süre, etkin gün, giriş, ekran, ekleme, değişiklik, silme, çıktı, son hareket; dönem seçimi.
+- Kullanıcı kartı (Kullanıcılar → Hareketleri): önceki döneme göre ▲/▼ özet, gün × saat haritası, en çok gezilen ekranlar, süzgeçli gün gün akış, Excel’e aktarma.
+- Profilim → Hareketlerim; ekip üyesine bir kez bilgilendirme gösterilir.
+- Gizlilik: arama metinleri, şifreler, sürekli konum kaydedilmez; kayıtlar değiştirilemez / silinemez, 12 ay sonra kendiliğinden silinir; herkes yalnız kendi kaydını, kurucu ve yöneticiler herkesinkini görür.
+
 ## Güncelleme notu (sürüm 133)
 
 - Mevcut projeleri şantiye → blok düzenine sokma: proje listesinde ⋯ → Toplu düzelt ile projeleri seç → “Şantiyede topla”: seçilenlerden birini ana proje yap ya da yeni ana proje aç (seçilenlerde ortak olan yatırımcı, müteahhit, konum, ruhsat… ona taşınır); diğerleri blok olur. “Ana projeden ayır” seçilen blokları bağımsız yapar.

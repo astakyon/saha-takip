@@ -236,7 +236,7 @@ class SupaAdapter {
     return !!this.session;
   }
   user() { return this.session?.user || null; }
-  async signIn(email, password) { const { data, error } = await this.c.auth.signInWithPassword({ email, password }); if (error) throw error; this.session = data.session; }
+  async signIn(email, password) { const { data, error } = await this.c.auth.signInWithPassword({ email, password }); if (error) throw error; this.session = data.session; try { sessionStorage.setItem('saha-giris-yeni', '1'); } catch {} }
   async signUp(email, password) { const { data, error } = await this.c.auth.signUp({ email, password }); if (error) throw error; this.session = data.session; return data; }
   async signOut() { await this.c.auth.signOut(); this.session = null; }
   // Ekip yetkileri: veri sahibi mi, ekip üyesiyse hangi tablolar (schema.sql sürüm 8 gerekir; yoksa sahip sayılır)
@@ -463,6 +463,7 @@ class SupaAdapter {
     S[t] = [...byId.values()]; this.cache();
   }
   async upload(file, { max = 1600, q = 0.82 } = {}) {
+    import('./hareket.js').then(m => m.iz('yukleme', { ozet: file?.name || 'Dosya', ayrinti: { boyut: file?.size, tur: file?.type } })).catch(() => {});
     if (this.onizleme) throw new Error(this.bakilan ? 'Bu hesaba salt okunur bakıyorsun; dosya yüklenmez.' : 'Önizlemedesin: dosya yüklenmez.');
     if (!navigator.onLine) throw new Error('Fotoğraf yüklemek için internet bağlantısı gerekiyor.');
     const blob = await shrink(file, max, q);

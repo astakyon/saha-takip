@@ -14,7 +14,7 @@ export async function sirketView(el) {
   const bugun = new Date(), ayBasi = new Date(bugun.getFullYear(), bugun.getMonth(), 1).toISOString().slice(0, 10);
   const acik = (S.projeler || []).filter(x => !['Sipariş', 'Kayıp', 'İptal'].includes(x.durum)).length;
   const kart = (ad, deger, alt = '') => `<div class="sk-sayi"><b>${deger}</b><span>${ad}</span>${alt ? `<small>${alt}</small>` : ''}</div>`;
-  const SEKMELER = [['genel', 'Genel', true], ['ekip', 'Kullanıcılar', yetkili], ['roller', 'Roller', yetkili], ['ekipler', 'Ekipler', yetkili], ['degisiklik', 'Son değişiklikler', yetkili], ['otomasyon', 'Otomasyonlar', yetkili], ['kur', 'Döviz kuru', true]].filter(x => x[2]);
+  const SEKMELER = [['genel', 'Genel', true], ['ekip', 'Kullanıcılar', yetkili], ['roller', 'Roller', yetkili], ['ekipler', 'Ekipler', yetkili], ['hareketler', 'Hareketler', yetkili], ['degisiklik', 'Son değişiklikler', yetkili], ['otomasyon', 'Otomasyonlar', yetkili], ['kur', 'Döviz kuru', true]].filter(x => x[2]);
   el.innerHTML = `<div class="fs-sayfa sk-sayfa"><header class="vh sk-bas"><div class="sk-kimlik"><span class="sk-logo" aria-hidden="true">${esc((p.firma || 'Ş').slice(0, 1).toLocaleUpperCase('tr'))}</span>
       <div><p class="muted">Şirket profili</p><h1>${esc(p.firma || 'Şirketin')}</h1><p class="sum">${esc([SEKTOR[p.sektor], p.marka ? 'Temsil: ' + p.marka : '', (p.iller || []).join(', ')].filter(Boolean).join(' · '))}</p></div></div>
       <div class="vh-act">${(app.db?.sirketler || []).length > 1 ? `<button class="btn ghost" data-sirketsec>Şirket değiştir (${app.db.sirketler.length})</button>` : ''}${yetkili ? '<button class="btn primary" data-pduz>Profili düzenle</button>' : ''}</div></header>
@@ -41,6 +41,7 @@ export async function sirketView(el) {
     ${yetkili ? `<div class="fs-ic" data-fs="ekip" role="tabpanel" hidden><section class="card"><h2>Kullanıcılar</h2><div data-kullanici></div></section></div>
     <div class="fs-ic" data-fs="roller" role="tabpanel" hidden><section class="card"><h2>Roller</h2><p class="hint">Rol, bir grup kişinin hangi ekranları ve kayıtları göreceğini, uygulamayı açınca neyle karşılaşacağını belirler. Rolü değiştirince o roldeki herkes birlikte güncellenir.</p><div data-roller></div></section></div>
     <div class="fs-ic" data-fs="ekipler" role="tabpanel" hidden><section class="card"><h2>Ekipler</h2><div data-ekipler></div></section></div>
+    <div class="fs-ic" data-fs="hareketler" role="tabpanel" hidden><section class="card kh-kart" data-hareketler></section></div>
     <div class="fs-ic" data-fs="degisiklik" role="tabpanel" hidden><section class="card sk-sondeg" data-sondeg></section></div>` : ''}
 
     ${yetkili ? `<div class="fs-ic" data-fs="otomasyon" role="tabpanel" hidden><section class="card sk-kur"><h2>Otomasyonlar</h2><div data-otomasyon></div></section></div>` : ''}
@@ -63,6 +64,7 @@ export async function sirketView(el) {
     ekip: async () => (await import('./kullanicilar.js')).kullaniciAyarlari(el.querySelector('[data-kullanici]'), 'kullanicilar'),
     roller: async () => (await import('./kullanicilar.js')).kullaniciAyarlari(el.querySelector('[data-roller]'), 'roller'),
     ekipler: async () => (await import('./kullanicilar.js')).kullaniciAyarlari(el.querySelector('[data-ekipler]'), 'ekipler'),
+    hareketler: async () => (await import('../kullanicikart.js')).hareketlerSekmesi(el.querySelector('[data-hareketler]')),
     degisiklik: async () => { const k = el.querySelector('[data-sondeg]'); if (app.db.mode !== 'supabase') { k.innerHTML = '<h2>Son değişiklikler</h2><p class="hint">Değişiklik geçmişi bulut bağlantısıyla tutulur.</p>'; return; } (await import('../gecmis.js')).sonDegisiklikler(k); },
     kur: async () => (await import('../kur.js')).kurAyarlari(el.querySelector('[data-kur]')),
     otomasyon: async () => (await import('../otomasyon.js')).otomasyonAyarlari(el.querySelector('[data-otomasyon]')),

@@ -236,6 +236,7 @@ export async function kullaniciAyarlari(root, bolum = 'kullanicilar') {
       kutu.innerHTML = `<div class="fld"><label>${esc(u.ad || u.eposta)} kişisinin sorumlu olduğu bütün kayıtlar kime geçsin?</label><select data-devhedef><option value="">Otomatik: ekip yöneticisine (yoksa kurucuya)</option>${hedefler.map(x => `<option value="${esc(x.eposta)}">${esc(x.ad)} · ${esc(x.eposta)}</option>`).join('')}</select></div><div class="btnrow"><button type="button" class="btn sm primary" data-devyap>Devret</button></div>`;
       kutu.querySelector('[data-devyap]').onclick = async () => { const h = kutu.querySelector('[data-devhedef]').value || null; if (!confirmBox(`${u.ad || u.eposta} kişisinin kayıtları ${h || 'ekip yöneticisine'} devredilsin mi?`)) return; await devret(u.eposta, h); kutu.hidden = true; };
     });
+    k.querySelector('[data-hareket]').onclick = async () => (await import('../kullanicikart.js')).kullaniciKarti({ eposta: u.eposta, ad: u.ad || u._kad || u.eposta, rol: rolAl(u) });
     k.querySelector('[data-onizle]').onclick = () => { if (!confirmBox(`${u.ad || u.eposta} bu ayarlarla ne görüyor, bunu kendi telefonunda göreceksin. Önizlemede değişiklik kaydedilmez; alttaki düğmeyle çıkarsın. Başlansın mı?`)) return; onizlemeBaslat({ ...u, yetkiler: yetkiOku(k) }); };
     k.querySelector('[data-sil]').onclick = async () => { if (!confirmBox(`${u.ad || u._kad || u.eposta} kullanıcılardan çıkarılsın mı? Artık verilerini göremez.`)) return; await app.db.c.from('ekip_uyeleri').delete().eq('id', u.id); toast('Kullanıcı çıkarıldı.'); yenile(); };
     k.querySelector('[data-sifirla]')?.addEventListener('click', async () => {
@@ -348,7 +349,7 @@ function uyeKarti(u, kadVar) {
         <div class="btnrow">${u._hesap === false ? `<button type="button" class="btn sm" data-hesapac>Kullanıcı adıyla hesap aç</button>` : u._hesap ? '<button type="button" class="btn sm" data-sifirla>Yeni geçici şifre</button>' : ''}${sentetik ? '' : '<button type="button" class="btn sm ghost" data-davet>E-posta daveti</button>'}</div>
         <div data-link class="davet-kutu" hidden></div></section>
     </div>
-    <div class="uye-alt"><button type="button" class="btn sm primary" data-kaydet>Kaydet</button><button type="button" class="btn sm ghost" data-onizle>Bu kişi gibi gör</button><span class="grow"></span>${EKIPLER_DB ? '<button type="button" class="btn sm ghost" data-devret>Kayıtlarını devret</button>' : ''}<button type="button" class="btn sm ghost danger" data-sil>Çıkar</button></div><div class="devret-kutu" data-devretk hidden></div></details>`;
+    <div class="uye-alt"><button type="button" class="btn sm primary" data-kaydet>Kaydet</button><button type="button" class="btn sm ghost" data-onizle>Bu kişi gibi gör</button><button type="button" class="btn sm ghost" data-hareket>Hareketleri</button><span class="grow"></span>${EKIPLER_DB ? '<button type="button" class="btn sm ghost" data-devret>Kayıtlarını devret</button>' : ''}<button type="button" class="btn sm ghost danger" data-sil>Çıkar</button></div><div class="devret-kutu" data-devretk hidden></div></details>`;
 }
 
 // ---------- Şirket: adı, kurucusu, yöneticileri ----------

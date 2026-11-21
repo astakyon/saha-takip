@@ -211,16 +211,20 @@ export function myLocation() {
 export const directionsUrl = (lat, lng) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 
 // ---------- İndirme ----------
+let ciktiSessiz = false;
+const hareket = (tur, o) => import('./hareket.js').then(m => m.iz(tur, o)).catch(() => {});
 export function download(name, content, type = 'application/json') {
   const b = content instanceof Blob ? content : new Blob([content], { type });
+  if (!ciktiSessiz) hareket(/\.pdf$/i.test(name) ? 'cikti' : /\.(xlsx|csv)$/i.test(name) ? 'disa_aktarma' : 'indirme', { ozet: name, ayrinti: { boyut: b.size, tur: b.type || type } });
   const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 // Excel kütüphanesi (~900 KB) yalnızca Excel'e aktarırken ya da Excel yüklerken indirilir
 let xlsxSoz = null;
 export function xlsxYukle() {
-  if (window.XLSX) return Promise.resolve(window.XLSX);
-  return xlsxSoz ||= new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = () => res(window.XLSX); s.onerror = () => { xlsxSoz = null; rej(new Error('Excel aracı indirilemedi. İnternet bağlantını kontrol et.')); }; document.head.appendChild(s); });
+  const sar = X => { if (X?.read && !X.read.__iz) { const orj = X.read.bind(X); const r = (veri, o) => { const wb = orj(veri, o); try { const say = Object.fromEntries((wb.SheetNames || []).slice(0, 5).map(n => { const ref = wb.Sheets[n]?.['!ref']; return [n, ref ? X.utils.decode_range(ref).e.r : 0]; })); hareket('ice_aktarma', { ozet: 'Excel dosyası okundu', ayrinti: { sayfalar: say } }); } catch {} return wb; }; r.__iz = true; X.read = r; } return X; };
+  if (window.XLSX) return Promise.resolve(sar(window.XLSX));
+  return xlsxSoz ||= new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = () => res(sar(window.XLSX)); s.onerror = () => { xlsxSoz = null; rej(new Error('Excel aracı indirilemedi. İnternet bağlantını kontrol et.')); }; document.head.appendChild(s); });
 }
 // Excel çıktısı: sütun genişlikleri ve filtre düğmeleriyle; bir kopyası “Dosyalar → Çıktılar”a kaydedilir
 export async function exportXlsx(name, sheets) {
@@ -240,7 +244,8 @@ export async function exportXlsx(name, sheets) {
   }
   if (!XLSX.write) return XLSX.writeFile(wb, name);
   const blob = new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  download(name, blob);
+  hareket('disa_aktarma', { ozet: name, ayrinti: { sayfalar: Object.fromEntries(Object.entries(sheets).map(([k, v]) => [k, v.length])) } });
+  ciktiSessiz = true; try { download(name, blob); } finally { ciktiSessiz = false; }
   import('./belgeler.js').then(m => m.ciktiKaydet(blob, name, 'Excel', Object.entries(sheets).map(([k, v]) => `${k}: ${v.length} satır`).join(', '))).catch(() => {});
 }
 

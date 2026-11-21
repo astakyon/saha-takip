@@ -13,6 +13,7 @@
     select(a = '*', o) { if (this.op === 'select') this.alan = a; else this.donus = a; if (o?.count) { this.cnt = true; this.head = o.head; } return this; }
     gt(k, v) { this.f.push(r => r[k] > v); return this; }
     gte(k, v) { this.f.push(r => r[k] >= v); return this; }
+    lt(k, v) { this.f.push(r => r[k] < v); return this; }
     eq(k, v) { this.f.push(r => r[k] === v); return this; }
     in(k, v) { this.f.push(r => v.includes(r[k])); return this; }
     not() { return this; }
@@ -68,7 +69,11 @@
     // K4 sahte sunucu: localStorage.__HASSAS varsa projelerde tutar sütunları sunucuda gizli
     rpc(n, a) { const H = localStorage.getItem('__HASSAS'), Y = JSON.parse(localStorage.getItem('__YETKI') || 'null'), acik = !(Y && Y.ben_sahip === false && (Y.yetkiler?._gizli || []).includes('tutar')), HK = ['tutar_usd', 'siparis_tutari_usd', 'bizim_teklif_usd', 'rakip_birim_fiyat', 'rakip_toplam_usd'];
       let p;
-      if (n === 'sirketlerim') p = Promise.resolve({ data: JSON.parse(localStorage.getItem('__SIRKETLER') || 'null') || [], error: null });
+      if (n === 'kullanici_etkinlik') { const say = new Map(); const ekle = (k, r) => { const o = say.get(k) || say.set(k, { kim_id: r.kim_id || null, kim: r.kim, kaynak: k.split('|')[1], tur: k.split('|')[2], alt: k.split('|')[3], adet: 0, sure: 0, gunler: new Set(), son: null }).get(k); o.adet++; if (r.tur === 'aktif') o.sure += +(r.ayrinti?.sn || 0); o.gunler.add(String(r.zaman).slice(0, 10)); if (!o.son || r.zaman > o.son) o.son = r.zaman; };
+        for (const r of DB.kullanici_hareketleri || []) if (r.zaman >= a.p_bas && r.zaman < a.p_bit) ekle(`${r.kim}|hareket|${r.tur}|${r.ekran || ''}`, r);
+        for (const r of DB.degisiklikler || []) if (r.zaman >= a.p_bas && r.zaman < a.p_bit) ekle(`${r.kim}|degisiklik|${r.islem}|${r.tablo}`, { ...r, tur: r.islem });
+        p = Promise.resolve({ data: [...say.values()].map(o => ({ ...o, gun: o.gunler.size, gunler: undefined })), error: null }); }
+      else if (n === 'sirketlerim') p = Promise.resolve({ data: JSON.parse(localStorage.getItem('__SIRKETLER') || 'null') || [], error: null });
       else if (n === 'sirket_sec') { localStorage.setItem('__SECILI', a.p_owner); p = Promise.resolve({ data: null, error: null }); }
       else if (n === 'dis_bilgim') p = Promise.resolve({ data: Y?.dis || null, error: null });
       else if (H && n === 'hassas_semasi') p = Promise.resolve({ data: { projeler: { grup: 'tutar', hassas: HK, okunur: ['id', 'owner', 'ad', 'durum', 'il', 'ilce', 'emut_id', 'ilgili_kisi_id', 'karar_grubu', 'notlar', 'updated_at', 'created_at', 'sorumlu'] } }, error: null });
