@@ -34,8 +34,8 @@ await new Promise(r => sunucu.listen(0, '127.0.0.1', r));
 const U = `http://127.0.0.1:${sunucu.address().port}/index.html`;
 const tarayici = await chromium.launch();
 
-async function sayfa({ supabase = false, hazirla } = {}) {
-  const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });
+async function sayfa({ supabase = false, hazirla, ctx } = {}) {
+  const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block', ...(ctx || {}) });
   await c.route(/cdnjs|jsdelivr|googleapis|gstatic|openstreetmap|arcgis|nominatim|frankfurter|supabase\.co|eaeaydinlatma|unpkg/, r => { const u = r.request().url(); if (u.includes('supabase-js')) return r.fulfill({ body: sahteSupa, contentType: 'application/javascript' }); if (u.includes('leaflet')) return r.fulfill({ body: sahteLeaflet, contentType: 'application/javascript' }); if (u.endsWith('.js')) return r.fulfill({ body: '', contentType: 'application/javascript' }); return r.abort(); });
   await c.addInitScript(({ supabase, hazirla }) => {
     localStorage.setItem('saha-tanitim', '1'); if (!localStorage.getItem('saha-gorulen-surum')) localStorage.setItem('saha-gorulen-surum', '999'); if (localStorage.getItem('__hazir')) return; localStorage.setItem('__hazir', '1');
@@ -1969,6 +1969,33 @@ const DB = () => {
   kontrol('Kullanıcılar listesinde kişiye “Hareketleri”, Profilim’de “Hareketlerim” (kendi kaydı)', kulBtn && benim && /^Hareketlerim\|[1-9]/.test(benimKart), JSON.stringify({ kulBtn, benim, benimKart }));
   kontrol('Hareket ekranlarında hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
   await c.close();
+}
+// Sürüm 135: ekran düzeni — telefonda "Masaüstü sitesi" açıkken otomatik telefon düzeni; Ayarlar'da Otomatik / Telefon / Bilgisayar
+{
+  // Masaüstü sitesi: tarayıcı viewport etiketini yok sayar, sayfa 980 px genişlikte; ekran 412 px, dokunmatik
+  const { p, c, hatalar } = await sayfa({ ctx: { viewport: { width: 980, height: 2000 }, screen: { width: 412, height: 915 }, isMobile: false, hasTouch: true } });
+  await p.goto(U + '#/bugun'); await w(1500);
+  const oto = await p.evaluate(async () => { const G = await import('./js/gorunum.js'); const d = G.durumu(); const nav = document.getElementById('nav'); return { d, zoom: getComputedStyle(document.documentElement).zoom, navAlt: nav && getComputedStyle(nav).position, genis: innerWidth, mm: matchMedia('(max-width: 899px)').matches, tus: document.querySelector('.sidebar, #sidebar, aside') ? getComputedStyle(document.querySelector('.sidebar, #sidebar, aside')).display : '' }; });
+  kontrol('Telefonda masaüstü sitesi açıkken otomatik olarak telefon düzenine geçilir (yakınlaştırma, telefon kuralları, alt menü)', oto.d.W === 412 && oto.d.yol === 'zum' && Math.abs(+oto.zoom - 980 / 412) < 0.01 && oto.mm === true && oto.navAlt === 'fixed', JSON.stringify(oto));
+  // Ayarlar → Görünüm → Ekran düzeni: Bilgisayar seçilince düzeltme kalkar, Otomatik'e dönülünce yeniden uygulanır
+  await p.goto(U + '#/ayarlar'); await w(1200);
+  await p.evaluate(() => { const b = document.querySelector('[data-sekme="gorunum"], [data-tab-ac="gorunum"]'); b?.click(); }); await w(500);
+  const secenek = await p.evaluate(() => [...document.querySelectorAll('[data-gd]')].map(b => b.textContent + (b.classList.contains('on') ? '*' : '')).join(','));
+  await p.evaluate(() => document.querySelector('[data-gd="genis"]').click()); await w(800);
+  const genis = await p.evaluate(async () => { const G = await import('./js/gorunum.js'); return { d: G.durumu(), zoom: getComputedStyle(document.documentElement).zoom, mm: matchMedia('(max-width: 899px)').matches, kayit: localStorage.getItem('saha-gorunum') }; });
+  await p.evaluate(() => document.querySelector('[data-gd="oto"]').click()); await w(800);
+  const geri = await p.evaluate(async () => (await import('./js/gorunum.js')).durumu().W);
+  kontrol('Ayarlar → Görünüm → Ekran düzeni: Otomatik / Telefon / Bilgisayar (bu cihazda saklanır)', /Otomatik\*/.test(secenek) && /Telefon/.test(secenek) && /Bilgisayar/.test(secenek) && genis.d.W === 0 && +genis.zoom === 1 && genis.mm === false && genis.kayit === 'genis' && geri === 412, JSON.stringify({ secenek, genis, geri }));
+  kontrol('Ekran düzeni değişiminde hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+  // Normal telefonda (viewport etiketi işler) ve bilgisayarda düzeltme yapılmaz; bilgisayarda "Telefon" seçilirse dar düzen
+  const t2 = await sayfa({}); await t2.p.goto(U + '#/bugun'); await w(1200);
+  const tel = await t2.p.evaluate(async () => (await import('./js/gorunum.js')).durumu().W); await t2.c.close();
+  const t3 = await sayfa({ ctx: { viewport: { width: 1400, height: 900 }, isMobile: false, hasTouch: false } }); await t3.p.goto(U + '#/bugun'); await w(1200);
+  const pc = await t3.p.evaluate(async () => (await import('./js/gorunum.js')).durumu().W);
+  const pcTel = await t3.p.evaluate(async () => { const G = await import('./js/gorunum.js'); const d = await G.sec('telefon'); return { W: d.W, mm: matchMedia('(max-width: 899px)').matches }; });
+  await t3.c.close();
+  kontrol('Normal telefonda ve bilgisayarda kendiliğinden değişiklik yok; bilgisayarda “Telefon” seçilince telefon düzeni', tel === 0 && pc === 0 && pcTel.W > 0 && pcTel.W < 900 && pcTel.mm === true, JSON.stringify({ tel, pc, pcTel }));
 }
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {

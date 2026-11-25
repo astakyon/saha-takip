@@ -68,7 +68,7 @@ export async function ayarlarView(el) {
     <section class="card wide-card" data-tab="listeler"><h2>Seçim listeleri</h2><div data-listeler></div></section>
     <section class="card" data-tab="gorunum" id="menu-karti"><h2>Menü</h2><div data-menu></div></section>
     <section class="card" data-tab="gorunum"><h2>Kullanım</h2><div data-kullanim></div></section>
-    <section class="card" data-tab="gorunum"><h2>Görünüm</h2><div class="seg" role="group" aria-label="Tema" data-tema>${[['acik', 'Açık'], ['koyu', 'Koyu'], ['oto', 'Cihaza göre']].map(([k, t]) => `<button type="button" data-tm="${k}" class="${(ayar('tema', 'acik') || 'acik') === k ? 'on' : ''}">${t}</button>`).join('')}</div><p class="hint">Koyu tema akşam ve gece kullanımında gözü daha az yorar. “Cihaza göre” telefonun gece/gündüz ayarını izler.</p><h3>Yazı boyutu</h3><div class="seg" role="group" aria-label="Yazı boyutu">${[['normal', 'Normal'], ['buyuk', 'Büyük'], ['cokbuyuk', 'Çok büyük']].map(([k, t]) => `<button type="button" data-yz="${k}" class="${(ayar('yazi', 'normal') || 'normal') === k ? 'on' : ''}">${t}</button>`).join('')}</div></section>
+    <section class="card" data-tab="gorunum"><h2>Görünüm</h2><div class="seg" role="group" aria-label="Tema" data-tema>${[['acik', 'Açık'], ['koyu', 'Koyu'], ['oto', 'Cihaza göre']].map(([k, t]) => `<button type="button" data-tm="${k}" class="${(ayar('tema', 'acik') || 'acik') === k ? 'on' : ''}">${t}</button>`).join('')}</div><p class="hint">Koyu tema akşam ve gece kullanımında gözü daha az yorar. “Cihaza göre” telefonun gece/gündüz ayarını izler.</p><h3>Ekran düzeni</h3><div class="seg" role="group" aria-label="Ekran düzeni" data-gorunum-sec>${[['oto', 'Otomatik'], ['telefon', 'Telefon'], ['genis', 'Bilgisayar']].map(([k, t]) => `<button type="button" data-gd="${k}">${t}</button>`).join('')}</div><p class="hint" data-gorunum-not>Yalnız bu cihazda geçerlidir. “Otomatik”: telefonda tarayıcının “Masaüstü sitesi” ayarı açık kalsa da telefon düzeni kullanılır.</p><h3>Yazı boyutu</h3><div class="seg" role="group" aria-label="Yazı boyutu">${[['normal', 'Normal'], ['buyuk', 'Büyük'], ['cokbuyuk', 'Çok büyük']].map(([k, t]) => `<button type="button" data-yz="${k}" class="${(ayar('yazi', 'normal') || 'normal') === k ? 'on' : ''}">${t}</button>`).join('')}</div></section>
     <section class="card" data-tab="uygulama"><h2>Gizlilik</h2>
       <label class="chk"><input type="checkbox" data-gizli ${ayar('gizli_mod', false) === true ? 'checked' : ''}> <span><b>Gizli mod</b>: kayıtlarımı ve konumumu dış servislere gönderme</span></label>
       <p class="hint">Açıkken kapananlar: Google uydu/harita katmanı ve Google'da firma arama, OpenStreetMap ile adres ve il/ilçe bulma, sesle yazma (Google konuşma tanıma). Konum yine telefonda alınır, il ve sanayi bölgesi cihazda hesaplanır. Açık kalanlar: kendi Supabase veritabanın, harita görüntüsü (Esri ya da OpenStreetMap; yalnızca baktığın bölgenin görüntüsü istenir), döviz kuru.</p></section>
@@ -129,11 +129,11 @@ export async function ayarlarView(el) {
   };
   // Telefonda önce bölüm listesi, dokununca bölüm; bilgisayarda solda liste, sağda bölüm
   const duzen = el.querySelector('[data-duzen]');
-  const ac = k => { f.sekme = k; saveFilters(); sekmeGoster(k); duzen.classList.add('icerik'); if (innerWidth < 900) window.scrollTo(0, 0); };
+  const ac = k => { f.sekme = k; saveFilters(); sekmeGoster(k); duzen.classList.add('icerik'); if ((window.__gW || innerWidth) < 900) window.scrollTo(0, 0); };
   el.querySelectorAll('[data-sekme]').forEach(b => b.onclick = () => ac(b.dataset.sekme));
   el.querySelector('[data-geri]').onclick = () => { duzen.classList.remove('icerik'); window.scrollTo(0, 0); };
   sekmeGoster(f.sekme);
-  duzen.classList.toggle('icerik', innerWidth >= 900 || dogrudan);
+  duzen.classList.toggle('icerik', (window.__gW || innerWidth) >= 900 || dogrudan);
   bindConn(el);
   anahtarBagla(el, () => ayarlarView(el));
   menuAyarlari(el.querySelector('[data-menu]'));
@@ -177,6 +177,12 @@ export async function ayarlarView(el) {
     location.reload();
   };
   el.querySelectorAll('[data-yz]').forEach(b => b.onclick = async () => { const { yaziSec } = await import('../tema.js'); await yaziSec(b.dataset.yz); el.querySelectorAll('[data-yz]').forEach(x => x.classList.toggle('on', x === b)); });
+  import('../gorunum.js').then(G => {
+    const isaretle = () => { const t = G.tercih(), d = G.durumu(); el.querySelectorAll('[data-gd]').forEach(x => x.classList.toggle('on', x.dataset.gd === t));
+      const n = el.querySelector('[data-gorunum-not]'); if (n && t === 'oto' && d.W) n.textContent = 'Telefonda tarayıcının “Masaüstü sitesi” ayarı açık görünüyor; uygulama telefon düzenine geçirildi. Yalnız bu cihazda geçerlidir.'; };
+    isaretle();
+    el.querySelectorAll('[data-gd]').forEach(b => b.onclick = async () => { await G.sec(b.dataset.gd); isaretle(); toast(b.dataset.gd === 'oto' ? 'Ekran düzeni: otomatik' : b.dataset.gd === 'telefon' ? 'Telefon düzeni seçildi' : 'Bilgisayar düzeni seçildi'); });
+  });
   el.querySelectorAll('[data-tm]').forEach(b => b.onclick = async () => { const { temaSec } = await import('../tema.js'); await temaSec(b.dataset.tm); el.querySelectorAll('[data-tm]').forEach(x => x.classList.toggle('on', x === b)); });
   el.querySelector('[data-cikti]').onchange = e => ayarYaz('cikti_sakla', e.target.checked);
   el.querySelector('[data-eslesifirla]')?.addEventListener('click', async () => { await ayarYaz('excel_esle', null); toast('Excel sütun eşleştirmeleri sıfırlandı; bir sonraki yüklemede yeniden sorulur.'); });

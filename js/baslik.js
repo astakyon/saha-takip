@@ -4,7 +4,7 @@ import { menuSigdir } from './ui.js';
 const isle = act => {
   if (act.dataset.duzen) return; act.dataset.duzen = '1';
   const ikincil = [...act.children].filter(x => x.matches('.btn:not(.primary), a.btn:not(.primary)') && !x.matches('[data-kalsin]'));
-  if (ikincil.length < 2 && !(ikincil.length && innerWidth < 700 && act.querySelector('.btn.primary'))) return;
+  if (ikincil.length < 2 && !(ikincil.length && (window.__gW || innerWidth) < 700 && act.querySelector('.btn.primary'))) return;
   const kutu = document.createElement('div'); kutu.className = 'vh-daha';
   kutu.innerHTML = `<button type="button" class="btn ghost vh-daha-btn" aria-haspopup="menu" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg><span>Diğer</span></button><div class="vh-menu" role="menu" hidden></div>`;
   const menu = kutu.querySelector('.vh-menu'), btn = kutu.querySelector('.vh-daha-btn');

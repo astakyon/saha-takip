@@ -32,6 +32,12 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 135)
+
+- Ekran düzeni (Ayarlar → Görünüm ve menü): Otomatik / Telefon / Bilgisayar; tercih yalnız o cihazda saklanır.
+- Otomatik: telefonda tarayıcının “Masaüstü sitesi / Masaüstü sürümü” ayarı açıksa (sayfa ekrandan çok geniş açılıyorsa) telefon düzenine geçilir: önce sayfa genişliği istenir, tarayıcı uymazsa sayfa yakınlaştırılır ve genişliğe bağlı kurallar telefon genişliğine göre uygulanır.
+- Telefon: bilgisayarda da dar (telefon) düzenini gösterir; Bilgisayar: telefonda geniş düzen.
+
 ## Güncelleme notu (sürüm 134)
 
 - Kullanıcı hareketleri (veritabanı 67): giriş / çıkış, uygulamanın açık ve etkin olduğu süre, gezilen ekranlar, Excel / PDF / indirme / yazdırma çıktıları, paylaşım, WhatsApp / e-posta / arama / yol tarifi bağlantıları, Excel’den içe aktarma, tabela / kartvizit / etiket okutma, fotoğraf yükleme. Olaylar cihazda kuyruğa alınıp toplu gönderilir; çevrimdışıyken bekler.

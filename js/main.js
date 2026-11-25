@@ -1,3 +1,4 @@
+import './gorunum.js';
 import { S, makeAdapter, getConfig, setConfig } from './db.js';
 import { app, loadFilters, SURUM } from './state.js';
 import { profil, SEKTOR } from './profil.js';

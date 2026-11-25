@@ -179,7 +179,7 @@ export function projelerView(el) {
   const f = F('projeler', { q: '', yil: 'Tümü', durumlar: [], il: 'Tümü', kanal: 'Tümü', kritik: false, hedef: false, ziyaret: false, rakip: 'Tümü', sort: 'Duruma göre', gor: 'liste' });
   if (f._v !== 2) { f.yil = 'Tümü'; f.sort = 'Duruma göre'; f._v = 2; saveFilters(); }
   if (!SORTS[f.sort]) f.sort = 'Duruma göre';
-  if (!f._gorSecim && innerWidth < 700 && f.gor !== 'huni') f.gor = 'kart';   // telefonda varsayılan kart görünümü
+  if (!f._gorSecim && (window.__gW || innerWidth) < 700 && f.gor !== 'huni') f.gor = 'kart';   // telefonda varsayılan kart görünümü
   const bayiler = [...new Set(S.projeler.map(p => firmaAd(p.bayi_id)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
   const rakipler = [...new Set(S.projeler.map(p => p.rakip_marka).filter(Boolean))].sort();
   el.innerHTML = `
