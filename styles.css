@@ -138,11 +138,12 @@ a.row:hover, button.row:hover { background: var(--zemin-2); box-shadow: inset 3p
 .products .row { grid-template-columns: minmax(0, 2.6fr) 90px 110px 110px 120px; }
 .orders .row { grid-template-columns: minmax(0, 2fr) minmax(0, 1.6fr) 120px 130px; cursor: default; }
 @media (max-width: 899px) {
-  .row, .firms .row, .products .row, .orders .row { grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 14px; }
+  .row, .firms .row, .products .row, .orders .row { grid-template-columns: minmax(0, 1fr) fit-content(42%); gap: 4px 12px; padding: 12px 14px; }
   .row.head { display: none; }
   .row > span:nth-child(n+3) { grid-column: 1 / -1; flex-direction: row; gap: 8px; flex-wrap: wrap; font-size: 13.5px; }
   .row > span.r { justify-content: flex-start; }
-  .row > span:nth-child(2) { align-self: start; }
+  .row > span:nth-child(2) { align-self: start; min-width: 0; text-align: right; overflow-wrap: anywhere; }
+  .row > span:first-child { align-self: start; }
 }
 
 .empty { padding: 40px 20px; text-align: center; color: var(--muted); }

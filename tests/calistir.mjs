@@ -1997,6 +1997,20 @@ const DB = () => {
   await t3.c.close();
   kontrol('Normal telefonda ve bilgisayarda kendiliğinden değişiklik yok; bilgisayarda “Telefon” seçilince telefon düzeni', tel === 0 && pc === 0 && pcTel.W > 0 && pcTel.W < 900 && pcTel.mm === true, JSON.stringify({ tel, pc, pcTel }));
 }
+// Sürüm 136: telefonda liste satırları — çok tipli firmada ad sütunu daralmaz (normal telefon ve masaüstü sitesi açık telefon)
+{
+  for (const ctx of [{}, { viewport: { width: 980, height: 2000 }, screen: { width: 412, height: 915 }, isMobile: false, hasTouch: true }]) {
+    const { p, c, hatalar } = await sayfa({ supabase: true, hazirla: new Function(`(${DB})(); const d = JSON.parse(localStorage.getItem('__DB')); const ts = new Date().toISOString();
+      d.firmalar.unshift({ id: 'fz', owner: 'u1', ad: 'Drv Elektrik Aydınlatma', tipler: ['Bayi', 'Yatırımcı', 'Malzeme Alıcısı', 'Müşteri', 'Proje Bürosu'], il: 'Mersin', key_account: true, fotolar: [], created_at: ts, updated_at: ts });
+      localStorage.setItem('__DB', JSON.stringify(d));`), ctx });
+    await p.goto(U + '#/firmalar'); await w(1500);
+    if (process.env.SS) await p.screenshot({ path: process.env.SS + (ctx.screen ? '-zum' : '-tel') + '.png' });
+    const r = await p.evaluate(() => { const a = [...document.querySelectorAll('a.row')].find(x => /Drv Elektrik/.test(x.textContent)); const nm = a?.querySelector('.nm b'), t = a?.querySelector('span:nth-child(2)'); return a ? { satir: a.getBoundingClientRect().width, ad: nm.getBoundingClientRect().width, adY: nm.getBoundingClientRect().height, tip: t.getBoundingClientRect().width } : null; });
+    kontrol('Telefonda çok tipli firma satırı: ad sütunu daralmaz, tipler sağda sarılır' + (ctx.screen ? ' (masaüstü sitesi açık)' : ''), r && r.ad > r.satir * 0.35 && r.tip <= r.satir * 0.45 && r.adY < 60, JSON.stringify(r));
+    kontrol('Firma listesinde hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+    await c.close();
+  }
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

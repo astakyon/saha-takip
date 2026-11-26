@@ -32,6 +32,10 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 136)
+
+- Telefonda liste satırları: ikinci sütun (ör. firma tipleri) en çok %42 genişlik alır ve sağda sarılır; birinci sütun (ad) daralıp harf harf alt alta dizilmez.
+
 ## Güncelleme notu (sürüm 135)
 
 - Ekran düzeni (Ayarlar → Görünüm ve menü): Otomatik / Telefon / Bilgisayar; tercih yalnız o cihazda saklanır.
