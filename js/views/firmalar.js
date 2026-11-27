@@ -174,7 +174,7 @@ export function firmaFormu(id, init, { odak } = {}) {
 }
 
 // ---------- Kartvizit okuma ----------
-async function kartvizitPaneli(panel, form, yol, hazir) {
+async function kartvizitPaneli(panel, form, yol, hazir, { yonSabit = false } = {}) {
   const kutu = panel.querySelector('[data-ocr]');
   kutu.innerHTML = '<div class="ocr-box"><p class="hint" aria-live="polite" data-oc-d>Okuma motoru hazırlanıyor… (ilk seferde ~15 MB indirilir)</p><div class="progress"><span style="width:5%"></span></div></div>';
   const d = kutu.querySelector('[data-oc-d]'), bar = kutu.querySelector('.progress span');
@@ -184,7 +184,8 @@ async function kartvizitPaneli(panel, form, yol, hazir) {
       const { kartvizitOku } = await import('../ocr.js');
       const u = await app.db.url(yol); const blob = await (await fetch(u)).blob();
       const AD = { 'loading tesseract core': 'Okuma motoru indiriliyor', 'initializing tesseract': 'Hazırlanıyor', 'loading language traineddata': 'Türkçe dil verisi indiriliyor', 'initializing api': 'Hazırlanıyor', 'recognizing text': 'Kartvizit okunuyor', 'yön deneniyor': 'Yazı düz okunamadı, kart döndürülerek deneniyor' };
-      r = await kartvizitOku(blob, (st, pr) => { d.textContent = (AD[st] || st) + '…'; bar.style.width = Math.round((pr || 0) * 100) + '%'; });
+      // Yön önizlemede bulunduysa ya da elle döndürüldüyse fotoğraf görüldüğü gibi kalır (yeniden çevrilmez)
+      r = await kartvizitOku(blob, (st, pr) => { d.textContent = (AD[st] || st) + '…'; bar.style.width = Math.round((pr || 0) * 100) + '%'; }, { yonDene: !yonSabit });
     }
   } catch (e) { console.error(e); kutu.innerHTML = `<p class="warn">Kartvizit okunamadı: ${esc(e.message)}</p>`; return; }
   if (r.donus && yol) { const box = panel.querySelector('[data-kvs="kartvizit_on"]'); if (box?.dataset.val === yol) { const aci = r.donus; r = { ...r, donus: 0 }; kvDondur(box, aci).then(() => toast('Kartvizit fotoğrafı düz çevrildi.')).catch(() => {}); } }
@@ -220,7 +221,7 @@ export async function kartvizittenKisi() {
   try {
     toast('Kartvizit yükleniyor…');
     const yol = await app.db.upload(f.dosya);
-    kisiDetay(null, { kartvizit_on: yol });
+    kisiDetay(null, { kartvizit_on: yol, _kvYonSabit: !!(f.elle || f.yon) });
   } catch (e) { toast(e.message, 'err'); }
 }
 
@@ -293,7 +294,7 @@ export function kisiFormu(id, init, { odak } = {}) {
       const { kartvizitFotografi } = await import('../kirp.js');
       const f = await kartvizitFotografi(cap); if (!f) return;
       try { toast('Kartvizit yükleniyor…'); box.dataset.val = await app.db.upload(f.dosya); await show(); toast('Kartvizit eklendi. Kaydetmeyi unutma.');
-        if (box.dataset.kvs === 'kartvizit_on') { panel.querySelector('.kv-cta-row')?.remove(); kartvizitPaneli(panel, form, box.dataset.val); panel.querySelector('[data-ocr]').scrollIntoView({ block: 'nearest' }); } } catch (e) { toast(e.message, 'err'); }
+        if (box.dataset.kvs === 'kartvizit_on') { panel.querySelector('.kv-cta-row')?.remove(); kartvizitPaneli(panel, form, box.dataset.val, null, { yonSabit: !!(f.elle || f.yon) }); panel.querySelector('[data-ocr]').scrollIntoView({ block: 'nearest' }); } } catch (e) { toast(e.message, 'err'); }
     };
     box.querySelector('[data-kv-cam]').onclick = () => add(true);
     box.querySelector('[data-kv-gal]').onclick = () => add(false);
@@ -304,7 +305,7 @@ export function kisiFormu(id, init, { odak } = {}) {
     show();
   });
   panel.querySelector('[data-ocr-btn]').onclick = () => kartvizitPaneli(panel, form, panel.querySelector('[data-kvs="kartvizit_on"]').dataset.val, k._ocr);
-  if (k._new && k.kartvizit_on) kartvizitPaneli(panel, form, k.kartvizit_on);
+  if (k._new && k.kartvizit_on) kartvizitPaneli(panel, form, k.kartvizit_on, null, { yonSabit: !!k._kvYonSabit });
   panel.querySelectorAll('[data-kv-hizli]').forEach(b => b.onclick = () => { panel.querySelector(`[data-kvs="kartvizit_on"] ${b.dataset.kvHizli === 'cam' ? '[data-kv-cam]' : '[data-kv-gal]'}`).click(); });
   form.onsubmit = async e => {
     e.preventDefault();

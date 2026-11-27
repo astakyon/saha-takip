@@ -2011,6 +2011,35 @@ const DB = () => {
     await c.close();
   }
 }
+// Sürüm 137: kartvizit önizlemesinde yazı yönü kendiliğinden bulunur; kaydedilen fotoğraf önizlemedeki gibidir
+{
+  const { p, c, hatalar } = await sayfa({});
+  await p.goto(U + '#/bugun'); await w(1200);
+  const r = await p.evaluate(async () => {
+    const K = await import('./js/kirp.js');
+    const kart = document.createElement('canvas'); kart.width = 800; kart.height = 500; const x = kart.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 800, 500); x.fillStyle = '#c00'; x.fillRect(0, 0, 200, 120);
+    const kirmiziSolUst = async blob => { const g = await K.gorselYukle(blob); const d = g.getContext('2d').getImageData(20, 20, 1, 1).data; return d[0] > 150 && d[1] < 80; };
+    // Yön bulucu 180° derse önizleme döner, kullanılan fotoğraf da döndürülmüş hâlidir
+    const ters = K.dondur(kart, 180);
+    let bek = K.kartvizitKirp(ters, { koseler: K.tumKoseler(ters), onizle: true, yonBul: async () => { await new Promise(r => setTimeout(r, 400)); return 180; } });
+    await new Promise(r => setTimeout(r, 150)); const sirada = document.querySelector('.kirp')?.classList.contains('kirp-yon') && /kontrol ediliyor/.test(document.querySelector('.kirp [data-ipucu]').textContent);
+    await new Promise(r => setTimeout(r, 700)); const ipucu = document.querySelector('.kirp [data-ipucu]').textContent;
+    document.querySelector('.kirp [data-kul]').click(); const a = await bek;
+    // Yön bulunamazsa (okuma motoru yok) önizleme olduğu gibi kalır, hata çıkmaz
+    bek = K.kartvizitKirp(kart, { koseler: K.tumKoseler(kart), onizle: true, yonBul: async () => { throw new Error('motor yok'); } });
+    await new Promise(r => setTimeout(r, 500)); const ip2 = document.querySelector('.kirp [data-ipucu]').textContent; document.querySelector('.kirp [data-kul]').click(); const b = await bek;
+    // Elle döndürülürse sonradan gelen yön sonucu önizlemeyi değiştirmez
+    bek = K.kartvizitKirp(kart, { koseler: K.tumKoseler(kart), onizle: true, yonBul: async () => { await new Promise(r => setTimeout(r, 500)); return 90; } });
+    await new Promise(r => setTimeout(r, 100)); document.querySelector('.kirp [data-don]').click(); await new Promise(r => setTimeout(r, 700)); document.querySelector('.kirp [data-don]').click(); document.querySelector('.kirp [data-don]').click(); document.querySelector('.kirp [data-don]').click();
+    document.querySelector('.kirp [data-kul]').click(); const d = await bek;
+    return { sirada, ipucu, aDuz: await kirmiziSolUst(a.blob), aYon: a.yon, aElle: a.elle, ip2, bDuz: await kirmiziSolUst(b.blob), bYon: b.yon, dDuz: await kirmiziSolUst(d.blob) };
+  });
+  kontrol('Kartvizit önizlemesi: yön kontrol edilirken bilgi verilir, ters çekilen kart düz gösterilir ve öyle kaydedilir; okuma sırasında yeniden çevrilmez',
+    r.sirada && /döndürüldü/.test(r.ipucu) && r.aDuz && r.aYon === true && r.aElle === true, JSON.stringify(r));
+  kontrol('Yön bulunamazsa önizleme olduğu gibi kalır; elle döndürmeden sonra gelen yön sonucu önizlemeyi değiştirmez', /Döndür/.test(r.ip2) && r.bDuz && r.dDuz, JSON.stringify(r));
+  kontrol('Kartvizit yönünde hata yok', !hatalar.length, hatalar.slice(0, 3).join(' | '));
+  await c.close();
+}
 // Sürüm 94: yeni telefonda ilk ekran giriş (gömülü bağlantı); eski deneme kullanıcısı aynı kalır; "Kayıt olmadan dene"
 {
   const c = await tarayici.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });

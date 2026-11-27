@@ -169,6 +169,25 @@ export async function etiketOku(blob, ilerleme) {
   const blok = await tani(w, dondur(temel, en.aci), '6');
   return { metin: [en.data.text || '', blok.text || ''].join('\n'), donus: en.aci, guven: Math.round(en.data.confidence || 0) };
 }
+// Kartvizitin yönü (kırpma önizlemesi için): kart kaç derece döndürülünce yazılar düz okunur.
+// Hızlı olsun diye küçültülmüş görselde seyrek okuma; düz okuma yeterince iyiyse diğer yönler denenmez.
+export async function kartYonu(kaynak) {
+  const w = await hazirla();
+  const { dondur } = await import('./kirp.js');
+  const sc = Math.min(1, 1400 / Math.max(kaynak.width, kaynak.height));
+  const c = document.createElement('canvas'); c.width = Math.round(kaynak.width * sc); c.height = Math.round(kaynak.height * sc);
+  const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(kaynak, 0, 0, c.width, c.height);
+  const temel = onIsle(c);
+  let en = null; const p = {};
+  for (const aci of [0, 180, 90, 270]) {
+    const data = await tani(w, dondur(temel, aci), '11'), puan = okumaPuani(data); p[aci] = puan;
+    if (!en || puan > en.puan) en = { aci, puan };
+    if (aci === 0 && puan >= 40 && (data.confidence || 0) >= 65) break;
+    // düz / ters arasında açık fark varsa yan yönler denenmez (kart zaten yatay kesilir)
+    if (aci === 180 && en.puan >= 30 && en.puan >= 2 * Math.min(p[0], p[180]) + 5) break;
+  }
+  return en && en.puan >= 12 ? en.aci : 0;
+}
 // Okunan satırlar: düşük güvenli satırlar ve kelimeler (QR kod, logo, desen) atılır; her satırın yazı yüksekliği tutulur
 export function satirlariAl(data) {
   const ort = a => { const b = [...a].sort((x, y) => x - y); return b.length ? b[b.length >> 1] : 0; };

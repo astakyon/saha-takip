@@ -313,7 +313,7 @@ export function kartiKes(kaynak, koseler, { yatay = true, uzun = 1600 } = {}) {
 // Döner: { blob } (kırpılmış kart), ya da null (vazgeçildi)
 // Köşeler parmağın altında kalmasın diye sürüklerken büyüteç gösterilir; köşe parmağa zıplamaz, olduğu yerden kayar.
 // Kenarların ortasındaki tutamaçlarla bütün bir kenar birlikte kaydırılabilir.
-export async function kartvizitKirp(girdi, { koseler: verilen = null, onizle = false, kilavuz = false, tekrar = '', ad = 'Kart', yatay = true, uzun = 1600, kalite = 0.9, otomatik = true } = {}) {
+export async function kartvizitKirp(girdi, { koseler: verilen = null, onizle = false, kilavuz = false, tekrar = '', ad = 'Kart', yatay = true, uzun = 1600, kalite = 0.9, otomatik = true, yonBul = null } = {}) {
   const adK = ad.toLocaleLowerCase('tr'), adIn = { Kart: 'kartın', Tabela: 'tabelanın' }[ad] || adK + 'ın';
   const kaynak = girdi instanceof HTMLCanvasElement ? girdi : await gorselYukle(girdi);
   let bulunan = verilen; if (!bulunan && otomatik) try { bulunan = koseBul(kaynak); } catch (e) { console.warn('Köşe bulma', e); }
@@ -386,10 +386,22 @@ export async function kartvizitKirp(girdi, { koseler: verilen = null, onizle = f
     kap.querySelector('[data-iptal]').onclick = () => kapat(null);
     kap.querySelector('[data-tekrar]')?.addEventListener('click', () => kapat({ tekrar: true }));
     kap.querySelector('[data-tum]').onclick = () => { koseler = tumKoseler(kaynak); cerceve(); const y = kap.querySelector('[data-yeniden]'); if (y) y.hidden = false; };
-    kap.querySelector('[data-kes]').onclick = () => { sonuc = kartiKes(kaynak, koseler, { yatay, uzun }); aci = 0; goster = sonuc; adim(2); ciz(); };
-    kap.querySelector('[data-geri]').onclick = () => { goster = kaynak; adim(1); ciz(); };
-    kap.querySelector('[data-don]').onclick = () => { aci = (aci + 90) % 360; goster = dondur(sonuc, aci); ciz(); };
-    kap.querySelector('[data-kul]').onclick = async e => { e.target.disabled = true; const blob = await blobYap(goster, kalite); kapat({ blob, elle: aci !== 0 }); };
+    // Kesince yazıların yönü kendiliğinden bulunur (kartvizit): önizleme kaydedilecek hâliyle düz görünür
+    let yonSira = 0;
+    const yonla = async () => {
+      if (!yonBul) return; const benim = ++yonSira, ip = kap.querySelector('[data-ipucu]'), don = kap.querySelector('[data-don]');
+      ip.textContent = 'Yazıların yönü kontrol ediliyor…'; kap.classList.add('kirp-yon');
+      let d = 0; try { d = await yonBul(sonuc); } catch (e) { console.warn('Yön bulma', e); }
+      if (benim !== yonSira || !kap.isConnected) return; kap.classList.remove('kirp-yon');
+      if (d && aci === 0 && goster === sonuc) { aci = d; goster = dondur(sonuc, aci); ciz(); ip.textContent = 'Yazılar düz görünsün diye kart döndürüldü. Hâlâ yan ya da ters duruyorsa “Döndür”e dokun.'; }
+      else ip.textContent = 'Yazılar ters ya da yan duruyorsa “Döndür”e dokun.';
+      if (don) don.dataset.oto = d ? '1' : '';
+    };
+    kap.querySelector('[data-kes]').onclick = () => { sonuc = kartiKes(kaynak, koseler, { yatay, uzun }); aci = 0; goster = sonuc; adim(2); ciz(); yonla(); };
+    kap.querySelector('[data-geri]').onclick = () => { yonSira++; kap.classList.remove('kirp-yon'); goster = kaynak; adim(1); ciz(); };
+    kap.querySelector('[data-don]').onclick = () => { yonSira++; kap.classList.remove('kirp-yon'); aci = (aci + 90) % 360; goster = dondur(sonuc, aci); ciz(); kap.querySelector('[data-don]').dataset.el = '1'; };
+    // elle: kullanıcı döndürdü ya da yön kendiliğinden bulundu (okuma sırasında yeniden çevrilmez); yon: yön kontrolü bitti mi
+    kap.querySelector('[data-kul]').onclick = async e => { e.target.disabled = true; const bitti = !kap.classList.contains('kirp-yon'); yonSira++; const blob = await blobYap(goster, kalite); kapat({ blob, elle: aci !== 0, yon: !!yonBul && bitti }); };
     kap.addEventListener('keydown', e => { if (e.key === 'Escape') kapat(null); });
     window.addEventListener('resize', ciz);
     requestAnimationFrame(() => { ciz(); if (onizle) { kap.querySelector('[data-kes]').click(); if (kilavuz) kap.querySelector('[data-ipucu]').textContent = 'Kartın kenarları bulunamadı, çerçevenin içi kesildi. Gerekirse “Köşeleri düzelt”e dokun.'; } });
@@ -399,7 +411,8 @@ export async function kartvizitKirp(girdi, { koseler: verilen = null, onizle = f
 // Fotoğraf seç/çek → kırp → yüklenecek dosya (vazgeçilirse null)
 export async function kartvizitFotografi(capture) {
   const { pickFiles, toast } = await import('./ui.js');
-  const dosyaYap = r => r && { dosya: new File([r.blob], 'kartvizit.jpg', { type: 'image/jpeg' }), elle: r.elle };
+  const dosyaYap = r => r && { dosya: new File([r.blob], 'kartvizit.jpg', { type: 'image/jpeg' }), elle: r.elle, yon: r.yon };
+  const yonBul = async c => (await import('./ocr.js')).kartYonu(c);
   // Çek: uygulamanın kendi kamerası (yalnızca arka kamera, kart çerçevesi, kendiliğinden çekim).
   // Önizlemede “Yeniden çek” kameraya geri döner, “İptal” hiçbir şey kaydetmeden kapatır.
   if (capture) {
@@ -416,7 +429,7 @@ export async function kartvizitFotografi(capture) {
         if (!c) return null;
         if (c.yerli) break;   // telefonun kendi kamera uygulamasıyla çek
         if (c.lens) continue;  // başka lensle yeniden aç
-        const r = await kartvizitKirp(c.tuval, { koseler: c.koseler, onizle: true, kilavuz: c.kilavuz, tekrar: 'Yeniden çek' });
+        const r = await kartvizitKirp(c.tuval, { koseler: c.koseler, onizle: true, kilavuz: c.kilavuz, tekrar: 'Yeniden çek', yonBul });
         if (r?.tekrar) continue;
         return dosyaYap(r);
       }
@@ -424,7 +437,7 @@ export async function kartvizitFotografi(capture) {
   }
   for (;;) {
     const [file] = await pickFiles({ capture, multiple: false }); if (!file) return null;
-    try { const r = await kartvizitKirp(file, { tekrar: capture ? 'Yeniden çek' : 'Başka fotoğraf' }); if (r?.tekrar) continue; return dosyaYap(r); }
+    try { const r = await kartvizitKirp(file, { tekrar: capture ? 'Yeniden çek' : 'Başka fotoğraf', yonBul }); if (r?.tekrar) continue; return dosyaYap(r); }
     catch (e) { toast('Kırpılamadı, fotoğraf olduğu gibi kullanılacak: ' + e.message, 'err'); return { dosya: file, elle: false }; }
   }
 }

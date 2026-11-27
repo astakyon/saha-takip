@@ -32,6 +32,10 @@ Depoda **Settings → Pages → Build and deployment**:
    - iPhone/Safari: paylaş → **Ana Ekrana Ekle**
    - Simgeye uzun basınca **Ziyaret kaydet · Harita · Takvim · Projeler** kısayolları çıkar. APK dosyası ve Play Store için: [`docs/ANDROID.md`](docs/ANDROID.md)
 
+## Güncelleme notu (sürüm 137)
+
+- Kartvizit kırpma önizlemesi: “Kırp”tan sonra yazıların yönü okuma motoruyla hızlıca denetlenir (küçültülmüş görselde düz / ters / yan); kart yan ya da ters ise önizleme döndürülür. Kaydedilen fotoğraf önizlemedekiyle aynıdır; yön bulunduysa ya da elle döndürüldüyse okuma sırasında yeniden çevrilmez. Okuma motoru yoksa önizleme olduğu gibi kalır.
+
 ## Güncelleme notu (sürüm 136)
 
 - Telefonda liste satırları: ikinci sütun (ör. firma tipleri) en çok %42 genişlik alır ve sağda sarılır; birinci sütun (ad) daralıp harf harf alt alta dizilmez.
